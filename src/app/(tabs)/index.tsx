@@ -102,7 +102,8 @@ function getMilestone(ms: number) {
   const prev = prevIdx >= 0 ? MILESTONES[prevIdx] : 0;
   const progress = prev === next ? 1 : (days - prev) / (next - prev);
   const daysToGo = Math.max(0, next - Math.floor(days));
-  return { next, daysToGo, progress: Math.min(1, Math.max(0, progress)) };
+  const hoursToGo = Math.ceil(Math.max(0, next * 86400000 - ms) / 3600000);
+  return { next, daysToGo, hoursToGo, progress: Math.min(1, Math.max(0, progress)) };
 }
 
 function weeklyToDaily(weeklyBet: string | null) {
@@ -141,15 +142,44 @@ function formatStartDate(quitDate: string | null): string {
   return `Started ${d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(!sameYear && { year: 'numeric' }) })}`;
 }
 
+// ─── Live Counter ─────────────────────────────────────────────────────────────
+
+function LiveCounter({ quitDate }: { quitDate: string | null }) {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!quitDate) return null;
+
+  const ms = Math.max(0, Date.now() - new Date(quitDate).getTime());
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const label = days > 0
+    ? `${days}d ${hours}h ${pad(mins)}m ${pad(secs)}s`
+    : `${hours}h ${pad(mins)}m ${pad(secs)}s`;
+
+  return <Text style={s.liveCounter}>{label}</Text>;
+}
+
 // ─── Circular Progress ────────────────────────────────────────────────────────
 
-function CircularProgress({ days, unit, progress }: { days: number; unit: string; progress: number }) {
+function CircularProgress({ progress, next }: { progress: number; next: number }) {
   const SIZE = 130;
   const SW = 9;
   const R = (SIZE - SW) / 2;
   const C = 2 * Math.PI * R;
   const cx = SIZE / 2;
   const cy = SIZE / 2;
+  const pct = Math.round(progress * 100);
+  const milestoneLabel = next === 1 ? '1 day' : next < 365 ? `${next} days` : '1 year';
 
   return (
     <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' }}>
@@ -164,8 +194,8 @@ function CircularProgress({ days, unit, progress }: { days: number; unit: string
           transform={`rotate(-90 ${cx} ${cy})`}
         />
       </Svg>
-      <Text style={s.circDays}>{days}</Text>
-      <Text style={s.circLabel}>{unit}</Text>
+      <Text style={s.circPct}>{pct}%</Text>
+      <Text style={s.circTime}>of {milestoneLabel}</Text>
     </View>
   );
 }
@@ -302,7 +332,7 @@ export default function HomeScreen() {
 
   if (!data) return null;
 
-  const { next, daysToGo, progress } = getMilestone(streakMs);
+  const { next, daysToGo, hoursToGo, progress } = getMilestone(streakMs);
   const moneySaved = streakDays * weeklyToDaily(data.weeklyBet);
   const percentRecovered = data.totalLost > 0 ? Math.min(100, (data.paidBack / data.totalLost) * 100) : 0;
   const motivation = MOTIVATION_MAP[data.motivation ?? ''] ?? { label: data.motivation ?? '—', emoji: '💪' };
@@ -327,7 +357,7 @@ export default function HomeScreen() {
 
             {/* Streak card inside header */}
             <View style={s.streakCard}>
-              <CircularProgress days={streakValue} unit={streakUnit} progress={progress} />
+              <CircularProgress progress={progress} next={next} />
               <View style={s.streakRight}>
                 <Text style={s.streakTitle}>Current streak</Text>
                 <View style={s.milestoneBar}>
@@ -336,8 +366,11 @@ export default function HomeScreen() {
                 <Text style={s.milestoneTxt}>
                   {daysToGo === 0
                     ? `🎉 ${next}-day milestone reached!`
-                    : `${daysToGo} days to ${next}-day milestone`}
+                    : daysToGo === 1
+                      ? `${hoursToGo}h to ${next}-day milestone`
+                      : `${daysToGo} days to ${next}-day milestone`}
                 </Text>
+                <LiveCounter quitDate={data.quitDate} />
                 <Text style={s.longestTxt}>Best: {data.longestStreak} days</Text>
                 {!!data.quitDate && (
                   <Text style={s.startedTxt}>{formatStartDate(data.quitDate)}</Text>
@@ -479,14 +512,15 @@ const s = StyleSheet.create({
   milestoneBar: { height: 5, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, overflow: 'hidden' },
   milestoneFill: { height: '100%', backgroundColor: '#fff', borderRadius: 3 },
   milestoneTxt: { fontSize: 13, color: '#fff', fontWeight: '500' },
+  liveCounter: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontVariant: ['tabular-nums'] },
   longestTxt: { fontSize: 12, color: 'rgba(255,255,255,0.65)' },
   startedTxt: { fontSize: 11, color: 'rgba(255,255,255,0.55)' },
   resetLink: { marginTop: 2 },
   resetLinkTxt: { fontSize: 11, color: '#ff8a80', fontWeight: '600' },
 
   // Circular
-  circDays: { fontSize: 38, fontWeight: '800', color: '#fff', lineHeight: 44 },
-  circLabel: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: -4 },
+  circPct: { fontSize: 32, fontWeight: '800', color: '#fff', lineHeight: 36 },
+  circTime: { fontSize: 10, color: 'rgba(255,255,255,0.8)', marginTop: 2, fontWeight: '600', textAlign: 'center', paddingHorizontal: 8 },
 
   // Body
   body: { flex: 1 },
