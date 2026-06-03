@@ -626,19 +626,6 @@ export default function HomeScreen() {
         contentContainerStyle={s.bodyContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" />}>
 
-        {/* Your Why */}
-        <View style={s.whyCard}>
-          <View style={s.whyText}>
-            <Text style={s.whyLabel}>Your why</Text>
-            {motivations.map((m, i) => (
-              <View key={i} style={s.whyRow}>
-                <Text style={s.whyEmoji}>{m.emoji}</Text>
-                <Text style={s.whyValue}>{m.label}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
         {/* Stats */}
         <View style={s.statsRow}>
           <View style={s.statBox}>

@@ -108,7 +108,8 @@ export default function UrgeScreen() {
     breathPhase === 'exhale' ? 'Breathe out...' :
     'Tap to start';
 
-  const motivationInfo = MOTIVATION_MAP[motivation ?? ''] ?? { label: motivation ?? '—', emoji: '💪' };
+  const motivations = (motivation ?? '').split(',').filter(Boolean)
+    .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
   if (loading) {
     return (
@@ -133,10 +134,14 @@ export default function UrgeScreen() {
 
         {/* Your why */}
         <View style={s.whyCard}>
-          <Text style={s.whyEmoji}>{motivationInfo.emoji}</Text>
           <View style={s.whyText}>
             <Text style={s.whyLbl}>Remember your why</Text>
-            <Text style={s.whyVal}>{motivationInfo.label}</Text>
+            {motivations.map((m, i) => (
+              <View key={i} style={s.whyRow}>
+                <Text style={s.whyEmoji}>{m.emoji}</Text>
+                <Text style={s.whyVal}>{m.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
@@ -205,14 +210,14 @@ const s = StyleSheet.create({
   bodyContent: { padding: 16, gap: 12 },
 
   whyCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 12,
+    backgroundColor: '#fff', borderRadius: 14, padding: 14,
     borderLeftWidth: 4, borderLeftColor: '#0F6E6E',
   },
-  whyEmoji: { fontSize: 28 },
-  whyText: { flex: 1 },
-  whyLbl: { fontSize: 11, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  whyVal: { fontSize: 16, color: '#111', fontWeight: '600', marginTop: 2 },
+  whyEmoji: { fontSize: 18 },
+  whyText: { gap: 6 },
+  whyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  whyLbl: { fontSize: 11, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  whyVal: { fontSize: 15, color: '#111', fontWeight: '600' },
 
   breathCard: {
     backgroundColor: '#fff', borderRadius: 14, padding: 16, alignItems: 'center',
