@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { QuestionScreen } from '@/components/onboarding/QuestionScreen';
 import { useOnboarding } from '@/context/onboarding';
@@ -15,16 +15,22 @@ const OPTIONS = [
 
 export default function Q2Screen() {
   const router = useRouter();
-  const { data, setField } = useOnboarding();
-  const [selected, setSelected] = useState(data.trigger ?? '');
+  const { data, isLoaded, setField, saveStep } = useOnboarding();
+  const [selected, setSelected] = useState('');
+
+  useEffect(() => {
+    if (isLoaded && data.trigger) setSelected(data.trigger);
+  }, [isLoaded]);
 
   const handleContinue = () => {
     setField('trigger', selected);
+    saveStep('q3');
     router.push('/(onboarding)/q3');
   };
 
   const handleSkip = () => {
     setField('trigger', '');
+    saveStep('q3');
     router.push('/(onboarding)/q3');
   };
 

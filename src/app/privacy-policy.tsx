@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,8 +54,8 @@ export default function PrivacyPolicyScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backText}>← Back</Text>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
         </Pressable>
         <Text style={s.title}>Privacy Policy</Text>
         <Text style={s.updated}>Last updated: {LAST_UPDATED}</Text>
@@ -81,8 +82,7 @@ export default function PrivacyPolicyScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff' },
   header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  backBtn: { paddingBottom: 12, alignSelf: 'flex-start' },
-  backText: { fontSize: 15, color: '#0F6E6E', fontWeight: '500' },
+  backBtn: { padding: 4, marginBottom: 8, alignSelf: 'flex-start' },
   title: { fontSize: 24, fontWeight: '700', color: '#111' },
   updated: { fontSize: 12, color: '#aaa', marginTop: 4 },
   content: { paddingHorizontal: 24, paddingTop: 20 },

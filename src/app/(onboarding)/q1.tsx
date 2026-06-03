@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,9 +19,14 @@ const OPTIONS = [
 
 export default function Q1Screen() {
   const router = useRouter();
-  const { data, setField } = useOnboarding();
-  const initial = data.motivation ? data.motivation.split(',') : [];
-  const [selected, setSelected] = useState<string[]>(initial);
+  const { data, isLoaded, setField, saveStep } = useOnboarding();
+  const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isLoaded && data.motivation) {
+      setSelected(data.motivation.split(',').filter(Boolean));
+    }
+  }, [isLoaded]);
 
   const toggle = (value: string) => {
     setSelected(prev =>
@@ -30,19 +36,21 @@ export default function Q1Screen() {
 
   const handleContinue = () => {
     setField('motivation', selected.join(','));
+    saveStep('q2');
     router.push('/(onboarding)/q2');
   };
 
   const handleSkip = () => {
     setField('motivation', '');
+    saveStep('q2');
     router.push('/(onboarding)/q2');
   };
 
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.topBar}>
-        <Pressable onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backText}>← Back</Text>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/signup')} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
         </Pressable>
         <View style={s.progressWrapper}>
           <ProgressBar current={1} total={5} />
@@ -83,8 +91,7 @@ export default function Q1Screen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff' },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 },
-  backBtn: { paddingRight: 4, flexShrink: 0 },
-  backText: { fontSize: 15, color: '#0F6E6E', fontWeight: '500' },
+  backBtn: { padding: 4, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
   progressWrapper: { flex: 1 },
   scroll: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 },
   title: { fontSize: 24, fontWeight: '700', color: '#111', marginBottom: 8, lineHeight: 32 },

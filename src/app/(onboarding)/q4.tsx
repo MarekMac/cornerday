@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -23,8 +24,14 @@ const OPTIONS = [
 
 export default function Q4Screen() {
   const router = useRouter();
-  const { setField } = useOnboarding();
+  const { data, isLoaded, setField, saveStep } = useOnboarding();
   const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isLoaded && data.goal) {
+      setSelected(data.goal.split(',').filter(Boolean));
+    }
+  }, [isLoaded]);
 
   const toggle = (value: string) => {
     setSelected(prev =>
@@ -34,19 +41,21 @@ export default function Q4Screen() {
 
   const handleContinue = () => {
     setField('goal', selected.join(','));
+    saveStep('q5');
     router.push('/(onboarding)/q5');
   };
 
   const handleSkip = () => {
     setField('goal', '');
+    saveStep('q5');
     router.push('/(onboarding)/q5');
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q3')} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
         </Pressable>
         <View style={styles.progressWrapper}>
           <ProgressBar current={4} total={5} />
@@ -113,8 +122,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     gap: 12,
   },
-  backBtn: { flexShrink: 0, paddingRight: 4 },
-  backText: { fontSize: 15, color: '#0F6E6E', fontWeight: '500' },
+  backBtn: { flexShrink: 0, padding: 4, alignItems: 'center', justifyContent: 'center' },
   progressWrapper: { flex: 1 },
   scroll: {
     paddingHorizontal: 24,

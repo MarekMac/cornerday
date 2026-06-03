@@ -317,15 +317,19 @@ export default function AccountScreen() {
       value: current,
       mode: 'date',
       maximumDate: new Date(),
-      onValueChange: (selectedDate?: Date) => {
-        if (!selectedDate) return;
-        DateTimePickerAndroid.open({
+      onValueChange: (_evt: any, rawDate?: Date) => {
+        if (!rawDate) return;
+        const selectedDate = new Date(rawDate.getTime());
+        if (isNaN(selectedDate.getTime())) return;
+        setTimeout(() => DateTimePickerAndroid.open({
           value: selectedDate,
           mode: 'time',
           is24Hour: true,
-          onValueChange: (selectedTime?: Date) => {
-            if (!selectedTime) return;
-            const merged = new Date(selectedDate);
+          onValueChange: (_tevt: any, rawTime?: Date) => {
+            if (!rawTime) return;
+            const selectedTime = new Date(rawTime.getTime());
+            if (isNaN(selectedTime.getTime())) return;
+            const merged = new Date(selectedDate.getTime());
             merged.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
             Alert.alert(
               'Update start date?',
@@ -335,8 +339,8 @@ export default function AccountScreen() {
                 { text: 'Save', onPress: () => saveQuitDate(merged) },
               ],
             );
-          },
-        });
+            },
+          }), 500);
       },
     });
   };
@@ -737,7 +741,7 @@ export default function AccountScreen() {
                   value={editDate}
                   mode="datetime"
                   display="spinner"
-                  onValueChange={(d) => d && setEditDate(d)}
+                  onValueChange={(_evt, d) => d && setEditDate(new Date(d.getTime()))}
                   maximumDate={new Date()}
                   style={{ height: 200 }}
                 />

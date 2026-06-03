@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -45,8 +46,8 @@ export default function ForgotPasswordScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.container}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Back</Text>
+          <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/signup')}>
+            <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
           </Pressable>
 
           {sent ? (
@@ -106,8 +107,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff' },
   flex: { flex: 1 },
   container: { flex: 1, paddingHorizontal: 28, paddingTop: 8 },
-  backBtn: { paddingTop: 4, paddingBottom: 24, alignSelf: 'flex-start' },
-  backText: { fontSize: 15, color: '#0F6E6E', fontWeight: '500' },
+  backBtn: { padding: 4, marginBottom: 20, alignSelf: 'flex-start' },
   title: { fontSize: 26, fontWeight: '700', color: '#111', marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#666', marginBottom: 28, lineHeight: 22 },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#444', marginBottom: 6 },

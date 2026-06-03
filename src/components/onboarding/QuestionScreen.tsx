@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -41,8 +42,8 @@ export function QuestionScreen({
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/signup')} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
         </Pressable>
         <View style={styles.progressWrapper}>
           <ProgressBar current={step} total={total} />
@@ -100,16 +101,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   backBtn: {
-    paddingRight: 4,
+    padding: 4,
     flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   progressWrapper: {
     flex: 1,
-  },
-  backText: {
-    fontSize: 15,
-    color: '#0F6E6E',
-    fontWeight: '500',
   },
   scroll: {
     paddingHorizontal: 24,

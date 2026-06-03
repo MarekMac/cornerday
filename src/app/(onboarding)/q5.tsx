@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { QuestionScreen } from '@/components/onboarding/QuestionScreen';
 import { useOnboarding } from '@/context/onboarding';
@@ -14,16 +14,22 @@ const OPTIONS = [
 
 export default function Q5Screen() {
   const router = useRouter();
-  const { data, setField } = useOnboarding();
-  const [selected, setSelected] = useState(data.supportType ?? '');
+  const { data, isLoaded, setField, saveStep } = useOnboarding();
+  const [selected, setSelected] = useState('');
+
+  useEffect(() => {
+    if (isLoaded && data.supportType) setSelected(data.supportType);
+  }, [isLoaded]);
 
   const handleContinue = () => {
     setField('supportType', selected);
+    saveStep('ready');
     router.push('/(onboarding)/ready');
   };
 
   const handleSkip = () => {
     setField('supportType', '');
+    saveStep('ready');
     router.push('/(onboarding)/ready');
   };
 

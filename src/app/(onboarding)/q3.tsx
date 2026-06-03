@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import {
@@ -37,12 +38,19 @@ const CHIP_AMOUNTS = [
 
 export default function Q3Screen() {
   const router = useRouter();
-  const { setField } = useOnboarding();
+  const { data, isLoaded, setField, saveStep } = useOnboarding();
   const [currency, setCurrency] = useState('USD');
   const [selected, setSelected] = useState('');
   const [custom, setCustom] = useState('');
   const [quitDate, setQuitDate] = useState(new Date());
   const [showIOSPicker, setShowIOSPicker] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (data.currency) setCurrency(data.currency);
+    if (data.weeklyBet) setSelected(data.weeklyBet);
+    if (data.quitDate) setQuitDate(new Date(data.quitDate));
+  }, [isLoaded]);
 
   const symbol = CURRENCIES.find(c => c.code === currency)?.symbol ?? '$';
 
@@ -56,19 +64,25 @@ export default function Q3Screen() {
         value: quitDate,
         mode: 'date',
         maximumDate: new Date(),
-        onValueChange: (date?: Date) => {
-          if (!date) return;
-          DateTimePickerAndroid.open({
-            value: date,
-            mode: 'time',
-            is24Hour: true,
-            onValueChange: (time?: Date) => {
-              if (!time) return;
-              const merged = new Date(date);
-              merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
-              setQuitDate(merged);
-            },
-          });
+        onValueChange: (_evt, raw) => {
+          if (!raw) return;
+          const date = new Date(raw.getTime());
+          if (isNaN(date.getTime())) return;
+          setTimeout(() => {
+            DateTimePickerAndroid.open({
+              value: date,
+              mode: 'time',
+              is24Hour: true,
+              onValueChange: (_tevt, rawTime) => {
+                if (!rawTime) return;
+                const time = new Date(rawTime.getTime());
+                if (isNaN(time.getTime())) return;
+                const merged = new Date(date.getTime());
+                merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
+                if (!isNaN(merged.getTime())) setQuitDate(merged);
+              },
+            });
+          }, 500);
         },
       });
     }
@@ -79,6 +93,7 @@ export default function Q3Screen() {
     setField('weeklyBet', value);
     setField('currency', currency);
     setField('quitDate', quitDate.toISOString());
+    saveStep('q4');
     router.push('/(onboarding)/q4');
   };
 
@@ -86,6 +101,7 @@ export default function Q3Screen() {
     setField('weeklyBet', null);
     setField('currency', currency);
     setField('quitDate', new Date().toISOString());
+    saveStep('q4');
     router.push('/(onboarding)/q4');
   };
 
@@ -97,8 +113,8 @@ export default function Q3Screen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q2')} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
         </Pressable>
         <View style={styles.progressWrapper}>
           <ProgressBar current={3} total={5} />
@@ -189,7 +205,7 @@ export default function Q3Screen() {
                 mode="datetime"
                 display="spinner"
                 maximumDate={new Date()}
-                onValueChange={(d) => d && setQuitDate(d)}
+                onValueChange={(_evt, d) => d && setQuitDate(new Date(d.getTime()))}
                 style={{ height: 200 }}
               />
               <Pressable style={styles.modalDone} onPress={() => setShowIOSPicker(false)}>
@@ -229,8 +245,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     gap: 12,
   },
-  backBtn: { flexShrink: 0, paddingRight: 4 },
-  backText: { fontSize: 15, color: '#0F6E6E', fontWeight: '500' },
+  backBtn: { flexShrink: 0, padding: 4, alignItems: 'center', justifyContent: 'center' },
   progressWrapper: { flex: 1 },
   scroll: {
     paddingHorizontal: 24,

@@ -72,7 +72,7 @@ const CHECKLIST = [
 
 export default function ReadyScreen() {
   const router = useRouter();
-  const { data } = useOnboarding();
+  const { data, clearProgress } = useOnboarding();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -122,6 +122,7 @@ export default function ReadyScreen() {
       return;
     }
 
+    clearProgress();
     await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
     router.replace('/(tabs)');
   };

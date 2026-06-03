@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -183,7 +184,30 @@ export default function SignupScreen() {
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
-        setError(error.message);
+        const alreadyExists =
+          error.message.toLowerCase().includes('already registered') ||
+          error.message.toLowerCase().includes('already exists') ||
+          error.message.toLowerCase().includes('user already');
+        if (alreadyExists) {
+          // Account exists — sign them in and continue where they left off
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInError) {
+            setError('This email is already registered. Please sign in with your password.');
+            setLoading(false);
+            return;
+          }
+          const { data: profile } = await supabase
+            .from('users')
+            .select('motivation')
+            .single();
+          if (profile?.motivation) {
+            router.replace('/(tabs)');
+          } else {
+            router.push('/(onboarding)/q1');
+          }
+        } else {
+          setError(error.message);
+        }
         setLoading(false);
         return;
       }
@@ -200,11 +224,13 @@ export default function SignupScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'android' ? 32 : 0}>
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, isSignIn && { paddingTop: 75 }]}
           keyboardShouldPersistTaps="handled">
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Back</Text>
-          </Pressable>
+          {!isSignIn && (
+            <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)')}>
+              <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
+            </Pressable>
+          )}
 
           <View style={styles.header}>
             <Text style={styles.title}>
@@ -325,14 +351,9 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
   backBtn: {
-    paddingTop: 4,
-    paddingBottom: 20,
+    padding: 4,
+    marginBottom: 16,
     alignSelf: 'flex-start',
-  },
-  backText: {
-    fontSize: 15,
-    color: '#0F6E6E',
-    fontWeight: '500',
   },
   header: {
     marginBottom: 48,

@@ -1,10 +1,18 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
+
 export default function WelcomeScreen() {
   const router = useRouter();
+
+  useEffect(() => {
+    AsyncStorage.setItem(SEEN_WELCOME_KEY, 'true');
+  }, []);
 
   return (
     <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']} style={styles.gradient}>
