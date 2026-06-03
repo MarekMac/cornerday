@@ -36,6 +36,12 @@ export default function TabsLayout() {
           title: 'Tracker',
           tabBarIcon: ({ focused }) => tabIcon('wallet', focused),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('tracker', { screen: 'index' });
+          },
+        })}
       />
       <Tabs.Screen
         name="urge"
@@ -43,6 +49,12 @@ export default function TabsLayout() {
           title: 'Support',
           tabBarIcon: ({ focused }) => tabIcon('heart', focused),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('urge', { screen: 'index' });
+          },
+        })}
       />
       <Tabs.Screen
         name="coach"

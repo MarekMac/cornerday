@@ -4,6 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -182,6 +183,31 @@ export default function JournalScreen() {
   useEffect(() => { fetchFeed().finally(() => setLoading(false)); }, [fetchFeed]);
   useFocusEffect(useCallback(() => { fetchFeed(); }, [fetchFeed]));
 
+  const clearAllLogs = () => {
+    Alert.alert(
+      'Clear all journal entries?',
+      'This permanently deletes all urge logs, debts, payments, savings and streak resets. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear all',
+          style: 'destructive',
+          onPress: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            await Promise.all([
+              supabase.from('urge_journal').delete().eq('user_id', user.id),
+              supabase.from('debt_payments').delete().eq('user_id', user.id),
+              supabase.from('debts').delete().eq('user_id', user.id),
+              supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset']),
+            ]);
+            fetchFeed();
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={s.root}>
       <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
@@ -193,7 +219,13 @@ export default function JournalScreen() {
             <View style={s.headerCenter}>
               <Text style={s.headerTitle}>My Journal</Text>
             </View>
-            <View style={{ width: 70 }} />
+            {feed.length > 0 ? (
+              <Pressable onPress={clearAllLogs} hitSlop={12} style={s.clearBtn}>
+                <Ionicons name="trash-outline" size={20} color="rgba(255,255,255,0.8)" />
+              </Pressable>
+            ) : (
+              <View style={{ width: 36 }} />
+            )}
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -233,6 +265,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 12, gap: 8,
   },
   backBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
+  clearBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
 
