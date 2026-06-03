@@ -23,6 +23,11 @@ export default function Q2Screen() {
     router.push('/(onboarding)/q3');
   };
 
+  const handleSkip = () => {
+    setField('trigger', '');
+    router.push('/(onboarding)/q3');
+  };
+
   return (
     <QuestionScreen
       step={2}
@@ -33,6 +38,8 @@ export default function Q2Screen() {
       selected={selected}
       onSelect={setSelected}
       onContinue={handleContinue}
+      skippable
+      onSkip={handleSkip}
     />
   );
 }

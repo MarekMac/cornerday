@@ -22,6 +22,11 @@ export default function Q5Screen() {
     router.push('/(onboarding)/ready');
   };
 
+  const handleSkip = () => {
+    setField('supportType', '');
+    router.push('/(onboarding)/ready');
+  };
+
   return (
     <QuestionScreen
       step={5}
@@ -32,6 +37,8 @@ export default function Q5Screen() {
       selected={selected}
       onSelect={setSelected}
       onContinue={handleContinue}
+      skippable
+      onSkip={handleSkip}
     />
   );
 }

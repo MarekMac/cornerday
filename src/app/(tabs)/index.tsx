@@ -199,12 +199,7 @@ function getMilestone(ms: number) {
 function weeklyToDaily(weeklyBet: string | null) {
   if (!weeklyBet) return 0;
   const n = Number(weeklyBet);
-  if (!isNaN(n)) return n / 7;
-  const map: Record<string, number> = {
-    under_20: 10, '20_50': 35, '50_100': 75,
-    '100_200': 150, '200_500': 350, '500_plus': 600,
-  };
-  return (map[weeklyBet] ?? 0) / 7;
+  return isNaN(n) ? 0 : n / 7;
 }
 
 function fmt(amount: number, currency = 'USD') {
@@ -787,8 +782,8 @@ export default function HomeScreen() {
                   ? new Date(new Date(data.quitDate).getTime() + selectedBadge.days * 86400000)
                   : null;
                 const daysSince = streakDays - selectedBadge.days;
-                const savedSince = daysSince * dailyRate;
                 const savedAtMilestone = selectedBadge.days * dailyRate;
+                const savedTotal = streakDays * dailyRate;
                 return (
                   <>
                     <Text style={s.modalEmoji}>{selectedBadge.emoji}</Text>
@@ -812,8 +807,8 @@ export default function HomeScreen() {
                           <Text style={s.modalRowValue}>{fmt(savedAtMilestone, data.currency)}</Text>
                         </View>
                         <View style={s.modalRow}>
-                          <Text style={s.modalRowLabel}>Saved since then</Text>
-                          <Text style={[s.modalRowValue, { color: '#0F6E6E' }]}>{fmt(savedSince, data.currency)}</Text>
+                          <Text style={s.modalRowLabel}>Saved total</Text>
+                          <Text style={[s.modalRowValue, { color: '#0F6E6E' }]}>{fmt(savedTotal, data.currency)}</Text>
                         </View>
                       </>
                     )}

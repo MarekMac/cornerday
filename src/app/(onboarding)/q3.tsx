@@ -26,13 +26,13 @@ const CURRENCIES = [
   { code: 'CAD', symbol: 'C$' },
 ];
 
-const CHIP_RANGES = [
-  { value: 'under_20', label: (s: string) => `Under ${s}20` },
-  { value: '20_50', label: (s: string) => `${s}20–${s}50` },
-  { value: '50_100', label: (s: string) => `${s}50–${s}100` },
-  { value: '100_200', label: (s: string) => `${s}100–${s}200` },
-  { value: '200_500', label: (s: string) => `${s}200–${s}500` },
-  { value: '500_plus', label: (s: string) => `${s}500+` },
+const CHIP_AMOUNTS = [
+  { value: '20',   label: (s: string) => `${s}20` },
+  { value: '50',   label: (s: string) => `${s}50` },
+  { value: '100',  label: (s: string) => `${s}100` },
+  { value: '200',  label: (s: string) => `${s}200` },
+  { value: '500',  label: (s: string) => `${s}500` },
+  { value: '1000', label: (s: string) => `${s}1000+` },
 ];
 
 export default function Q3Screen() {
@@ -56,13 +56,13 @@ export default function Q3Screen() {
         value: quitDate,
         mode: 'date',
         maximumDate: new Date(),
-        onChange: (_: any, date?: Date) => {
+        onValueChange: (date?: Date) => {
           if (!date) return;
           DateTimePickerAndroid.open({
             value: date,
             mode: 'time',
             is24Hour: true,
-            onChange: (__: any, time?: Date) => {
+            onValueChange: (time?: Date) => {
               if (!time) return;
               const merged = new Date(date);
               merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
@@ -140,7 +140,7 @@ export default function Q3Screen() {
         </ScrollView>
 
         <View style={styles.chips}>
-          {CHIP_RANGES.map(chip => (
+          {CHIP_AMOUNTS.map(chip => (
             <Pressable
               key={chip.value}
               style={({ pressed }) => [

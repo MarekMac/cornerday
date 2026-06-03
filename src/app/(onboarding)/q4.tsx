@@ -37,6 +37,11 @@ export default function Q4Screen() {
     router.push('/(onboarding)/q5');
   };
 
+  const handleSkip = () => {
+    setField('goal', '');
+    router.push('/(onboarding)/q5');
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
@@ -80,6 +85,9 @@ export default function Q4Screen() {
       </ScrollView>
 
       <View style={styles.footer}>
+        <Pressable style={styles.skipBtn} onPress={handleSkip}>
+          <Text style={styles.skipText}>Skip for now</Text>
+        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.continueBtn,
@@ -177,7 +185,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
+    gap: 8,
   },
+  skipBtn: { alignItems: 'center', paddingVertical: 8 },
+  skipText: { fontSize: 14, color: '#888' },
   continueBtn: {
     backgroundColor: '#0F6E6E',
     borderRadius: 14,

@@ -33,6 +33,11 @@ export default function Q1Screen() {
     router.push('/(onboarding)/q2');
   };
 
+  const handleSkip = () => {
+    setField('motivation', '');
+    router.push('/(onboarding)/q2');
+  };
+
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.topBar}>
@@ -61,6 +66,9 @@ export default function Q1Screen() {
       </ScrollView>
 
       <View style={s.footer}>
+        <Pressable style={s.skipBtn} onPress={handleSkip}>
+          <Text style={s.skipText}>Skip for now</Text>
+        </Pressable>
         <Pressable
           style={({ pressed }) => [s.continueBtn, selected.length === 0 && s.continueBtnDisabled, pressed && s.pressed]}
           onPress={handleContinue}
@@ -82,7 +90,9 @@ const s = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '700', color: '#111', marginBottom: 8, lineHeight: 32 },
   subtitle: { fontSize: 14, color: '#888', marginBottom: 24 },
   options: { marginTop: 16 },
-  footer: { paddingHorizontal: 24, paddingBottom: 32, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
+  footer: { paddingHorizontal: 24, paddingBottom: 32, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0', gap: 8 },
+  skipBtn: { alignItems: 'center', paddingVertical: 8 },
+  skipText: { fontSize: 14, color: '#888' },
   continueBtn: { backgroundColor: '#0F6E6E', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   continueBtnDisabled: { backgroundColor: '#b0d4d4' },
   continueBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
