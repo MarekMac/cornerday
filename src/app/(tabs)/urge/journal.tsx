@@ -5,14 +5,9 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,107 +24,163 @@ const TRIGGERS = [
   { key: 'other',       label: 'Other' },
 ];
 
-type JournalEntry = {
-  id: string;
-  trigger: string;
-  outcome: 'overcame' | 'slipped';
-  note: string | null;
-  created_at: string;
-};
+type FeedEntry =
+  | { kind: 'urge';         id: string; trigger: string; outcome: 'overcame' | 'slipped'; note: string | null; created_at: string }
+  | { kind: 'debt';         id: string; name: string; total_amount: number; category: string; created_at: string }
+  | { kind: 'payment';      id: string; amount: number; note: string | null; debt_name: string; created_at: string }
+  | { kind: 'saving';       id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'streak_reset'; id: string; note: string | null; created_at: string };
 
 function triggerLabel(key: string) {
   return TRIGGERS.find(t => t.key === key)?.label ?? key;
 }
 
+function fmt(amount: number, currency = 'USD') {
+  const syms: Record<string, string> = {
+    USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$',
+  };
+  const s = syms[currency] ?? currency;
+  if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
+  return `${s}${Math.round(amount)}`;
+}
+
 function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', {
+  return new Date(iso).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
 }
 
-function EntryCard({ entry }: { entry: JournalEntry }) {
-  const overcame = entry.outcome === 'overcame';
-  return (
-    <View style={s.entryCard}>
-      <View style={s.entryTop}>
-        <View style={[s.outcomePill, overcame ? s.pillGreen : s.pillMuted]}>
-          <Text style={[s.pillText, overcame ? s.pillTextGreen : s.pillTextMuted]}>
-            {overcame ? 'Overcame ✓' : 'Had a slip'}
-          </Text>
+function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) {
+  if (entry.kind === 'urge') {
+    const overcame = entry.outcome === 'overcame';
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, overcame ? s.pillGreen : s.pillRed]}>
+            <Text style={[s.pillTxt, overcame ? s.pillTxtGreen : s.pillTxtRed]}>
+              {overcame ? 'Urge · Overcame ✓' : 'Urge · Had a slip'}
+            </Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
         </View>
-        <Text style={s.entryDate}>{formatDate(entry.created_at)}</Text>
+        <Text style={s.cardTitle}>{triggerLabel(entry.trigger)}</Text>
+        {entry.note ? <Text style={s.cardNote}>{entry.note}</Text> : null}
       </View>
-      <Text style={s.entryTrigger}>{triggerLabel(entry.trigger)}</Text>
-      {entry.note ? <Text style={s.entryNote}>{entry.note}</Text> : null}
-    </View>
-  );
+    );
+  }
+
+  if (entry.kind === 'debt') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillRed]}>
+            <Text style={[s.pillTxt, s.pillTxtRed]}>Debt added</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <View style={s.cardRow}>
+          <Text style={s.cardTitle}>{entry.name}</Text>
+          <Text style={[s.cardAmount, { color: '#c0392b' }]}>−{fmt(Number(entry.total_amount), currency)}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (entry.kind === 'payment') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillTeal]}>
+            <Text style={[s.pillTxt, s.pillTxtTeal]}>Payment</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <View style={s.cardRow}>
+          <Text style={s.cardTitle}>{entry.debt_name}</Text>
+          <Text style={[s.cardAmount, { color: '#0F6E6E' }]}>+{fmt(Number(entry.amount), currency)}</Text>
+        </View>
+        {entry.note ? <Text style={s.cardNote}>{entry.note}</Text> : null}
+      </View>
+    );
+  }
+
+  if (entry.kind === 'saving') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillGreenSolid]}>
+            <Text style={[s.pillTxt, s.pillTxtGreenSolid]}>Saving</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <View style={s.cardRow}>
+          <Text style={s.cardTitle}>{entry.note || 'Saving'}</Text>
+          <Text style={[s.cardAmount, { color: '#0a7a4e' }]}>+{fmt(Number(entry.amount), currency)}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (entry.kind === 'streak_reset') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillOrange]}>
+            <Text style={[s.pillTxt, s.pillTxtOrange]}>Streak reset</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <Text style={s.cardTitle}>New beginning</Text>
+        {entry.note ? <Text style={s.cardNote}>{entry.note} — every restart is still progress.</Text> : null}
+      </View>
+    );
+  }
+
+  return null;
 }
 
 export default function JournalScreen() {
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [feed, setFeed] = useState<FeedEntry[]>([]);
+  const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
 
-  const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
-  const [customTrigger, setCustomTrigger] = useState('');
-  const [outcome, setOutcome] = useState<'overcame' | 'slipped' | null>(null);
-  const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const fetchEntries = useCallback(async () => {
+  const fetchFeed = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from('urge_journal')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    setEntries((data ?? []) as JournalEntry[]);
+
+    const [urgeRes, debtsRes, paymentsRes, savingsRes, resetsRes, profileRes] = await Promise.all([
+      supabase.from('urge_journal').select('*').eq('user_id', user.id),
+      supabase.from('debts').select('id, name, total_amount, category, created_at').eq('user_id', user.id),
+      supabase.from('debt_payments').select('id, amount, note, created_at, debts(name)').eq('user_id', user.id),
+      supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving'),
+      supabase.from('losses').select('id, note, created_at').eq('user_id', user.id).eq('type', 'streak_reset'),
+      supabase.from('users').select('currency').eq('id', user.id).single(),
+    ]);
+
+    if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
+
+    const entries: FeedEntry[] = [];
+
+    (urgeRes.data ?? []).forEach((e: any) => entries.push({ kind: 'urge', ...e }));
+    (debtsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'debt', ...e }));
+    (paymentsRes.data ?? []).forEach((e: any) => entries.push({
+      kind: 'payment',
+      id: e.id,
+      amount: e.amount,
+      note: e.note,
+      created_at: e.created_at,
+      debt_name: (e.debts as any)?.name ?? 'Debt',
+    }));
+    (savingsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'saving', ...e }));
+    (resetsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'streak_reset', ...e }));
+
+    entries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setFeed(entries);
   }, []);
 
-  useEffect(() => {
-    fetchEntries().finally(() => setLoading(false));
-  }, [fetchEntries]);
-
-  useFocusEffect(useCallback(() => {
-    fetchEntries();
-  }, [fetchEntries]));
-
-  const resetForm = () => {
-    setSelectedTrigger(null);
-    setCustomTrigger('');
-    setOutcome(null);
-    setNote('');
-  };
-
-  const saveEntry = async () => {
-    if (!selectedTrigger || !outcome) return;
-    const triggerValue =
-      selectedTrigger === 'other'
-        ? (customTrigger.trim() || 'other')
-        : selectedTrigger;
-
-    setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSaving(false); return; }
-
-    await supabase.from('urge_journal').insert({
-      user_id: user.id,
-      trigger: triggerValue,
-      outcome,
-      note: note.trim() || null,
-    });
-
-    setSaving(false);
-    setModalVisible(false);
-    resetForm();
-    fetchEntries();
-  };
-
-  const canSave = selectedTrigger !== null && outcome !== null &&
-    (selectedTrigger !== 'other' || customTrigger.trim().length > 0);
+  useEffect(() => { fetchFeed().finally(() => setLoading(false)); }, [fetchFeed]);
+  useFocusEffect(useCallback(() => { fetchFeed(); }, [fetchFeed]));
 
   return (
     <View style={s.root}>
@@ -142,11 +193,7 @@ export default function JournalScreen() {
             <View style={s.headerCenter}>
               <Text style={s.headerTitle}>My Journal</Text>
             </View>
-            <Pressable
-              style={({ pressed }) => [s.logBtn, pressed && { opacity: 0.8 }]}
-              onPress={() => setModalVisible(true)}>
-              <Text style={s.logBtnTxt}>+ Log entry</Text>
-            </Pressable>
+            <View style={{ width: 70 }} />
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -155,128 +202,23 @@ export default function JournalScreen() {
         <View style={s.center}>
           <ActivityIndicator size="large" color="#0F6E6E" />
         </View>
-      ) : entries.length === 0 ? (
+      ) : feed.length === 0 ? (
         <View style={s.empty}>
           <Text style={s.emptyIcon}>📓</Text>
-          <Text style={s.emptyTitle}>No entries yet</Text>
+          <Text style={s.emptyTitle}>Nothing here yet</Text>
           <Text style={s.emptySub}>
-            Log a moment when you feel the urge — it helps you spot patterns and build resilience.
+            Your urge moments, debts, payments and savings will all appear here as you log them.
           </Text>
-          <Pressable
-            style={({ pressed }) => [s.emptyBtn, pressed && { opacity: 0.85 }]}
-            onPress={() => setModalVisible(true)}>
-            <Text style={s.emptyBtnTxt}>Log your first entry</Text>
-          </Pressable>
         </View>
       ) : (
         <FlatList
-          data={entries}
-          keyExtractor={item => item.id}
+          data={feed}
+          keyExtractor={item => `${item.kind}-${item.id}`}
           contentContainerStyle={s.list}
-          renderItem={({ item }) => <EntryCard entry={item} />}
+          renderItem={({ item }) => <EntryCard entry={item} currency={currency} />}
         />
       )}
 
-      {/* Add Entry Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => { setModalVisible(false); resetForm(); }}>
-        <KeyboardAvoidingView
-          style={s.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={s.modalBackdrop} onPress={() => { setModalVisible(false); resetForm(); }} />
-          <View style={s.sheet}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>Log a moment</Text>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Trigger */}
-              <Text style={s.fieldLabel}>What triggered it?</Text>
-              <View style={s.chipsWrap}>
-                {TRIGGERS.map(t => (
-                  <Pressable
-                    key={t.key}
-                    style={[s.chip, selectedTrigger === t.key && s.chipActive]}
-                    onPress={() => setSelectedTrigger(t.key)}>
-                    <Text style={[s.chipTxt, selectedTrigger === t.key && s.chipTxtActive]}>
-                      {t.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              {selectedTrigger === 'other' && (
-                <TextInput
-                  style={s.customInput}
-                  placeholder="Describe the trigger…"
-                  placeholderTextColor="#aaa"
-                  value={customTrigger}
-                  onChangeText={setCustomTrigger}
-                  maxLength={120}
-                />
-              )}
-
-              {/* Outcome */}
-              <Text style={s.fieldLabel}>What happened?</Text>
-              <View style={s.outcomeRow}>
-                <Pressable
-                  style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnActive]}
-                  onPress={() => setOutcome('overcame')}>
-                  <Text style={[s.outcomeBtnTxt, outcome === 'overcame' && s.outcomeBtnTxtActive]}>
-                    Overcame it ✓
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[s.outcomeBtn, outcome === 'slipped' && s.outcomeBtnSlipped]}
-                  onPress={() => setOutcome('slipped')}>
-                  <Text style={[s.outcomeBtnTxt, outcome === 'slipped' && s.outcomeBtnTxtActive]}>
-                    Had a slip
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* Note */}
-              <Text style={s.fieldLabel}>How are you feeling? <Text style={s.optional}>(optional)</Text></Text>
-              <TextInput
-                style={s.noteInput}
-                placeholder="Add a note…"
-                placeholderTextColor="#aaa"
-                value={note}
-                onChangeText={setNote}
-                multiline
-                numberOfLines={3}
-                maxLength={500}
-                textAlignVertical="top"
-              />
-
-              {/* Actions */}
-              <View style={s.sheetActions}>
-                <Pressable
-                  style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]}
-                  onPress={() => { setModalVisible(false); resetForm(); }}>
-                  <Text style={s.cancelBtnTxt}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    s.saveBtn,
-                    !canSave && s.saveBtnDisabled,
-                    pressed && canSave && { opacity: 0.85 },
-                  ]}
-                  onPress={saveEntry}
-                  disabled={!canSave || saving}>
-                  {saving
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Text style={s.saveBtnTxt}>Save entry</Text>}
-                </Pressable>
-              </View>
-
-              <View style={{ height: 20 }} />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   );
 }
@@ -293,25 +235,32 @@ const s = StyleSheet.create({
   backBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  logBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20, paddingVertical: 6, paddingHorizontal: 12,
-  },
-  logBtnTxt: { color: '#fff', fontWeight: '600', fontSize: 13 },
 
   list: { padding: 16, gap: 10 },
 
-  entryCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 6 },
-  entryTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  outcomePill: { borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10 },
+  card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 6 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: '#111', flex: 1 },
+  cardAmount: { fontSize: 15, fontWeight: '700', marginLeft: 8 },
+  cardNote: { fontSize: 13, color: '#666', lineHeight: 18 },
+  cardDate: { fontSize: 12, color: '#aaa' },
+
+  pill: { borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10 },
+  pillTxt: { fontSize: 12, fontWeight: '700' },
+
   pillGreen: { backgroundColor: '#e6f7f0' },
-  pillMuted: { backgroundColor: '#f5f5f5' },
-  pillText: { fontSize: 12, fontWeight: '700' },
-  pillTextGreen: { color: '#0a7a4e' },
-  pillTextMuted: { color: '#888' },
-  entryDate: { fontSize: 12, color: '#aaa' },
-  entryTrigger: { fontSize: 15, fontWeight: '600', color: '#111' },
-  entryNote: { fontSize: 13, color: '#666', lineHeight: 18 },
+  pillTxtGreen: { color: '#0a7a4e' },
+  pillRed: { backgroundColor: '#fff0f0' },
+  pillTxtRed: { color: '#c0392b' },
+  pillBlue: { backgroundColor: '#f0f0ff' },
+  pillTxtBlue: { color: '#4455cc' },
+  pillTeal: { backgroundColor: '#e8f0ff' },
+  pillTxtTeal: { color: '#1d6fcc' },
+  pillGreenSolid: { backgroundColor: '#e6f7ed' },
+  pillTxtGreenSolid: { color: '#0a7a4e' },
+  pillOrange: { backgroundColor: '#fff4e6' },
+  pillTxtOrange: { color: '#c0680a' },
 
   empty: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
@@ -320,67 +269,4 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#111' },
   emptySub: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20 },
-  emptyBtn: {
-    marginTop: 8, backgroundColor: '#0F6E6E',
-    borderRadius: 24, paddingVertical: 13, paddingHorizontal: 32,
-  },
-  emptyBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 22, borderTopRightRadius: 22,
-    padding: 20, maxHeight: '85%',
-  },
-  sheetHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0',
-    alignSelf: 'center', marginBottom: 16,
-  },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 20 },
-
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 10, marginTop: 4 },
-  optional: { fontWeight: '400', color: '#aaa' },
-
-  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  chip: {
-    borderRadius: 20, paddingVertical: 7, paddingHorizontal: 14,
-    backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: '#e8e8e8',
-  },
-  chipActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
-  chipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
-  chipTxtActive: { color: '#0F6E6E' },
-
-  customInput: {
-    borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 10,
-    padding: 12, fontSize: 14, color: '#111', marginBottom: 16,
-  },
-
-  outcomeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  outcomeBtn: {
-    flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
-    backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: '#e8e8e8',
-  },
-  outcomeBtnActive: { backgroundColor: '#e6f7f0', borderColor: '#0a7a4e' },
-  outcomeBtnSlipped: { backgroundColor: '#fff5f5', borderColor: '#c0392b' },
-  outcomeBtnTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
-  outcomeBtnTxtActive: { color: '#111' },
-
-  noteInput: {
-    borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 10,
-    padding: 12, fontSize: 14, color: '#111', minHeight: 80, marginBottom: 20,
-  },
-
-  sheetActions: { flexDirection: 'row', gap: 10 },
-  cancelBtn: {
-    flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
-  saveBtn: {
-    flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
-    backgroundColor: '#0F6E6E',
-  },
-  saveBtnDisabled: { backgroundColor: '#b0cece' },
-  saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

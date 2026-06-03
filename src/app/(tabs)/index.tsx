@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -375,8 +375,6 @@ interface HomeData {
   weeklyBet: string | null;
   currency: string;
   longestStreak: number;
-  totalLost: number;
-  paidBack: number;
   earnedBadges: string[];
   badgeTimestamps: Record<string, string>;
   todayMood: number | null;
@@ -414,24 +412,19 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, lossesRes, badgesRes, moodRes, weekMoodRes] = await Promise.all([
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency').eq('id', user.id).single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
-      supabase.from('losses').select('type, amount').eq('user_id', user.id),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
       supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const d = new Date(); d.setDate(d.getDate() - 6); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
     ]);
 
     const profile = profileRes.data;
-    const losses = lossesRes.data ?? [];
     const badgeRows = badgesRes.data ?? [];
     const earnedBadges = badgeRows.map(b => b.badge_type);
     const badgeTimestamps: Record<string, string> = {};
     badgeRows.forEach(b => { if (b.earned_at) badgeTimestamps[b.badge_type] = b.earned_at; });
-
-    const totalLost = losses.filter(l => l.type === 'loss').reduce((sum, l) => sum + Number(l.amount), 0);
-    const paidBack = losses.filter(l => l.type === 'payment').reduce((sum, l) => sum + Number(l.amount), 0);
 
     // Auto-award badges
     const streak = Math.floor(Math.max(0, Date.now() - new Date(profile?.quit_date ?? Date.now()).getTime()) / 86400000);
@@ -454,8 +447,6 @@ export default function HomeScreen() {
       weeklyBet: profile?.weekly_bet ?? null,
       currency: profile?.currency ?? 'USD',
       longestStreak: Math.max(longest, streak),
-      totalLost,
-      paidBack,
       earnedBadges,
       badgeTimestamps,
       todayMood: moodRes.data?.mood ?? null,
@@ -552,9 +543,15 @@ export default function HomeScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const today = todayStr();
+      const days = streakDays;
       await Promise.all([
         supabase.from('users').update({ quit_date: today, quit_timestamp: new Date().toISOString() }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
+        supabase.from('losses').insert({
+          user_id: user.id, type: 'streak_reset', amount: 0,
+          category: 'Streak Reset',
+          note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
+        }),
       ]);
       await fetchData();
     }
@@ -573,7 +570,6 @@ export default function HomeScreen() {
 
   const { next, daysToGo, hoursToGo, minsToGo, hoursComponent, progress } = getMilestone(streakMs);
   const moneySaved = streakDays * weeklyToDaily(data.weeklyBet);
-  const percentRecovered = data.totalLost > 0 ? Math.min(100, (data.paidBack / data.totalLost) * 100) : 0;
   const motivations = (data.motivation ?? '').split(',').filter(Boolean).map(
     m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' }
   );
@@ -622,19 +618,16 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" />}>
 
         {/* Stats */}
-        <View style={s.statsRow}>
-          <View style={s.statBox}>
-            <Text style={s.statValue}>{fmt(moneySaved, data.currency)}</Text>
-            <Text style={s.statLabel}>Saved</Text>
-          </View>
-          <View style={[s.statBox, s.statBoxMid]}>
-            <Text style={s.statValue}>{fmt(data.totalLost, data.currency)}</Text>
-            <Text style={s.statLabel}>Total lost</Text>
-          </View>
-          <View style={s.statBox}>
-            <Text style={s.statValue}>{Math.round(percentRecovered)}%</Text>
-            <Text style={s.statLabel}>Recovered</Text>
-          </View>
+        <View style={s.savedCard}>
+          <Text style={s.savedLabel}>Saved by not gambling</Text>
+          <Text style={s.savedValue}>{fmt(moneySaved, data.currency)}</Text>
+          {data.weeklyBet ? (
+            <Text style={s.savedHint}>
+              {fmt(Number(data.weeklyBet), data.currency)}/week · {streakDays} day{streakDays !== 1 ? 's' : ''} streak
+            </Text>
+          ) : (
+            <Text style={s.savedHint}>Set your weekly spending in the Tracker to see savings</Text>
+          )}
         </View>
 
         {/* Badges */}
@@ -746,6 +739,18 @@ export default function HomeScreen() {
           })}
           </View>
         </View>
+
+        {/* Log urge */}
+        <Pressable
+          style={({ pressed }) => [s.urgeLogCard, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/urge')}>
+          <Text style={s.urgeLogIcon}>🧠</Text>
+          <View style={s.urgeLogText}>
+            <Text style={s.urgeLogTitle}>Feeling an urge?</Text>
+            <Text style={s.urgeLogSub}>Log a moment or get support</Text>
+          </View>
+          <Text style={s.urgeLogArrow}>›</Text>
+        </Pressable>
 
         {/* Relapse card */}
         <View style={s.relapseCard}>
@@ -919,16 +924,13 @@ const s = StyleSheet.create({
   whyValue: { fontSize: 14, color: '#111', fontWeight: '600' },
 
   // Stats
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    overflow: 'hidden',
+  savedCard: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    alignItems: 'center', gap: 4,
   },
-  statBox: { flex: 1, alignItems: 'center', paddingVertical: 14 },
-  statBoxMid: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#f0f0f0' },
-  statValue: { fontSize: 18, fontWeight: '700', color: '#0F6E6E' },
-  statLabel: { fontSize: 11, color: '#888', marginTop: 2 },
+  savedLabel: { fontSize: 12, fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
+  savedValue: { fontSize: 32, fontWeight: '800', color: '#0F6E6E' },
+  savedHint: { fontSize: 12, color: '#aaa', marginTop: 2 },
 
   // Card
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
@@ -968,6 +970,16 @@ const s = StyleSheet.create({
   milestonesHint: { fontSize: 11, color: '#aaa', fontStyle: 'italic' },
   badgeLabel: { fontSize: 10, color: '#555', fontWeight: '600', textAlign: 'center' },
   badgeLabelLocked: { color: '#bbb' },
+
+  urgeLogCard: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  urgeLogIcon: { fontSize: 26 },
+  urgeLogText: { flex: 1 },
+  urgeLogTitle: { fontSize: 15, fontWeight: '700', color: '#111' },
+  urgeLogSub: { fontSize: 13, color: '#888', marginTop: 2 },
+  urgeLogArrow: { fontSize: 22, color: '#aaa', fontWeight: '300' },
 
   // Relapse
   relapseCard: {

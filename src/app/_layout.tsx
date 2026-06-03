@@ -12,6 +12,7 @@ if (__DEV__) {
     orig(...args);
   };
 }
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Slot, useRouter, useRootNavigationState } from 'expo-router';
 import { useColorScheme } from 'react-native';
@@ -29,21 +30,24 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
+  const [seenWelcome, setSeenWelcome] = useState<boolean>(false);
 
-  // Run auth check once on mount — result stored, not navigated yet
   useEffect(() => {
     const init = async () => {
-      const [{ data: { session } }, onboarded, savedStep, seenWelcome] = await Promise.all([
+      const [sessionResult, onboarded, savedStep, seenWelcomeVal] = await Promise.all([
         supabase.auth.getSession(),
         AsyncStorage.getItem(ONBOARDED_KEY),
         AsyncStorage.getItem(ONBOARDING_STEP_KEY),
         AsyncStorage.getItem(SEEN_WELCOME_KEY),
       ]);
 
-      setSession(session);
+      const sess = sessionResult.data.session;
+      const seen = seenWelcomeVal === 'true';
+      setSession(sess);
+      setSeenWelcome(seen);
 
-      if (!session) {
-        setPendingRoute(seenWelcome === 'true' ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
+      if (!sess) {
+        setPendingRoute(seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
       } else if (onboarded === 'true') {
         setPendingRoute('/(tabs)');
       } else {
@@ -55,11 +59,14 @@ export default function RootLayout() {
 
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
+      setSession(sess);
       if (event === 'SIGNED_OUT') {
-        AsyncStorage.removeItem(ONBOARDED_KEY);
-        router.replace('/(onboarding)');
+        await AsyncStorage.removeItem(ONBOARDED_KEY);
+        const seen = (await AsyncStorage.getItem(SEEN_WELCOME_KEY)) === 'true';
+        setSeenWelcome(seen);
+        setPendingRoute(seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
+        setAuthChecked(true);
       }
     });
 
