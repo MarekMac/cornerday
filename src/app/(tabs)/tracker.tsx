@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,11 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
 
-type TabType = 'loss' | 'payment' | 'history';
+type TabType = 'loss' | 'payment' | 'saving';
 
 interface Entry {
   id: string;
-  type: 'loss' | 'payment';
+  type: 'loss' | 'payment' | 'saving';
   amount: number;
   category: string;
   note: string | null;
@@ -28,7 +29,6 @@ interface Entry {
 }
 
 const CATEGORIES = ['Sports betting', 'Casino', 'Poker', 'Online slots', 'Other'];
-const CURRENCY_KEY = 'cornerday_currency';
 
 function fmt(amount: number, currency = 'USD') {
   const syms: Record<string, string> = {
@@ -43,40 +43,64 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function streakDaysFromQuitDate(quitTimestamp: string | null): number {
+  if (!quitTimestamp) return 0;
+  const quit = new Date(quitTimestamp).getTime();
+  const now = Date.now();
+  if (now < quit) return 0;
+  return Math.floor((now - quit) / (1000 * 60 * 60 * 24));
+}
+
 export default function TrackerScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('loss');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currency, setCurrency] = useState('USD');
+  const [weeklyBet, setWeeklyBet] = useState<string | null>(null);
+  const [quitTimestamp, setQuitTimestamp] = useState<string | null>(null);
 
   const [lossAmount, setLossAmount] = useState('');
   const [lossCategory, setLossCategory] = useState(CATEGORIES[0]);
 
+  const [savingAmount, setSavingAmount] = useState('');
+  const [savingNote, setSavingNote] = useState('');
+
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
 
-  const fetchEntries = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const [entriesRes, profileRes] = await Promise.all([
       supabase.from('losses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('users').select('currency').eq('id', user.id).single(),
+      supabase.from('users').select('currency, weekly_bet, quit_timestamp').eq('id', user.id).single(),
     ]);
 
-    setEntries(entriesRes.data ?? []);
-    if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
+    setEntries((entriesRes.data ?? []) as Entry[]);
+    if (profileRes.data) {
+      setCurrency(profileRes.data.currency ?? 'USD');
+      setWeeklyBet(profileRes.data.weekly_bet ?? null);
+      setQuitTimestamp(profileRes.data.quit_timestamp ?? null);
+    }
   }, []);
 
   useEffect(() => {
-    fetchEntries().finally(() => setLoading(false));
-  }, [fetchEntries]);
+    fetchData().finally(() => setLoading(false));
+  }, [fetchData]);
+
+  useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
 
   const totalLost = entries.filter(e => e.type === 'loss').reduce((s, e) => s + Number(e.amount), 0);
   const paidBack = entries.filter(e => e.type === 'payment').reduce((s, e) => s + Number(e.amount), 0);
+  const totalSaved = entries.filter(e => e.type === 'saving').reduce((s, e) => s + Number(e.amount), 0);
   const stillOwed = Math.max(0, totalLost - paidBack);
   const recoveryPct = totalLost > 0 ? Math.min(1, paidBack / totalLost) : 0;
+
+  const streakDays = streakDaysFromQuitDate(quitTimestamp);
+  const dailyRate = weeklyBet ? Number(weeklyBet) / 7 : 0;
+  const autoSaved = Math.round(streakDays * dailyRate);
 
   const logLoss = async () => {
     const amount = parseFloat(lossAmount);
@@ -91,7 +115,27 @@ export default function TrackerScreen() {
         user_id: user.id, type: 'loss', amount, category: lossCategory,
       });
       setLossAmount('');
-      await fetchEntries();
+      await fetchData();
+    }
+    setSubmitting(false);
+  };
+
+  const logSaving = async () => {
+    const amount = parseFloat(savingAmount);
+    if (!savingAmount || isNaN(amount) || amount <= 0) {
+      Alert.alert('Invalid amount', 'Please enter a valid amount.');
+      return;
+    }
+    setSubmitting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('losses').insert({
+        user_id: user.id, type: 'saving', amount,
+        category: 'Saving', note: savingNote || null,
+      });
+      setSavingAmount('');
+      setSavingNote('');
+      await fetchData();
     }
     setSubmitting(false);
   };
@@ -111,7 +155,7 @@ export default function TrackerScreen() {
       });
       setPaymentAmount('');
       setPaymentNote('');
-      await fetchEntries();
+      await fetchData();
     }
     setSubmitting(false);
   };
@@ -124,12 +168,18 @@ export default function TrackerScreen() {
     );
   }
 
+  const TABS: { key: TabType; label: string }[] = [
+    { key: 'loss',    label: 'Loss' },
+    { key: 'payment', label: 'Payment' },
+    { key: 'saving',  label: 'Saving' },
+  ];
+
   return (
     <View style={s.root}>
       <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
-            <Text style={s.headerTitle}>Loss Tracker</Text>
+            <Text style={s.headerTitle}>Financial Tracker</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -157,17 +207,42 @@ export default function TrackerScreen() {
               <View style={[s.progressFill, { width: `${recoveryPct * 100}%` as any }]} />
             </View>
             <Text style={s.progressLbl}>{Math.round(recoveryPct * 100)}% recovered</Text>
+
+            {/* Auto-savings row */}
+            {weeklyBet ? (
+              <View style={s.savingsRow}>
+                <Text style={s.savingsIcon}>💰</Text>
+                <View style={s.savingsText}>
+                  <Text style={s.savingsLabel}>Saved by not gambling</Text>
+                  <Text style={s.savingsHint}>
+                    {fmt(Number(weeklyBet), currency)}/week · {streakDays} day{streakDays !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+                <Text style={s.savingsAmount}>{fmt(autoSaved, currency)}</Text>
+              </View>
+            ) : null}
+
+            {/* Manual savings total — only if entries exist */}
+            {totalSaved > 0 && (
+              <View style={[s.savingsRow, { borderTopWidth: 0, paddingTop: 0, marginTop: -4 }]}>
+                <Text style={s.savingsIcon}>🏦</Text>
+                <View style={s.savingsText}>
+                  <Text style={s.savingsLabel}>Manually logged savings</Text>
+                </View>
+                <Text style={s.savingsAmount}>{fmt(totalSaved, currency)}</Text>
+              </View>
+            )}
           </View>
 
           {/* Tab bar */}
           <View style={s.tabBar}>
-            {(['loss', 'payment', 'history'] as TabType[]).map(t => (
+            {TABS.map(t => (
               <Pressable
-                key={t}
-                style={[s.tabBtn, activeTab === t && s.tabBtnActive]}
-                onPress={() => setActiveTab(t)}>
-                <Text style={[s.tabTxt, activeTab === t && s.tabTxtActive]}>
-                  {t === 'loss' ? 'Log Loss' : t === 'payment' ? 'Log Payment' : 'History'}
+                key={t.key}
+                style={[s.tabBtn, activeTab === t.key && s.tabBtnActive]}
+                onPress={() => setActiveTab(t.key)}>
+                <Text style={[s.tabTxt, activeTab === t.key && s.tabTxtActive]}>
+                  {t.label}
                 </Text>
               </Pressable>
             ))}
@@ -207,6 +282,36 @@ export default function TrackerScreen() {
             </View>
           )}
 
+          {/* Log Saving */}
+          {activeTab === 'saving' && (
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Log a Saving</Text>
+              <TextInput
+                style={s.input}
+                placeholder="Amount (e.g. 100)"
+                placeholderTextColor="#bbb"
+                keyboardType="decimal-pad"
+                value={savingAmount}
+                onChangeText={setSavingAmount}
+              />
+              <TextInput
+                style={[s.input, { marginTop: 10 }]}
+                placeholder="Note (e.g. Savings account, Holiday fund)"
+                placeholderTextColor="#bbb"
+                value={savingNote}
+                onChangeText={setSavingNote}
+              />
+              <Pressable
+                style={[s.actionBtn, { backgroundColor: '#1a9a5a' }, submitting && s.btnDisabled]}
+                onPress={logSaving}
+                disabled={submitting}>
+                {submitting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={s.actionBtnTxt}>Add Saving</Text>}
+              </Pressable>
+            </View>
+          )}
+
           {/* Log Payment */}
           {activeTab === 'payment' && (
             <View style={s.card}>
@@ -237,37 +342,63 @@ export default function TrackerScreen() {
             </View>
           )}
 
-          {/* History */}
-          {activeTab === 'history' && (
-            <View style={s.card}>
-              <Text style={s.cardTitle}>History</Text>
-              {entries.length === 0 ? (
-                <Text style={s.emptyTxt}>No entries yet. Start by logging a loss or payment.</Text>
-              ) : (
-                entries.map(entry => (
+          {/* History — losses and payments only */}
+          <View style={s.card}>
+            <Text style={s.cardTitle}>History</Text>
+            {entries.filter(e => e.type !== 'saving').length === 0 ? (
+              <Text style={s.emptyTxt}>No entries yet.</Text>
+            ) : (
+              entries.filter(e => e.type !== 'saving').map(entry => {
+                const isLoss = entry.type === 'loss';
+                return (
                   <View key={entry.id} style={s.historyItem}>
                     <View style={s.historyLeft}>
                       <Text style={s.historyCategory}>
-                        {entry.type === 'loss' ? entry.category : 'Payment'}
+                        {isLoss ? entry.category : 'Payment'}
                       </Text>
                       <Text style={s.historyDate}>{fmtDate(entry.created_at)}</Text>
                       {entry.note ? <Text style={s.historyNote}>{entry.note}</Text> : null}
                     </View>
                     <View style={s.historyRight}>
-                      <View style={[s.pill, entry.type === 'loss' ? s.pillLoss : s.pillPayment]}>
-                        <Text style={[s.pillTxt, entry.type === 'loss' ? s.pillLossTxt : s.pillPaymentTxt]}>
-                          {entry.type === 'loss' ? 'Loss' : 'Payment'}
+                      <View style={[s.pill, isLoss ? s.pillLoss : s.pillPayment]}>
+                        <Text style={[s.pillTxt, isLoss ? s.pillLossTxt : s.pillPaymentTxt]}>
+                          {isLoss ? 'Loss' : 'Payment'}
                         </Text>
                       </View>
-                      <Text style={[s.historyAmount, { color: entry.type === 'loss' ? '#c0392b' : '#0F6E6E' }]}>
-                        {entry.type === 'loss' ? '−' : '+'}{fmt(Number(entry.amount), currency)}
+                      <Text style={[s.historyAmount, { color: isLoss ? '#c0392b' : '#0F6E6E' }]}>
+                        {isLoss ? '−' : '+'}{fmt(Number(entry.amount), currency)}
                       </Text>
                     </View>
                   </View>
-                ))
-              )}
-            </View>
-          )}
+                );
+              })
+            )}
+          </View>
+
+          {/* Savings — separate section */}
+          <View style={s.card}>
+            <Text style={s.cardTitle}>My Savings</Text>
+            {entries.filter(e => e.type === 'saving').length === 0 ? (
+              <Text style={s.emptyTxt}>No savings logged yet. Use the Saving tab above to record money you've set aside.</Text>
+            ) : (
+              entries.filter(e => e.type === 'saving').map(entry => (
+                <View key={entry.id} style={s.historyItem}>
+                  <View style={s.historyLeft}>
+                    <Text style={s.historyCategory}>{entry.note || 'Saving'}</Text>
+                    <Text style={s.historyDate}>{fmtDate(entry.created_at)}</Text>
+                  </View>
+                  <View style={s.historyRight}>
+                    <View style={[s.pill, s.pillSaving]}>
+                      <Text style={[s.pillTxt, s.pillSavingTxt]}>Saving</Text>
+                    </View>
+                    <Text style={[s.historyAmount, { color: '#0a7a4e' }]}>
+                      +{fmt(Number(entry.amount), currency)}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
 
           <View style={{ height: 32 }} />
         </ScrollView>
@@ -297,10 +428,20 @@ const s = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
   progressLbl: { fontSize: 12, color: '#0F6E6E', fontWeight: '600', textAlign: 'center' },
 
+  savingsRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10, marginTop: 2,
+  },
+  savingsIcon: { fontSize: 20 },
+  savingsText: { flex: 1, gap: 2 },
+  savingsLabel: { fontSize: 13, fontWeight: '600', color: '#111' },
+  savingsHint: { fontSize: 11, color: '#888' },
+  savingsAmount: { fontSize: 16, fontWeight: '700', color: '#0a7a4e' },
+
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 4, gap: 2 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
   tabBtnActive: { backgroundColor: '#0F6E6E' },
-  tabTxt: { fontSize: 12, fontWeight: '600', color: '#888' },
+  tabTxt: { fontSize: 11, fontWeight: '600', color: '#888' },
   tabTxtActive: { color: '#fff' },
 
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
@@ -337,9 +478,11 @@ const s = StyleSheet.create({
   historyRight: { alignItems: 'flex-end', gap: 4 },
   pill: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 10 },
   pillLoss: { backgroundColor: '#fff0f0' },
+  pillSaving: { backgroundColor: '#e6f7ed' },
   pillPayment: { backgroundColor: '#e6f7f7' },
   pillTxt: { fontSize: 11, fontWeight: '600' },
   pillLossTxt: { color: '#c0392b' },
+  pillSavingTxt: { color: '#0a7a4e' },
   pillPaymentTxt: { color: '#0F6E6E' },
   historyAmount: { fontSize: 15, fontWeight: '700' },
 });
