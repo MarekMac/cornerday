@@ -7,6 +7,7 @@ export interface OnboardingData {
   currency: string;
   goal: string;
   supportType: string;
+  quitDate: string;
 }
 
 interface OnboardingContextType {

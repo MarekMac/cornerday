@@ -91,8 +91,9 @@ export default function ReadyScreen() {
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toISOString();
+    const quitTimestamp = data.quitDate ? new Date(data.quitDate) : new Date();
+    const today = quitTimestamp.toISOString().split('T')[0];
+    const now = quitTimestamp.toISOString();
 
     const [updateResult, streakResult] = await Promise.all([
       supabase.from('users').update({

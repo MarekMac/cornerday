@@ -8,6 +8,7 @@ import { Session } from '@supabase/supabase-js';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ONBOARDED_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import { UserProvider } from '@/context/user';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -46,9 +47,11 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <Slot />
-    </ThemeProvider>
+    <UserProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <AnimatedSplashOverlay />
+        <Slot />
+      </ThemeProvider>
+    </UserProvider>
   );
 }

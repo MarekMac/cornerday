@@ -2,22 +2,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ONBOARDED_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import { useUser } from '@/context/user';
 
 interface Profile {
   displayName: string | null;
@@ -25,6 +29,7 @@ interface Profile {
   quitTimestamp: string | null;
   motivation: string | null;
   isPremium: boolean;
+  avatarUrl: string | null;
 }
 
 const MOTIVATION_LABELS: Record<string, string> = {
@@ -52,27 +57,107 @@ export default function AccountScreen() {
 
   const [editDate, setEditDate] = useState<Date | null>(null);
   const [showIOSModal, setShowIOSModal] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const { setAvatarUrl: setGlobalAvatarUrl } = useUser();
 
   const fetchProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase
       .from('users')
-      .select('display_name, quit_timestamp, quit_date, motivation, is_premium')
+      .select('display_name, quit_timestamp, quit_date, motivation, is_premium, avatar_url')
       .eq('id', user.id)
       .single();
+    const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
+    let resolvedAvatar = data?.avatar_url ?? null;
+    if (!resolvedAvatar && googleAvatar) {
+      resolvedAvatar = googleAvatar;
+      await supabase.from('users').update({ avatar_url: googleAvatar }).eq('id', user.id);
+    }
+
     setProfile({
       displayName: data?.display_name ?? null,
       email: user.email ?? null,
       quitTimestamp: data?.quit_timestamp ?? data?.quit_date ?? null,
       motivation: data?.motivation ?? null,
       isPremium: data?.is_premium ?? false,
+      avatarUrl: resolvedAvatar,
     });
+    setGlobalAvatarUrl(resolvedAvatar);
   }, []);
 
   useEffect(() => {
     fetchProfile().finally(() => setLoading(false));
   }, [fetchProfile]);
+
+  const pickAvatar = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+
+    setUploadingAvatar(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const uri = result.assets[0].uri;
+      const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+      const path = `${user.id}-${Date.now()}.${ext}`;
+
+      const response = await fetch(uri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, arrayBuffer, { contentType: mimeType });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      // Delete old avatar file if one exists
+      const oldUrl = profile?.avatarUrl;
+      if (oldUrl) {
+        const oldPath = oldUrl.split('/avatars/')[1]?.split('?')[0];
+        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+      }
+
+      await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
+      setProfile(prev => prev ? { ...prev, avatarUrl: publicUrl } : prev);
+      setGlobalAvatarUrl(publicUrl);
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      Alert.alert('Upload failed', 'Could not upload photo. Please try again.');
+    }
+    setUploadingAvatar(false);
+  };
+
+  const saveName = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setSavingName(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users').update({ display_name: trimmed }).eq('id', user.id);
+      setProfile(prev => prev ? { ...prev, displayName: trimmed } : prev);
+    }
+    setSavingName(false);
+    setEditingName(false);
+  };
 
   const openEdit = () => {
     const parsed = profile?.quitTimestamp ? new Date(profile.quitTimestamp) : null;
@@ -133,6 +218,44 @@ export default function AccountScreen() {
   };
 
 
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'This will permanently delete your account and all your data — streaks, losses, badges, mood history, and journal entries. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete permanently',
+          style: 'destructive',
+          onPress: async () => {
+            setSigningOut(true);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              // Delete all user data
+              await Promise.all([
+                supabase.from('losses').delete().eq('user_id', user.id),
+                supabase.from('streaks').delete().eq('user_id', user.id),
+                supabase.from('badges').delete().eq('user_id', user.id),
+                supabase.from('mood_checkins').delete().eq('user_id', user.id),
+                supabase.from('urge_journal').delete().eq('user_id', user.id),
+              ]);
+              // Delete avatar from storage
+              if (profile?.avatarUrl) {
+                const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
+                if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+              }
+              await supabase.from('users').delete().eq('id', user.id);
+              await supabase.functions.invoke('delete-account');
+              await AsyncStorage.removeItem(ONBOARDED_KEY);
+              await supabase.auth.signOut();
+            }
+            setSigningOut(false);
+          },
+        },
+      ],
+    );
+  };
+
   const confirmSignOut = () => {
     Alert.alert(
       'Sign out',
@@ -182,10 +305,49 @@ export default function AccountScreen() {
 
         {/* Profile card */}
         <View style={s.profileCard}>
-          <View style={s.avatar}>
-            <Text style={s.avatarTxt}>{initials}</Text>
-          </View>
-          <Text style={s.displayName}>{profile?.displayName ?? 'Anonymous'}</Text>
+          <Pressable onPress={pickAvatar} style={({ pressed }) => [s.avatar, pressed && { opacity: 0.8 }]}>
+            {profile?.avatarUrl
+              ? <Image source={{ uri: profile.avatarUrl }} style={s.avatarImg} />
+              : <Text style={s.avatarTxt}>{initials}</Text>}
+            {uploadingAvatar && (
+              <View style={s.avatarOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+            <View style={s.avatarEditBadge}>
+              <Text style={s.avatarEditBadgeTxt}>✎</Text>
+            </View>
+          </Pressable>
+          {editingName ? (
+            <View style={s.nameEditRow}>
+              <TextInput
+                style={s.nameInput}
+                value={nameInput}
+                onChangeText={setNameInput}
+                placeholder="Your name"
+                placeholderTextColor="#aaa"
+                autoFocus
+                maxLength={40}
+                returnKeyType="done"
+                onSubmitEditing={saveName}
+              />
+              <Pressable onPress={saveName} disabled={savingName} style={({ pressed }) => [s.nameSaveBtn, pressed && { opacity: 0.7 }]}>
+                {savingName
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.nameSaveTxt}>Save</Text>}
+              </Pressable>
+              <Pressable onPress={() => setEditingName(false)} style={({ pressed }) => [s.nameCancelBtn, pressed && { opacity: 0.7 }]}>
+                <Text style={s.nameCancelTxt}>Cancel</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              style={s.nameRow}
+              onPress={() => { setNameInput(profile?.displayName ?? profile?.email?.split('@')[0] ?? ''); setEditingName(true); }}>
+              <Text style={s.displayName}>{profile?.displayName ?? profile?.email?.split('@')[0] ?? 'Anonymous'}</Text>
+              <View style={s.nameEditHint}><Text style={s.nameEditHintTxt}>Edit</Text></View>
+            </Pressable>
+          )}
           <Text style={s.email}>{profile?.email}</Text>
           {profile?.isPremium && (
             <View style={s.premiumBadge}>
@@ -251,6 +413,14 @@ export default function AccountScreen() {
           {signingOut
             ? <ActivityIndicator color="#c0392b" size="small" />
             : <Text style={s.signOutTxt}>Sign out</Text>}
+        </Pressable>
+
+        {/* Delete account */}
+        <Pressable
+          style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }]}
+          onPress={confirmDeleteAccount}
+          disabled={signingOut}>
+          <Text style={s.deleteBtnTxt}>Delete account</Text>
         </Pressable>
 
         <View style={{ height: 32 }} />
@@ -325,8 +495,33 @@ const s = StyleSheet.create({
     backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center',
     marginBottom: 4,
   },
+  avatarImg: { width: 72, height: 72, borderRadius: 36 },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 36, backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: '#0F6E6E', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  avatarEditBadgeTxt: { fontSize: 11, color: '#fff' },
   avatarTxt: { fontSize: 32, fontWeight: '700', color: '#0F6E6E' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   displayName: { fontSize: 18, fontWeight: '700', color: '#111' },
+  nameEditHint: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#e6f7f7' },
+  nameEditHintTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
+  nameEditRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nameInput: {
+    borderWidth: 1, borderColor: '#ddd', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, color: '#111', minWidth: 120,
+  },
+  nameSaveBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#0F6E6E' },
+  nameSaveTxt: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  nameCancelBtn: { paddingVertical: 6, paddingHorizontal: 4 },
+  nameCancelTxt: { color: '#aaa', fontSize: 12 },
   email: { fontSize: 13, color: '#888' },
   premiumBadge: {
     backgroundColor: '#e6f7f7', paddingVertical: 4, paddingHorizontal: 12,
@@ -360,6 +555,8 @@ const s = StyleSheet.create({
     alignItems: 'center', borderWidth: 1, borderColor: '#ffcdd2',
   },
   signOutTxt: { fontSize: 15, color: '#c0392b', fontWeight: '600' },
+  deleteBtn: { alignItems: 'center', paddingVertical: 12 },
+  deleteBtnTxt: { fontSize: 13, color: '#bbb' },
 
   // iOS modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },

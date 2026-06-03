@@ -1,6 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import {
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -37,21 +41,51 @@ export default function Q3Screen() {
   const [currency, setCurrency] = useState('USD');
   const [selected, setSelected] = useState('');
   const [custom, setCustom] = useState('');
+  const [quitDate, setQuitDate] = useState(new Date());
+  const [showIOSPicker, setShowIOSPicker] = useState(false);
 
   const symbol = CURRENCIES.find(c => c.code === currency)?.symbol ?? '$';
 
   const hasValue = !!selected || !!custom.trim();
 
+  const openDatePicker = () => {
+    if (Platform.OS === 'ios') {
+      setShowIOSPicker(true);
+    } else {
+      DateTimePickerAndroid.open({
+        value: quitDate,
+        mode: 'date',
+        maximumDate: new Date(),
+        onChange: (_: any, date?: Date) => {
+          if (!date) return;
+          DateTimePickerAndroid.open({
+            value: date,
+            mode: 'time',
+            is24Hour: true,
+            onChange: (__: any, time?: Date) => {
+              if (!time) return;
+              const merged = new Date(date);
+              merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
+              setQuitDate(merged);
+            },
+          });
+        },
+      });
+    }
+  };
+
   const handleContinue = () => {
     const value = custom.trim() ? custom.trim() : selected || null;
     setField('weeklyBet', value);
     setField('currency', currency);
+    setField('quitDate', quitDate.toISOString());
     router.push('/(onboarding)/q4');
   };
 
   const handleSkip = () => {
     setField('weeklyBet', null);
     setField('currency', currency);
+    setField('quitDate', new Date().toISOString());
     router.push('/(onboarding)/q4');
   };
 
@@ -74,7 +108,16 @@ export default function Q3Screen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>How much do you bet per week?</Text>
+        <Text style={styles.title}>Let's set up your journey</Text>
+        <Text style={styles.sectionLabel}>When did you stop betting?</Text>
+        <Pressable style={styles.dateBtn} onPress={openDatePicker}>
+          <Text style={styles.dateBtnTxt}>
+            {quitDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} @ {quitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+          <Text style={styles.dateEditTxt}>Change</Text>
+        </Pressable>
+
+        <Text style={styles.sectionLabel}>How much did you bet per week?</Text>
         <Text style={styles.subtitle}>
           We'll use this to show how much you're saving as your streak grows.
         </Text>
@@ -137,6 +180,26 @@ export default function Q3Screen() {
         </Text>
       </ScrollView>
 
+      {Platform.OS === 'ios' && (
+        <Modal visible={showIOSPicker} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <DateTimePicker
+                value={quitDate}
+                mode="datetime"
+                display="spinner"
+                maximumDate={new Date()}
+                onValueChange={(d) => d && setQuitDate(d)}
+                style={{ height: 200 }}
+              />
+              <Pressable style={styles.modalDone} onPress={() => setShowIOSPicker(false)}>
+                <Text style={styles.modalDoneTxt}>Done</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       <View style={styles.footer}>
         <Pressable style={styles.skipBtn} onPress={handleSkip}>
           <Text style={styles.skipText}>Skip for now</Text>
@@ -178,15 +241,39 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#111',
-    marginBottom: 8,
+    marginBottom: 20,
     lineHeight: 32,
   },
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 10,
+  },
+  dateBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0F6E6E',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#e6f7f7',
+    marginBottom: 28,
+  },
+  dateBtnTxt: { fontSize: 15, fontWeight: '600', color: '#0F6E6E' },
+  dateEditTxt: { fontSize: 13, color: '#0F6E6E' },
   subtitle: {
     fontSize: 14,
     color: '#888',
-    marginBottom: 28,
+    marginBottom: 16,
     lineHeight: 20,
   },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  modalDone: { backgroundColor: '#0F6E6E', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 12 },
+  modalDoneTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   currencyScroll: {
     marginBottom: 20,
   },

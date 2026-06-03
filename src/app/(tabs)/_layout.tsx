@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity } from 'react-native';
+import { Image, TouchableOpacity, View } from 'react-native';
+import { useUser } from '@/context/user';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -9,6 +10,8 @@ function tabIcon(name: IoniconName, focused: boolean) {
 }
 
 export default function TabsLayout() {
+  const { avatarUrl } = useUser();
+
   return (
     <Tabs
       screenOptions={{
@@ -52,7 +55,11 @@ export default function TabsLayout() {
         name="account"
         options={{
           title: 'Account',
-          tabBarIcon: ({ focused }) => tabIcon('person', focused),
+          tabBarIcon: ({ focused }) => avatarUrl ? (
+            <View style={{ width: 26, height: 26, borderRadius: 13, overflow: 'hidden', borderWidth: focused ? 2 : 0, borderColor: '#0F6E6E' }}>
+              <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} />
+            </View>
+          ) : tabIcon('person', focused),
         }}
       />
     </Tabs>
