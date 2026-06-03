@@ -197,7 +197,8 @@ export default function SignupScreen() {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 32 : 0}>
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled">
@@ -300,9 +301,15 @@ export default function SignupScreen() {
             </Text>
           </Pressable>
 
-          <Text style={styles.privacy}>
-            Your data is private. We never share your information.
-          </Text>
+          {!isSignIn && (
+            <Text style={styles.privacy}>
+              By creating an account you agree to our{' '}
+              <Text style={styles.privacyLink} onPress={() => router.push('/privacy-policy')}>
+                Privacy Policy
+              </Text>
+              . Your data is private and never sold.
+            </Text>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -315,7 +322,7 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 28,
     paddingTop: 32,
-    paddingBottom: 24,
+    paddingBottom: 48,
   },
   backBtn: {
     paddingTop: 4,
@@ -448,6 +455,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#aaa',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 20,
+    lineHeight: 18,
+  },
+  privacyLink: {
+    color: '#0F6E6E',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });
