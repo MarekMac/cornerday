@@ -199,6 +199,9 @@ export default function TrackerIndex() {
         await supabase.from('debts').update({
           name: debtName.trim(), total_amount: amount, category: debtCategory,
         }).eq('id', editingDebt.id);
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
+        });
       } else {
         await supabase.from('debts').insert({
           user_id: user.id, name: debtName.trim(),
@@ -218,7 +221,14 @@ export default function TrackerIndex() {
   const executeDeleteDebt = async () => {
     if (!deleteDebtTarget) return;
     setDeleting(true);
-    await supabase.from('debts').delete().eq('id', deleteDebtTarget.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('debts').delete().eq('id', deleteDebtTarget.id);
+      await supabase.from('losses').insert({
+        user_id: user.id, type: 'debt_deleted', amount: deleteDebtTarget.total_amount,
+        category: 'Debt', note: deleteDebtTarget.name,
+      });
+    }
     setDeleteDebtTarget(null);
     setDeleting(false);
     await fetchAll();
@@ -258,6 +268,10 @@ export default function TrackerIndex() {
         await supabase.from('losses').update({
           amount, note: savingNote.trim() || null,
         }).eq('id', editingSaving.id);
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'saving_edited', amount,
+          category: 'Saving', note: savingNote.trim() || null,
+        });
       } else {
         await supabase.from('losses').insert({
           user_id: user.id, type: 'saving', amount,
@@ -277,7 +291,14 @@ export default function TrackerIndex() {
   const executeDeleteSaving = async () => {
     if (!deleteSavingTarget) return;
     setDeleting(true);
-    await supabase.from('losses').delete().eq('id', deleteSavingTarget.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('losses').delete().eq('id', deleteSavingTarget.id);
+      await supabase.from('losses').insert({
+        user_id: user.id, type: 'saving_deleted', amount: deleteSavingTarget.amount,
+        category: 'Saving', note: deleteSavingTarget.note,
+      });
+    }
     setDeleteSavingTarget(null);
     setDeleting(false);
     await fetchAll();

@@ -26,11 +26,15 @@ const TRIGGERS = [
 ];
 
 type FeedEntry =
-  | { kind: 'urge';         id: string; trigger: string; outcome: 'overcame' | 'slipped'; note: string | null; created_at: string }
-  | { kind: 'debt';         id: string; name: string; total_amount: number; category: string; created_at: string }
-  | { kind: 'payment';      id: string; amount: number; note: string | null; debt_name: string; created_at: string }
-  | { kind: 'saving';       id: string; amount: number; note: string | null; created_at: string }
-  | { kind: 'streak_reset'; id: string; note: string | null; created_at: string };
+  | { kind: 'urge';          id: string; trigger: string; outcome: 'overcame' | 'slipped'; note: string | null; created_at: string }
+  | { kind: 'debt';          id: string; name: string; total_amount: number; category: string; created_at: string }
+  | { kind: 'payment';       id: string; amount: number; note: string | null; debt_name: string; created_at: string }
+  | { kind: 'saving';        id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'streak_reset';  id: string; note: string | null; created_at: string }
+  | { kind: 'debt_edited';   id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'debt_deleted';  id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'saving_edited'; id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'saving_deleted';id: string; amount: number; note: string | null; created_at: string };
 
 function triggerLabel(key: string) {
   return TRIGGERS.find(t => t.key === key)?.label ?? key;
@@ -138,6 +142,74 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
     );
   }
 
+  if (entry.kind === 'debt_edited') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillOrange]}>
+            <Text style={[s.pillTxt, s.pillTxtOrange]}>Debt edited</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <View style={s.cardRow}>
+          <Text style={s.cardTitle}>{entry.note || 'Debt'}</Text>
+          <Text style={[s.cardAmount, { color: '#c0392b' }]}>{fmt(Number(entry.amount), currency)}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (entry.kind === 'debt_deleted') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillRed]}>
+            <Text style={[s.pillTxt, s.pillTxtRed]}>Debt removed</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <View style={s.cardRow}>
+          <Text style={s.cardTitle}>{entry.note || 'Debt'}</Text>
+          <Text style={[s.cardAmount, { color: '#c0392b' }]}>{fmt(Number(entry.amount), currency)}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (entry.kind === 'saving_edited') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillOrange]}>
+            <Text style={[s.pillTxt, s.pillTxtOrange]}>Saving edited</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <View style={s.cardRow}>
+          <Text style={s.cardTitle}>{entry.note || 'Saving'}</Text>
+          <Text style={[s.cardAmount, { color: '#0a7a4e' }]}>+{fmt(Number(entry.amount), currency)}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (entry.kind === 'saving_deleted') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillRed]}>
+            <Text style={[s.pillTxt, s.pillTxtRed]}>Saving removed</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <View style={s.cardRow}>
+          <Text style={s.cardTitle}>{entry.note || 'Saving'}</Text>
+          <Text style={[s.cardAmount, { color: '#0a7a4e' }]}>{fmt(Number(entry.amount), currency)}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return null;
 }
 
@@ -152,12 +224,13 @@ export default function JournalScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [urgeRes, debtsRes, paymentsRes, savingsRes, resetsRes, profileRes] = await Promise.all([
+    const [urgeRes, debtsRes, paymentsRes, savingsRes, resetsRes, activityRes, profileRes] = await Promise.all([
       supabase.from('urge_journal').select('*').eq('user_id', user.id),
       supabase.from('debts').select('id, name, total_amount, category, created_at').eq('user_id', user.id),
       supabase.from('debt_payments').select('id, amount, note, created_at, debts(name)').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('losses').select('id, note, created_at').eq('user_id', user.id).eq('type', 'streak_reset'),
+      supabase.from('losses').select('id, type, amount, note, created_at').eq('user_id', user.id).in('type', ['debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted']),
       supabase.from('users').select('currency').eq('id', user.id).single(),
     ]);
 
@@ -177,6 +250,7 @@ export default function JournalScreen() {
     }));
     (savingsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'saving', ...e }));
     (resetsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'streak_reset', ...e }));
+    (activityRes.data ?? []).forEach((e: any) => entries.push({ kind: e.type, id: e.id, amount: e.amount, note: e.note, created_at: e.created_at }));
 
     entries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setFeed(entries);
@@ -195,7 +269,7 @@ export default function JournalScreen() {
         supabase.from('urge_journal').delete().eq('user_id', user.id),
         supabase.from('debt_payments').delete().eq('user_id', user.id),
         supabase.from('debts').delete().eq('user_id', user.id),
-        supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset']),
+        supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted']),
       ]);
       fetchFeed();
     }
