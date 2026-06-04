@@ -4,7 +4,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -100,6 +99,11 @@ export default function TrackerIndex() {
   // Context menus
   const [menuDebt, setMenuDebt] = useState<Debt | null>(null);
   const [menuSaving, setMenuSaving] = useState<SavingEntry | null>(null);
+
+  // Delete confirmations
+  const [deleteDebtTarget, setDeleteDebtTarget] = useState<Debt | null>(null);
+  const [deleteSavingTarget, setDeleteSavingTarget] = useState<SavingEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Debt modal (add + edit)
   const [debtModalVisible, setDebtModalVisible] = useState(false);
@@ -209,18 +213,15 @@ export default function TrackerIndex() {
 
   const handleDebtMenu = (debt: Debt) => setMenuDebt(debt);
 
-  const confirmDeleteDebt = (debt: Debt) => {
-    Alert.alert(
-      'Delete debt?',
-      `This will permanently delete "${debt.name}" and all payments made towards it.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => {
-          await supabase.from('debts').delete().eq('id', debt.id);
-          await fetchAll();
-        }},
-      ],
-    );
+  const confirmDeleteDebt = (debt: Debt) => setDeleteDebtTarget(debt);
+
+  const executeDeleteDebt = async () => {
+    if (!deleteDebtTarget) return;
+    setDeleting(true);
+    await supabase.from('debts').delete().eq('id', deleteDebtTarget.id);
+    setDeleteDebtTarget(null);
+    setDeleting(false);
+    await fetchAll();
   };
 
   // ── Saving actions ────────────────────────────────────────────
@@ -271,18 +272,15 @@ export default function TrackerIndex() {
 
   const handleSavingMenu = (entry: SavingEntry) => setMenuSaving(entry);
 
-  const confirmDeleteSaving = (entry: SavingEntry) => {
-    Alert.alert(
-      'Delete saving?',
-      `Delete this entry of ${fmt(Number(entry.amount), currency)}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => {
-          await supabase.from('losses').delete().eq('id', entry.id);
-          await fetchAll();
-        }},
-      ],
-    );
+  const confirmDeleteSaving = (entry: SavingEntry) => setDeleteSavingTarget(entry);
+
+  const executeDeleteSaving = async () => {
+    if (!deleteSavingTarget) return;
+    setDeleting(true);
+    await supabase.from('losses').delete().eq('id', deleteSavingTarget.id);
+    setDeleteSavingTarget(null);
+    setDeleting(false);
+    await fetchAll();
   };
 
   if (loading) {
@@ -597,6 +595,67 @@ export default function TrackerIndex() {
         </Pressable>
       </Modal>
 
+      {/* Delete debt confirmation */}
+      <Modal visible={!!deleteDebtTarget} transparent animationType="fade" onRequestClose={() => setDeleteDebtTarget(null)}>
+        <Pressable style={s.modalOverlay} onPress={() => setDeleteDebtTarget(null)}>
+          <Pressable style={s.sheet} onPress={() => {}}>
+            <View style={s.sheetHandle} />
+            <View style={s.deleteIconRow}>
+              <View style={s.deleteIconCircle}>
+                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+              </View>
+            </View>
+            <Text style={s.deleteTitle}>Delete debt?</Text>
+            {deleteDebtTarget && (
+              <Text style={s.deleteBody}>
+                This will permanently delete <Text style={s.deleteBold}>{deleteDebtTarget.name}</Text> and all payments made towards it.
+              </Text>
+            )}
+            <View style={s.sheetActions}>
+              <Pressable style={s.cancelBtn} onPress={() => setDeleteDebtTarget(null)}>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteDebt} disabled={deleting}>
+                {deleting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={s.deleteBtnTxt}>Delete</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Delete saving confirmation */}
+      <Modal visible={!!deleteSavingTarget} transparent animationType="fade" onRequestClose={() => setDeleteSavingTarget(null)}>
+        <Pressable style={s.modalOverlay} onPress={() => setDeleteSavingTarget(null)}>
+          <Pressable style={s.sheet} onPress={() => {}}>
+            <View style={s.sheetHandle} />
+            <View style={s.deleteIconRow}>
+              <View style={s.deleteIconCircle}>
+                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+              </View>
+            </View>
+            <Text style={s.deleteTitle}>Delete saving?</Text>
+            {deleteSavingTarget && (
+              <Text style={s.deleteBody}>
+                Delete this entry of <Text style={s.deleteBold}>{fmt(Number(deleteSavingTarget.amount), currency)}</Text>?
+                {deleteSavingTarget.note ? `\n${deleteSavingTarget.note}` : ''}
+              </Text>
+            )}
+            <View style={s.sheetActions}>
+              <Pressable style={s.cancelBtn} onPress={() => setDeleteSavingTarget(null)}>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteSaving} disabled={deleting}>
+                {deleting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={s.deleteBtnTxt}>Delete</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Saving context menu */}
       <Modal visible={!!menuSaving} transparent animationType="fade" onRequestClose={() => setMenuSaving(null)}>
         <Pressable style={s.menuOverlay} onPress={() => setMenuSaving(null)}>
@@ -756,4 +815,16 @@ const s = StyleSheet.create({
   saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
   saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   btnDisabled: { opacity: 0.6 },
+
+  deleteIconRow: { alignItems: 'center', marginBottom: 12 },
+  deleteIconCircle: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  deleteTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
+  deleteBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  deleteBold: { fontWeight: '700', color: '#333' },
+  deleteBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
+  deleteBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
