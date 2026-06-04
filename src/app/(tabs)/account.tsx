@@ -722,14 +722,6 @@ export default function AccountScreen() {
             : <Text style={s.signOutTxt}>Sign out</Text>}
         </Pressable>
 
-        {/* Delete account */}
-        <Pressable
-          style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }]}
-          onPress={confirmDeleteAccount}
-          disabled={signingOut}>
-          <Text style={s.deleteBtnTxt}>Delete account</Text>
-        </Pressable>
-
         {/* About */}
         <View style={s.aboutCard}>
           <Text style={s.aboutTitle}>About</Text>
@@ -752,6 +744,14 @@ export default function AccountScreen() {
             <Text style={[s.aboutBtnTxt, { color: '#888' }]}>Privacy Policy</Text>
           </Pressable>
         </View>
+
+        {/* Delete account */}
+        <Pressable
+          style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }]}
+          onPress={confirmDeleteAccount}
+          disabled={signingOut}>
+          <Text style={s.deleteBtnTxt}>Delete account</Text>
+        </Pressable>
 
         <View style={{ height: 32 }} />
       </ScrollView>
