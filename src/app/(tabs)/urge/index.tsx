@@ -312,6 +312,18 @@ export default function UrgeScreen() {
           ))}
         </View>
 
+        {/* Prevention checklist */}
+        <Pressable
+          style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/(tabs)/urge/checklist')}>
+          <Text style={s.checklistBtnIcon}>✅</Text>
+          <View style={s.checklistBtnText}>
+            <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
+            <Text style={s.checklistBtnSub}>Practical steps to protect your recovery</Text>
+          </View>
+          <Text style={s.checklistBtnChevron}>›</Text>
+        </Pressable>
+
         {/* Crisis resources */}
         <View style={s.crisisCard}>
           <Text style={s.crisisTitle}>Need more help?</Text>
@@ -603,6 +615,17 @@ const s = StyleSheet.create({
   savedWrap: { alignItems: 'center', paddingVertical: 40, gap: 12 },
   savedIcon: { fontSize: 40, color: '#0a7a4e' },
   savedTxt: { fontSize: 18, fontWeight: '700', color: '#0a7a4e' },
+
+  checklistBtn: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: '#a8d8d0',
+  },
+  checklistBtnIcon: { fontSize: 24 },
+  checklistBtnText: { flex: 1, gap: 2 },
+  checklistBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
+  checklistBtnSub: { fontSize: 12, color: '#888' },
+  checklistBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
 
   therapyBtn: {
     backgroundColor: '#fff', borderRadius: 14, padding: 16,
