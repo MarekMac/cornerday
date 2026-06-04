@@ -519,6 +519,7 @@ export default function HomeScreen() {
   const [selectedBadge, setSelectedBadge] = useState<typeof BADGE_DEFS[0] | null>(null);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const badgeScrollRef = useRef<ScrollView>(null);
+  const bodyScrollRef = useRef<ScrollView>(null);
   const [badgeMsgIndex, setBadgeMsgIndex] = useState(0);
   const [editingMood, setEditingMood] = useState(false);
   const [moodNote, setMoodNote] = useState('');
@@ -554,7 +555,7 @@ export default function HomeScreen() {
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
-      supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const d = new Date(); d.setDate(d.getDate() - 6); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
+      supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const t = new Date(); const sun = new Date(t); sun.setDate(t.getDate() - t.getDay()); return new Date(sun.getFullYear(), sun.getMonth(), sun.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
@@ -630,9 +631,12 @@ export default function HomeScreen() {
           const key = new Date(r.created_at).toLocaleDateString();
           byDate[key] = { mood: r.mood, note: r.note ?? null };
         });
+        const today = new Date();
+        const sun = new Date(today);
+        sun.setDate(today.getDate() - today.getDay());
         return Array.from({ length: 7 }, (_, i) => {
-          const d = new Date();
-          d.setDate(d.getDate() - (6 - i));
+          const d = new Date(sun);
+          d.setDate(sun.getDate() + i);
           const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toLocaleDateString();
           return { date: key, mood: byDate[key]?.mood ?? null, note: byDate[key]?.note ?? null };
         });
@@ -705,6 +709,22 @@ export default function HomeScreen() {
       setMoodNote('');
       setEditMoodValue(null);
     }
+    setMoodSubmitting(false);
+  };
+
+  const handleClearMood = async () => {
+    if (!data?.todayMoodId) return;
+    setMoodSubmitting(true);
+    await supabase.from('mood_checkins').delete().eq('id', data.todayMoodId);
+    const todayKey = new Date().toLocaleDateString();
+    setData(prev => {
+      if (!prev) return prev;
+      const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood: null, note: null } : d);
+      return { ...prev, todayMood: null, todayMoodNote: null, todayMoodId: null, weekMoods };
+    });
+    setEditingMood(false);
+    setMoodNote('');
+    setEditMoodValue(null);
     setMoodSubmitting(false);
   };
 
@@ -803,8 +823,9 @@ export default function HomeScreen() {
       </LinearGradient>
 
       {/* ── Body ── */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
+        ref={bodyScrollRef}
         style={s.body}
         contentContainerStyle={s.bodyContent}
         keyboardShouldPersistTaps="handled"
@@ -908,6 +929,7 @@ export default function HomeScreen() {
                       onChangeText={setMoodNote}
                       maxLength={200}
                       returnKeyType="done"
+                      onFocus={() => setTimeout(() => bodyScrollRef.current?.scrollToEnd({ animated: true }), 300)}
                     />
                     <Pressable
                       onPress={() => editMoodValue && handleMood(editMoodValue, moodNote)}
@@ -917,9 +939,14 @@ export default function HomeScreen() {
                     </Pressable>
                   </View>
                   {editingMood && (
-                    <Pressable onPress={() => { setEditingMood(false); setMoodNote(''); setEditMoodValue(null); }} style={({ pressed }) => [s.moodCancelBtn, pressed && { opacity: 0.6 }]}>
-                      <Text style={s.moodCancelTxt}>Cancel</Text>
-                    </Pressable>
+                    <View style={s.moodCancelRow}>
+                      <Pressable onPress={handleClearMood} style={({ pressed }) => [s.moodCancelBtn, pressed && { opacity: 0.6 }]}>
+                        <Text style={s.moodClearTxt}>Clear today's mood</Text>
+                      </Pressable>
+                      <Pressable onPress={() => { setEditingMood(false); setMoodNote(''); setEditMoodValue(null); }} style={({ pressed }) => [s.moodCancelBtn, pressed && { opacity: 0.6 }]}>
+                        <Text style={s.moodCancelTxt}>Cancel</Text>
+                      </Pressable>
+                    </View>
                   )}
                 </>
               )}
@@ -932,10 +959,13 @@ export default function HomeScreen() {
           <Text style={s.weekStripTitle}>Mood this week</Text>
           <View style={s.weekStripRow}>
           {data.weekMoods.map((day, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - (6 - i));
+            const today = new Date();
+            const sun = new Date(today);
+            sun.setDate(today.getDate() - today.getDay());
+            const d = new Date(sun);
+            d.setDate(sun.getDate() + i);
             const dayLabel = d.toLocaleDateString([], { weekday: 'short' }).slice(0, 2);
-            const isToday = i === 6;
+            const isToday = i === today.getDay();
             return (
               <View key={i} style={s.weekStripDay}>
                 <Text style={[s.weekStripLabel, isToday && s.weekStripLabelToday]}>{dayLabel}</Text>
@@ -1242,8 +1272,10 @@ const s = StyleSheet.create({
     flex: 1, borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: '#333',
   },
-  moodCancelBtn: { alignItems: 'center', marginTop: 6 },
+  moodCancelRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
+  moodCancelBtn: { alignItems: 'center', paddingVertical: 4, paddingHorizontal: 8 },
   moodCancelTxt: { fontSize: 12, color: '#aaa' },
+  moodClearTxt: { fontSize: 12, color: '#c0392b' },
   moodSaveBtn: { backgroundColor: '#0F6E6E', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
   moodSaveTxt: { fontSize: 13, color: '#fff', fontWeight: '700' },
 
