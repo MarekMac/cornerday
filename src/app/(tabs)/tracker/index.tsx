@@ -1,12 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  Animated,
   ActivityIndicator,
   Alert,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -83,18 +81,6 @@ function streakDays(quitTimestamp: string | null) {
 
 export default function TrackerIndex() {
   const insets = useSafeAreaInsets();
-  const sheetAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const show = Keyboard.addListener('keyboardDidShow', e => {
-      Animated.timing(sheetAnim, { toValue: e.endCoordinates.height, duration: 200, useNativeDriver: false }).start();
-    });
-    const hide = Keyboard.addListener('keyboardDidHide', () => {
-      Animated.timing(sheetAnim, { toValue: 0, duration: 150, useNativeDriver: false }).start();
-    });
-    return () => { show.remove(); hide.remove(); };
-  }, [sheetAnim]);
 
   const [tab, setTab] = useState<MainTab>('debts');
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -460,120 +446,99 @@ export default function TrackerIndex() {
       </KeyboardAvoidingView>
 
       {/* Debt modal — add & edit */}
-      <Modal visible={debtModalVisible} transparent animationType="slide"
-        onRequestClose={closeDebtModal}>
-        <Animated.View style={[s.modalOverlay, Platform.OS === 'android' && { paddingBottom: sheetAnim }]}>
-          <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFillObject} />
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeDebtModal} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={s.sheet}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Add a debt'}</Text>
-
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={s.fieldLbl}>Name</Text>
-              <TextInput
-                style={s.input}
-                placeholder="e.g. Bank loan, Friend — John"
-                placeholderTextColor="#bbb"
-                value={debtName}
-                onChangeText={setDebtName}
-                maxLength={60}
-              />
-
-              <Text style={s.fieldLbl}>Total amount owed</Text>
-              <TextInput
-                style={s.input}
-                placeholder="e.g. 2000"
-                placeholderTextColor="#bbb"
-                keyboardType="decimal-pad"
-                value={debtAmount}
-                onChangeText={setDebtAmount}
-              />
-
-              <Text style={s.fieldLbl}>Category</Text>
-              <View style={s.chipRow}>
-                {DEBT_CATEGORIES.map(cat => (
-                  <Pressable
-                    key={cat.key}
-                    style={[s.chip, debtCategory === cat.key && s.chipActive]}
-                    onPress={() => setDebtCategory(cat.key)}>
-                    <Text style={[s.chipTxt, debtCategory === cat.key && s.chipTxtActive]}>
-                      {cat.emoji} {cat.label}
-                    </Text>
-                  </Pressable>
-                ))}
+      <Modal visible={debtModalVisible} transparent animationType="fade" onRequestClose={closeDebtModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={s.modalOverlay} onPress={closeDebtModal}>
+            <Pressable style={s.sheet} onPress={() => {}}>
+              <View style={s.sheetHandle} />
+              <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Add a debt'}</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={s.fieldLbl}>Name</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. Bank loan, Friend — John"
+                  placeholderTextColor="#bbb"
+                  value={debtName}
+                  onChangeText={setDebtName}
+                  maxLength={60}
+                />
+                <Text style={s.fieldLbl}>Total amount owed</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. 2000"
+                  placeholderTextColor="#bbb"
+                  keyboardType="decimal-pad"
+                  value={debtAmount}
+                  onChangeText={setDebtAmount}
+                />
+                <Text style={s.fieldLbl}>Category</Text>
+                <View style={s.chipRow}>
+                  {DEBT_CATEGORIES.map(cat => (
+                    <Pressable
+                      key={cat.key}
+                      style={[s.chip, debtCategory === cat.key && s.chipActive]}
+                      onPress={() => setDebtCategory(cat.key)}>
+                      <Text style={[s.chipTxt, debtCategory === cat.key && s.chipTxtActive]}>
+                        {cat.emoji} {cat.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+              <View style={s.sheetActions}>
+                <Pressable style={s.cancelBtn} onPress={closeDebtModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[s.saveBtn, savingDebt && s.btnDisabled]} onPress={saveDebt} disabled={savingDebt}>
+                  {savingDebt
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={s.saveBtnTxt}>{editingDebt ? 'Save changes' : 'Add debt'}</Text>}
+                </Pressable>
               </View>
-            </ScrollView>
-
-            <View style={s.sheetActions}>
-              <Pressable style={s.cancelBtn} onPress={closeDebtModal}>
-                <Text style={s.cancelBtnTxt}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={[s.saveBtn, savingDebt && s.btnDisabled]}
-                onPress={saveDebt}
-                disabled={savingDebt}>
-                {savingDebt
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={s.saveBtnTxt}>{editingDebt ? 'Save changes' : 'Add debt'}</Text>}
-              </Pressable>
-            </View>
-            <View style={{ height: Math.max(16, insets.bottom) }} />
-          </View>
-          </KeyboardAvoidingView>
-        </Animated.View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Saving modal — add & edit */}
-      <Modal visible={savingModalVisible} transparent animationType="slide"
-        onRequestClose={closeSavingModal}>
-        <Animated.View style={[s.modalOverlay, Platform.OS === 'android' && { paddingBottom: sheetAnim }]}>
-          <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFillObject} />
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeSavingModal} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={s.sheet}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>{editingSaving ? 'Edit saving' : 'Log a saving'}</Text>
-
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={s.fieldLbl}>Amount</Text>
-              <TextInput
-                style={s.input}
-                placeholder="e.g. 100"
-                placeholderTextColor="#bbb"
-                keyboardType="decimal-pad"
-                value={savingAmount}
-                onChangeText={setSavingAmount}
-              />
-
-              <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
-              <TextInput
-                style={s.input}
-                placeholder="e.g. Savings account, Holiday fund"
-                placeholderTextColor="#bbb"
-                value={savingNote}
-                onChangeText={setSavingNote}
-              />
-            </ScrollView>
-
-            <View style={s.sheetActions}>
-              <Pressable style={s.cancelBtn} onPress={closeSavingModal}>
-                <Text style={s.cancelBtnTxt}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={[s.saveBtn, submitting && s.btnDisabled]}
-                onPress={saveSaving}
-                disabled={submitting}>
-                {submitting
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={s.saveBtnTxt}>{editingSaving ? 'Save changes' : 'Add saving'}</Text>}
-              </Pressable>
-            </View>
-            <View style={{ height: Math.max(16, insets.bottom) }} />
-          </View>
-          </KeyboardAvoidingView>
-        </Animated.View>
+      <Modal visible={savingModalVisible} transparent animationType="fade" onRequestClose={closeSavingModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={s.modalOverlay} onPress={closeSavingModal}>
+            <Pressable style={s.sheet} onPress={() => {}}>
+              <View style={s.sheetHandle} />
+              <Text style={s.sheetTitle}>{editingSaving ? 'Edit saving' : 'Log a saving'}</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={s.fieldLbl}>Amount</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. 100"
+                  placeholderTextColor="#bbb"
+                  keyboardType="decimal-pad"
+                  value={savingAmount}
+                  onChangeText={setSavingAmount}
+                />
+                <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. Savings account, Holiday fund"
+                  placeholderTextColor="#bbb"
+                  value={savingNote}
+                  onChangeText={setSavingNote}
+                />
+              </ScrollView>
+              <View style={s.sheetActions}>
+                <Pressable style={s.cancelBtn} onPress={closeSavingModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[s.saveBtn, submitting && s.btnDisabled]} onPress={saveSaving} disabled={submitting}>
+                  {submitting
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={s.saveBtnTxt}>{editingSaving ? 'Save changes' : 'Add saving'}</Text>}
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Debt context menu */}
@@ -777,10 +742,10 @@ const s = StyleSheet.create({
   menuActionDanger: { backgroundColor: '#fff5f5', borderColor: '#ffcdd2' },
   menuActionTxt: { fontSize: 15, fontWeight: '600', color: '#0F6E6E' },
 
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 },
   sheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.28, shadowRadius: 20, elevation: 32,
+    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 4 },
