@@ -20,7 +20,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ONBOARDED_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
@@ -131,6 +131,7 @@ function formatQuitDate(ts: string | null) {
 
 export default function AccountScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -633,10 +634,8 @@ export default function AccountScreen() {
         </View>
 
         {/* Notifications */}
-        <Pressable style={({ pressed }) => [s.card, s.settingsRow, pressed && { opacity: 0.85 }]} onPress={() => setNotifModalVisible(true)}>
-          <Ionicons name="notifications-outline" size={20} color="#0F6E6E" style={{ marginRight: 12 }} />
-          <Text style={s.settingsRowLabel}>Notification settings</Text>
-          <Ionicons name="chevron-forward" size={18} color="#ccc" />
+        <Pressable style={({ pressed }) => [s.notifSettingsBtn, pressed && { opacity: 0.7 }]} onPress={() => setNotifModalVisible(true)}>
+          <Text style={s.notifSettingsTxt}>Notification settings</Text>
         </Pressable>
 
         {/* Privacy Policy */}
@@ -799,7 +798,7 @@ export default function AccountScreen() {
       {/* Notification settings modal */}
       <Modal visible={notifModalVisible} transparent animationType="slide" onRequestClose={() => setNotifModalVisible(false)}>
         <Pressable style={s.modalOverlay} onPress={() => setNotifModalVisible(false)}>
-          <Pressable style={s.editFieldSheet} onPress={() => {}}>
+          <Pressable style={[s.editFieldSheet, { paddingBottom: Math.max(36, insets.bottom + 16) }]} onPress={() => {}}>
             <View style={s.editFieldHandle} />
             <Text style={s.editFieldTitle}>Notification settings</Text>
             {([
@@ -960,8 +959,11 @@ const s = StyleSheet.create({
 
   infoValueEmpty: { color: '#bbb', fontStyle: 'italic', fontWeight: '400' },
 
-  settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
-  settingsRowLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: '#222' },
+  notifSettingsBtn: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    alignItems: 'center', borderWidth: 1, borderColor: '#a8d8d0',
+  },
+  notifSettingsTxt: { fontSize: 15, color: '#0F6E6E', fontWeight: '600' },
 
   notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   notifText: { flex: 1, paddingRight: 12 },
