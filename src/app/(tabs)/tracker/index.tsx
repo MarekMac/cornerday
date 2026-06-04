@@ -53,6 +53,14 @@ function categoryEmoji(cat: string) {
   return DEBT_CATEGORIES.find(c => c.key === cat)?.emoji ?? '💰';
 }
 
+function fmtLive(amount: number, currency = 'USD') {
+  const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
+  const s = syms[currency] ?? currency;
+  if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
+  if (amount >= 10) return `${s}${Math.round(amount)}`;
+  return `${s}${amount.toFixed(1)}`;
+}
+
 function fmt(amount: number, currency = 'USD') {
   const syms: Record<string, string> = {
     USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$',
@@ -130,7 +138,8 @@ export default function TrackerIndex() {
   const recoveryPct = totalDebt > 0 ? Math.min(1, totalPaid / totalDebt) : 0;
 
   const days = streakDays(quitTs);
-  const autoSaved = weeklyBet ? Math.round(days * (Number(weeklyBet) / 7)) : 0;
+  const streakMs = quitTs ? Math.max(0, Date.now() - new Date(quitTs).getTime()) : 0;
+  const autoSaved = weeklyBet ? (streakMs / 86400000) * (Number(weeklyBet) / 7) : 0;
   const totalManualSavings = savings.reduce((s, e) => s + Number(e.amount), 0);
 
   // ── Debt actions ──────────────────────────────────────────────
@@ -313,25 +322,20 @@ export default function TrackerIndex() {
             </View>
             <Text style={s.progressLbl}>{Math.round(recoveryPct * 100)}% recovered</Text>
 
-            {weeklyBet ? (
-              <View style={s.savingsRow}>
-                <Text style={s.savingsIcon}>💰</Text>
-                <View style={s.savingsText}>
-                  <Text style={s.savingsLabel}>Saved by not gambling</Text>
-                  <Text style={s.savingsHint}>{fmt(Number(weeklyBet), currency)}/week · {days} day{days !== 1 ? 's' : ''}</Text>
-                </View>
-                <Text style={s.savingsAmount}>{fmt(autoSaved, currency)}</Text>
-              </View>
-            ) : null}
-
+            <View style={s.savingsLine}>
+              <Text style={s.savingsLineLabel} numberOfLines={1}>
+                Potential savings{weeklyBet ? ` (${fmt(Number(weeklyBet), currency)}/week)` : ' (set weekly spending in Account)'}
+              </Text>
+              <Text style={s.savingsLineValue}>{fmtLive(autoSaved, currency)}</Text>
+            </View>
             {totalManualSavings > 0 && (
-              <View style={[s.savingsRow, { borderTopWidth: 0, paddingTop: 0, marginTop: -4 }]}>
-                <Text style={s.savingsIcon}>🏦</Text>
-                <View style={s.savingsText}>
-                  <Text style={s.savingsLabel}>Manually logged savings</Text>
+              <>
+                <View style={s.savingsInnerSep} />
+                <View style={s.savingsLine}>
+                  <Text style={s.savingsLineLabel}>Savings banked</Text>
+                  <Text style={s.savingsLineValue}>{fmt(totalManualSavings, currency)}</Text>
                 </View>
-                <Text style={s.savingsAmount}>{fmt(totalManualSavings, currency)}</Text>
-              </View>
+              </>
             )}
           </View>
 
@@ -567,15 +571,10 @@ const s = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
   progressLbl: { fontSize: 12, color: '#0F6E6E', fontWeight: '600', textAlign: 'center' },
 
-  savingsRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10, marginTop: 2,
-  },
-  savingsIcon: { fontSize: 20 },
-  savingsText: { flex: 1, gap: 2 },
-  savingsLabel: { fontSize: 13, fontWeight: '600', color: '#111' },
-  savingsHint: { fontSize: 11, color: '#888' },
-  savingsAmount: { fontSize: 16, fontWeight: '700', color: '#0a7a4e' },
+  savingsInnerSep: { height: 1, backgroundColor: '#f0f0f0', marginTop: 6 },
+  savingsLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8 },
+  savingsLineLabel: { fontSize: 14, color: '#888', flex: 1, flexShrink: 1 },
+  savingsLineValue: { fontSize: 20, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
 
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 4, gap: 2 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },

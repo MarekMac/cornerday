@@ -470,7 +470,7 @@ function fmtLive(amount: number, currency = 'USD') {
   const s = syms[currency] ?? currency;
   if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
   if (amount >= 10) return `${s}${Math.round(amount)}`;
-  return `${s}${amount.toFixed(2)}`;
+  return `${s}${amount.toFixed(1)}`;
 }
 
 function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
@@ -497,7 +497,7 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
         <>
           <View style={s.savedSep} />
           <View style={s.savedRow}>
-            <Text style={s.savedLabel} numberOfLines={1}>Logged savings</Text>
+            <Text style={s.savedLabel} numberOfLines={1}>Savings banked</Text>
             <Text style={s.savedValue}>{fmt(totalPaid, currency)}</Text>
           </View>
         </>
