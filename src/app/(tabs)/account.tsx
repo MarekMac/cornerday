@@ -1014,11 +1014,10 @@ export default function AccountScreen() {
       </Modal>
 
       {/* Feedback modal */}
-      <Modal visible={feedbackVisible} transparent animationType="slide" onRequestClose={() => setFeedbackVisible(false)}>
-        <Pressable style={s.modalOverlay} onPress={() => setFeedbackVisible(false)}>
-          <Pressable style={s.editFieldSheet} onPress={() => {}}>
-            <View style={s.editFieldHandle} />
-            <Text style={s.editFieldTitle}>Feedback &amp; Feature Request</Text>
+      <Modal visible={feedbackVisible} transparent animationType="fade" onRequestClose={() => setFeedbackVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setFeedbackVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <Text style={s.confirmTitle}>Feedback &amp; Feature Request</Text>
 
             <View style={s.feedbackTypeRow}>
               {([
@@ -1049,14 +1048,14 @@ export default function AccountScreen() {
               textAlignVertical="top"
             />
 
-            <View style={s.modalActions}>
+            <View style={s.confirmActions}>
               <Pressable
-                style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                style={s.confirmCancel}
                 onPress={() => setFeedbackVisible(false)}>
-                <Text style={s.modalBtnCancel}>Cancel</Text>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, !feedbackMsg.trim() && { opacity: 0.4 }, pressed && { opacity: 0.85 }]}
+                style={[s.confirmSave, !feedbackMsg.trim() && { opacity: 0.4 }]}
                 disabled={!feedbackMsg.trim()}
                 onPress={() => {
                   const typeLabel = feedbackType === 'bug' ? 'Bug Report' : feedbackType === 'feature' ? 'Feature Request' : 'General Feedback';
@@ -1065,7 +1064,7 @@ export default function AccountScreen() {
                   Linking.openURL(`mailto:marekmac.ski@gmail.com?subject=${subject}&body=${body}`);
                   setFeedbackVisible(false);
                 }}>
-                <Text style={s.modalBtnSaveTxt}>Send</Text>
+                <Text style={s.confirmSaveTxt}>Send</Text>
               </Pressable>
             </View>
           </Pressable>
