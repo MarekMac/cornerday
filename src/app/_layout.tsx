@@ -51,7 +51,18 @@ export default function RootLayout() {
       } else if (onboarded === 'true') {
         setPendingRoute('/(tabs)');
       } else {
-        setPendingRoute(`/(onboarding)/${savedStep ?? 'q1'}`);
+        // AsyncStorage flag missing (e.g. dev reload cleared storage) — check Supabase
+        const { data: userData } = await supabase
+          .from('users')
+          .select('motivation')
+          .eq('id', sess.user.id)
+          .single();
+        if (userData?.motivation) {
+          await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+          setPendingRoute('/(tabs)');
+        } else {
+          setPendingRoute(`/(onboarding)/${savedStep ?? 'q1'}`);
+        }
       }
 
       setAuthChecked(true);

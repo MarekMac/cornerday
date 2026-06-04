@@ -3,6 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -173,7 +174,7 @@ function getGreeting(name?: string | null) {
 
 function calcStreakInfo(quitDate: string | null) {
   if (!quitDate) return { value: 0, unit: 'min', days: 0, ms: 0 };
-  const ms = Math.max(0, Date.now() - new Date(quitDate).getTime());
+  const ms = Math.max(0, Date.now() - parseQuitDate(quitDate).getTime());
   const days = Math.floor(ms / 86400000);
   const hours = Math.floor(ms / 3600000);
   const minutes = Math.floor(ms / 60000);
@@ -247,7 +248,20 @@ function milestoneLabel(days: number) {
 }
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function parseQuitDate(quitDate: string): Date {
+  // Date-only strings (no time) must be parsed as local midnight, not UTC midnight
+  if (/^\d{4}-\d{2}-\d{2}$/.test(quitDate)) {
+    const [y, mo, d] = quitDate.split('-').map(Number);
+    return new Date(y, mo - 1, d);
+  }
+  return new Date(quitDate);
 }
 
 function localMidnight(): string {
@@ -257,16 +271,20 @@ function localMidnight(): string {
 
 function formatStartDate(quitDate: string | null): string {
   if (!quitDate) return '';
-  const d = new Date(quitDate);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(quitDate);
+  const d = parseQuitDate(quitDate);
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
-  if (isToday) {
-    return `Started today at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  }
   const sameYear = d.getFullYear() === now.getFullYear();
   const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(!sameYear && { year: 'numeric' }) });
-  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return `Started ${dateStr} @ ${timeStr}`;
+  if (isToday) {
+    return dateOnly
+      ? 'Started today'
+      : `Started today at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  return dateOnly
+    ? `Started ${dateStr}`
+    : `Started ${dateStr} @ ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 // ─── Circular Progress ────────────────────────────────────────────────────────
@@ -347,7 +365,7 @@ function LiveCounter({ quitDate }: { quitDate: string | null }) {
 
   if (!quitDate) return null;
 
-  const ms = Math.max(0, Date.now() - new Date(quitDate).getTime());
+  const ms = Math.max(0, Date.now() - parseQuitDate(quitDate).getTime());
   const totalSec = Math.floor(ms / 1000);
   const days = Math.floor(totalSec / 86400);
   const hours = Math.floor((totalSec % 86400) / 3600);
@@ -360,7 +378,9 @@ function LiveCounter({ quitDate }: { quitDate: string | null }) {
     ? `${plural(years, 'year')}, ${plural(remainingDays, 'day')}`
     : days > 0
       ? `${plural(days, 'day')}, ${plural(hours, 'hour')}`
-      : `${plural(mins, 'minute')}, ${plural(secs, 'second')}`;
+      : hours > 0
+        ? `${plural(hours, 'hour')}, ${plural(mins, 'minute')}`
+        : `${plural(mins, 'minute')}, ${plural(secs, 'second')}`;
 
   return <Text style={s.liveCounter}>{label}</Text>;
 }
@@ -427,7 +447,10 @@ export default function HomeScreen() {
     badgeRows.forEach(b => { if (b.earned_at) badgeTimestamps[b.badge_type] = b.earned_at; });
 
     // Auto-award badges
-    const streak = Math.floor(Math.max(0, Date.now() - new Date(profile?.quit_date ?? Date.now()).getTime()) / 86400000);
+    const quitStr = profile?.quit_timestamp ?? profile?.quit_date;
+    const streak = quitStr
+      ? Math.floor(Math.max(0, Date.now() - parseQuitDate(quitStr).getTime()) / 86400000)
+      : 0;
     const toAward = BADGE_DEFS.filter(b => streak >= b.days && !earnedBadges.includes(b.type));
     if (toAward.length > 0) {
       await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
@@ -538,7 +561,18 @@ export default function HomeScreen() {
     setMoodSubmitting(false);
   };
 
-  const handleRelapse = async () => {
+  const handleRelapse = () => {
+    Alert.alert(
+      'Reset your streak?',
+      'This will start your streak from today. It\'s okay — every restart is still progress.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset streak', style: 'destructive', onPress: doRelapse },
+      ],
+    );
+  };
+
+  const doRelapse = async () => {
     setRelapseLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -547,6 +581,7 @@ export default function HomeScreen() {
       await Promise.all([
         supabase.from('users').update({ quit_date: today, quit_timestamp: new Date().toISOString() }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
+        supabase.from('badges').delete().eq('user_id', user.id),
         supabase.from('losses').insert({
           user_id: user.id, type: 'streak_reset', amount: 0,
           category: 'Streak Reset',
@@ -557,6 +592,7 @@ export default function HomeScreen() {
     }
     setRelapseLoading(false);
   };
+
 
   if (loading) {
     return (
