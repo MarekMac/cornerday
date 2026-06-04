@@ -582,9 +582,22 @@ export default function HomeScreen() {
     const streakDaysFloat = quitStr
       ? Math.max(0, Date.now() - parseQuitDate(quitStr).getTime()) / 86400000
       : 0;
+
+    // Merge AsyncStorage local record into earnedBadges so that badges whose
+    // DB insert failed are still treated as already awarded on subsequent runs.
+    // This is the single guard for DB insert, journal, and notification.
+    const localRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
+    const localEarned: string[] = localRaw ? JSON.parse(localRaw) : [];
+    localEarned.forEach(t => { if (!earnedBadges.includes(t)) earnedBadges.push(t); });
+
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !earnedBadges.includes(b.type));
     if (toAward.length > 0) {
+      // Persist to AsyncStorage first — prevents repeat journal/notification even if DB insert fails
+      const updatedLocal = [...localEarned, ...toAward.map(b => b.type)];
+      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(updatedLocal));
+
       await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
+
       // Log all milestones except 'started' (days=0)
       const toLog = toAward.filter(b => b.days > 0);
       if (toLog.length > 0) {
@@ -593,28 +606,24 @@ export default function HomeScreen() {
           category: 'Milestone', note: `${b.emoji} ${b.label}`,
         })));
       }
-      // Fire immediate notification for each newly awarded milestone — guarded by AsyncStorage to prevent repeats
-      const sentRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
-      const alreadySent: string[] = sentRaw ? JSON.parse(sentRaw) : [];
-      const toNotify = toLog.filter(b => !alreadySent.includes(b.type));
-      if (toNotify.length > 0) {
-        await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify([...alreadySent, ...toNotify.map(b => b.type)]));
-        const { status: notifStatus } = await Notifications.getPermissionsAsync();
-        if (notifStatus === 'granted') {
-          for (const b of toNotify) {
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: `${b.emoji} ${b.label} milestone!`,
-                body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
-                data: { screen: '/(tabs)/' },
-              },
-              trigger: Platform.OS === 'android'
-                ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
-                : null,
-            });
-          }
+
+      // Immediate notification for each newly awarded milestone
+      const { status: notifStatus } = await Notifications.getPermissionsAsync();
+      if (notifStatus === 'granted') {
+        for (const b of toLog) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `${b.emoji} ${b.label} milestone!`,
+              body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
+              data: { screen: '/(tabs)/' },
+            },
+            trigger: Platform.OS === 'android'
+              ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
+              : null,
+          });
         }
       }
+
       toAward.forEach(b => earnedBadges.push(b.type));
     }
 
