@@ -880,7 +880,7 @@ export default function AccountScreen() {
                 />
               </View>
             ))}
-            <Pressable style={[s.confirmSave, { marginTop: 20 }]} onPress={() => setNotifModalVisible(false)}>
+            <Pressable style={[s.confirmSave, { marginTop: 20, flex: 0 }]} onPress={() => setNotifModalVisible(false)}>
               <Text style={s.confirmSaveTxt}>Done</Text>
             </Pressable>
           </Pressable>
