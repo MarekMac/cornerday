@@ -585,12 +585,29 @@ export default function HomeScreen() {
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !earnedBadges.includes(b.type));
     if (toAward.length > 0) {
       await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
-      const toLog = toAward.filter(b => b.days >= 1);
+      // Log all milestones except 'started' (days=0)
+      const toLog = toAward.filter(b => b.days > 0);
       if (toLog.length > 0) {
         await supabase.from('losses').insert(toLog.map(b => ({
           user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
           category: 'Milestone', note: `${b.emoji} ${b.label}`,
         })));
+      }
+      // Fire immediate notification for each newly awarded milestone
+      const { status: notifStatus } = await Notifications.getPermissionsAsync();
+      if (notifStatus === 'granted') {
+        for (const b of toLog) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `${b.emoji} ${b.label} milestone!`,
+              body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
+              data: { screen: '/(tabs)/' },
+            },
+            trigger: Platform.OS === 'android'
+              ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
+              : null,
+          });
+        }
       }
       toAward.forEach(b => earnedBadges.push(b.type));
     }
