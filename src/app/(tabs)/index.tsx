@@ -520,6 +520,7 @@ export default function HomeScreen() {
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const badgeScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
+  const fetchingRef = useRef(false);
   const [moodCardY, setMoodCardY] = useState(0);
   const [badgeMsgIndex, setBadgeMsgIndex] = useState(0);
   const [editingMood, setEditingMood] = useState(false);
@@ -546,8 +547,11 @@ export default function HomeScreen() {
   }, []);
 
   const fetchData = useCallback(async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { fetchingRef.current = false; return; }
 
     const today = todayStr();
 
@@ -647,6 +651,9 @@ export default function HomeScreen() {
         });
       })(),
     });
+    } finally {
+      fetchingRef.current = false;
+    }
   }, []);
 
   const initialLoadDone = useRef(false);
