@@ -11,8 +11,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CHECKLIST_KEY } from '@/constants/storage-keys';
 
-const STORAGE_KEY = 'cornerday_prevention_checklist';
 
 interface ChecklistItem {
   id: string;
@@ -79,7 +79,7 @@ export default function ChecklistScreen() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then(raw => {
+    AsyncStorage.getItem(CHECKLIST_KEY).then(raw => {
       if (raw) setChecked(JSON.parse(raw));
       setLoaded(true);
     });
@@ -88,7 +88,7 @@ export default function ChecklistScreen() {
   const toggle = async (id: string) => {
     const updated = { ...checked, [id]: !checked[id] };
     setChecked(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(CHECKLIST_KEY, JSON.stringify(updated));
   };
 
   const completed = Object.values(checked).filter(Boolean).length;
