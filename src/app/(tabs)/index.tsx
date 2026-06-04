@@ -21,9 +21,11 @@ import { supabase } from '@/lib/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MILESTONES = [1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
+const MILESTONES = [1/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
 
 const BADGE_DEFS = [
+  { type: 'started',  emoji: '🚀', label: 'Started',  days: 0 },
+  { type: '1_hour',   emoji: '⏰', label: '1 Hour',   days: 1/24 },
   { type: '1_day',    emoji: '🌱', label: '1 Day',    days: 1 },
   { type: '3_days',   emoji: '🌿', label: '3 Days',   days: 3 },
   { type: '1_week',   emoji: '⭐', label: '1 Week',   days: 7 },
@@ -234,8 +236,17 @@ function formatBest(days: number, ms: number) {
   return plural(days, 'day');
 }
 
+function formatTimeLeft(days: number): string {
+  if (days <= 0) return 'now';
+  if (days < 1 / 24) return `${Math.ceil(days * 1440)} min`;
+  if (days < 1) return `${Math.ceil(days * 24)} hour${Math.ceil(days * 24) !== 1 ? 's' : ''}`;
+  const d = Math.ceil(days);
+  return `${d} day${d !== 1 ? 's' : ''}`;
+}
+
 function milestoneLabel(days: number) {
   const map: Record<number, string> = {
+    [1/24]: '1 hour',
     1: '1 day', 3: '3 days', 7: '1 week', 10: '10 days',
     14: '2 weeks', 21: '3 weeks', 30: '1 month', 45: '45 days',
     60: '2 months', 90: '3 months', 120: '4 months', 150: '5 months',
@@ -448,16 +459,17 @@ export default function HomeScreen() {
 
     // Auto-award badges
     const quitStr = profile?.quit_timestamp ?? profile?.quit_date;
-    const streak = quitStr
-      ? Math.floor(Math.max(0, Date.now() - parseQuitDate(quitStr).getTime()) / 86400000)
+    const streakDaysFloat = quitStr
+      ? Math.max(0, Date.now() - parseQuitDate(quitStr).getTime()) / 86400000
       : 0;
-    const toAward = BADGE_DEFS.filter(b => streak >= b.days && !earnedBadges.includes(b.type));
+    const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !earnedBadges.includes(b.type));
     if (toAward.length > 0) {
       await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
       toAward.forEach(b => earnedBadges.push(b.type));
     }
 
     // Update longest streak
+    const streak = Math.floor(streakDaysFloat);
     const longest = streakRes.data?.longest_streak ?? 0;
     if (streak > longest) {
       await supabase.from('streaks').update({ longest_streak: streak }).eq('user_id', user.id);
@@ -675,7 +687,8 @@ export default function HomeScreen() {
           <ScrollView ref={badgeScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.badgesRow}>
             {BADGE_DEFS.map(badge => {
               const earned = data.earnedBadges.includes(badge.type);
-              const progress = earned ? 1 : Math.min(1, streakDays / badge.days);
+              const streakFrac = streakMs / 86400000;
+              const progress = earned ? 1 : badge.days > 0 ? Math.min(1, streakFrac / badge.days) : 1;
               return (
                 <Pressable key={badge.type} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]} onPress={() => { setSelectedBadge(badge); setBadgeMsgIndex(Math.floor(Math.random() * 20)); }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
@@ -827,14 +840,15 @@ export default function HomeScreen() {
               const earned = data.earnedBadges.includes(selectedBadge.type);
               const earnedAt = data.badgeTimestamps[selectedBadge.type];
               const dailyRate = weeklyToDaily(data.weeklyBet);
-              const progress = earned ? 1 : Math.min(1, streakDays / selectedBadge.days);
+              const streakFrac = streakMs / 86400000;
+              const progress = earned ? 1 : selectedBadge.days > 0 ? Math.min(1, streakFrac / selectedBadge.days) : 1;
               const pct = Math.round(progress * 100);
 
               if (earned) {
                 const earnedDate = data.quitDate
-                  ? new Date(new Date(data.quitDate).getTime() + selectedBadge.days * 86400000)
+                  ? new Date(parseQuitDate(data.quitDate).getTime() + selectedBadge.days * 86400000)
                   : null;
-                const daysSince = streakDays - selectedBadge.days;
+                const daysSince = Math.floor(streakFrac - selectedBadge.days);
                 const savedAtMilestone = selectedBadge.days * dailyRate;
                 const savedTotal = streakDays * dailyRate;
                 return (
@@ -869,9 +883,9 @@ export default function HomeScreen() {
                   </>
                 );
               } else {
-                const daysLeft = selectedBadge.days - streakDays;
+                const daysLeft = selectedBadge.days - streakFrac;
                 const estimatedDate = data.quitDate
-                  ? new Date(new Date(data.quitDate).getTime() + selectedBadge.days * 86400000)
+                  ? new Date(parseQuitDate(data.quitDate).getTime() + selectedBadge.days * 86400000)
                   : null;
                 const savedAtMilestone = selectedBadge.days * dailyRate;
                 return (
@@ -884,8 +898,8 @@ export default function HomeScreen() {
                     </View>
                     <View style={s.modalDivider} />
                     <View style={s.modalRow}>
-                      <Text style={s.modalRowLabel}>Days remaining</Text>
-                      <Text style={s.modalRowValue}>{daysLeft} {daysLeft === 1 ? 'day' : 'days'}</Text>
+                      <Text style={s.modalRowLabel}>Time remaining</Text>
+                      <Text style={s.modalRowValue}>{formatTimeLeft(daysLeft)}</Text>
                     </View>
                     {estimatedDate && (
                       <View style={s.modalRow}>
