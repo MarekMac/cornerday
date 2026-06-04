@@ -397,6 +397,19 @@ function LiveCounter({ quitDate }: { quitDate: string | null }) {
   return <Text style={s.liveCounter}>{label}</Text>;
 }
 
+function SubDayCountdown({ quitDate, nextDays, style }: { quitDate: string; nextDays: number; style: any }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const targetMs = parseQuitDate(quitDate).getTime() + nextDays * 86400000;
+  const remaining = Math.max(0, targetMs - Date.now());
+  const mins = Math.floor(remaining / 60000);
+  const secs = Math.floor((remaining % 60000) / 1000);
+  if (remaining <= 0) return <Text style={style}>{`🎉 ${milestoneLabel(nextDays)} — milestone reached!`}</Text>;
+  return <Text style={style}>{`${mins}m ${secs}s to reach ${milestoneLabel(nextDays)}`}</Text>;
+}
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -518,9 +531,9 @@ export default function HomeScreen() {
     if (initialLoadDone.current) fetchData();
   }, [fetchData]));
 
-  // Update streak display every second
+  // Update streak display every minute (sub-day countdown uses its own component)
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 1000);
+    const id = setInterval(() => setTick(t => t + 1), 60000);
     return () => clearInterval(id);
   }, []);
 
@@ -643,15 +656,16 @@ export default function HomeScreen() {
                 <Text style={s.streakTitle}>Current streak</Text>
                 <LiveCounter quitDate={data.quitDate} />
                 <View style={s.separator} />
-                <Text style={s.milestoneTxt}>
-                  {remainingMs <= 0
-                    ? `🎉 ${milestoneLabel(next)} — milestone reached!`
-                    : next < 1
-                      ? `${minsToGo}m ${secsToGo}s to reach ${milestoneLabel(next)}`
-                      : daysToGo === 1
-                        ? `${hoursToGo}h ${minsToGo}m to reach ${milestoneLabel(next)}`
-                        : `${daysToGo}d ${hoursComponent}h to reach ${milestoneLabel(next)}`}
-                </Text>
+                {next < 1 && data.quitDate
+                  ? <SubDayCountdown quitDate={data.quitDate} nextDays={next} style={s.milestoneTxt} />
+                  : <Text style={s.milestoneTxt}>
+                      {remainingMs <= 0
+                        ? `🎉 ${milestoneLabel(next)} — milestone reached!`
+                        : daysToGo === 1
+                          ? `${hoursToGo}h ${minsToGo}m to reach ${milestoneLabel(next)}`
+                          : `${daysToGo}d ${hoursComponent}h to reach ${milestoneLabel(next)}`}
+                    </Text>
+                }
                 <Text style={s.longestTxt}>Best: {formatBest(data.longestStreak, streakMs)}</Text>
                 {!!data.quitDate && (
                   <Text style={s.startedTxt}>{formatStartDate(data.quitDate)}</Text>
