@@ -856,11 +856,10 @@ export default function AccountScreen() {
       </Modal>
 
       {/* Notification settings modal */}
-      <Modal visible={notifModalVisible} transparent animationType="slide" onRequestClose={() => setNotifModalVisible(false)}>
-        <Pressable style={s.modalOverlay} onPress={() => setNotifModalVisible(false)}>
-          <Pressable style={[s.editFieldSheet, { paddingBottom: Math.max(36, insets.bottom + 16) }]} onPress={() => {}}>
-            <View style={s.editFieldHandle} />
-            <Text style={s.editFieldTitle}>Notification settings</Text>
+      <Modal visible={notifModalVisible} transparent animationType="fade" onRequestClose={() => setNotifModalVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setNotifModalVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <Text style={s.confirmTitle}>Notifications</Text>
             {([
               { key: 'notif_milestone',             label: 'Milestone reached',     desc: 'Alert when you hit a streak milestone' },
               { key: 'notif_daily_streak',          label: 'Daily streak reminder', desc: 'Evening nudge to keep your streak going' },
@@ -881,6 +880,9 @@ export default function AccountScreen() {
                 />
               </View>
             ))}
+            <Pressable style={[s.confirmSave, { marginTop: 20 }]} onPress={() => setNotifModalVisible(false)}>
+              <Text style={s.confirmSaveTxt}>Done</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
