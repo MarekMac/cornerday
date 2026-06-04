@@ -90,6 +90,7 @@ export async function scheduleAllNotifications(
         content: {
           title: `🏆 ${label} milestone!`,
           body: `You've been clean for ${label}. That's a real achievement — keep going.`,
+          data: { screen: '/(tabs)/' },
         },
         trigger: androidTrigger({
           type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -109,6 +110,7 @@ export async function scheduleAllNotifications(
           content: {
             title: `⏰ Almost there!`,
             body: `Your ${milestoneLabel(next)} milestone is just 24 hours away. Hold on.`,
+            data: { screen: '/(tabs)/' },
           },
           trigger: androidTrigger({
             type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -125,6 +127,7 @@ export async function scheduleAllNotifications(
       content: {
         title: `💪 Keep the streak alive`,
         body: `Every day counts. You're stronger than the urge.`,
+        data: { screen: '/(tabs)/' },
       },
       trigger: androidTrigger({
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -140,6 +143,7 @@ export async function scheduleAllNotifications(
       content: {
         title: `🌤 How are you feeling today?`,
         body: `Take a moment to log your mood and check in with yourself.`,
+        data: { screen: '/(tabs)/' },
       },
       trigger: androidTrigger({
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -155,6 +159,7 @@ export async function scheduleAllNotifications(
       content: {
         title: `📊 Your weekly summary`,
         body: `See how you did this week and keep building momentum.`,
+        data: { screen: '/(tabs)/' },
       },
       trigger: androidTrigger({
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,

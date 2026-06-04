@@ -120,6 +120,7 @@ export default function DebtDetailScreen() {
           content: {
             title: '🎉 Debt paid off!',
             body: `You've fully paid off "${debt.name}". That's a huge step — well done.`,
+            data: { screen: '/(tabs)/tracker' },
           },
           trigger: null,
         });

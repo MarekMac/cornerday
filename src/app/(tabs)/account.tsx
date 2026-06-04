@@ -149,6 +149,7 @@ export default function AccountScreen() {
 
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
   const [quitTimestamp, setQuitTimestamp] = useState<string | null>(null);
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
 
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [spendingCurrency, setSpendingCurrency] = useState('USD');
@@ -631,29 +632,11 @@ export default function AccountScreen() {
         </View>
 
         {/* Notifications */}
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>Notifications</Text>
-          {([
-            { key: 'notif_milestone',            label: 'Milestone reached',     desc: 'Alert when you hit a streak milestone',          default: true },
-            { key: 'notif_daily_streak',         label: 'Daily streak reminder', desc: 'Evening nudge to keep your streak going',         default: true },
-            { key: 'notif_daily_checkin',        label: 'Daily check-in',        desc: 'Morning prompt to log your mood',                 default: false },
-            { key: 'notif_weekly_summary',       label: 'Weekly summary',        desc: 'Monday morning overview of your progress',        default: false },
-            { key: 'notif_milestone_approaching',label: 'Milestone approaching', desc: '24 hours before your next milestone',             default: false },
-          ] as { key: keyof NotifPrefs; label: string; desc: string; default: boolean }[]).map(({ key, label, desc }) => (
-            <View key={key} style={s.notifRow}>
-              <View style={s.notifText}>
-                <Text style={s.notifLabel}>{label}</Text>
-                <Text style={s.notifDesc}>{desc}</Text>
-              </View>
-              <Switch
-                value={notifPrefs[key]}
-                onValueChange={v => handleNotifToggle(key, v)}
-                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-                thumbColor={notifPrefs[key] ? '#0F6E6E' : '#bbb'}
-              />
-            </View>
-          ))}
-        </View>
+        <Pressable style={({ pressed }) => [s.card, s.settingsRow, pressed && { opacity: 0.85 }]} onPress={() => setNotifModalVisible(true)}>
+          <Ionicons name="notifications-outline" size={20} color="#0F6E6E" style={{ marginRight: 12 }} />
+          <Text style={s.settingsRowLabel}>Notification settings</Text>
+          <Ionicons name="chevron-forward" size={18} color="#ccc" />
+        </Pressable>
 
         {/* Privacy Policy */}
         <Pressable
@@ -812,6 +795,36 @@ export default function AccountScreen() {
         </Pressable>
       </Modal>
 
+      {/* Notification settings modal */}
+      <Modal visible={notifModalVisible} transparent animationType="slide" onRequestClose={() => setNotifModalVisible(false)}>
+        <Pressable style={s.modalOverlay} onPress={() => setNotifModalVisible(false)}>
+          <Pressable style={s.editFieldSheet} onPress={() => {}}>
+            <View style={s.editFieldHandle} />
+            <Text style={s.editFieldTitle}>Notification settings</Text>
+            {([
+              { key: 'notif_milestone',             label: 'Milestone reached',     desc: 'Alert when you hit a streak milestone' },
+              { key: 'notif_daily_streak',          label: 'Daily streak reminder', desc: 'Evening nudge to keep your streak going' },
+              { key: 'notif_daily_checkin',         label: 'Daily check-in',        desc: 'Morning prompt to log your mood' },
+              { key: 'notif_weekly_summary',        label: 'Weekly summary',        desc: 'Monday morning overview of your progress' },
+              { key: 'notif_milestone_approaching', label: 'Milestone approaching', desc: '24 hours before your next milestone' },
+            ] as { key: keyof NotifPrefs; label: string; desc: string }[]).map(({ key, label, desc }) => (
+              <View key={key} style={s.notifRow}>
+                <View style={s.notifText}>
+                  <Text style={s.notifLabel}>{label}</Text>
+                  <Text style={s.notifDesc}>{desc}</Text>
+                </View>
+                <Switch
+                  value={notifPrefs[key]}
+                  onValueChange={v => handleNotifToggle(key, v)}
+                  trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+                  thumbColor={notifPrefs[key] ? '#0F6E6E' : '#bbb'}
+                />
+              </View>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* iOS date/time picker modal */}
       {Platform.OS === 'ios' && (
         <Modal visible={showIOSModal} transparent animationType="slide">
@@ -945,6 +958,9 @@ const s = StyleSheet.create({
   deleteBtnTxt: { fontSize: 13, color: '#bbb' },
 
   infoValueEmpty: { color: '#bbb', fontStyle: 'italic', fontWeight: '400' },
+
+  settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  settingsRowLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: '#222' },
 
   notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   notifText: { flex: 1, paddingRight: 12 },

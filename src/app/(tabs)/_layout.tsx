@@ -1,5 +1,6 @@
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 import { Image, TouchableOpacity, View } from 'react-native';
 import { useUser } from '@/context/user';
@@ -46,6 +47,12 @@ export default function TabsLayout() {
       await scheduleAllNotifications(prefs, data.quit_timestamp ?? null);
     };
     init();
+
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const screen = response.notification.request.content.data?.screen as string | undefined;
+      if (screen) router.push(screen as any);
+    });
+    return () => sub.remove();
   }, []);
 
   return (
