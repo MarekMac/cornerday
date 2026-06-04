@@ -108,6 +108,19 @@ const QUOTES = [
   "You deserve peace more than you deserve the thrill.",
 ];
 
+const BADGE_CELEBRATIONS = [
+  { icon: '🎉', text: 'Congratulations!' },
+  { icon: '💪', text: 'You actually did it.' },
+  { icon: '🌅', text: 'A new chapter.' },
+  { icon: '🔥', text: 'Unstoppable.' },
+  { icon: '🥹', text: 'So proud of you.' },
+  { icon: '⚡', text: 'That took real strength.' },
+  { icon: '🌱', text: 'Look how far you\'ve come.' },
+  { icon: '🏅', text: 'Hard-earned. Yours forever.' },
+  { icon: '✨', text: 'This is what progress looks like.' },
+  { icon: '🎯', text: 'You said you would. You did.' },
+];
+
 const BADGE_EARNED_MSGS = [
   "Every day you hold on builds on this milestone. Keep going.",
   "You did what many never manage. Be proud of that.",
@@ -449,6 +462,7 @@ interface HomeData {
   weekMoods: { date: string; mood: number | null; note: string | null }[];
   totalLost: number;
   totalPaid: number;
+  debtItems: { id: string; name: string; totalAmount: number; paidAmount: number; earned: boolean; earnedAt: string | null }[];
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -501,6 +515,7 @@ export default function HomeScreen() {
   const [tick, setTick] = useState(0);
   const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [selectedBadge, setSelectedBadge] = useState<typeof BADGE_DEFS[0] | null>(null);
+  const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const badgeScrollRef = useRef<ScrollView>(null);
   const [badgeMsgIndex, setBadgeMsgIndex] = useState(0);
   const [editingMood, setEditingMood] = useState(false);
@@ -521,13 +536,15 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes] = await Promise.all([
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency').eq('id', user.id).single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
       supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const d = new Date(); d.setDate(d.getDate() - 6); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
+      supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
+      supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
     ]);
 
     const profile = profileRes.data;
@@ -558,6 +575,26 @@ export default function HomeScreen() {
     const totalLost = 0;
     const totalPaid = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
+    const debtRows = debtsRes.data ?? [];
+    const paymentRows = debtPaymentsRes.data ?? [];
+    const paidByDebt: Record<string, number> = {};
+    for (const p of paymentRows) {
+      paidByDebt[p.debt_id] = (paidByDebt[p.debt_id] ?? 0) + Number(p.amount);
+    }
+    const debtItems = debtRows.map(d => {
+      const paidAmount = paidByDebt[d.id] ?? 0;
+      const earned = paidAmount >= Number(d.total_amount);
+      const badgeType = `debt_${d.id}`;
+      return { id: d.id, name: d.name, totalAmount: Number(d.total_amount), paidAmount, earned, earnedAt: badgeTimestamps[badgeType] ?? null };
+    });
+    const newDebtBadges = debtItems
+      .filter(d => d.earned && !earnedBadges.includes(`debt_${d.id}`))
+      .map(d => ({ user_id: user.id, badge_type: `debt_${d.id}` }));
+    if (newDebtBadges.length > 0) {
+      await supabase.from('badges').insert(newDebtBadges);
+      newDebtBadges.forEach(b => earnedBadges.push(b.badge_type));
+    }
+
     setData({
       displayName: profile?.display_name ?? user.email?.split('@')[0] ?? null,
       motivation: profile?.motivation ?? null,
@@ -569,6 +606,7 @@ export default function HomeScreen() {
       badgeTimestamps,
       totalLost,
       totalPaid,
+      debtItems,
       todayMood: moodRes.data?.mood ?? null,
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
@@ -777,6 +815,19 @@ export default function HomeScreen() {
                 </Pressable>
               );
             })}
+            {data.debtItems.map(debt => {
+              const progress = debt.earned ? 1 : debt.totalAmount > 0 ? Math.min(1, debt.paidAmount / debt.totalAmount) : 0;
+              return (
+                <Pressable key={debt.id} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  onPress={() => { setSelectedDebtId(debt.id); setBadgeMsgIndex(Math.floor(Math.random() * 20)); }}>
+                  <View style={[s.badgeCircle, debt.earned ? s.badgeEarned : s.badgeLocked]}>
+                    <BadgeRing progress={progress} />
+                    <Text style={s.badgeEmoji}>{debt.earned ? '🏦' : '🔒'}</Text>
+                  </View>
+                  <Text style={[s.badgeLabel, !debt.earned && s.badgeLabelLocked]} numberOfLines={2}>{debt.name}</Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
 
@@ -930,7 +981,7 @@ export default function HomeScreen() {
                 return (
                   <>
                     <Text style={s.modalEmoji}>{selectedBadge.emoji}</Text>
-                    <Text style={s.modalTitle}>🎉 Congratulations!</Text>
+                    <Text style={s.modalTitle}>{BADGE_CELEBRATIONS[badgeMsgIndex % BADGE_CELEBRATIONS.length].icon} {BADGE_CELEBRATIONS[badgeMsgIndex % BADGE_CELEBRATIONS.length].text}</Text>
                     <Text style={s.modalSubtitle}>{selectedBadge.label} milestone reached</Text>
                     <View style={s.modalDivider} />
                     {earnedDate && (
@@ -943,7 +994,7 @@ export default function HomeScreen() {
                       <Text style={s.modalRowLabel}>Days since</Text>
                       <Text style={s.modalRowValue}>{daysSince} {daysSince === 1 ? 'day' : 'days'} ago</Text>
                     </View>
-                    {dailyRate > 0 && (
+                    {dailyRate > 0 && selectedBadge.days > 0 && (
                       <>
                         <View style={s.modalRow}>
                           <Text style={s.modalRowLabel}>Saved at milestone</Text>
@@ -995,6 +1046,52 @@ export default function HomeScreen() {
               }
             })()}
             <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setSelectedBadge(null)}>
+              <Text style={s.modalCloseTxt}>Close</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Debt badge modal */}
+      <Modal visible={!!selectedDebtId} transparent animationType="slide" onRequestClose={() => setSelectedDebtId(null)}>
+        <Pressable style={s.modalOverlay} onPress={() => setSelectedDebtId(null)}>
+          <Pressable style={s.modalSheet} onPress={() => {}}>
+            {selectedDebtId && (() => {
+              const debt = data.debtItems.find(d => d.id === selectedDebtId);
+              if (!debt) return null;
+              const pct = Math.round(debt.earned ? 100 : debt.totalAmount > 0 ? Math.min(100, (debt.paidAmount / debt.totalAmount) * 100) : 0);
+              const owed = Math.max(0, debt.totalAmount - debt.paidAmount);
+              const cel = BADGE_CELEBRATIONS[badgeMsgIndex % BADGE_CELEBRATIONS.length];
+              return (
+                <>
+                  <Text style={s.modalEmoji}>{debt.earned ? '🏦' : '🔒'}</Text>
+                  <Text style={s.modalTitle}>{debt.earned ? `${cel.icon} ${cel.text}` : debt.name}</Text>
+                  <Text style={s.modalSubtitle}>{debt.earned ? `${debt.name} — fully paid` : `${pct}% paid off`}</Text>
+                  {!debt.earned && (
+                    <View style={s.modalProgressBar}>
+                      <View style={[s.modalProgressFill, { width: `${pct}%` }]} />
+                    </View>
+                  )}
+                  <View style={s.modalDivider} />
+                  <View style={s.modalRow}>
+                    <Text style={s.modalRowLabel}>Total</Text>
+                    <Text style={s.modalRowValue}>{fmt(debt.totalAmount, data.currency)}</Text>
+                  </View>
+                  <View style={s.modalRow}>
+                    <Text style={s.modalRowLabel}>Paid back</Text>
+                    <Text style={[s.modalRowValue, { color: '#0F6E6E' }]}>{fmt(debt.paidAmount, data.currency)}</Text>
+                  </View>
+                  {owed > 0 && (
+                    <View style={s.modalRow}>
+                      <Text style={s.modalRowLabel}>Still owed</Text>
+                      <Text style={[s.modalRowValue, { color: '#c0392b' }]}>{fmt(owed, data.currency)}</Text>
+                    </View>
+                  )}
+                  {debt.earned && <Text style={s.modalMessage}>{BADGE_EARNED_MSGS[badgeMsgIndex]}</Text>}
+                </>
+              );
+            })()}
+            <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setSelectedDebtId(null)}>
               <Text style={s.modalCloseTxt}>Close</Text>
             </Pressable>
           </Pressable>
