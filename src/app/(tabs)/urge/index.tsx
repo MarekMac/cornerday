@@ -26,6 +26,72 @@ const MOTIVATION_MAP: Record<string, { label: string; emoji: string }> = {
   break_free:    { label: 'Breaking free for good', emoji: '🔓' },
 };
 
+const THERAPY_RESOURCES = [
+  {
+    region: '🇺🇸 United States',
+    items: [
+      { name: 'National Council on Problem Gambling', desc: 'Helpline, treatment locator, and resources', phone: '18005224700', web: 'https://www.ncpgambling.org' },
+      { name: 'SAMHSA Treatment Locator', desc: 'Find local addiction treatment centers', web: 'https://findtreatment.gov' },
+    ],
+  },
+  {
+    region: '🇬🇧 United Kingdom',
+    items: [
+      { name: 'GamCare', desc: 'Free counselling and support, 24/7', phone: '08088020133', web: 'https://www.gamcare.org.uk' },
+      { name: 'BeGambleAware', desc: 'Information, advice and support', web: 'https://www.begambleaware.org' },
+      { name: 'Gordon Moody', desc: 'Residential and online treatment programmes', web: 'https://www.gordonmoody.org.uk' },
+      { name: 'Gamblers Anonymous UK', desc: 'Peer support meetings across the UK', web: 'https://www.gamblersanonymous.org.uk' },
+    ],
+  },
+  {
+    region: '🇮🇪 Ireland',
+    items: [
+      { name: 'Gambling Care Ireland', desc: 'Free counselling and support services', web: 'https://www.gamblingcare.ie' },
+      { name: 'Gamblers Anonymous Ireland', desc: 'Peer support meetings nationwide', web: 'https://www.gamblersanonymous.ie' },
+    ],
+  },
+  {
+    region: '🇦🇺 Australia',
+    items: [
+      { name: 'Gambling Help Online', desc: 'Free counselling, available 24/7', phone: '1800858858', web: 'https://www.gamblinghelponline.org.au' },
+      { name: 'Lifeline Australia', desc: 'Crisis support and mental health help', phone: '131114', web: 'https://www.lifeline.org.au' },
+    ],
+  },
+  {
+    region: '🇨🇦 Canada',
+    items: [
+      { name: 'ConnexOntario', desc: 'Mental health and addiction support', phone: '18665312600', web: 'https://www.connexontario.ca' },
+      { name: 'CAMH', desc: 'Gambling treatment and research (Toronto)', web: 'https://www.camh.ca' },
+      { name: 'Gambling Support BC', desc: 'Free treatment for BC residents', phone: '18886868223', web: 'https://www.bcresponsiblegambling.ca' },
+    ],
+  },
+  {
+    region: '🇩🇪 Germany',
+    items: [
+      { name: 'BZgA Spielsucht', desc: 'Federal Centre helpline and referrals', phone: '08001372700', web: 'https://www.bzga.de' },
+    ],
+  },
+  {
+    region: '🇫🇷 France',
+    items: [
+      { name: 'Joueurs Info Service', desc: 'Free helpline and support', phone: '0974751313', web: 'https://www.joueurs-info-service.fr' },
+    ],
+  },
+  {
+    region: '🇪🇸 Spain',
+    items: [
+      { name: 'FEJAR', desc: 'Federation of Rehabilitated Gamblers', web: 'https://www.fejar.org' },
+    ],
+  },
+  {
+    region: '🌍 International',
+    items: [
+      { name: 'Gambling Therapy', desc: 'Free online support in multiple languages', web: 'https://www.gamblingtherapy.org' },
+      { name: 'Gamblers Anonymous', desc: 'Worldwide peer support meetings', web: 'https://www.gamblersanonymous.org' },
+    ],
+  },
+];
+
 const DISTRACTIONS = [
   { emoji: '🚶', label: 'Go for a walk' },
   { emoji: '📞', label: 'Call someone you trust' },
@@ -60,6 +126,7 @@ export default function UrgeScreen() {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [therapyModalVisible, setTherapyModalVisible] = useState(false);
 
   const breathScale = useRef(new Animated.Value(0.5)).current;
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -259,8 +326,68 @@ export default function UrgeScreen() {
           <Text style={s.crisisNote}>Text HOME to 741741 — Crisis Text Line</Text>
         </View>
 
+        {/* Professional help */}
+        <Pressable
+          style={({ pressed }) => [s.therapyBtn, pressed && { opacity: 0.85 }]}
+          onPress={() => setTherapyModalVisible(true)}>
+          <Text style={s.therapyBtnIcon}>🏥</Text>
+          <View style={s.therapyBtnText}>
+            <Text style={s.therapyBtnTitle}>Find professional help</Text>
+            <Text style={s.therapyBtnSub}>Official therapy &amp; treatment resources by region</Text>
+          </View>
+          <Text style={s.therapyBtnChevron}>›</Text>
+        </Pressable>
+
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Professional help modal */}
+      <Modal
+        visible={therapyModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTherapyModalVisible(false)}>
+        <View style={s.modalOverlay}>
+          <Pressable style={s.modalBackdrop} onPress={() => setTherapyModalVisible(false)} />
+          <View style={[s.sheet, { maxHeight: '90%' }]}>
+            <View style={s.therapyHandle} />
+            <Text style={s.therapyModalTitle}>Professional Help</Text>
+            <Text style={s.therapyModalSub}>Official treatment resources by region</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
+              {THERAPY_RESOURCES.map(section => (
+                <View key={section.region} style={s.therapySection}>
+                  <Text style={s.therapyRegion}>{section.region}</Text>
+                  {section.items.map((item, idx) => (
+                    <View
+                      key={item.name}
+                      style={[s.therapyItem, idx < section.items.length - 1 && s.therapyItemBorder]}>
+                      <Text style={s.therapyItemName}>{item.name}</Text>
+                      <Text style={s.therapyItemDesc}>{item.desc}</Text>
+                      <View style={s.therapyItemBtns}>
+                        {'phone' in item && item.phone ? (
+                          <Pressable
+                            style={({ pressed }) => [s.therapyCallBtn, pressed && { opacity: 0.7 }]}
+                            onPress={() => Linking.openURL(`tel:${item.phone}`)}>
+                            <Text style={s.therapyCallBtnTxt}>📞 Call</Text>
+                          </Pressable>
+                        ) : null}
+                        {'web' in item && item.web ? (
+                          <Pressable
+                            style={({ pressed }) => [s.therapyWebBtn, pressed && { opacity: 0.7 }]}
+                            onPress={() => Linking.openURL(item.web!)}>
+                            <Text style={s.therapyWebBtnTxt}>🌐 Website</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ))}
+              <View style={{ height: 32 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Log moment modal */}
       <Modal
@@ -476,4 +603,35 @@ const s = StyleSheet.create({
   savedWrap: { alignItems: 'center', paddingVertical: 40, gap: 12 },
   savedIcon: { fontSize: 40, color: '#0a7a4e' },
   savedTxt: { fontSize: 18, fontWeight: '700', color: '#0a7a4e' },
+
+  therapyBtn: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: '#a8d8d0',
+  },
+  therapyBtnIcon: { fontSize: 24 },
+  therapyBtnText: { flex: 1, gap: 2 },
+  therapyBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
+  therapyBtnSub: { fontSize: 12, color: '#888' },
+  therapyBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
+
+  therapyHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: '#ddd',
+    alignSelf: 'center', marginBottom: 16,
+  },
+  therapyModalTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center' },
+  therapyModalSub: { fontSize: 13, color: '#888', textAlign: 'center', marginTop: 4 },
+
+  therapySection: { marginBottom: 8 },
+  therapyRegion: { fontSize: 14, fontWeight: '700', color: '#0F6E6E', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 4 },
+
+  therapyItem: { paddingVertical: 12, gap: 4 },
+  therapyItemBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  therapyItemName: { fontSize: 14, fontWeight: '700', color: '#111' },
+  therapyItemDesc: { fontSize: 12, color: '#888' },
+  therapyItemBtns: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  therapyCallBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#ffcdd2' },
+  therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: '#c0392b' },
+  therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#a8d8d0' },
+  therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
 });

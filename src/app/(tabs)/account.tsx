@@ -687,13 +687,6 @@ export default function AccountScreen() {
           <Text style={s.notifSettingsTxt}>Notification settings</Text>
         </Pressable>
 
-        {/* Privacy Policy */}
-        <Pressable
-          style={({ pressed }) => [s.privacyBtn, pressed && { opacity: 0.7 }]}
-          onPress={() => router.push('/privacy-policy')}>
-          <Text style={s.privacyBtnTxt}>Privacy Policy</Text>
-        </Pressable>
-
         {/* Export data */}
         <Pressable
           style={({ pressed }) => [s.exportBtn, pressed && { opacity: 0.7 }]}
@@ -723,6 +716,13 @@ export default function AccountScreen() {
           onPress={confirmDeleteAccount}
           disabled={signingOut}>
           <Text style={s.deleteBtnTxt}>Delete account</Text>
+        </Pressable>
+
+        {/* Privacy Policy */}
+        <Pressable
+          style={({ pressed }) => [s.privacyBtn, pressed && { opacity: 0.7 }]}
+          onPress={() => router.push('/privacy-policy')}>
+          <Text style={s.privacyBtnTxt}>Privacy Policy</Text>
         </Pressable>
 
         <Text style={s.versionTxt}>CornerDay v{appVersion}</Text>
