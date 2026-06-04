@@ -512,6 +512,7 @@ export default function HomeScreen() {
   const [moodSubmitting, setMoodSubmitting] = useState(false);
   const [relapseLoading, setRelapseLoading] = useState(false);
   const [tick, setTick] = useState(0);
+  const prevNextMilestone = useRef<number | null>(null);
   const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [selectedBadge, setSelectedBadge] = useState<typeof BADGE_DEFS[0] | null>(null);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
@@ -520,6 +521,17 @@ export default function HomeScreen() {
   const [editingMood, setEditingMood] = useState(false);
   const [moodNote, setMoodNote] = useState('');
   const [editMoodValue, setEditMoodValue] = useState<number | null>(null);
+
+  // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
+  useEffect(() => {
+    if (!data?.quitDate) return;
+    const ms = Math.max(0, Date.now() - new Date(data.quitDate).getTime());
+    const { next } = getMilestone(ms);
+    if (prevNextMilestone.current !== null && prevNextMilestone.current !== next) {
+      fetchData();
+    }
+    prevNextMilestone.current = next;
+  }, [tick]);
 
   const randomQuote = useCallback(() => {
     setQuoteIndex(i => {
