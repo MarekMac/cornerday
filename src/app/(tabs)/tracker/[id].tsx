@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -105,6 +106,8 @@ export default function DebtDetailScreen() {
       return;
     }
 
+    const isPayingOff = Math.round(val * 100) === Math.round(remaining * 100);
+
     setSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -112,6 +115,15 @@ export default function DebtDetailScreen() {
         user_id: user.id, debt_id: debt.id,
         amount: val, note: note.trim() || null,
       });
+      if (isPayingOff) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '🎉 Debt paid off!',
+            body: `You've fully paid off "${debt.name}". That's a huge step — well done.`,
+          },
+          trigger: null,
+        });
+      }
       setAmount(''); setNote('');
       await fetchData();
     }
