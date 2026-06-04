@@ -236,6 +236,18 @@ export default function AccountScreen() {
     setShowSpendingModal(false);
   };
 
+  const handleAvatarPress = () => {
+    if (profile?.avatarUrl) {
+      Alert.alert('Profile photo', undefined, [
+        { text: 'Change photo', onPress: pickAvatar },
+        { text: 'Remove photo', style: 'destructive', onPress: removeAvatar },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    } else {
+      pickAvatar();
+    }
+  };
+
   const pickAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -272,7 +284,6 @@ export default function AccountScreen() {
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      // Delete old avatar file if one exists
       const oldUrl = profile?.avatarUrl;
       if (oldUrl) {
         const oldPath = oldUrl.split('/avatars/')[1]?.split('?')[0];
@@ -285,6 +296,25 @@ export default function AccountScreen() {
     } catch (err) {
       console.error('Avatar upload error:', err);
       Alert.alert('Upload failed', 'Could not upload photo. Please try again.');
+    }
+    setUploadingAvatar(false);
+  };
+
+  const removeAvatar = async () => {
+    setUploadingAvatar(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const oldUrl = profile?.avatarUrl;
+      if (oldUrl) {
+        const oldPath = oldUrl.split('/avatars/')[1]?.split('?')[0];
+        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+      }
+      await supabase.from('users').update({ avatar_url: null }).eq('id', user.id);
+      setProfile(prev => prev ? { ...prev, avatarUrl: null } : prev);
+      setGlobalAvatarUrl(null);
+    } catch (err) {
+      Alert.alert('Error', 'Could not remove photo. Please try again.');
     }
     setUploadingAvatar(false);
   };
@@ -447,7 +477,7 @@ export default function AccountScreen() {
 
         {/* Profile card */}
         <View style={s.profileCard}>
-          <Pressable onPress={pickAvatar} style={({ pressed }) => [s.avatar, pressed && { opacity: 0.8 }]}>
+          <Pressable onPress={handleAvatarPress} style={({ pressed }) => [s.avatar, pressed && { opacity: 0.8 }]}>
             {profile?.avatarUrl
               ? <Image source={{ uri: profile.avatarUrl }} style={s.avatarImg} />
               : <Text style={s.avatarTxt}>{initials}</Text>}
