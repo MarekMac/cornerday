@@ -22,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY } from '@/constants/storage-keys';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -468,6 +468,7 @@ interface HomeData {
   totalLost: number;
   totalPaid: number;
   debtItems: { id: string; name: string; totalAmount: number; paidAmount: number; earned: boolean; earnedAt: string | null }[];
+  checklistCompleted: boolean;
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -625,33 +626,27 @@ export default function HomeScreen() {
       newDebtBadges.forEach(b => earnedBadges.push(b.badge_type));
     }
 
-    // Prevention checklist badge
-    if (!earnedBadges.includes('prevention_checklist')) {
-      const raw = await AsyncStorage.getItem(CHECKLIST_KEY);
-      const checklistData: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-      const checklistDone = Object.values(checklistData).filter(Boolean).length >= CHECKLIST_TOTAL;
-      if (checklistDone) {
-        const { error } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'prevention_checklist' });
-        if (!error) {
-          earnedBadges.push('prevention_checklist');
-          await supabase.from('losses').insert({
-            user_id: user.id, type: 'milestone_earned', amount: 0,
-            category: 'Milestone', note: '🛡️ Safe Zone',
-          });
-          const { status } = await Notifications.getPermissionsAsync();
-          if (status === 'granted') {
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: '🛡️ Safe Zone badge earned!',
-                body: "You've completed every step of the prevention checklist. Your recovery is protected.",
-                data: { screen: '/(tabs)/' },
-              },
-              trigger: Platform.OS === 'android'
-                ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
-                : null,
-            });
-          }
-        }
+    // Prevention checklist badge — driven by AsyncStorage, no DB insert needed
+    const [checklistRaw, checklistBadgeSent] = await Promise.all([
+      AsyncStorage.getItem(CHECKLIST_KEY),
+      AsyncStorage.getItem(CHECKLIST_BADGE_SENT_KEY),
+    ]);
+    const checklistData: Record<string, boolean> = checklistRaw ? JSON.parse(checklistRaw) : {};
+    const checklistCompleted = Object.values(checklistData).filter(Boolean).length >= CHECKLIST_TOTAL;
+    if (checklistCompleted && !checklistBadgeSent) {
+      await AsyncStorage.setItem(CHECKLIST_BADGE_SENT_KEY, '1');
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === 'granted') {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '🛡️ Safe Zone badge earned!',
+            body: "You've completed every step of the prevention checklist. Your recovery is protected.",
+            data: { screen: '/(tabs)/' },
+          },
+          trigger: Platform.OS === 'android'
+            ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
+            : null,
+        });
       }
     }
 
@@ -667,6 +662,7 @@ export default function HomeScreen() {
       totalLost,
       totalPaid,
       debtItems,
+      checklistCompleted,
       todayMood: moodRes.data?.mood ?? null,
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
@@ -919,7 +915,7 @@ export default function HomeScreen() {
               );
             })}
             {(() => {
-              const earned = data.earnedBadges.includes('prevention_checklist');
+              const earned = data.checklistCompleted;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
                   onPress={() => { setChecklistBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); }}>
@@ -1200,7 +1196,7 @@ export default function HomeScreen() {
         <Pressable style={s.modalOverlay} onPress={() => setChecklistBadgeVisible(false)}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {(() => {
-              const earned = data.earnedBadges.includes('prevention_checklist');
+              const earned = data.checklistCompleted;
               const cel = BADGE_CELEBRATIONS[badgeMsgIndex % BADGE_CELEBRATIONS.length];
               return (
                 <>
