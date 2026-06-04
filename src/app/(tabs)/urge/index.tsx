@@ -4,10 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  KeyboardAvoidingView,
   Linking,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -282,9 +280,7 @@ export default function UrgeScreen() {
         transparent
         animationType="slide"
         onRequestClose={closeModal}>
-        <KeyboardAvoidingView
-          style={s.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={s.modalOverlay}>
           <Pressable style={s.modalBackdrop} onPress={closeModal} />
           <View style={s.sheet}>
             <View style={s.sheetHandle} />
@@ -294,7 +290,7 @@ export default function UrgeScreen() {
                 <Text style={s.savedTxt}>Saved</Text>
               </View>
             ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={s.sheetTitle}>What happened?</Text>
 
                 {/* Outcome toggle */}
@@ -377,7 +373,7 @@ export default function UrgeScreen() {
               </ScrollView>
             )}
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
