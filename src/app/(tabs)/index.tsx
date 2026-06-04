@@ -1165,7 +1165,7 @@ const s = StyleSheet.create({
   savedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   savedSep: { height: 1, backgroundColor: '#f0f0f0' },
   savedLabel: { fontSize: 14, color: '#888', flexShrink: 1, flex: 1 },
-  savedValue: { fontSize: 20, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
+  savedValue: { fontSize: 16, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
 
   // Card
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },

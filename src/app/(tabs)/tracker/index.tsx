@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   ActivityIndicator,
   Alert,
-  Dimensions,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,8 +18,7 @@ import {
   View,
 } from 'react-native';
 
-const SHEET_MIN_HEIGHT = Dimensions.get('window').height * 0.6;
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
 
@@ -84,6 +84,20 @@ function streakDays(quitTimestamp: string | null) {
 }
 
 export default function TrackerIndex() {
+  const insets = useSafeAreaInsets();
+  const sheetAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', e => {
+      Animated.timing(sheetAnim, { toValue: e.endCoordinates.height, duration: 200, useNativeDriver: false }).start();
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      Animated.timing(sheetAnim, { toValue: 0, duration: 150, useNativeDriver: false }).start();
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [sheetAnim]);
+
   const [tab, setTab] = useState<MainTab>('debts');
   const [debts, setDebts] = useState<Debt[]>([]);
   const [payments, setPayments] = useState<DebtPayment[]>([]);
@@ -162,6 +176,7 @@ export default function TrackerIndex() {
   };
 
   const closeDebtModal = () => {
+    Keyboard.dismiss();
     setDebtModalVisible(false);
     setEditingDebt(null);
   };
@@ -236,6 +251,7 @@ export default function TrackerIndex() {
   };
 
   const closeSavingModal = () => {
+    Keyboard.dismiss();
     setSavingModalVisible(false);
     setEditingSaving(null);
   };
@@ -451,47 +467,49 @@ export default function TrackerIndex() {
       {/* Debt modal — add & edit */}
       <Modal visible={debtModalVisible} transparent animationType="slide"
         onRequestClose={closeDebtModal}>
-        <View style={s.modalOverlay}>
+        <Animated.View style={[s.modalOverlay, Platform.OS === 'android' && { paddingBottom: sheetAnim }]}>
           <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFillObject} />
           <Pressable style={StyleSheet.absoluteFillObject} onPress={closeDebtModal} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={s.sheet}>
             <View style={s.sheetHandle} />
             <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Add a debt'}</Text>
 
-            <Text style={s.fieldLbl}>Name</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. Bank loan, Friend — John"
-              placeholderTextColor="#bbb"
-              value={debtName}
-              onChangeText={setDebtName}
-              maxLength={60}
-            />
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Text style={s.fieldLbl}>Name</Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. Bank loan, Friend — John"
+                placeholderTextColor="#bbb"
+                value={debtName}
+                onChangeText={setDebtName}
+                maxLength={60}
+              />
 
-            <Text style={s.fieldLbl}>Total amount owed</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. 2000"
-              placeholderTextColor="#bbb"
-              keyboardType="decimal-pad"
-              value={debtAmount}
-              onChangeText={setDebtAmount}
-            />
+              <Text style={s.fieldLbl}>Total amount owed</Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. 2000"
+                placeholderTextColor="#bbb"
+                keyboardType="decimal-pad"
+                value={debtAmount}
+                onChangeText={setDebtAmount}
+              />
 
-            <Text style={s.fieldLbl}>Category</Text>
-            <View style={s.chipRow}>
-              {DEBT_CATEGORIES.map(cat => (
-                <Pressable
-                  key={cat.key}
-                  style={[s.chip, debtCategory === cat.key && s.chipActive]}
-                  onPress={() => setDebtCategory(cat.key)}>
-                  <Text style={[s.chipTxt, debtCategory === cat.key && s.chipTxtActive]}>
-                    {cat.emoji} {cat.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+              <Text style={s.fieldLbl}>Category</Text>
+              <View style={s.chipRow}>
+                {DEBT_CATEGORIES.map(cat => (
+                  <Pressable
+                    key={cat.key}
+                    style={[s.chip, debtCategory === cat.key && s.chipActive]}
+                    onPress={() => setDebtCategory(cat.key)}>
+                    <Text style={[s.chipTxt, debtCategory === cat.key && s.chipTxtActive]}>
+                      {cat.emoji} {cat.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
 
             <View style={s.sheetActions}>
               <Pressable style={s.cancelBtn} onPress={closeDebtModal}>
@@ -506,41 +524,43 @@ export default function TrackerIndex() {
                   : <Text style={s.saveBtnTxt}>{editingDebt ? 'Save changes' : 'Add debt'}</Text>}
               </Pressable>
             </View>
-            <View style={{ height: 16 }} />
+            <View style={{ height: Math.max(16, insets.bottom) }} />
           </View>
           </KeyboardAvoidingView>
-        </View>
+        </Animated.View>
       </Modal>
 
       {/* Saving modal — add & edit */}
       <Modal visible={savingModalVisible} transparent animationType="slide"
         onRequestClose={closeSavingModal}>
-        <View style={s.modalOverlay}>
+        <Animated.View style={[s.modalOverlay, Platform.OS === 'android' && { paddingBottom: sheetAnim }]}>
           <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFillObject} />
           <Pressable style={StyleSheet.absoluteFillObject} onPress={closeSavingModal} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={s.sheet}>
             <View style={s.sheetHandle} />
             <Text style={s.sheetTitle}>{editingSaving ? 'Edit saving' : 'Log a saving'}</Text>
 
-            <Text style={s.fieldLbl}>Amount</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. 100"
-              placeholderTextColor="#bbb"
-              keyboardType="decimal-pad"
-              value={savingAmount}
-              onChangeText={setSavingAmount}
-            />
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Text style={s.fieldLbl}>Amount</Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. 100"
+                placeholderTextColor="#bbb"
+                keyboardType="decimal-pad"
+                value={savingAmount}
+                onChangeText={setSavingAmount}
+              />
 
-            <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. Savings account, Holiday fund"
-              placeholderTextColor="#bbb"
-              value={savingNote}
-              onChangeText={setSavingNote}
-            />
+              <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. Savings account, Holiday fund"
+                placeholderTextColor="#bbb"
+                value={savingNote}
+                onChangeText={setSavingNote}
+              />
+            </ScrollView>
 
             <View style={s.sheetActions}>
               <Pressable style={s.cancelBtn} onPress={closeSavingModal}>
@@ -555,10 +575,10 @@ export default function TrackerIndex() {
                   : <Text style={s.saveBtnTxt}>{editingSaving ? 'Save changes' : 'Add saving'}</Text>}
               </Pressable>
             </View>
-            <View style={{ height: 16 }} />
+            <View style={{ height: Math.max(16, insets.bottom) }} />
           </View>
           </KeyboardAvoidingView>
-        </View>
+        </Animated.View>
       </Modal>
     </View>
   );
@@ -588,7 +608,7 @@ const s = StyleSheet.create({
   savingsInnerSep: { height: 1, backgroundColor: '#f0f0f0', marginTop: 6 },
   savingsLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8 },
   savingsLineLabel: { fontSize: 14, color: '#888', flex: 1, flexShrink: 1 },
-  savingsLineValue: { fontSize: 20, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
+  savingsLineValue: { fontSize: 16, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
 
   sectionDivider: { height: 1, backgroundColor: '#e8e8e8', marginTop: 6, marginBottom: 4 },
 
@@ -651,7 +671,6 @@ const s = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20,
-    minHeight: SHEET_MIN_HEIGHT,
     shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.28, shadowRadius: 20, elevation: 32,
   },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
