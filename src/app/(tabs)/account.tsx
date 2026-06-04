@@ -416,6 +416,10 @@ export default function AccountScreen() {
         streak_start_date: dateOnly,
         current_streak: 0,
       }).eq('user_id', user.id);
+      await supabase.from('losses').insert({
+        user_id: user.id, type: 'quit_date_changed', amount: 0,
+        category: 'Account', note: iso,
+      });
       setProfile(prev => prev ? { ...prev, quitTimestamp: iso } : prev);
     }
     setSaving(false);

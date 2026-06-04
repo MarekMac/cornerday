@@ -576,6 +576,10 @@ export default function HomeScreen() {
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !earnedBadges.includes(b.type));
     if (toAward.length > 0) {
       await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
+      await supabase.from('losses').insert(toAward.map(b => ({
+        user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
+        category: 'Milestone', note: `${b.emoji} ${b.label}`,
+      })));
       toAward.forEach(b => earnedBadges.push(b.type));
     }
 

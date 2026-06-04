@@ -31,10 +31,13 @@ type FeedEntry =
   | { kind: 'payment';       id: string; amount: number; note: string | null; debt_name: string; created_at: string }
   | { kind: 'saving';        id: string; amount: number; note: string | null; created_at: string }
   | { kind: 'streak_reset';  id: string; note: string | null; created_at: string }
-  | { kind: 'debt_edited';   id: string; amount: number; note: string | null; created_at: string }
-  | { kind: 'debt_deleted';  id: string; amount: number; note: string | null; created_at: string }
-  | { kind: 'saving_edited'; id: string; amount: number; note: string | null; created_at: string }
-  | { kind: 'saving_deleted';id: string; amount: number; note: string | null; created_at: string };
+  | { kind: 'debt_edited';      id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'debt_deleted';     id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'saving_edited';    id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'saving_deleted';   id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'milestone_earned'; id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'debt_paid_off';    id: string; amount: number; note: string | null; created_at: string }
+  | { kind: 'quit_date_changed';id: string; note: string | null; created_at: string };
 
 function triggerLabel(key: string) {
   return TRIGGERS.find(t => t.key === key)?.label ?? key;
@@ -210,6 +213,54 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
     );
   }
 
+  if (entry.kind === 'milestone_earned') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillGreen]}>
+            <Text style={[s.pillTxt, s.pillTxtGreen]}>Milestone reached ✓</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <Text style={s.cardTitle}>{entry.note || 'Milestone'}</Text>
+      </View>
+    );
+  }
+
+  if (entry.kind === 'debt_paid_off') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillGreen]}>
+            <Text style={[s.pillTxt, s.pillTxtGreen]}>Debt paid off 🎉</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <View style={s.cardRow}>
+          <Text style={s.cardTitle}>{entry.note || 'Debt'}</Text>
+          <Text style={[s.cardAmount, { color: '#0F6E6E' }]}>{fmt(Number(entry.amount), currency)}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (entry.kind === 'quit_date_changed') {
+    const formatted = entry.note
+      ? new Date(entry.note).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
+      : null;
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillTeal]}>
+            <Text style={[s.pillTxt, s.pillTxtTeal]}>Start date updated</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <Text style={s.cardTitle}>{formatted ?? 'Date changed'}</Text>
+      </View>
+    );
+  }
+
   return null;
 }
 
@@ -230,7 +281,7 @@ export default function JournalScreen() {
       supabase.from('debt_payments').select('id, amount, note, created_at, debts(name)').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('losses').select('id, note, created_at').eq('user_id', user.id).eq('type', 'streak_reset'),
-      supabase.from('losses').select('id, type, amount, note, created_at').eq('user_id', user.id).in('type', ['debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted']),
+      supabase.from('losses').select('id, type, amount, note, created_at').eq('user_id', user.id).in('type', ['debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed']),
       supabase.from('users').select('currency').eq('id', user.id).single(),
     ]);
 
@@ -269,7 +320,7 @@ export default function JournalScreen() {
         supabase.from('urge_journal').delete().eq('user_id', user.id),
         supabase.from('debt_payments').delete().eq('user_id', user.id),
         supabase.from('debts').delete().eq('user_id', user.id),
-        supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted']),
+        supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed']),
       ]);
       fetchFeed();
     }

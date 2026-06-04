@@ -125,6 +125,10 @@ export default function DebtDetailScreen() {
           },
           trigger: null,
         });
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'debt_paid_off', amount: Number(debt.total_amount),
+          category: 'Debt', note: debt.name,
+        });
       }
       setAmount(''); setNote('');
       await fetchData();
