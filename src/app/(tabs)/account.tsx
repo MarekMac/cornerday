@@ -3,7 +3,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -159,7 +158,7 @@ export default function AccountScreen() {
   const [notifModalVisible, setNotifModalVisible] = useState(false);
 
   const [exportLoading, setExportLoading] = useState(false);
-  const [emailCopied, setEmailCopied] = useState(false);
+  const [emailSelected, setEmailSelected] = useState(false);
 
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [spendingCurrency, setSpendingCurrency] = useState('USD');
@@ -597,17 +596,15 @@ export default function AccountScreen() {
               <View style={s.nameEditHint}><Text style={s.nameEditHintTxt}>Edit</Text></View>
             </Pressable>
           )}
-          <Pressable
-            onPress={async () => {
-              if (!profile?.email) return;
-              await Clipboard.setStringAsync(profile.email);
-              setEmailCopied(true);
-              setTimeout(() => setEmailCopied(false), 2000);
-            }}
-            style={s.emailRow}>
-            <Text style={s.email}>{profile?.email}</Text>
-            <Text style={s.emailCopyHint}>{emailCopied ? 'Copied!' : 'Tap to copy'}</Text>
-          </Pressable>
+          <View style={s.emailRow}>
+            <Text
+              style={s.email}
+              selectable
+              onPress={() => { setEmailSelected(true); setTimeout(() => setEmailSelected(false), 2000); }}>
+              {profile?.email}
+            </Text>
+            <Text style={s.emailCopyHint}>{emailSelected ? 'Hold to copy' : 'Tap to select'}</Text>
+          </View>
           {profile?.isPremium && (
             <View style={s.premiumBadge}>
               <Text style={s.premiumBadgeTxt}>✨ Premium</Text>
