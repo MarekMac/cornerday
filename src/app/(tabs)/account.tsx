@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -44,6 +46,7 @@ interface Profile {
   currency: string;
   isPremium: boolean;
   avatarUrl: string | null;
+  longestStreak: number;
 }
 
 const CURRENCIES = [
@@ -153,6 +156,8 @@ export default function AccountScreen() {
   const [quitTimestamp, setQuitTimestamp] = useState<string | null>(null);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
 
+  const [exportLoading, setExportLoading] = useState(false);
+
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [spendingCurrency, setSpendingCurrency] = useState('USD');
   const [spendingChip, setSpendingChip] = useState('');
@@ -162,11 +167,14 @@ export default function AccountScreen() {
   const fetchProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from('users')
-      .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
-      .eq('id', user.id)
-      .single();
+    const [{ data }, { data: streakData }] = await Promise.all([
+      supabase
+        .from('users')
+        .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
+        .eq('id', user.id)
+        .single(),
+      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
+    ]);
     const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
     let resolvedAvatar = data?.avatar_url ?? null;
     if (!resolvedAvatar && googleAvatar) {
@@ -186,6 +194,7 @@ export default function AccountScreen() {
       currency: data?.currency ?? 'USD',
       isPremium: data?.is_premium ?? false,
       avatarUrl: resolvedAvatar,
+      longestStreak: streakData?.longest_streak ?? 0,
     });
     setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
     setNotifPrefs({
@@ -473,6 +482,35 @@ export default function AccountScreen() {
     );
   };
 
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const [profileRes, lossesRes, moodRes, streakRes, badgesRes] = await Promise.all([
+        supabase.from('users').select('display_name, quit_timestamp, motivation, goal, trigger, support_type, weekly_bet, currency').eq('id', user.id).single(),
+        supabase.from('losses').select('type, amount, category, note, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('streaks').select('current_streak, longest_streak, streak_start_date').eq('user_id', user.id).single(),
+        supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
+      ]);
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        profile: profileRes.data,
+        streak: streakRes.data,
+        losses: lossesRes.data,
+        mood_checkins: moodRes.data,
+        badges: badgesRes.data,
+      };
+      await Share.share({
+        message: JSON.stringify(exportData, null, 2),
+        title: 'CornerDay — My Data',
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const handleNotifToggle = async (key: keyof NotifPrefs, value: boolean) => {
     const updated = { ...notifPrefs, [key]: value };
     setNotifPrefs(updated);
@@ -494,6 +532,10 @@ export default function AccountScreen() {
 
   const initials = (profile?.displayName ?? profile?.email ?? '?')[0].toUpperCase();
   const quitFormatted = formatQuitDate(profile?.quitTimestamp ?? null);
+  const currentStreak = profile?.quitTimestamp
+    ? Math.floor(Math.max(0, Date.now() - new Date(profile.quitTimestamp).getTime()) / 86400000)
+    : 0;
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   return (
     <View style={s.root}>
@@ -552,12 +594,27 @@ export default function AccountScreen() {
               <View style={s.nameEditHint}><Text style={s.nameEditHintTxt}>Edit</Text></View>
             </Pressable>
           )}
-          <Text style={s.email}>{profile?.email}</Text>
+          <Text style={s.email} selectable>{profile?.email}</Text>
           {profile?.isPremium && (
             <View style={s.premiumBadge}>
               <Text style={s.premiumBadgeTxt}>✨ Premium</Text>
             </View>
           )}
+        </View>
+
+        {/* Streak stats */}
+        <View style={s.statsCard}>
+          <View style={s.statCol}>
+            <Text style={s.statValue}>{currentStreak}</Text>
+            <Text style={s.statLabel}>Current streak</Text>
+            <Text style={s.statUnit}>days</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statCol}>
+            <Text style={s.statValue}>{profile?.longestStreak ?? 0}</Text>
+            <Text style={s.statLabel}>Longest streak</Text>
+            <Text style={s.statUnit}>days</Text>
+          </View>
         </View>
 
         {/* Journey */}
@@ -646,6 +703,19 @@ export default function AccountScreen() {
           <Text style={s.privacyBtnTxt}>Privacy Policy</Text>
         </Pressable>
 
+        {/* Export data */}
+        <Pressable
+          style={({ pressed }) => [s.exportBtn, pressed && { opacity: 0.7 }]}
+          onPress={handleExport}
+          disabled={exportLoading}>
+          {exportLoading
+            ? <ActivityIndicator color="#0F6E6E" size="small" />
+            : <>
+                <Ionicons name="download-outline" size={16} color="#0F6E6E" style={{ marginRight: 8 }} />
+                <Text style={s.exportTxt}>Export my data</Text>
+              </>}
+        </Pressable>
+
         {/* Sign out */}
         <Pressable
           style={({ pressed }) => [s.signOutBtn, pressed && { opacity: 0.7 }]}
@@ -663,6 +733,8 @@ export default function AccountScreen() {
           disabled={signingOut}>
           <Text style={s.deleteBtnTxt}>Delete account</Text>
         </Pressable>
+
+        <Text style={s.versionTxt}>CornerDay v{appVersion}</Text>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -950,6 +1022,23 @@ const s = StyleSheet.create({
   privacyBtn: { alignItems: 'center', paddingVertical: 12 },
   privacyBtnTxt: { fontSize: 13, color: '#aaa', textDecorationLine: 'underline' },
 
+  statsCard: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center',
+  },
+  statCol: { flex: 1, alignItems: 'center', gap: 2 },
+  statValue: { fontSize: 28, fontWeight: '800', color: '#0F6E6E' },
+  statLabel: { fontSize: 12, color: '#888', fontWeight: '600' },
+  statUnit: { fontSize: 11, color: '#bbb' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#f0f0f0', marginHorizontal: 8 },
+
+  exportBtn: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#a8d8d0',
+  },
+  exportTxt: { fontSize: 15, color: '#0F6E6E', fontWeight: '600' },
+
   signOutBtn: {
     backgroundColor: '#fff', borderRadius: 14, padding: 16,
     alignItems: 'center', borderWidth: 1, borderColor: '#ffcdd2',
@@ -957,6 +1046,7 @@ const s = StyleSheet.create({
   signOutTxt: { fontSize: 15, color: '#c0392b', fontWeight: '600' },
   deleteBtn: { alignItems: 'center', paddingVertical: 12 },
   deleteBtnTxt: { fontSize: 13, color: '#bbb' },
+  versionTxt: { fontSize: 12, color: '#ccc', textAlign: 'center', paddingVertical: 8 },
 
   infoValueEmpty: { color: '#bbb', fontStyle: 'italic', fontWeight: '400' },
 
