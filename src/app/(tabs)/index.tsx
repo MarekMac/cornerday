@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -801,9 +803,11 @@ export default function HomeScreen() {
       </LinearGradient>
 
       {/* ── Body ── */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         style={s.body}
         contentContainerStyle={s.bodyContent}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" />}>
 
         {/* Stats */}
@@ -976,6 +980,7 @@ export default function HomeScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Badge detail modal */}
       <Modal visible={!!selectedBadge} transparent animationType="slide" onRequestClose={() => setSelectedBadge(null)}>
