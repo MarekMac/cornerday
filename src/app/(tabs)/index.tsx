@@ -865,11 +865,14 @@ export default function HomeScreen() {
           {data.todayMood !== null && !editingMood ? (
             <>
               <View style={s.moodDone}>
-                <Text style={s.moodDoneEmoji}>{MOODS[data.todayMood - 1]}</Text>
                 <View style={{ flex: 1 }}>
-                  {data.todayMoodNote
-                    ? <Text style={s.moodDoneNote}>{data.todayMoodNote}</Text>
-                    : <Text style={s.moodDoneTxt}>Today's check-in done</Text>}
+                  <Text style={s.moodCardTitle}>Today's mood</Text>
+                  <View style={s.moodDoneRow}>
+                    <Text style={s.moodDoneEmoji}>{MOODS[data.todayMood - 1]}</Text>
+                    {data.todayMoodNote
+                      ? <Text style={s.moodDoneNote} numberOfLines={2}>{data.todayMoodNote}</Text>
+                      : null}
+                  </View>
                 </View>
                 <Pressable onPress={() => { setEditingMood(true); setMoodNote(data.todayMoodNote ?? ''); setEditMoodValue(data.todayMood); }} style={({ pressed }) => [s.moodEditBtn, pressed && { opacity: 0.6 }]}>
                   <Text style={s.moodEditBtnTxt}>Edit</Text>
@@ -1224,9 +1227,9 @@ const s = StyleSheet.create({
   moodBtn: { padding: 4 },
   moodEmoji: { fontSize: 26 },
   moodDone: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  moodDoneEmoji: { fontSize: 22 },
-  moodDoneTxt: { fontSize: 13, color: '#555', fontWeight: '500' },
-  moodDoneNote: { fontSize: 13, color: '#333', fontStyle: 'italic' },
+  moodDoneRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  moodDoneEmoji: { fontSize: 24 },
+  moodDoneNote: { fontSize: 14, color: '#444', flex: 1 },
   moodEditBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#e6f7f7' },
   moodEditBtnTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
   moodBtnSelected: { backgroundColor: '#e6f7f7', borderRadius: 8 },
