@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -56,6 +57,8 @@ export default function DebtDetailScreen() {
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deletePayTarget, setDeletePayTarget] = useState<{ id: string; amount: number } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -77,18 +80,16 @@ export default function DebtDetailScreen() {
 
   useEffect(() => { fetchData().finally(() => setLoading(false)); }, [fetchData]);
 
-  const deletePayment = (paymentId: string, amount: number) => {
-    Alert.alert(
-      'Delete payment?',
-      `Remove this payment of ${fmt(amount, currency)}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => {
-          await supabase.from('debt_payments').delete().eq('id', paymentId);
-          await fetchData();
-        }},
-      ],
-    );
+  const deletePayment = (paymentId: string, amount: number) =>
+    setDeletePayTarget({ id: paymentId, amount });
+
+  const executeDeletePayment = async () => {
+    if (!deletePayTarget) return;
+    setDeleting(true);
+    await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id);
+    setDeletePayTarget(null);
+    setDeleting(false);
+    await fetchData();
   };
 
   const addPayment = async () => {
@@ -249,6 +250,36 @@ export default function DebtDetailScreen() {
           <View style={{ height: 32 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={!!deletePayTarget} transparent animationType="fade" onRequestClose={() => setDeletePayTarget(null)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setDeletePayTarget(null)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmHandle} />
+            <View style={s.confirmIconRow}>
+              <View style={s.confirmIconCircle}>
+                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Delete payment?</Text>
+            {deletePayTarget && (
+              <Text style={s.confirmBody}>
+                Remove this payment of{' '}
+                <Text style={s.confirmBold}>{fmt(deletePayTarget.amount, currency)}</Text>?
+              </Text>
+            )}
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setDeletePayTarget(null)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.confirmDelete, deleting && { opacity: 0.6 }]} onPress={executeDeletePayment} disabled={deleting}>
+                {deleting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={s.confirmDeleteTxt}>Delete</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -300,4 +331,25 @@ const s = StyleSheet.create({
   paymentDate: { fontSize: 12, color: '#888' },
   paymentAmount: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
   paymentRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  confirmSheet: {
+    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+  },
+  confirmHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
+  confirmIconRow: { alignItems: 'center', marginBottom: 12 },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmBold: { fontWeight: '700', color: '#333' },
+  confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
+  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
+  confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

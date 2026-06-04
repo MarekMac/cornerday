@@ -167,6 +167,11 @@ export default function AccountScreen() {
   const [spendingCustom, setSpendingCustom] = useState('');
   const [savingSpending, setSavingSpending] = useState(false);
 
+  const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
+  const [confirmQuitDate, setConfirmQuitDate] = useState<Date | null>(null);
+  const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
+  const [signOutVisible, setSignOutVisible] = useState(false);
+
   const fetchProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -271,11 +276,7 @@ export default function AccountScreen() {
 
   const handleAvatarPress = () => {
     if (profile?.avatarUrl) {
-      Alert.alert('Profile photo', undefined, [
-        { text: 'Change photo', onPress: pickAvatar },
-        { text: 'Remove photo', style: 'destructive', onPress: removeAvatar },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      setAvatarMenuVisible(true);
     } else {
       pickAvatar();
     }
@@ -394,14 +395,7 @@ export default function AccountScreen() {
             if (isNaN(selectedTime.getTime())) return;
             const merged = new Date(selectedDate.getTime());
             merged.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
-            Alert.alert(
-              'Update start date?',
-              `Set to ${formatQuitDate(merged.toISOString())}?\n\nThis will reset your current streak counter.`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Save', onPress: () => saveQuitDate(merged) },
-              ],
-            );
+            setConfirmQuitDate(merged);
             },
           }), 500);
       },
@@ -428,61 +422,37 @@ export default function AccountScreen() {
   };
 
 
-  const confirmDeleteAccount = () => {
-    Alert.alert(
-      'Delete account',
-      'This will permanently delete your account and all your data — streaks, losses, badges, mood history, and journal entries. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete permanently',
-          style: 'destructive',
-          onPress: async () => {
-            setSigningOut(true);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              // Delete all user data
-              await Promise.all([
-                supabase.from('losses').delete().eq('user_id', user.id),
-                supabase.from('streaks').delete().eq('user_id', user.id),
-                supabase.from('badges').delete().eq('user_id', user.id),
-                supabase.from('mood_checkins').delete().eq('user_id', user.id),
-                supabase.from('urge_journal').delete().eq('user_id', user.id),
-              ]);
-              // Delete avatar from storage
-              if (profile?.avatarUrl) {
-                const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
-                if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
-              }
-              await supabase.from('users').delete().eq('id', user.id);
-              await supabase.functions.invoke('delete-account');
-              await AsyncStorage.removeItem(ONBOARDED_KEY);
-              await supabase.auth.signOut();
-            }
-            setSigningOut(false);
-          },
-        },
-      ],
-    );
+  const confirmDeleteAccount = () => setDeleteAccountVisible(true);
+
+  const executeDeleteAccount = async () => {
+    setSigningOut(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await Promise.all([
+        supabase.from('losses').delete().eq('user_id', user.id),
+        supabase.from('streaks').delete().eq('user_id', user.id),
+        supabase.from('badges').delete().eq('user_id', user.id),
+        supabase.from('mood_checkins').delete().eq('user_id', user.id),
+        supabase.from('urge_journal').delete().eq('user_id', user.id),
+      ]);
+      if (profile?.avatarUrl) {
+        const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
+        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+      }
+      await supabase.from('users').delete().eq('id', user.id);
+      await supabase.functions.invoke('delete-account');
+      await AsyncStorage.removeItem(ONBOARDED_KEY);
+      await supabase.auth.signOut();
+    }
+    setSigningOut(false);
   };
 
-  const confirmSignOut = () => {
-    Alert.alert(
-      'Sign out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign out',
-          style: 'destructive',
-          onPress: async () => {
-            setSigningOut(true);
-            await AsyncStorage.removeItem(ONBOARDED_KEY);
-            await supabase.auth.signOut();
-          },
-        },
-      ],
-    );
+  const confirmSignOut = () => setSignOutVisible(true);
+
+  const executeSignOut = async () => {
+    setSigningOut(true);
+    await AsyncStorage.removeItem(ONBOARDED_KEY);
+    await supabase.auth.signOut();
   };
 
   const handleExport = async () => {
@@ -915,6 +885,116 @@ export default function AccountScreen() {
         </Pressable>
       </Modal>
 
+      {/* Avatar action menu */}
+      <Modal visible={avatarMenuVisible} transparent animationType="fade" onRequestClose={() => setAvatarMenuVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setAvatarMenuVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmHandle} />
+            <Text style={s.confirmTitle}>Profile photo</Text>
+            <View style={[s.confirmActions, { flexDirection: 'column', gap: 10 }]}>
+              <Pressable style={[s.confirmCancel, { flex: 0 }]} onPress={() => { setAvatarMenuVisible(false); pickAvatar(); }}>
+                <Text style={[s.confirmCancelTxt, { color: '#0F6E6E' }]}>Change photo</Text>
+              </Pressable>
+              <Pressable style={[s.confirmDelete, { flex: 0 }]} onPress={() => { setAvatarMenuVisible(false); removeAvatar(); }}>
+                <Text style={s.confirmDeleteTxt}>Remove photo</Text>
+              </Pressable>
+              <Pressable style={[s.confirmCancel, { flex: 0 }]} onPress={() => setAvatarMenuVisible(false)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Confirm quit date change */}
+      <Modal visible={!!confirmQuitDate} transparent animationType="fade" onRequestClose={() => setConfirmQuitDate(null)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setConfirmQuitDate(null)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmHandle} />
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: '#f0fafa', borderColor: '#c0e8e8' }]}>
+                <Ionicons name="calendar-outline" size={26} color="#0F6E6E" />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Update start date?</Text>
+            {confirmQuitDate && (
+              <Text style={s.confirmBody}>
+                Set to <Text style={s.confirmBold}>{formatQuitDate(confirmQuitDate.toISOString())}</Text>?{'\n\n'}This will reset your current streak counter.
+              </Text>
+            )}
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setConfirmQuitDate(null)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[s.confirmSave, saving && { opacity: 0.6 }]}
+                onPress={() => { if (confirmQuitDate) { saveQuitDate(confirmQuitDate); } setConfirmQuitDate(null); }}
+                disabled={saving}>
+                <Text style={s.confirmSaveTxt}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Confirm sign out */}
+      <Modal visible={signOutVisible} transparent animationType="fade" onRequestClose={() => setSignOutVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setSignOutVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmHandle} />
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: '#f5f5f5', borderColor: '#e0e0e0' }]}>
+                <Ionicons name="log-out-outline" size={26} color="#666" />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Sign out?</Text>
+            <Text style={s.confirmBody}>Are you sure you want to sign out?</Text>
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setSignOutVisible(false)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[s.confirmDelete, signingOut && { opacity: 0.6 }]}
+                onPress={() => { setSignOutVisible(false); executeSignOut(); }}
+                disabled={signingOut}>
+                <Text style={s.confirmDeleteTxt}>Sign out</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Confirm delete account */}
+      <Modal visible={deleteAccountVisible} transparent animationType="fade" onRequestClose={() => setDeleteAccountVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setDeleteAccountVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmHandle} />
+            <View style={s.confirmIconRow}>
+              <View style={s.confirmIconCircle}>
+                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Delete account?</Text>
+            <Text style={s.confirmBody}>
+              This will permanently delete your account and all your data — streaks, losses, badges, mood history, and journal entries.{'\n\n'}This cannot be undone.
+            </Text>
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setDeleteAccountVisible(false)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[s.confirmDelete, signingOut && { opacity: 0.6 }]}
+                onPress={() => { setDeleteAccountVisible(false); executeDeleteAccount(); }}
+                disabled={signingOut}>
+                {signingOut
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={s.confirmDeleteTxt}>Delete permanently</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* iOS date/time picker modal */}
       {Platform.OS === 'ios' && (
         <Modal visible={showIOSModal} transparent animationType="slide">
@@ -944,14 +1024,7 @@ export default function AccountScreen() {
                   onPress={() => {
                     setShowIOSModal(false);
                     if (!editDate) return;
-                    Alert.alert(
-                      'Update start date?',
-                      `Set to ${formatQuitDate(editDate.toISOString())}?\n\nThis will reset your current streak counter.`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Save', onPress: () => saveQuitDate(editDate) },
-                      ],
-                    );
+                    setConfirmQuitDate(new Date(editDate.getTime()));
                   }}>
                   <Text style={s.modalBtnSaveTxt}>Save</Text>
                 </Pressable>
@@ -1140,4 +1213,27 @@ const s = StyleSheet.create({
   modalBtnCancel: { fontSize: 15, color: '#555', fontWeight: '600' },
   modalBtnSave: { backgroundColor: '#0F6E6E' },
   modalBtnSaveTxt: { fontSize: 15, color: '#fff', fontWeight: '700' },
+
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  confirmSheet: {
+    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+  },
+  confirmHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
+  confirmIconRow: { alignItems: 'center', marginBottom: 12 },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmBold: { fontWeight: '700', color: '#333' },
+  confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
+  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
+  confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  confirmSave: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
+  confirmSaveTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

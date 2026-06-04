@@ -3,7 +3,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -511,6 +510,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [moodSubmitting, setMoodSubmitting] = useState(false);
   const [relapseLoading, setRelapseLoading] = useState(false);
+  const [relapseConfirmVisible, setRelapseConfirmVisible] = useState(false);
   const [tick, setTick] = useState(0);
   const prevNextMilestone = useRef<number | null>(null);
   const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * QUOTES.length));
@@ -706,16 +706,7 @@ export default function HomeScreen() {
     setMoodSubmitting(false);
   };
 
-  const handleRelapse = () => {
-    Alert.alert(
-      'Reset your streak?',
-      'This will start your streak from today. It\'s okay — every restart is still progress.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset streak', style: 'destructive', onPress: doRelapse },
-      ],
-    );
-  };
+  const handleRelapse = () => setRelapseConfirmVisible(true);
 
   const doRelapse = async () => {
     setRelapseLoading(true);
@@ -1078,6 +1069,35 @@ export default function HomeScreen() {
         </Pressable>
       </Modal>
 
+      {/* Reset streak confirmation */}
+      <Modal visible={relapseConfirmVisible} transparent animationType="fade" onRequestClose={() => setRelapseConfirmVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setRelapseConfirmVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmHandle} />
+            <View style={s.confirmIconRow}>
+              <View style={s.confirmIconCircle}>
+                <Text style={{ fontSize: 28 }}>🔄</Text>
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Reset your streak?</Text>
+            <Text style={s.confirmBody}>
+              This will start your streak from today.{'\n'}It's okay — every restart is still progress.
+            </Text>
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setRelapseConfirmVisible(false)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[s.confirmReset, relapseLoading && { opacity: 0.6 }]}
+                onPress={() => { setRelapseConfirmVisible(false); doRelapse(); }}
+                disabled={relapseLoading}>
+                <Text style={s.confirmResetTxt}>Reset streak</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Debt badge modal */}
       <Modal visible={!!selectedDebtId} transparent animationType="slide" onRequestClose={() => setSelectedDebtId(null)}>
         <Pressable style={s.modalOverlay} onPress={() => setSelectedDebtId(null)}>
@@ -1299,4 +1319,24 @@ const s = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center',
   },
   modalCloseTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  confirmSheet: {
+    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+  },
+  confirmHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
+  confirmIconRow: { alignItems: 'center', marginBottom: 12 },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#fff8f0', borderWidth: 1.5, borderColor: '#f5d0a0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
+  confirmReset: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
+  confirmResetTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

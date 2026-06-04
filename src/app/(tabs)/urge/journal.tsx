@@ -4,8 +4,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -145,6 +145,8 @@ export default function JournalScreen() {
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
+  const [clearAllVisible, setClearAllVisible] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
 
   const fetchFeed = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -183,29 +185,22 @@ export default function JournalScreen() {
   useEffect(() => { fetchFeed().finally(() => setLoading(false)); }, [fetchFeed]);
   useFocusEffect(useCallback(() => { fetchFeed(); }, [fetchFeed]));
 
-  const clearAllLogs = () => {
-    Alert.alert(
-      'Clear all journal entries?',
-      'This permanently deletes all urge logs, debts, payments, savings and streak resets. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear all',
-          style: 'destructive',
-          onPress: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            await Promise.all([
-              supabase.from('urge_journal').delete().eq('user_id', user.id),
-              supabase.from('debt_payments').delete().eq('user_id', user.id),
-              supabase.from('debts').delete().eq('user_id', user.id),
-              supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset']),
-            ]);
-            fetchFeed();
-          },
-        },
-      ],
-    );
+  const clearAllLogs = () => setClearAllVisible(true);
+
+  const executeClearAll = async () => {
+    setClearingAll(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await Promise.all([
+        supabase.from('urge_journal').delete().eq('user_id', user.id),
+        supabase.from('debt_payments').delete().eq('user_id', user.id),
+        supabase.from('debts').delete().eq('user_id', user.id),
+        supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset']),
+      ]);
+      fetchFeed();
+    }
+    setClearAllVisible(false);
+    setClearingAll(false);
   };
 
   return (
@@ -251,6 +246,32 @@ export default function JournalScreen() {
         />
       )}
 
+      <Modal visible={clearAllVisible} transparent animationType="fade" onRequestClose={() => setClearAllVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setClearAllVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmHandle} />
+            <View style={s.confirmIconRow}>
+              <View style={s.confirmIconCircle}>
+                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Clear all journal entries?</Text>
+            <Text style={s.confirmBody}>
+              This permanently deletes all urge logs, debts, payments, savings and streak resets.{'\n'}This cannot be undone.
+            </Text>
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setClearAllVisible(false)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.confirmDelete, clearingAll && { opacity: 0.6 }]} onPress={executeClearAll} disabled={clearingAll}>
+                {clearingAll
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={s.confirmDeleteTxt}>Clear all</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -302,4 +323,24 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#111' },
   emptySub: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20 },
+
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  confirmSheet: {
+    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+  },
+  confirmHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
+  confirmIconRow: { alignItems: 'center', marginBottom: 12 },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
+  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
+  confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
