@@ -195,8 +195,9 @@ function getMilestone(ms: number) {
   const remainingMs = Math.max(0, next * 86400000 - ms);
   const hoursToGo = Math.floor(remainingMs / 3600000);
   const minsToGo = Math.floor((remainingMs % 3600000) / 60000);
+  const secsToGo = Math.floor((remainingMs % 60000) / 1000);
   const hoursComponent = Math.floor((remainingMs % 86400000) / 3600000);
-  return { next, daysToGo, hoursToGo, minsToGo, hoursComponent, progress: Math.min(1, Math.max(0, progress)) };
+  return { next, daysToGo, hoursToGo, minsToGo, secsToGo, hoursComponent, remainingMs, progress: Math.min(1, Math.max(0, progress)) };
 }
 
 function weeklyToDaily(weeklyBet: string | null) {
@@ -307,7 +308,7 @@ function CircularProgress({ progress, next }: { progress: number; next: number }
   const C = 2 * Math.PI * R;
   const cx = SIZE / 2;
   const cy = SIZE / 2;
-  const pct = Math.round(progress * 100);
+  const pct = progress > 0 ? Math.max(1, Math.round(progress * 100)) : 0;
   const label = milestoneLabel(next);
 
   return (
@@ -517,9 +518,9 @@ export default function HomeScreen() {
     if (initialLoadDone.current) fetchData();
   }, [fetchData]));
 
-  // Update streak display every minute
+  // Update streak display every second
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60000);
+    const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -616,7 +617,7 @@ export default function HomeScreen() {
 
   if (!data) return null;
 
-  const { next, daysToGo, hoursToGo, minsToGo, hoursComponent, progress } = getMilestone(streakMs);
+  const { next, daysToGo, hoursToGo, minsToGo, secsToGo, hoursComponent, remainingMs, progress } = getMilestone(streakMs);
   const moneySaved = streakDays * weeklyToDaily(data.weeklyBet);
   const motivations = (data.motivation ?? '').split(',').filter(Boolean).map(
     m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' }
@@ -643,11 +644,13 @@ export default function HomeScreen() {
                 <LiveCounter quitDate={data.quitDate} />
                 <View style={s.separator} />
                 <Text style={s.milestoneTxt}>
-                  {daysToGo === 0
+                  {remainingMs <= 0
                     ? `🎉 ${milestoneLabel(next)} — milestone reached!`
-                    : daysToGo === 1
-                      ? `${hoursToGo}h ${minsToGo}m to reach ${milestoneLabel(next)}`
-                      : `${daysToGo}d ${hoursComponent}h to reach ${milestoneLabel(next)}`}
+                    : next < 1
+                      ? `${minsToGo}m ${secsToGo}s to reach ${milestoneLabel(next)}`
+                      : daysToGo === 1
+                        ? `${hoursToGo}h ${minsToGo}m to reach ${milestoneLabel(next)}`
+                        : `${daysToGo}d ${hoursComponent}h to reach ${milestoneLabel(next)}`}
                 </Text>
                 <Text style={s.longestTxt}>Best: {formatBest(data.longestStreak, streakMs)}</Text>
                 {!!data.quitDate && (
