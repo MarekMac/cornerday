@@ -685,11 +685,15 @@ export default function AccountScreen() {
           )}
         </View>
 
-        {/* Notifications */}
-        <Pressable style={({ pressed }) => [s.notifSettingsBtn, pressed && { opacity: 0.7 }]} onPress={() => setNotifModalVisible(true)}>
-          <Ionicons name="notifications-outline" size={18} color="#0F6E6E" style={{ marginRight: 8 }} />
-          <Text style={s.notifSettingsTxt}>Notification settings</Text>
-        </Pressable>
+        {/* Settings */}
+        <View style={s.aboutCard}>
+          <Text style={s.aboutTitle}>Settings</Text>
+          <Pressable style={({ pressed }) => [s.settingsRow, pressed && { opacity: 0.7 }]} onPress={() => setNotifModalVisible(true)}>
+            <Ionicons name="notifications-outline" size={18} color="#0F6E6E" style={{ marginRight: 12 }} />
+            <Text style={s.settingsRowTxt}>Notification settings</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </Pressable>
+        </View>
 
         {/* Export data */}
         <Pressable
@@ -1199,6 +1203,9 @@ const s = StyleSheet.create({
     paddingVertical: 13, alignItems: 'center',
   },
   upgradeBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  settingsRowTxt: { flex: 1, fontSize: 14, color: '#111', fontWeight: '500' },
 
   aboutCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
   aboutTitle: { fontSize: 14, fontWeight: '700', color: '#333' },
