@@ -339,6 +339,8 @@ export default function TrackerIndex() {
             )}
           </View>
 
+          <View style={s.sectionDivider} />
+
           {/* Tabs */}
           <View style={s.tabBar}>
             {(['debts', 'saving'] as MainTab[]).map(t => (
@@ -578,6 +580,8 @@ const s = StyleSheet.create({
   savingsLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8 },
   savingsLineLabel: { fontSize: 14, color: '#888', flex: 1, flexShrink: 1 },
   savingsLineValue: { fontSize: 20, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
+
+  sectionDivider: { height: 1, backgroundColor: '#e8e8e8', marginTop: 6, marginBottom: 4 },
 
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 4, gap: 2 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
