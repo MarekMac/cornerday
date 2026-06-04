@@ -59,9 +59,7 @@ function categoryEmoji(cat: string) {
 function fmtLive(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
   const s = syms[currency] ?? currency;
-  if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
-  if (amount >= 10) return `${s}${Math.round(amount)}`;
-  return `${s}${amount.toFixed(1)}`;
+  return `${s}${Math.round(amount).toLocaleString('en-US')}`;
 }
 
 function fmt(amount: number, currency = 'USD') {
@@ -69,8 +67,8 @@ function fmt(amount: number, currency = 'USD') {
     USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$',
   };
   const s = syms[currency] ?? currency;
-  if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
-  return `${s}${Math.round(amount)}`;
+  const rounded = Math.round(amount * 100) / 100;
+  return `${s}${rounded.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 function fmtDate(iso: string) {
@@ -106,6 +104,11 @@ export default function TrackerIndex() {
   const [weeklyBet, setWeeklyBet] = useState<string | null>(null);
   const [quitTs, setQuitTs] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Debt modal (add + edit)
   const [debtModalVisible, setDebtModalVisible] = useState(false);

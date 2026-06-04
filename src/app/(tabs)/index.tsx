@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { supabase } from '@/lib/supabase';
+import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -245,8 +246,8 @@ function fmt(amount: number, currency = 'USD') {
     USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$',
   };
   const s = syms[currency] ?? currency;
-  if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
-  return `${s}${Math.round(amount)}`;
+  const rounded = Math.round(amount * 100) / 100;
+  return `${s}${rounded.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -468,9 +469,7 @@ interface HomeData {
 function fmtLive(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
   const s = syms[currency] ?? currency;
-  if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
-  if (amount >= 10) return `${s}${Math.round(amount)}`;
-  return `${s}${amount.toFixed(1)}`;
+  return `${s}${Math.round(amount).toLocaleString('en-US')}`;
 }
 
 function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
@@ -711,9 +710,10 @@ export default function HomeScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const today = todayStr();
+      const newQuitTimestamp = new Date().toISOString();
       const days = streakDays;
       await Promise.all([
-        supabase.from('users').update({ quit_date: today, quit_timestamp: new Date().toISOString() }).eq('id', user.id),
+        supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
         supabase.from('badges').delete().eq('user_id', user.id),
         supabase.from('losses').insert({
@@ -722,6 +722,20 @@ export default function HomeScreen() {
           note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
         }),
       ]);
+      // Reschedule notifications against the new quit timestamp
+      const { data: prefsRow } = await supabase
+        .from('users')
+        .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
+        .eq('id', user.id)
+        .single();
+      const prefs = {
+        notif_milestone: prefsRow?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+        notif_daily_streak: prefsRow?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+        notif_daily_checkin: prefsRow?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+        notif_weekly_summary: prefsRow?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+        notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+      };
+      await scheduleAllNotifications(prefs, newQuitTimestamp);
       await fetchData();
     }
     setRelapseLoading(false);

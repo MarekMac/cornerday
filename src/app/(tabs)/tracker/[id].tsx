@@ -39,8 +39,8 @@ function fmt(amount: number, currency = 'USD') {
     USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$',
   };
   const s = syms[currency] ?? currency;
-  if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
-  return `${s}${Math.round(amount)}`;
+  const rounded = Math.round(amount * 100) / 100;
+  return `${s}${rounded.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 function fmtDate(iso: string) {
@@ -64,8 +64,8 @@ export default function DebtDetailScreen() {
     if (!user) return;
 
     const [debtRes, paymentsRes, profileRes] = await Promise.all([
-      supabase.from('debts').select('*').eq('id', id).single(),
-      supabase.from('debt_payments').select('*').eq('debt_id', id).order('created_at', { ascending: false }),
+      supabase.from('debts').select('*').eq('id', id).eq('user_id', user.id).single(),
+      supabase.from('debt_payments').select('*').eq('debt_id', id).eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('users').select('currency').eq('id', user.id).single(),
     ]);
 
@@ -100,7 +100,7 @@ export default function DebtDetailScreen() {
 
     const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
     const remaining = Math.max(0, Number(debt.total_amount) - totalPaid);
-    if (val > remaining) {
+    if (Math.round(val * 100) > Math.round(remaining * 100)) {
       Alert.alert('Too much', `You only owe ${fmt(remaining, currency)} on this debt.`);
       return;
     }
