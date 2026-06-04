@@ -577,7 +577,7 @@ export default function TrackerIndex() {
       </Modal>
 
       {/* Debt context menu */}
-      <Modal visible={!!menuDebt} transparent animationType="slide" onRequestClose={() => setMenuDebt(null)}>
+      <Modal visible={!!menuDebt} transparent animationType="fade" onRequestClose={() => setMenuDebt(null)}>
         <Pressable style={s.menuOverlay} onPress={() => setMenuDebt(null)}>
           <Pressable style={s.menuSheet} onPress={() => {}}>
             <View style={s.sheetHandle} />
@@ -632,7 +632,7 @@ export default function TrackerIndex() {
       </Modal>
 
       {/* Saving context menu */}
-      <Modal visible={!!menuSaving} transparent animationType="slide" onRequestClose={() => setMenuSaving(null)}>
+      <Modal visible={!!menuSaving} transparent animationType="fade" onRequestClose={() => setMenuSaving(null)}>
         <Pressable style={s.menuOverlay} onPress={() => setMenuSaving(null)}>
           <Pressable style={s.menuSheet} onPress={() => {}}>
             <View style={s.sheetHandle} />
@@ -752,10 +752,10 @@ const s = StyleSheet.create({
   chipTxt: { fontSize: 13, color: '#555' },
   chipTxtActive: { color: '#0F6E6E', fontWeight: '600' },
 
-  menuOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  menuOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 },
   menuSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22,
-    padding: 20, paddingTop: 12,
+    backgroundColor: '#fff', borderRadius: 22,
+    padding: 20, paddingTop: 12, width: '100%',
   },
   menuHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16, marginTop: 8 },
   menuEmoji: { fontSize: 32 },
