@@ -3,8 +3,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -15,7 +18,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Switch,
   Text,
@@ -157,6 +159,7 @@ export default function AccountScreen() {
   const [notifModalVisible, setNotifModalVisible] = useState(false);
 
   const [exportLoading, setExportLoading] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
 
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [spendingCurrency, setSpendingCurrency] = useState('USD');
@@ -502,10 +505,10 @@ export default function AccountScreen() {
         mood_checkins: moodRes.data,
         badges: badgesRes.data,
       };
-      await Share.share({
-        message: JSON.stringify(exportData, null, 2),
-        title: 'CornerDay — My Data',
-      });
+      const filename = `cornerday-export-${new Date().toISOString().slice(0, 10)}.json`;
+      const path = `${FileSystem.documentDirectory}${filename}`;
+      await FileSystem.writeAsStringAsync(path, JSON.stringify(exportData, null, 2), { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'Save your CornerDay data' });
     } finally {
       setExportLoading(false);
     }
@@ -594,7 +597,17 @@ export default function AccountScreen() {
               <View style={s.nameEditHint}><Text style={s.nameEditHintTxt}>Edit</Text></View>
             </Pressable>
           )}
-          <Text style={s.email} selectable>{profile?.email}</Text>
+          <Pressable
+            onPress={async () => {
+              if (!profile?.email) return;
+              await Clipboard.setStringAsync(profile.email);
+              setEmailCopied(true);
+              setTimeout(() => setEmailCopied(false), 2000);
+            }}
+            style={s.emailRow}>
+            <Text style={s.email}>{profile?.email}</Text>
+            <Text style={s.emailCopyHint}>{emailCopied ? 'Copied!' : 'Tap to copy'}</Text>
+          </Pressable>
           {profile?.isPremium && (
             <View style={s.premiumBadge}>
               <Text style={s.premiumBadgeTxt}>✨ Premium</Text>
@@ -994,7 +1007,9 @@ const s = StyleSheet.create({
   nameSaveTxt: { color: '#fff', fontWeight: '700', fontSize: 12 },
   nameCancelBtn: { paddingVertical: 6, paddingHorizontal: 4 },
   nameCancelTxt: { color: '#aaa', fontSize: 12 },
+  emailRow: { alignItems: 'center', gap: 2 },
   email: { fontSize: 13, color: '#888' },
+  emailCopyHint: { fontSize: 11, color: '#0F6E6E', fontWeight: '600' },
   premiumBadge: {
     backgroundColor: '#e6f7f7', paddingVertical: 4, paddingHorizontal: 12,
     borderRadius: 12, marginTop: 4,
