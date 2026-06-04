@@ -635,6 +635,7 @@ export default function AccountScreen() {
 
         {/* Notifications */}
         <Pressable style={({ pressed }) => [s.notifSettingsBtn, pressed && { opacity: 0.7 }]} onPress={() => setNotifModalVisible(true)}>
+          <Ionicons name="notifications-outline" size={18} color="#0F6E6E" style={{ marginRight: 8 }} />
           <Text style={s.notifSettingsTxt}>Notification settings</Text>
         </Pressable>
 
@@ -961,7 +962,8 @@ const s = StyleSheet.create({
 
   notifSettingsBtn: {
     backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    alignItems: 'center', borderWidth: 1, borderColor: '#a8d8d0',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#a8d8d0',
   },
   notifSettingsTxt: { fontSize: 15, color: '#0F6E6E', fontWeight: '600' },
 
