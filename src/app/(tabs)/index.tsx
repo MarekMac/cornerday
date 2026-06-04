@@ -520,6 +520,7 @@ export default function HomeScreen() {
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const badgeScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
+  const [moodCardY, setMoodCardY] = useState(0);
   const [badgeMsgIndex, setBadgeMsgIndex] = useState(0);
   const [editingMood, setEditingMood] = useState(false);
   const [moodNote, setMoodNote] = useState('');
@@ -783,7 +784,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={s.root}>
+    <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {/* ── Header ── */}
       <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
         <SafeAreaView edges={['top']}>
@@ -823,7 +824,6 @@ export default function HomeScreen() {
       </LinearGradient>
 
       {/* ── Body ── */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         ref={bodyScrollRef}
         style={s.body}
@@ -886,7 +886,7 @@ export default function HomeScreen() {
         </Pressable>
 
         {/* Mood check-in */}
-        <View style={s.moodCard}>
+        <View style={s.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
           {data.todayMood !== null && !editingMood ? (
             <>
               <View style={s.moodDone}>
@@ -929,7 +929,7 @@ export default function HomeScreen() {
                       onChangeText={setMoodNote}
                       maxLength={200}
                       returnKeyType="done"
-                      onFocus={() => setTimeout(() => bodyScrollRef.current?.scrollToEnd({ animated: true }), 300)}
+                      onFocus={() => setTimeout(() => bodyScrollRef.current?.scrollTo({ y: moodCardY, animated: true }), 300)}
                     />
                     <Pressable
                       onPress={() => editMoodValue && handleMood(editMoodValue, moodNote)}
@@ -1010,7 +1010,6 @@ export default function HomeScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
-      </KeyboardAvoidingView>
 
       {/* Badge detail modal */}
       <Modal visible={!!selectedBadge} transparent animationType="slide" onRequestClose={() => setSelectedBadge(null)}>
@@ -1179,7 +1178,7 @@ export default function HomeScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
