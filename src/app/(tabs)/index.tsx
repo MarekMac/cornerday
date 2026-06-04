@@ -22,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -593,20 +593,26 @@ export default function HomeScreen() {
           category: 'Milestone', note: `${b.emoji} ${b.label}`,
         })));
       }
-      // Fire immediate notification for each newly awarded milestone
-      const { status: notifStatus } = await Notifications.getPermissionsAsync();
-      if (notifStatus === 'granted') {
-        for (const b of toLog) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: `${b.emoji} ${b.label} milestone!`,
-              body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
-              data: { screen: '/(tabs)/' },
-            },
-            trigger: Platform.OS === 'android'
-              ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
-              : null,
-          });
+      // Fire immediate notification for each newly awarded milestone — guarded by AsyncStorage to prevent repeats
+      const sentRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
+      const alreadySent: string[] = sentRaw ? JSON.parse(sentRaw) : [];
+      const toNotify = toLog.filter(b => !alreadySent.includes(b.type));
+      if (toNotify.length > 0) {
+        await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify([...alreadySent, ...toNotify.map(b => b.type)]));
+        const { status: notifStatus } = await Notifications.getPermissionsAsync();
+        if (notifStatus === 'granted') {
+          for (const b of toNotify) {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: `${b.emoji} ${b.label} milestone!`,
+                body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
+                data: { screen: '/(tabs)/' },
+              },
+              trigger: Platform.OS === 'android'
+                ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
+                : null,
+            });
+          }
         }
       }
       toAward.forEach(b => earnedBadges.push(b.type));
