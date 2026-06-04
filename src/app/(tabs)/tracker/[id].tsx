@@ -254,7 +254,7 @@ export default function DebtDetailScreen() {
       <Modal visible={!!deletePayTarget} transparent animationType="fade" onRequestClose={() => setDeletePayTarget(null)}>
         <Pressable style={s.confirmOverlay} onPress={() => setDeletePayTarget(null)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            <View style={s.confirmHandle} />
+            
             <View style={s.confirmIconRow}>
               <View style={s.confirmIconCircle}>
                 <Ionicons name="trash-outline" size={26} color="#c0392b" />
@@ -337,7 +337,6 @@ const s = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
-  confirmHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
   confirmIconRow: { alignItems: 'center', marginBottom: 12 },
   confirmIconCircle: {
     width: 56, height: 56, borderRadius: 28,

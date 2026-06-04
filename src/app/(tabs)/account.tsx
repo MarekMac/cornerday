@@ -889,7 +889,7 @@ export default function AccountScreen() {
       <Modal visible={avatarMenuVisible} transparent animationType="fade" onRequestClose={() => setAvatarMenuVisible(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setAvatarMenuVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            <View style={s.confirmHandle} />
+            
             <Text style={s.confirmTitle}>Profile photo</Text>
             <View style={[s.confirmActions, { flexDirection: 'column', gap: 10 }]}>
               <Pressable style={[s.confirmCancel, { flex: 0 }]} onPress={() => { setAvatarMenuVisible(false); pickAvatar(); }}>
@@ -910,7 +910,7 @@ export default function AccountScreen() {
       <Modal visible={!!confirmQuitDate} transparent animationType="fade" onRequestClose={() => setConfirmQuitDate(null)}>
         <Pressable style={s.confirmOverlay} onPress={() => setConfirmQuitDate(null)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            <View style={s.confirmHandle} />
+            
             <View style={s.confirmIconRow}>
               <View style={[s.confirmIconCircle, { backgroundColor: '#f0fafa', borderColor: '#c0e8e8' }]}>
                 <Ionicons name="calendar-outline" size={26} color="#0F6E6E" />
@@ -941,7 +941,7 @@ export default function AccountScreen() {
       <Modal visible={signOutVisible} transparent animationType="fade" onRequestClose={() => setSignOutVisible(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setSignOutVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            <View style={s.confirmHandle} />
+            
             <View style={s.confirmIconRow}>
               <View style={[s.confirmIconCircle, { backgroundColor: '#f5f5f5', borderColor: '#e0e0e0' }]}>
                 <Ionicons name="log-out-outline" size={26} color="#666" />
@@ -968,7 +968,7 @@ export default function AccountScreen() {
       <Modal visible={deleteAccountVisible} transparent animationType="fade" onRequestClose={() => setDeleteAccountVisible(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setDeleteAccountVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            <View style={s.confirmHandle} />
+            
             <View style={s.confirmIconRow}>
               <View style={s.confirmIconCircle}>
                 <Ionicons name="trash-outline" size={26} color="#c0392b" />
@@ -1219,7 +1219,6 @@ const s = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
-  confirmHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
   confirmIconRow: { alignItems: 'center', marginBottom: 12 },
   confirmIconCircle: {
     width: 56, height: 56, borderRadius: 28,

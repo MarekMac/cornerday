@@ -449,7 +449,7 @@ export default function TrackerIndex() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.modalOverlay} onPress={closeDebtModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
-              <View style={s.sheetHandle} />
+              
               <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Add a debt'}</Text>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <Text style={s.fieldLbl}>Name</Text>
@@ -504,7 +504,7 @@ export default function TrackerIndex() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.modalOverlay} onPress={closeSavingModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
-              <View style={s.sheetHandle} />
+              
               <Text style={s.sheetTitle}>{editingSaving ? 'Edit saving' : 'Log a saving'}</Text>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <Text style={s.fieldLbl}>Amount</Text>
@@ -544,7 +544,7 @@ export default function TrackerIndex() {
       <Modal visible={!!menuDebt} transparent animationType="fade" onRequestClose={() => setMenuDebt(null)}>
         <Pressable style={s.menuOverlay} onPress={() => setMenuDebt(null)}>
           <Pressable style={s.menuSheet} onPress={() => {}}>
-            <View style={s.sheetHandle} />
+            
             {menuDebt && (() => {
               const paid = paidByDebt[menuDebt.id] ?? 0;
               const remaining = Math.max(0, Number(menuDebt.total_amount) - paid);
@@ -599,7 +599,7 @@ export default function TrackerIndex() {
       <Modal visible={!!deleteDebtTarget} transparent animationType="fade" onRequestClose={() => setDeleteDebtTarget(null)}>
         <Pressable style={s.modalOverlay} onPress={() => setDeleteDebtTarget(null)}>
           <Pressable style={s.sheet} onPress={() => {}}>
-            <View style={s.sheetHandle} />
+            
             <View style={s.deleteIconRow}>
               <View style={s.deleteIconCircle}>
                 <Ionicons name="trash-outline" size={26} color="#c0392b" />
@@ -629,7 +629,7 @@ export default function TrackerIndex() {
       <Modal visible={!!deleteSavingTarget} transparent animationType="fade" onRequestClose={() => setDeleteSavingTarget(null)}>
         <Pressable style={s.modalOverlay} onPress={() => setDeleteSavingTarget(null)}>
           <Pressable style={s.sheet} onPress={() => {}}>
-            <View style={s.sheetHandle} />
+            
             <View style={s.deleteIconRow}>
               <View style={s.deleteIconCircle}>
                 <Ionicons name="trash-outline" size={26} color="#c0392b" />
@@ -660,7 +660,7 @@ export default function TrackerIndex() {
       <Modal visible={!!menuSaving} transparent animationType="fade" onRequestClose={() => setMenuSaving(null)}>
         <Pressable style={s.menuOverlay} onPress={() => setMenuSaving(null)}>
           <Pressable style={s.menuSheet} onPress={() => {}}>
-            <View style={s.sheetHandle} />
+            
             {menuSaving && (
               <>
                 <View style={s.menuHeader}>
@@ -807,7 +807,6 @@ const s = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 4 },
   sheetActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
   cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },

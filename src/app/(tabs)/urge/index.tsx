@@ -271,7 +271,7 @@ export default function UrgeScreen() {
         <View style={s.modalOverlay}>
           <Pressable style={s.modalBackdrop} onPress={closeModal} />
           <View style={s.sheet}>
-            <View style={s.sheetHandle} />
+            
             {saved ? (
               <View style={s.savedWrap}>
                 <Text style={s.savedIcon}>✓</Text>
@@ -435,10 +435,6 @@ const s = StyleSheet.create({
   sheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22,
     padding: 20, maxHeight: '85%',
-  },
-  sheetHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0',
-    alignSelf: 'center', marginBottom: 16,
   },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 16 },
 
