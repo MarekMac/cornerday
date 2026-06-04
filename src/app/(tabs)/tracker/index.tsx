@@ -110,6 +110,10 @@ export default function TrackerIndex() {
     return () => clearInterval(id);
   }, []);
 
+  // Context menus
+  const [menuDebt, setMenuDebt] = useState<Debt | null>(null);
+  const [menuSaving, setMenuSaving] = useState<SavingEntry | null>(null);
+
   // Debt modal (add + edit)
   const [debtModalVisible, setDebtModalVisible] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
@@ -216,13 +220,7 @@ export default function TrackerIndex() {
     setSavingDebt(false);
   };
 
-  const handleDebtMenu = (debt: Debt) => {
-    Alert.alert(debt.name, undefined, [
-      { text: 'Edit', onPress: () => openEditDebt(debt) },
-      { text: 'Delete', style: 'destructive', onPress: () => confirmDeleteDebt(debt) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const handleDebtMenu = (debt: Debt) => setMenuDebt(debt);
 
   const confirmDeleteDebt = (debt: Debt) => {
     Alert.alert(
@@ -284,13 +282,7 @@ export default function TrackerIndex() {
     setSubmitting(false);
   };
 
-  const handleSavingMenu = (entry: SavingEntry) => {
-    Alert.alert(entry.note || 'Saving', undefined, [
-      { text: 'Edit', onPress: () => openEditSaving(entry) },
-      { text: 'Delete', style: 'destructive', onPress: () => confirmDeleteSaving(entry) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const handleSavingMenu = (entry: SavingEntry) => setMenuSaving(entry);
 
   const confirmDeleteSaving = (entry: SavingEntry) => {
     Alert.alert(
@@ -583,6 +575,95 @@ export default function TrackerIndex() {
           </KeyboardAvoidingView>
         </Animated.View>
       </Modal>
+
+      {/* Debt context menu */}
+      <Modal visible={!!menuDebt} transparent animationType="slide" onRequestClose={() => setMenuDebt(null)}>
+        <Pressable style={s.menuOverlay} onPress={() => setMenuDebt(null)}>
+          <Pressable style={s.menuSheet} onPress={() => {}}>
+            <View style={s.sheetHandle} />
+            {menuDebt && (() => {
+              const paid = paidByDebt[menuDebt.id] ?? 0;
+              const remaining = Math.max(0, Number(menuDebt.total_amount) - paid);
+              const pct = Number(menuDebt.total_amount) > 0 ? Math.min(1, paid / Number(menuDebt.total_amount)) : 0;
+              return (
+                <>
+                  <View style={s.menuHeader}>
+                    <Text style={s.menuEmoji}>{categoryEmoji(menuDebt.category)}</Text>
+                    <View style={s.menuHeaderText}>
+                      <Text style={s.menuTitle}>{menuDebt.name}</Text>
+                      <Text style={s.menuSub}>{Math.round(pct * 100)}% paid back</Text>
+                    </View>
+                  </View>
+                  <View style={s.menuStats}>
+                    <View style={s.menuStat}>
+                      <Text style={[s.menuStatVal, { color: '#c0392b' }]}>{fmt(Number(menuDebt.total_amount), currency)}</Text>
+                      <Text style={s.menuStatLbl}>Total</Text>
+                    </View>
+                    <View style={s.menuStat}>
+                      <Text style={[s.menuStatVal, { color: '#0F6E6E' }]}>{fmt(paid, currency)}</Text>
+                      <Text style={s.menuStatLbl}>Paid</Text>
+                    </View>
+                    <View style={s.menuStat}>
+                      <Text style={[s.menuStatVal, { color: '#555' }]}>{fmt(remaining, currency)}</Text>
+                      <Text style={s.menuStatLbl}>Remaining</Text>
+                    </View>
+                  </View>
+                  <View style={s.menuProgressTrack}>
+                    <View style={[s.menuProgressFill, { width: `${pct * 100}%` as any }]} />
+                  </View>
+                  <View style={s.menuActions}>
+                    <Pressable style={({ pressed }) => [s.menuActionBtn, pressed && { opacity: 0.75 }]}
+                      onPress={() => { setMenuDebt(null); openEditDebt(menuDebt); }}>
+                      <Ionicons name="pencil-outline" size={18} color="#0F6E6E" />
+                      <Text style={s.menuActionTxt}>Edit</Text>
+                    </Pressable>
+                    <Pressable style={({ pressed }) => [s.menuActionBtn, s.menuActionDanger, pressed && { opacity: 0.75 }]}
+                      onPress={() => { setMenuDebt(null); confirmDeleteDebt(menuDebt); }}>
+                      <Ionicons name="trash-outline" size={18} color="#c0392b" />
+                      <Text style={[s.menuActionTxt, { color: '#c0392b' }]}>Delete</Text>
+                    </Pressable>
+                  </View>
+                </>
+              );
+            })()}
+            <View style={{ height: Math.max(16, insets.bottom) }} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Saving context menu */}
+      <Modal visible={!!menuSaving} transparent animationType="slide" onRequestClose={() => setMenuSaving(null)}>
+        <Pressable style={s.menuOverlay} onPress={() => setMenuSaving(null)}>
+          <Pressable style={s.menuSheet} onPress={() => {}}>
+            <View style={s.sheetHandle} />
+            {menuSaving && (
+              <>
+                <View style={s.menuHeader}>
+                  <Text style={s.menuEmoji}>💰</Text>
+                  <View style={s.menuHeaderText}>
+                    <Text style={s.menuTitle}>{menuSaving.note || 'Saving'}</Text>
+                    <Text style={s.menuSub}>{fmtDate(menuSaving.created_at)}</Text>
+                  </View>
+                  <Text style={[s.menuStatVal, { color: '#0a7a4e', fontSize: 20 }]}>+{fmt(Number(menuSaving.amount), currency)}</Text>
+                </View>
+                <View style={s.menuActions}>
+                  <Pressable style={({ pressed }) => [s.menuActionBtn, pressed && { opacity: 0.75 }]}
+                    onPress={() => { setMenuSaving(null); openEditSaving(menuSaving); }}>
+                    <Ionicons name="pencil-outline" size={18} color="#0F6E6E" />
+                    <Text style={s.menuActionTxt}>Edit</Text>
+                  </Pressable>
+                  <Pressable style={({ pressed }) => [s.menuActionBtn, s.menuActionDanger, pressed && { opacity: 0.75 }]}
+                    onPress={() => { setMenuSaving(null); confirmDeleteSaving(menuSaving); }}>
+                    <Ionicons name="trash-outline" size={18} color="#c0392b" />
+                    <Text style={[s.menuActionTxt, { color: '#c0392b' }]}>Delete</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+            <View style={{ height: Math.max(16, insets.bottom) }} />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -670,6 +751,31 @@ const s = StyleSheet.create({
   chipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
   chipTxt: { fontSize: 13, color: '#555' },
   chipTxtActive: { color: '#0F6E6E', fontWeight: '600' },
+
+  menuOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  menuSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    padding: 20, paddingTop: 12,
+  },
+  menuHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16, marginTop: 8 },
+  menuEmoji: { fontSize: 32 },
+  menuHeaderText: { flex: 1 },
+  menuTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
+  menuSub: { fontSize: 13, color: '#888', marginTop: 2 },
+  menuStats: { flexDirection: 'row', backgroundColor: '#f8f8f8', borderRadius: 12, padding: 12, marginBottom: 10 },
+  menuStat: { flex: 1, alignItems: 'center' },
+  menuStatVal: { fontSize: 15, fontWeight: '700' },
+  menuStatLbl: { fontSize: 11, color: '#aaa', marginTop: 2 },
+  menuProgressTrack: { height: 5, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden', marginBottom: 20 },
+  menuProgressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
+  menuActions: { flexDirection: 'row', gap: 10 },
+  menuActionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 13, borderRadius: 12, backgroundColor: '#f0fafa',
+    borderWidth: 1, borderColor: '#d0eeee',
+  },
+  menuActionDanger: { backgroundColor: '#fff5f5', borderColor: '#ffcdd2' },
+  menuActionTxt: { fontSize: 15, fontWeight: '600', color: '#0F6E6E' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
