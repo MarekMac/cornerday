@@ -245,18 +245,6 @@ export default function UrgeScreen() {
           ))}
         </View>
 
-        {/* Journal link */}
-        <Pressable
-          style={({ pressed }) => [s.journalCard, pressed && { opacity: 0.85 }]}
-          onPress={() => router.push('/urge/journal')}>
-          <Text style={s.journalIcon}>📓</Text>
-          <View style={s.journalText}>
-            <Text style={s.journalTitle}>My Journal</Text>
-            <Text style={s.journalSub}>View your urges, payments and savings</Text>
-          </View>
-          <Text style={s.journalArrow}>›</Text>
-        </Pressable>
-
         {/* Crisis resources */}
         <View style={s.crisisCard}>
           <Text style={s.crisisTitle}>Need more help?</Text>
@@ -431,16 +419,6 @@ const s = StyleSheet.create({
   distractionBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   distractionEmoji: { fontSize: 22 },
   distractionLabel: { fontSize: 15, color: '#333', fontWeight: '500' },
-
-  journalCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-  },
-  journalIcon: { fontSize: 26 },
-  journalText: { flex: 1 },
-  journalTitle: { fontSize: 15, fontWeight: '700', color: '#111' },
-  journalSub: { fontSize: 13, color: '#888', marginTop: 2 },
-  journalArrow: { fontSize: 22, color: '#aaa', fontWeight: '300' },
 
   crisisCard: {
     backgroundColor: '#fff8f8', borderRadius: 14, padding: 16, gap: 8,

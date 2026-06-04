@@ -788,6 +788,18 @@ export default function HomeScreen() {
           <Text style={s.urgeLogArrow}>›</Text>
         </Pressable>
 
+        {/* Journal */}
+        <Pressable
+          style={({ pressed }) => [s.urgeLogCard, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/urge/journal')}>
+          <Text style={s.urgeLogIcon}>📓</Text>
+          <View style={s.urgeLogText}>
+            <Text style={s.urgeLogTitle}>My Journal</Text>
+            <Text style={s.urgeLogSub}>View your urges, payments and savings</Text>
+          </View>
+          <Text style={s.urgeLogArrow}>›</Text>
+        </Pressable>
+
         {/* Relapse card */}
         <View style={s.relapseCard}>
           <Text style={s.relapseTitle}>Had a slip? That's okay.</Text>
