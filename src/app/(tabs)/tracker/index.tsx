@@ -448,7 +448,7 @@ export default function TrackerIndex() {
 
       {/* Debt modal — add & edit */}
       <Modal visible={debtModalVisible} transparent animationType="fade" onRequestClose={closeDebtModal}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.modalOverlay} onPress={closeDebtModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <View style={s.sheetHandle} />
@@ -503,7 +503,7 @@ export default function TrackerIndex() {
 
       {/* Saving modal — add & edit */}
       <Modal visible={savingModalVisible} transparent animationType="fade" onRequestClose={closeSavingModal}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.modalOverlay} onPress={closeSavingModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <View style={s.sheetHandle} />
