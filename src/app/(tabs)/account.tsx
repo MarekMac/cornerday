@@ -606,7 +606,11 @@ export default function AccountScreen() {
             }}
             style={s.emailRow}>
             <Text style={s.email}>{profile?.email}</Text>
-            <Text style={s.emailCopyHint}>{emailCopied ? 'Copied!' : 'Tap to copy'}</Text>
+            <Ionicons
+              name={emailCopied ? 'checkmark' : 'copy-outline'}
+              size={13}
+              color={emailCopied ? '#0F6E6E' : '#bbb'}
+            />
           </Pressable>
           {profile?.isPremium && (
             <View style={s.premiumBadge}>
@@ -1007,9 +1011,8 @@ const s = StyleSheet.create({
   nameSaveTxt: { color: '#fff', fontWeight: '700', fontSize: 12 },
   nameCancelBtn: { paddingVertical: 6, paddingHorizontal: 4 },
   nameCancelTxt: { color: '#aaa', fontSize: 12 },
-  emailRow: { alignItems: 'center', gap: 2 },
+  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   email: { fontSize: 13, color: '#888' },
-  emailCopyHint: { fontSize: 11, color: '#0F6E6E', fontWeight: '600' },
   premiumBadge: {
     backgroundColor: '#e6f7f7', paddingVertical: 4, paddingHorizontal: 12,
     borderRadius: 12, marginTop: 4,
