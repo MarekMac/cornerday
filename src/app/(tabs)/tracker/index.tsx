@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,6 +16,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+const SHEET_MIN_HEIGHT = Dimensions.get('window').height * 0.6;
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
@@ -448,8 +451,10 @@ export default function TrackerIndex() {
       {/* Debt modal — add & edit */}
       <Modal visible={debtModalVisible} transparent animationType="slide"
         onRequestClose={closeDebtModal}>
-        <KeyboardAvoidingView style={s.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={s.modalBackdrop} onPress={closeDebtModal} />
+        <View style={s.modalOverlay}>
+          <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFillObject} />
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeDebtModal} />
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheet}>
             <View style={s.sheetHandle} />
             <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Add a debt'}</Text>
@@ -503,14 +508,17 @@ export default function TrackerIndex() {
             </View>
             <View style={{ height: 16 }} />
           </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Saving modal — add & edit */}
       <Modal visible={savingModalVisible} transparent animationType="slide"
         onRequestClose={closeSavingModal}>
-        <KeyboardAvoidingView style={s.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={s.modalBackdrop} onPress={closeSavingModal} />
+        <View style={s.modalOverlay}>
+          <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFillObject} />
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeSavingModal} />
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheet}>
             <View style={s.sheetHandle} />
             <Text style={s.sheetTitle}>{editingSaving ? 'Edit saving' : 'Log a saving'}</Text>
@@ -549,7 +557,8 @@ export default function TrackerIndex() {
             </View>
             <View style={{ height: 16 }} />
           </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
@@ -640,8 +649,11 @@ const s = StyleSheet.create({
   chipTxtActive: { color: '#0F6E6E', fontWeight: '600' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20 },
+  sheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20,
+    minHeight: SHEET_MIN_HEIGHT,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.28, shadowRadius: 20, elevation: 32,
+  },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 16 },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 4 },
   sheetActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
