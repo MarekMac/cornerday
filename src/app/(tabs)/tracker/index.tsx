@@ -322,6 +322,7 @@ export default function TrackerIndex() {
             </View>
             <Text style={s.progressLbl}>{Math.round(recoveryPct * 100)}% recovered</Text>
 
+            <View style={s.savingsInnerSep} />
             <View style={s.savingsLine}>
               <Text style={s.savingsLineLabel} numberOfLines={1}>
                 Potential savings{weeklyBet ? ` (${fmt(Number(weeklyBet), currency)}/week)` : ' (set weekly spending in Account)'}
@@ -330,8 +331,7 @@ export default function TrackerIndex() {
             </View>
             {totalManualSavings > 0 && (
               <>
-                <View style={s.savingsInnerSep} />
-                <View style={s.savingsLine}>
+                <View style={[s.savingsLine, { paddingTop: 0 }]}>
                   <Text style={s.savingsLineLabel}>Savings banked</Text>
                   <Text style={s.savingsLineValue}>{fmt(totalManualSavings, currency)}</Text>
                 </View>
@@ -342,7 +342,10 @@ export default function TrackerIndex() {
           {/* Tabs */}
           <View style={s.tabBar}>
             {(['debts', 'saving'] as MainTab[]).map(t => (
-              <Pressable key={t} style={[s.tabBtn, tab === t && s.tabBtnActive]} onPress={() => setTab(t)}>
+              <Pressable
+                key={t}
+                style={[s.tabBtn, tab === t && { backgroundColor: t === 'debts' ? '#c0392b' : '#0F6E6E' }]}
+                onPress={() => setTab(t)}>
                 <Text style={[s.tabTxt, tab === t && s.tabTxtActive]}>
                   {t === 'debts' ? 'Debts' : 'Savings'}
                 </Text>
@@ -354,10 +357,10 @@ export default function TrackerIndex() {
           {tab === 'debts' && (
             <>
               <Pressable
-                style={({ pressed }) => [s.addBtn, pressed && { opacity: 0.85 }]}
+                style={({ pressed }) => [s.addBtn, { borderColor: '#c0392b' }, pressed && { opacity: 0.85 }]}
                 onPress={openAddDebt}>
-                <Ionicons name="add-circle-outline" size={18} color="#0F6E6E" />
-                <Text style={s.addBtnTxt}>Add a debt</Text>
+                <Ionicons name="add-circle-outline" size={18} color="#c0392b" />
+                <Text style={[s.addBtnTxt, { color: '#c0392b' }]}>Add a debt</Text>
               </Pressable>
 
               {debts.length === 0 ? (
@@ -578,7 +581,6 @@ const s = StyleSheet.create({
 
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 4, gap: 2 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
-  tabBtnActive: { backgroundColor: '#0F6E6E' },
   tabTxt: { fontSize: 13, fontWeight: '600', color: '#888' },
   tabTxtActive: { color: '#fff' },
 
