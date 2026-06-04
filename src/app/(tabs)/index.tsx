@@ -367,10 +367,10 @@ function CircularProgress({ progress, next }: { progress: number; next: number }
 // ─── Badge Ring ───────────────────────────────────────────────────────────────
 
 function badgeRingColor(progress: number): string {
-  // Black at 0% → bright green at 100%
-  const r = Math.round(20 + (34 - 20) * progress);
-  const g = Math.round(20 + (197 - 20) * progress);
-  const b = Math.round(20 + (94 - 20) * progress);
+  const p = Math.floor(progress * 10) / 10;
+  const r = Math.round(20 + (34 - 20) * p);
+  const g = Math.round(80 + (197 - 80) * p);
+  const b = Math.round(40 + (94 - 40) * p);
   return `rgb(${r},${g},${b})`;
 }
 
