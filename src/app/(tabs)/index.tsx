@@ -1104,7 +1104,7 @@ export default function HomeScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f5f7f7' },
+  root: { flex: 1, backgroundColor: '#edf0f0' },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   // Header
