@@ -79,28 +79,10 @@ export async function scheduleAllNotifications(
   const quitMs = new Date(quitTimestamp).getTime();
   const now = Date.now();
 
-  // 1. Milestone reached — next 15 future milestones
-  if (prefs.notif_milestone) {
-    const future = MILESTONE_DAYS
-      .filter(d => quitMs + d * 86400000 > now)
-      .slice(0, 15);
-    for (const days of future) {
-      const label = milestoneLabel(days);
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `🏆 ${label} milestone!`,
-          body: `You've been clean for ${label}. That's a real achievement — keep going.`,
-          data: { screen: '/(tabs)/' },
-        },
-        trigger: androidTrigger({
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: new Date(quitMs + days * 86400000),
-        }) as any,
-      });
-    }
-  }
+  // Milestone reached notifications are handled in fetchData (immediate, on-demand)
+  // to avoid duplicates between pre-scheduled and in-app notifications.
 
-  // 2. Milestone approaching — 24 h before next milestone
+  // 1. Milestone approaching — 24 h before next milestone
   if (prefs.notif_milestone_approaching) {
     const next = MILESTONE_DAYS.find(d => quitMs + d * 86400000 > now);
     if (next) {

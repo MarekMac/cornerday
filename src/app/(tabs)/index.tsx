@@ -607,9 +607,9 @@ export default function HomeScreen() {
         })));
       }
 
-      // Immediate notification for each newly awarded milestone
+      // Immediate notification for each newly awarded milestone (respects notif_milestone pref)
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
-      if (notifStatus === 'granted') {
+      if (notifStatus === 'granted' && (profile?.notif_milestone ?? true)) {
         for (const b of toLog) {
           await Notifications.scheduleNotificationAsync({
             content: {
