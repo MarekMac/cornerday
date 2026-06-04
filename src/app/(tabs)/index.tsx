@@ -838,7 +838,7 @@ export default function HomeScreen() {
           <Text style={s.urgeLogIcon}>🧠</Text>
           <View style={s.urgeLogText}>
             <Text style={s.urgeLogTitle}>Feeling an urge?</Text>
-            <Text style={s.urgeLogSub}>Log a moment or get support</Text>
+            <Text style={s.urgeLogSub}>Support is one tap away</Text>
           </View>
           <Text style={s.urgeLogArrow}>›</Text>
         </Pressable>
