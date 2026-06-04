@@ -730,14 +730,28 @@ export default function AccountScreen() {
           <Text style={s.deleteBtnTxt}>Delete account</Text>
         </Pressable>
 
-        {/* Privacy Policy */}
-        <Pressable
-          style={({ pressed }) => [s.privacyBtn, pressed && { opacity: 0.7 }]}
-          onPress={() => router.push('/privacy-policy')}>
-          <Text style={s.privacyBtnTxt}>Privacy Policy</Text>
-        </Pressable>
-
-        <Text style={s.versionTxt}>CornerDay v{appVersion}</Text>
+        {/* About */}
+        <View style={s.aboutCard}>
+          <Text style={s.aboutTitle}>About</Text>
+          <Text style={s.aboutVersion}>CornerDay v{appVersion}</Text>
+          <Text style={s.aboutNote}>
+            CornerDay was built for anyone fighting to turn their life around after gambling. You are not alone — every day you hold on is a victory.
+          </Text>
+          <View style={s.aboutDivider} />
+          <Pressable
+            style={({ pressed }) => [s.aboutBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => Linking.openURL('market://details?id=com.cornerday.app')}>
+            <Ionicons name="star-outline" size={16} color="#0F6E6E" style={{ marginRight: 8 }} />
+            <Text style={s.aboutBtnTxt}>Rate the app</Text>
+          </Pressable>
+          <View style={s.aboutDivider} />
+          <Pressable
+            style={({ pressed }) => [s.aboutBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => router.push('/privacy-policy')}>
+            <Ionicons name="shield-checkmark-outline" size={16} color="#888" style={{ marginRight: 8 }} />
+            <Text style={[s.aboutBtnTxt, { color: '#888' }]}>Privacy Policy</Text>
+          </Pressable>
+        </View>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -1186,8 +1200,13 @@ const s = StyleSheet.create({
   },
   upgradeBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
-  privacyBtn: { alignItems: 'center', paddingVertical: 12 },
-  privacyBtnTxt: { fontSize: 13, color: '#aaa', textDecorationLine: 'underline' },
+  aboutCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  aboutTitle: { fontSize: 14, fontWeight: '700', color: '#333' },
+  aboutVersion: { fontSize: 13, color: '#aaa' },
+  aboutNote: { fontSize: 13, color: '#666', lineHeight: 19 },
+  aboutDivider: { height: 1, backgroundColor: '#f0f0f0' },
+  aboutBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  aboutBtnTxt: { fontSize: 14, color: '#0F6E6E', fontWeight: '600' },
 
   statsCard: {
     backgroundColor: '#fff', borderRadius: 14, padding: 16,
