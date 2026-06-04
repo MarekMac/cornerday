@@ -185,6 +185,27 @@ function calcStreakInfo(quitDate: string | null) {
   return { value: minutes, unit: 'min', days: 0, ms };
 }
 
+function formatStreakDual(ms: number): string {
+  const mins  = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const days  = Math.floor(ms / 86400000);
+  const weeks = Math.floor(days / 7);
+  if (weeks >= 1) {
+    const d = days - weeks * 7;
+    return d > 0 ? `${weeks}w ${d}d` : `${weeks}w`;
+  }
+  if (days >= 1) {
+    const h = hours - days * 24;
+    return h > 0 ? `${days}d ${h}h` : `${days}d`;
+  }
+  if (hours >= 1) {
+    const m = mins - hours * 60;
+    return m > 0 ? `${hours}h ${m}m` : `${hours}h`;
+  }
+  if (mins >= 1) return `${mins}m`;
+  return '< 1m';
+}
+
 function getMilestone(ms: number) {
   const days = ms / 86400000;
   const next = MILESTONES.find(m => m > days) ?? 3650;
@@ -426,6 +447,49 @@ interface HomeData {
   todayMoodNote: string | null;
   todayMoodId: string | null;
   weekMoods: { date: string; mood: number | null; note: string | null }[];
+  totalLost: number;
+  totalPaid: number;
+}
+
+function fmtLive(amount: number, currency = 'USD') {
+  const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
+  const s = syms[currency] ?? currency;
+  if (amount >= 1000) return `${s}${(amount / 1000).toFixed(1)}k`;
+  if (amount >= 10) return `${s}${Math.round(amount)}`;
+  return `${s}${amount.toFixed(2)}`;
+}
+
+function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
+  quitDate: string | null; weeklyBet: string | null; currency: string;
+  totalLost: number; totalPaid: number;
+}) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const ms = quitDate ? Math.max(0, Date.now() - parseQuitDate(quitDate).getTime()) : 0;
+  const moneySaved = (ms / 86400000) * weeklyToDaily(weeklyBet);
+  const hint = weeklyBet
+    ? `(${fmt(Number(weeklyBet), currency)}/week)`
+    : '(set weekly spending in Tracker)';
+  return (
+    <View style={s.savedCard}>
+      <View style={s.savedRow}>
+        <Text style={s.savedLabel} numberOfLines={1}>Potential savings {hint}</Text>
+        <Text style={s.savedValue}>{fmtLive(moneySaved, currency)}</Text>
+      </View>
+      {totalPaid > 0 && (
+        <>
+          <View style={s.savedSep} />
+          <View style={s.savedRow}>
+            <Text style={s.savedLabel} numberOfLines={1}>Logged savings</Text>
+            <Text style={s.savedValue}>{fmt(totalPaid, currency)}</Text>
+          </View>
+        </>
+      )}
+    </View>
+  );
 }
 
 export default function HomeScreen() {
@@ -457,12 +521,13 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes] = await Promise.all([
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency').eq('id', user.id).single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
       supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const d = new Date(); d.setDate(d.getDate() - 6); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
+      supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
     ]);
 
     const profile = profileRes.data;
@@ -489,6 +554,10 @@ export default function HomeScreen() {
       await supabase.from('streaks').update({ longest_streak: streak }).eq('user_id', user.id);
     }
 
+    const lossRows = lossesRes.data ?? [];
+    const totalLost = 0;
+    const totalPaid = lossRows.reduce((s, r) => s + Number(r.amount), 0);
+
     setData({
       displayName: profile?.display_name ?? user.email?.split('@')[0] ?? null,
       motivation: profile?.motivation ?? null,
@@ -498,6 +567,8 @@ export default function HomeScreen() {
       longestStreak: Math.max(longest, streak),
       earnedBadges,
       badgeTimestamps,
+      totalLost,
+      totalPaid,
       todayMood: moodRes.data?.mood ?? null,
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
@@ -531,9 +602,8 @@ export default function HomeScreen() {
     if (initialLoadDone.current) fetchData();
   }, [fetchData]));
 
-  // Update streak display every minute (sub-day countdown uses its own component)
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60000);
+    const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -631,7 +701,6 @@ export default function HomeScreen() {
   if (!data) return null;
 
   const { next, daysToGo, hoursToGo, minsToGo, secsToGo, hoursComponent, remainingMs, progress } = getMilestone(streakMs);
-  const moneySaved = streakDays * weeklyToDaily(data.weeklyBet);
   const motivations = (data.motivation ?? '').split(',').filter(Boolean).map(
     m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' }
   );
@@ -683,17 +752,7 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" />}>
 
         {/* Stats */}
-        <View style={s.savedCard}>
-          <Text style={s.savedLabel}>Saved by not gambling</Text>
-          <Text style={s.savedValue}>{fmt(moneySaved, data.currency)}</Text>
-          {data.weeklyBet ? (
-            <Text style={s.savedHint}>
-              {fmt(Number(data.weeklyBet), data.currency)}/week · {streakDays} day{streakDays !== 1 ? 's' : ''} streak
-            </Text>
-          ) : (
-            <Text style={s.savedHint}>Set your weekly spending in the Tracker to see savings</Text>
-          )}
-        </View>
+        <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} />
 
         {/* Badges */}
         <View style={s.card}>
@@ -720,6 +779,18 @@ export default function HomeScreen() {
             })}
           </ScrollView>
         </View>
+
+        {/* Log urge */}
+        <Pressable
+          style={({ pressed }) => [s.urgeLogCard, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/urge')}>
+          <Text style={s.urgeLogIcon}>🧠</Text>
+          <View style={s.urgeLogText}>
+            <Text style={s.urgeLogTitle}>Feeling an urge?</Text>
+            <Text style={s.urgeLogSub}>Log a moment or get support</Text>
+          </View>
+          <Text style={s.urgeLogArrow}>›</Text>
+        </Pressable>
 
         {/* Mood check-in */}
         <View style={s.moodCard}>
@@ -805,18 +876,6 @@ export default function HomeScreen() {
           })}
           </View>
         </View>
-
-        {/* Log urge */}
-        <Pressable
-          style={({ pressed }) => [s.urgeLogCard, pressed && { opacity: 0.85 }]}
-          onPress={() => router.push('/urge')}>
-          <Text style={s.urgeLogIcon}>🧠</Text>
-          <View style={s.urgeLogText}>
-            <Text style={s.urgeLogTitle}>Feeling an urge?</Text>
-            <Text style={s.urgeLogSub}>Log a moment or get support</Text>
-          </View>
-          <Text style={s.urgeLogArrow}>›</Text>
-        </Pressable>
 
         {/* Journal */}
         <Pressable
@@ -1004,12 +1063,12 @@ const s = StyleSheet.create({
 
   // Stats
   savedCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    alignItems: 'center', gap: 4,
+    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, gap: 6,
   },
-  savedLabel: { fontSize: 12, fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
-  savedValue: { fontSize: 32, fontWeight: '800', color: '#0F6E6E' },
-  savedHint: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  savedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  savedSep: { height: 1, backgroundColor: '#f0f0f0' },
+  savedLabel: { fontSize: 14, color: '#888', flexShrink: 1, flex: 1 },
+  savedValue: { fontSize: 20, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
 
   // Card
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
