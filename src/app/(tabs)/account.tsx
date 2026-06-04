@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -171,6 +172,9 @@ export default function AccountScreen() {
   const [confirmQuitDate, setConfirmQuitDate] = useState<Date | null>(null);
   const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
   const [signOutVisible, setSignOutVisible] = useState(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
+  const [feedbackMsg, setFeedbackMsg] = useState('');
 
   const fetchProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -700,6 +704,14 @@ export default function AccountScreen() {
               </>}
         </Pressable>
 
+        {/* Feedback */}
+        <Pressable
+          style={({ pressed }) => [s.exportBtn, pressed && { opacity: 0.7 }]}
+          onPress={() => { setFeedbackMsg(''); setFeedbackType('general'); setFeedbackVisible(true); }}>
+          <Ionicons name="chatbubble-outline" size={16} color="#0F6E6E" style={{ marginRight: 8 }} />
+          <Text style={s.exportTxt}>Feedback &amp; feature request</Text>
+        </Pressable>
+
         {/* Sign out */}
         <Pressable
           style={({ pressed }) => [s.signOutBtn, pressed && { opacity: 0.7 }]}
@@ -1001,6 +1013,65 @@ export default function AccountScreen() {
         </Pressable>
       </Modal>
 
+      {/* Feedback modal */}
+      <Modal visible={feedbackVisible} transparent animationType="slide" onRequestClose={() => setFeedbackVisible(false)}>
+        <Pressable style={s.modalOverlay} onPress={() => setFeedbackVisible(false)}>
+          <Pressable style={s.editFieldSheet} onPress={() => {}}>
+            <View style={s.editFieldHandle} />
+            <Text style={s.editFieldTitle}>Feedback &amp; Feature Request</Text>
+
+            <View style={s.feedbackTypeRow}>
+              {([
+                { key: 'general', label: '💬 General' },
+                { key: 'feature', label: '💡 Feature' },
+                { key: 'bug',     label: '🐛 Bug' },
+              ] as { key: 'general' | 'feature' | 'bug'; label: string }[]).map(t => (
+                <Pressable
+                  key={t.key}
+                  style={[s.feedbackTypeChip, feedbackType === t.key && s.feedbackTypeChipActive]}
+                  onPress={() => setFeedbackType(t.key)}>
+                  <Text style={[s.feedbackTypeChipTxt, feedbackType === t.key && s.feedbackTypeChipTxtActive]}>
+                    {t.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <TextInput
+              style={s.feedbackInput}
+              placeholder="Write your message here…"
+              placeholderTextColor="#bbb"
+              value={feedbackMsg}
+              onChangeText={setFeedbackMsg}
+              multiline
+              numberOfLines={5}
+              maxLength={1000}
+              textAlignVertical="top"
+            />
+
+            <View style={s.modalActions}>
+              <Pressable
+                style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                onPress={() => setFeedbackVisible(false)}>
+                <Text style={s.modalBtnCancel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, !feedbackMsg.trim() && { opacity: 0.4 }, pressed && { opacity: 0.85 }]}
+                disabled={!feedbackMsg.trim()}
+                onPress={() => {
+                  const typeLabel = feedbackType === 'bug' ? 'Bug Report' : feedbackType === 'feature' ? 'Feature Request' : 'General Feedback';
+                  const subject = encodeURIComponent(`CornerDay — ${typeLabel}`);
+                  const body = encodeURIComponent(feedbackMsg.trim());
+                  Linking.openURL(`mailto:marekmac.ski@gmail.com?subject=${subject}&body=${body}`);
+                  setFeedbackVisible(false);
+                }}>
+                <Text style={s.modalBtnSaveTxt}>Send</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* iOS date/time picker modal */}
       {Platform.OS === 'ios' && (
         <Modal visible={showIOSModal} transparent animationType="slide">
@@ -1146,6 +1217,16 @@ const s = StyleSheet.create({
   versionTxt: { fontSize: 12, color: '#ccc', textAlign: 'center', paddingVertical: 8 },
 
   infoValueEmpty: { color: '#bbb', fontStyle: 'italic', fontWeight: '400' },
+
+  feedbackTypeRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  feedbackTypeChip: { flex: 1, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5, borderColor: '#d0e8e8', backgroundColor: '#f8fdfd', alignItems: 'center' },
+  feedbackTypeChipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
+  feedbackTypeChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
+  feedbackTypeChipTxtActive: { color: '#0F6E6E' },
+  feedbackInput: {
+    borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 12,
+    padding: 14, fontSize: 14, color: '#111', minHeight: 120, marginBottom: 16,
+  },
 
   notifSettingsBtn: {
     backgroundColor: '#fff', borderRadius: 14, padding: 16,
