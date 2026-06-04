@@ -14,6 +14,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -23,6 +24,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ONBOARDED_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
+import {
+  DEFAULT_NOTIF_PREFS,
+  NotifPrefs,
+  requestNotificationPermissions,
+  scheduleAllNotifications,
+} from '@/lib/notifications';
 
 interface Profile {
   displayName: string | null;
@@ -140,6 +147,9 @@ export default function AccountScreen() {
   const [editModalSelections, setEditModalSelections] = useState<string[]>([]);
   const [savingField, setSavingField] = useState(false);
 
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
+  const [quitTimestamp, setQuitTimestamp] = useState<string | null>(null);
+
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [spendingCurrency, setSpendingCurrency] = useState('USD');
   const [spendingChip, setSpendingChip] = useState('');
@@ -151,7 +161,7 @@ export default function AccountScreen() {
     if (!user) return;
     const { data } = await supabase
       .from('users')
-      .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url')
+      .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
       .eq('id', user.id)
       .single();
     const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
@@ -173,6 +183,14 @@ export default function AccountScreen() {
       currency: data?.currency ?? 'USD',
       isPremium: data?.is_premium ?? false,
       avatarUrl: resolvedAvatar,
+    });
+    setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
+    setNotifPrefs({
+      notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+      notif_daily_streak: data?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+      notif_daily_checkin: data?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+      notif_weekly_summary: data?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+      notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
     });
     setGlobalAvatarUrl(resolvedAvatar);
   }, []);
@@ -452,6 +470,17 @@ export default function AccountScreen() {
     );
   };
 
+  const handleNotifToggle = async (key: keyof NotifPrefs, value: boolean) => {
+    const updated = { ...notifPrefs, [key]: value };
+    setNotifPrefs(updated);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users').update({ [key]: value }).eq('id', user.id);
+      const granted = await requestNotificationPermissions();
+      if (granted) await scheduleAllNotifications(updated, quitTimestamp);
+    }
+  };
+
   if (loading) {
     return (
       <View style={s.center}>
@@ -599,6 +628,31 @@ export default function AccountScreen() {
               <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
             </Pressable>
           )}
+        </View>
+
+        {/* Notifications */}
+        <View style={s.card}>
+          <Text style={s.sectionTitle}>Notifications</Text>
+          {([
+            { key: 'notif_milestone',            label: 'Milestone reached',     desc: 'Alert when you hit a streak milestone',          default: true },
+            { key: 'notif_daily_streak',         label: 'Daily streak reminder', desc: 'Evening nudge to keep your streak going',         default: true },
+            { key: 'notif_daily_checkin',        label: 'Daily check-in',        desc: 'Morning prompt to log your mood',                 default: false },
+            { key: 'notif_weekly_summary',       label: 'Weekly summary',        desc: 'Monday morning overview of your progress',        default: false },
+            { key: 'notif_milestone_approaching',label: 'Milestone approaching', desc: '24 hours before your next milestone',             default: false },
+          ] as { key: keyof NotifPrefs; label: string; desc: string; default: boolean }[]).map(({ key, label, desc }) => (
+            <View key={key} style={s.notifRow}>
+              <View style={s.notifText}>
+                <Text style={s.notifLabel}>{label}</Text>
+                <Text style={s.notifDesc}>{desc}</Text>
+              </View>
+              <Switch
+                value={notifPrefs[key]}
+                onValueChange={v => handleNotifToggle(key, v)}
+                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+                thumbColor={notifPrefs[key] ? '#0F6E6E' : '#bbb'}
+              />
+            </View>
+          ))}
         </View>
 
         {/* Privacy Policy */}
@@ -891,6 +945,11 @@ const s = StyleSheet.create({
   deleteBtnTxt: { fontSize: 13, color: '#bbb' },
 
   infoValueEmpty: { color: '#bbb', fontStyle: 'italic', fontWeight: '400' },
+
+  notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  notifText: { flex: 1, paddingRight: 12 },
+  notifLabel: { fontSize: 14, fontWeight: '600', color: '#222' },
+  notifDesc: { fontSize: 12, color: '#999', marginTop: 2 },
 
   // Spending modal
   currencyChip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, borderColor: '#d0e8e8', backgroundColor: '#f8fdfd' },
