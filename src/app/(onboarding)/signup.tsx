@@ -241,7 +241,7 @@ export default function SignupScreen() {
         behavior="padding">
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={[styles.scroll, isSignIn && { paddingTop: 75 }]}
+          contentContainerStyle={[styles.scroll, { paddingTop: 75 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
