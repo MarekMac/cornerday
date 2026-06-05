@@ -610,9 +610,17 @@ export default function TrackerIndex() {
                       key={debt.id}
                       ref={(ref) => { swipeRefs.current.set(debt.id, ref); }}
                       friction={2}
+                      leftThreshold={60}
                       rightThreshold={60}
-                      enabled={!isPaidOff}
-                      renderRightActions={() => (
+                      renderLeftActions={() => (
+                        <Pressable
+                          style={s.swipeDeleteAction}
+                          onPress={() => { swipeRefs.current.get(debt.id)?.close(); confirmDeleteDebt(debt); }}>
+                          <Ionicons name="trash-outline" size={22} color="#fff" />
+                          <Text style={s.swipeDeleteTxt}>Delete</Text>
+                        </Pressable>
+                      )}
+                      renderRightActions={isPaidOff ? undefined : () => (
                         <Pressable
                           style={s.swipePayAction}
                           onPress={() => { swipeRefs.current.get(debt.id)?.close(); openQuickPay(debt); }}>
@@ -642,15 +650,7 @@ export default function TrackerIndex() {
                                 <Text style={s.paidOffBadgeTxt}>✓ Paid off</Text>
                               </View>
                             ) : (
-                              <>
-                                <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
-                                <Pressable
-                                  onPress={() => openQuickPay(debt)}
-                                  hitSlop={6}
-                                  style={s.quickPayBtn}>
-                                  <Text style={s.quickPayTxt}>Pay</Text>
-                                </Pressable>
-                              </>
+                              <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
                             )}
                             <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn}>
                               <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
@@ -660,6 +660,12 @@ export default function TrackerIndex() {
                         <View style={s.debtProgressTrack}>
                           <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct) }]} />
                         </View>
+                        {!isPaidOff && (
+                          <View style={s.swipeHint}>
+                            <Text style={s.swipeHintDelete}>← Delete</Text>
+                            <Text style={s.swipeHintPay}>Pay →</Text>
+                          </View>
+                        )}
                       </Pressable>
                     </Swipeable>
                   );
@@ -1117,6 +1123,10 @@ const s = StyleSheet.create({
   },
   quickPayTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
 
+  swipeHint: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  swipeHintDelete: { fontSize: 10, color: '#e8a89e', fontWeight: '500' },
+  swipeHintPay: { fontSize: 10, color: '#8cc8c0', fontWeight: '500' },
+
   menuBtn: { padding: 4 },
 
   savingCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
@@ -1145,6 +1155,11 @@ const s = StyleSheet.create({
   setGoalBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   setGoalTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
 
+  swipeDeleteAction: {
+    backgroundColor: '#c0392b', borderRadius: 14, marginRight: 8,
+    width: 72, alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  swipeDeleteTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
   swipePayAction: {
     backgroundColor: '#0F6E6E', borderRadius: 14, marginLeft: 8,
     width: 72, alignItems: 'center', justifyContent: 'center', gap: 4,
