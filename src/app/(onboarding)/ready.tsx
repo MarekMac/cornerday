@@ -1,14 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Ellipse, Line, Path, Rect } from 'react-native-svg';
 
 import { ONBOARDED_KEY } from '@/constants/storage-keys';
 import { useOnboarding } from '@/context/onboarding';
 import { supabase } from '@/lib/supabase';
+import { generateUsername } from '@/lib/usernameGenerator';
 
 function CelebrationIllustration() {
   return (
@@ -75,6 +77,8 @@ export default function ReadyScreen() {
   const { data, clearProgress } = useOnboarding();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [username, setUsername] = useState(() => generateUsername());
+  const [customName, setCustomName] = useState('');
 
   const motivationLabel = data.motivation
     ? MOTIVATION_LABELS[data.motivation] ?? data.motivation
@@ -100,6 +104,7 @@ export default function ReadyScreen() {
 
     const [updateResult, streakResult] = await Promise.all([
       supabase.from('users').update({
+        display_name: customName.trim() || username,
         motivation: data.motivation ?? '',
         trigger: data.trigger ?? '',
         goal: data.goal ?? '',
@@ -151,6 +156,32 @@ export default function ReadyScreen() {
               <Text style={styles.tick}>✓</Text>
             </View>
           ))}
+        </View>
+
+        {/* Username picker */}
+        <View style={styles.usernameCard}>
+          <Text style={styles.usernameLabel}>Your username</Text>
+          <View style={styles.usernameRow}>
+            <Text style={styles.usernameText} numberOfLines={1} adjustsFontSizeToFit>
+              {customName.trim() || username}
+            </Text>
+            <Pressable
+              onPress={() => { setUsername(generateUsername()); setCustomName(''); }}
+              style={({ pressed }) => [styles.regenBtn, pressed && { opacity: 0.6 }]}
+              hitSlop={8}>
+              <Ionicons name="shuffle-outline" size={20} color="rgba(255,255,255,0.9)" />
+            </Pressable>
+          </View>
+          <TextInput
+            style={styles.usernameInput}
+            value={customName}
+            onChangeText={setCustomName}
+            placeholder="Or type your own…"
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            maxLength={30}
+            returnKeyType="done"
+          />
+          <Text style={styles.usernameHint}>You can change this anytime in Account</Text>
         </View>
 
         {!!error && (
@@ -231,6 +262,54 @@ title: {
     fontSize: 16,
     color: '#a8d8d0',
     fontWeight: '700',
+  },
+  usernameCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
+    marginBottom: 16,
+  },
+  usernameLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  usernameText: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  regenBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  usernameInput: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 15,
+    color: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  usernameHint: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
   },
   errorBox: {
     alignItems: 'center',
