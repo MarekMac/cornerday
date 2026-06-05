@@ -3,9 +3,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Ellipse, Line, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { ONBOARDED_KEY } from '@/constants/storage-keys';
 import { useOnboarding } from '@/context/onboarding';
@@ -57,14 +57,6 @@ function CelebrationIllustration() {
   );
 }
 
-const MOTIVATION_LABELS: Record<string, string> = {
-  family: 'My family',
-  finances: 'My finances',
-  mental_health: 'My mental health',
-  saving: 'Saving for something',
-  better_self: 'Becoming a better me',
-};
-
 const CHECKLIST = [
   { icon: '🎯', text: 'Your motivation is set' },
   { icon: '🌊', text: 'Your trigger is identified' },
@@ -79,11 +71,6 @@ export default function ReadyScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [username, setUsername] = useState(() => generateUsername());
-  const [customName, setCustomName] = useState('');
-
-  const motivationLabel = data.motivation
-    ? MOTIVATION_LABELS[data.motivation] ?? data.motivation
-    : 'your reason';
 
   const handleGo = async () => {
     setLoading(true);
@@ -105,7 +92,7 @@ export default function ReadyScreen() {
 
     const [updateResult, streakResult] = await Promise.all([
       supabase.from('users').update({
-        display_name: customName.trim() || username,
+        display_name: username,
         motivation: data.motivation ?? '',
         trigger: data.trigger ?? '',
         goal: data.goal ?? '',
@@ -144,14 +131,28 @@ export default function ReadyScreen() {
           onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q5')}>
           <Ionicons name="chevron-back" size={26} color="#fff" />
         </Pressable>
+
         <View style={styles.hero}>
           <Text style={styles.checkmark}>🌟</Text>
           <Text style={styles.title}>You're all set!</Text>
-          <Text style={styles.subtitle}>
-            Your motivation is{' '}
-            <Text style={styles.highlight}>{motivationLabel}</Text>.{'\n'}
-            Let's start turning things around.
-          </Text>
+          <Text style={styles.subtitle}>Let's start turning things around.</Text>
+        </View>
+
+        {/* Username picker */}
+        <View style={styles.usernameCard}>
+          <Text style={styles.usernameLabel}>Your username</Text>
+          <View style={styles.usernameRow}>
+            <Text style={styles.usernameText} numberOfLines={1} adjustsFontSizeToFit>
+              {username}
+            </Text>
+            <Pressable
+              onPress={() => setUsername(generateUsername())}
+              style={({ pressed }) => [styles.regenBtn, pressed && { opacity: 0.6 }]}
+              hitSlop={8}>
+              <Ionicons name="shuffle-outline" size={20} color="rgba(255,255,255,0.9)" />
+            </Pressable>
+          </View>
+          <Text style={styles.usernameHint}>You can change this anytime in Account</Text>
         </View>
 
         <View style={styles.checklist}>
@@ -162,32 +163,6 @@ export default function ReadyScreen() {
               <Text style={styles.tick}>✓</Text>
             </View>
           ))}
-        </View>
-
-        {/* Username picker */}
-        <View style={styles.usernameCard}>
-          <Text style={styles.usernameLabel}>Your username</Text>
-          <View style={styles.usernameRow}>
-            <Text style={styles.usernameText} numberOfLines={1} adjustsFontSizeToFit>
-              {customName.trim() || username}
-            </Text>
-            <Pressable
-              onPress={() => { setUsername(generateUsername()); setCustomName(''); }}
-              style={({ pressed }) => [styles.regenBtn, pressed && { opacity: 0.6 }]}
-              hitSlop={8}>
-              <Ionicons name="shuffle-outline" size={20} color="rgba(255,255,255,0.9)" />
-            </Pressable>
-          </View>
-          <TextInput
-            style={styles.usernameInput}
-            value={customName}
-            onChangeText={setCustomName}
-            placeholder="Or type your own…"
-            placeholderTextColor="rgba(255,255,255,0.4)"
-            maxLength={30}
-            returnKeyType="done"
-          />
-          <Text style={styles.usernameHint}>You can change this anytime in Account</Text>
         </View>
 
         {!!error && (
@@ -201,7 +176,7 @@ export default function ReadyScreen() {
 
         <View style={styles.spacer} />
 
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 16, 40) }]}>
           <Pressable
             style={({ pressed }) => [styles.btn, pressed && styles.pressed]}
             onPress={handleGo}
@@ -227,15 +202,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginLeft: -4,
   },
-  checkmark: { fontSize: 64, marginBottom: 8 },
   hero: {
     alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: 24,
-    gap: 12,
+    paddingTop: 32,
+    paddingBottom: 16,
+    gap: 10,
   },
-  spacer: { flex: 1 },
-title: {
+  checkmark: { fontSize: 56, marginBottom: 4 },
+  title: {
     fontSize: 32,
     fontWeight: '700',
     color: '#fff',
@@ -247,39 +221,11 @@ title: {
     textAlign: 'center',
     lineHeight: 24,
   },
-  highlight: {
-    fontWeight: '700',
-    color: '#fff',
-  },
-  checklist: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
-    padding: 20,
-    gap: 14,
-    marginBottom: 24,
-  },
-  checkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  checkIcon: { fontSize: 20 },
-  checkText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  tick: {
-    fontSize: 16,
-    color: '#a8d8d0',
-    fontWeight: '700',
-  },
   usernameCard: {
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 16,
-    gap: 10,
+    gap: 8,
     marginBottom: 16,
   },
   usernameLabel: {
@@ -308,21 +254,36 @@ title: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  usernameInput: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 15,
-    color: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
   usernameHint: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
   },
+  checklist: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    padding: 20,
+    gap: 14,
+    marginBottom: 16,
+  },
+  checkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  checkIcon: { fontSize: 20 },
+  checkText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  tick: {
+    fontSize: 16,
+    color: '#a8d8d0',
+    fontWeight: '700',
+  },
+  spacer: { flex: 1 },
   errorBox: {
     alignItems: 'center',
     gap: 8,
