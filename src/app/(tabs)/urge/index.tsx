@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   Linking,
   Modal,
   Pressable,
@@ -14,6 +15,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { type GameKey, GAMES, renderGame } from './games';
+
+const { width: SCREEN_W } = Dimensions.get('window');
+const GAME_TILE_W = (SCREEN_W - 48) / 3;
 
 import { supabase } from '@/lib/supabase';
 
@@ -127,6 +133,7 @@ export default function UrgeScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
+  const [activeGame, setActiveGame] = useState<GameKey | null>(null);
 
   const breathScale = useRef(new Animated.Value(0.5)).current;
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -324,6 +331,23 @@ export default function UrgeScreen() {
           <Text style={s.checklistBtnChevron}>›</Text>
         </Pressable>
 
+        {/* Focus games grid */}
+        <View style={s.gamesSection}>
+          <Text style={s.gamesSectionTitle}>Focus Games</Text>
+          <Text style={s.gamesSectionSub}>Engage your mind, ease the urge</Text>
+          <View style={s.gamesGrid}>
+            {GAMES.map(game => (
+              <Pressable
+                key={game.key}
+                style={({ pressed }) => [s.gameTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
+                onPress={() => setActiveGame(game.key)}>
+                <Text style={s.gameTileEmoji}>{game.emoji}</Text>
+                <Text style={s.gameTileTitle}>{game.title}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {/* Crisis resources */}
         <View style={s.crisisCard}>
           <Text style={s.crisisTitle}>Need more help?</Text>
@@ -352,6 +376,29 @@ export default function UrgeScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Game overlay */}
+      {activeGame !== null && (
+        <View style={StyleSheet.absoluteFill}>
+          <SafeAreaView style={s.gameOverlay} edges={['top', 'bottom']}>
+            <View style={s.gameOverlayHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 20 }}>{GAMES.find(g => g.key === activeGame)?.emoji}</Text>
+                <Text style={s.gameOverlayTitle}>{GAMES.find(g => g.key === activeGame)?.title}</Text>
+              </View>
+              <Pressable style={s.gameCloseBtn} onPress={() => setActiveGame(null)}>
+                <Text style={s.gameCloseBtnTxt}>✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
+              {renderGame(activeGame)}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      )}
 
       {/* Professional help modal */}
       <Modal
@@ -657,4 +704,31 @@ const s = StyleSheet.create({
   therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: '#c0392b' },
   therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#a8d8d0' },
   therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
+
+  // Focus games
+  gamesSection: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
+  gamesSectionTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 2 },
+  gamesSectionSub: { fontSize: 12, color: '#888', marginBottom: 14 },
+  gamesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  gameTile: {
+    width: GAME_TILE_W, backgroundColor: '#f4fafa', borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 6, alignItems: 'center', gap: 5,
+    borderWidth: 1, borderColor: '#d4eeee',
+  },
+  gameTileEmoji: { fontSize: 26 },
+  gameTileTitle: { fontSize: 11, fontWeight: '700', color: '#0F6E6E', textAlign: 'center', lineHeight: 14 },
+
+  // Game overlay
+  gameOverlay: { flex: 1, backgroundColor: '#f5f5f5' },
+  gameOverlayHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14,
+    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee',
+  },
+  gameOverlayTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
+  gameCloseBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center',
+  },
+  gameCloseBtnTxt: { fontSize: 15, color: '#555', fontWeight: '600' },
 });
