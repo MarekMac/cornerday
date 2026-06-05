@@ -73,9 +73,17 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function parseQuitDate(quitDate: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(quitDate)) {
+    const [y, mo, d] = quitDate.split('-').map(Number);
+    return new Date(y, mo - 1, d);
+  }
+  return new Date(quitDate);
+}
+
 function streakDays(quitTimestamp: string | null) {
   if (!quitTimestamp) return 0;
-  const ms = Date.now() - new Date(quitTimestamp).getTime();
+  const ms = Date.now() - parseQuitDate(quitTimestamp).getTime();
   return ms < 0 ? 0 : Math.floor(ms / 86400000);
 }
 
@@ -128,7 +136,7 @@ export default function TrackerIndex() {
       supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
-      supabase.from('users').select('currency, weekly_bet, quit_timestamp').eq('id', user.id).single(),
+      supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date').eq('id', user.id).single(),
     ]);
 
     setDebts((debtsRes.data ?? []) as Debt[]);
@@ -137,7 +145,7 @@ export default function TrackerIndex() {
     if (profileRes.data) {
       setCurrency(profileRes.data.currency ?? 'USD');
       setWeeklyBet(profileRes.data.weekly_bet ?? null);
-      setQuitTs(profileRes.data.quit_timestamp ?? null);
+      setQuitTs(profileRes.data.quit_timestamp ?? profileRes.data.quit_date ?? null);
     }
   }, []);
 
@@ -153,7 +161,7 @@ export default function TrackerIndex() {
   const recoveryPct = totalDebt > 0 ? Math.min(1, totalPaid / totalDebt) : 0;
 
   const days = streakDays(quitTs);
-  const streakMs = quitTs ? Math.max(0, Date.now() - new Date(quitTs).getTime()) : 0;
+  const streakMs = quitTs ? Math.max(0, Date.now() - parseQuitDate(quitTs).getTime()) : 0;
   const autoSaved = weeklyBet ? (streakMs / 86400000) * (Number(weeklyBet) / 7) : 0;
   const totalManualSavings = savings.reduce((s, e) => s + Number(e.amount), 0);
 
