@@ -707,6 +707,11 @@ export default function HomeScreen() {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_reached' });
     }
     if (newGoalBadges.length > 0) {
+      // Persist to AsyncStorage first — same guard used for streak milestones.
+      // Prevents repeat notifications if the DB insert fails or races.
+      const updatedLocal = [...localEarned, ...newGoalBadges.map(b => b.badge_type)];
+      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(updatedLocal));
+
       await supabase.from('badges').insert(newGoalBadges);
       // Log goal_reached to activity log (goal_set is logged at save time in tracker/account)
       const reachedBadge = newGoalBadges.find(b => b.badge_type === 'goal_reached');
