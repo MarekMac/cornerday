@@ -579,8 +579,8 @@ export default function TrackerIndex() {
                 )}
               </View>
               {savingsGoal ? (
-                <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 13, textAlign: 'right', lineHeight: 20 }]}>
-                  {fmt(totalManualSavings, currency)}{'\n'}{fmt(savingsGoal, currency)}
+                <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 12, fontWeight: '600', textAlign: 'right', maxWidth: 150 }]}>
+                  {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
                 </Text>
               ) : (
                 <Ionicons name="chevron-forward" size={16} color="#ccc" />
