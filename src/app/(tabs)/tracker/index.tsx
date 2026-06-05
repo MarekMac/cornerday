@@ -388,6 +388,13 @@ export default function TrackerIndex() {
     setGoalForInput('');
     setGoalIconInput('🎯');
   };
+  const logGoalEvent = async (type: string, amount: number | null, note: string | null) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && amount !== null) {
+      await supabase.from('losses').insert({ user_id: user.id, type, amount, category: 'Goal', note });
+    }
+  };
+
   const saveGoal = async () => {
     const val = parseFloat(goalInput);
     if (goalInput && (isNaN(val) || val <= 0)) {
@@ -396,6 +403,7 @@ export default function TrackerIndex() {
     }
     if (!goalInput) {
       await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+      await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
       setSavingsGoal(null);
       setSavingsGoalFor('');
       setSavingsGoalIcon('🎯');
@@ -406,6 +414,8 @@ export default function TrackerIndex() {
       await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
       if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
       else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
+      const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
+      await logGoalEvent(eventType, val, forVal || null);
       setSavingsGoal(val);
       setSavingsGoalFor(forVal);
       setSavingsGoalIcon(iconVal);
@@ -1021,9 +1031,11 @@ export default function TrackerIndex() {
                 {savingsGoal && (
                   <Pressable
                     onPress={async () => {
-                      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY]);
+                      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+                      await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
                       setSavingsGoal(null);
                       setSavingsGoalFor('');
+                      setSavingsGoalIcon('🎯');
                       closeGoalModal();
                     }}
                     style={{ alignSelf: 'center', marginTop: 12 }}>

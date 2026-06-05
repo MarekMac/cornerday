@@ -708,6 +708,14 @@ export default function HomeScreen() {
     }
     if (newGoalBadges.length > 0) {
       await supabase.from('badges').insert(newGoalBadges);
+      // Log goal_reached to activity log (goal_set is logged at save time in tracker/account)
+      const reachedBadge = newGoalBadges.find(b => b.badge_type === 'goal_reached');
+      if (reachedBadge && savingsGoalAmount) {
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'goal_reached', amount: savingsGoalAmount,
+          category: 'Goal', note: '🎊 Savings goal reached',
+        });
+      }
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       for (const b of newGoalBadges) {
         earnedBadges.push(b.badge_type);

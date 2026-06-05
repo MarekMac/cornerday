@@ -256,6 +256,13 @@ export default function AccountScreen() {
     setShowGoalModal(false);
     setGoalInput(''); setGoalForInput(''); setGoalIconInput('🎯');
   };
+  const logGoalEvent = async (type: string, amount: number | null, note: string | null) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && amount !== null) {
+      await supabase.from('losses').insert({ user_id: user.id, type, amount, category: 'Goal', note });
+    }
+  };
+
   const saveGoal = async () => {
     const val = parseFloat(goalInput);
     if (goalInput && (isNaN(val) || val <= 0)) {
@@ -264,6 +271,7 @@ export default function AccountScreen() {
     }
     if (!goalInput) {
       await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+      await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
       setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
     } else {
       const forVal = goalForInput.trim();
@@ -272,6 +280,8 @@ export default function AccountScreen() {
       await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
       if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
       else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
+      const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
+      await logGoalEvent(eventType, val, forVal || null);
       setSavingsGoal(val); setSavingsGoalFor(forVal); setSavingsGoalIcon(iconVal);
     }
     closeGoalModal();
@@ -543,8 +553,14 @@ export default function AccountScreen() {
         AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
         AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
         AsyncStorage.removeItem(CHECKLIST_KEY),
+        AsyncStorage.removeItem(SAVINGS_GOAL_KEY),
+        AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY),
+        AsyncStorage.removeItem(SAVINGS_GOAL_ICON_KEY),
       ]);
     }
+    setSavingsGoal(null);
+    setSavingsGoalFor('');
+    setSavingsGoalIcon('🎯');
     setResetting(false);
   };
 
@@ -571,7 +587,7 @@ export default function AccountScreen() {
       }
       await supabase.from('users').delete().eq('id', user.id);
       await supabase.functions.invoke('delete-account');
-      await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
+      await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
       await supabase.auth.signOut();
     }
     setSigningOut(false);
@@ -950,6 +966,7 @@ export default function AccountScreen() {
                 <Pressable
                   onPress={async () => {
                     await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+                    await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
                     setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
                     closeGoalModal();
                   }}
