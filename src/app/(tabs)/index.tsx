@@ -22,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, MILESTONE_NOTIFS_KEY, SAVINGS_GOAL_KEY } from '@/constants/storage-keys';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -493,6 +493,7 @@ interface HomeData {
   debtItems: { id: string; name: string; totalAmount: number; paidAmount: number; earned: boolean; earnedAt: string | null }[];
   checklistCompleted: boolean;
   checklistProgress: number; // 0–1
+  savingsGoal: number | null;
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -549,6 +550,8 @@ export default function HomeScreen() {
   const [selectedBadge, setSelectedBadge] = useState<typeof BADGE_DEFS[0] | null>(null);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [checklistBadgeVisible, setChecklistBadgeVisible] = useState(false);
+  const [goalSetBadgeVisible, setGoalSetBadgeVisible] = useState(false);
+  const [goalReachedBadgeVisible, setGoalReachedBadgeVisible] = useState(false);
   const badgeScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
   const fetchingRef = useRef(false);
@@ -687,11 +690,45 @@ export default function HomeScreen() {
       newDebtBadges.forEach(b => earnedBadges.push(b.badge_type));
     }
 
-    // Prevention checklist badge — driven by AsyncStorage, no DB insert needed
-    const [checklistRaw, checklistBadgeSent] = await Promise.all([
+    // Savings goal badges
+    const [savingsGoalRaw, checklistRaw, checklistBadgeSent] = await Promise.all([
+      AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(CHECKLIST_KEY),
       AsyncStorage.getItem(CHECKLIST_BADGE_SENT_KEY),
     ]);
+    const savingsGoalAmount = savingsGoalRaw ? Number(savingsGoalRaw) : null;
+    const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
+
+    const newGoalBadges: { user_id: string; badge_type: string }[] = [];
+    if (savingsGoalAmount && !earnedBadges.includes('goal_set')) {
+      newGoalBadges.push({ user_id: user.id, badge_type: 'goal_set' });
+    }
+    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !earnedBadges.includes('goal_reached')) {
+      newGoalBadges.push({ user_id: user.id, badge_type: 'goal_reached' });
+    }
+    if (newGoalBadges.length > 0) {
+      await supabase.from('badges').insert(newGoalBadges);
+      const { status: notifStatus } = await Notifications.getPermissionsAsync();
+      for (const b of newGoalBadges) {
+        earnedBadges.push(b.badge_type);
+        if (notifStatus === 'granted') {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: b.badge_type === 'goal_set' ? '📍 Goal Setter badge earned!' : '🎊 Goal Reached badge earned!',
+              body: b.badge_type === 'goal_set'
+                ? 'You\'ve set a savings goal. Having a target makes recovery real — keep saving.'
+                : 'You\'ve reached your savings goal. That\'s a massive achievement — be proud.',
+              data: { screen: '/(tabs)/' },
+            },
+            trigger: Platform.OS === 'android'
+              ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
+              : null,
+          });
+        }
+      }
+    }
+
+    // Prevention checklist badge — driven by AsyncStorage, no DB insert needed
     const checklistData: Record<string, boolean> = checklistRaw ? JSON.parse(checklistRaw) : {};
     const checklistChecked = Object.values(checklistData).filter(Boolean).length;
     const checklistCompleted = checklistChecked >= CHECKLIST_TOTAL;
@@ -726,6 +763,7 @@ export default function HomeScreen() {
       debtItems,
       checklistCompleted,
       checklistProgress: CHECKLIST_TOTAL > 0 ? Math.min(1, checklistChecked / CHECKLIST_TOTAL) : 0,
+      savingsGoal: savingsGoalAmount,
       todayMood: moodRes.data?.mood ?? null,
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
@@ -987,6 +1025,34 @@ export default function HomeScreen() {
                     <Text style={s.badgeEmoji}>{earned ? '🛡️' : '🔒'}</Text>
                   </View>
                   <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2}>Safe Zone</Text>
+                </Pressable>
+              );
+            })()}
+            {(() => {
+              const earned = data.earnedBadges.includes('goal_set');
+              return (
+                <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  onPress={() => { setGoalSetBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); }}>
+                  <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
+                    <BadgeRing progress={earned ? 1 : 0} />
+                    <Text style={s.badgeEmoji}>{earned ? '📍' : '🔒'}</Text>
+                  </View>
+                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2}>Goal Setter</Text>
+                </Pressable>
+              );
+            })()}
+            {(() => {
+              const earned = data.earnedBadges.includes('goal_reached');
+              const progress = data.savingsGoal && data.savingsGoal > 0
+                ? Math.min(1, data.totalPaid / data.savingsGoal) : 0;
+              return (
+                <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  onPress={() => { setGoalReachedBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); }}>
+                  <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
+                    <BadgeRing progress={earned ? 1 : progress} />
+                    <Text style={s.badgeEmoji}>{earned ? '🎊' : '🔒'}</Text>
+                  </View>
+                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2}>Goal Met</Text>
                 </Pressable>
               );
             })()}
@@ -1280,6 +1346,72 @@ export default function HomeScreen() {
               );
             })()}
             <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setChecklistBadgeVisible(false)}>
+              <Text style={s.modalCloseTxt}>Close</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Goal setter badge modal */}
+      <Modal visible={goalSetBadgeVisible} transparent animationType="slide" onRequestClose={() => setGoalSetBadgeVisible(false)}>
+        <Pressable style={s.modalOverlay} onPress={() => setGoalSetBadgeVisible(false)}>
+          <Pressable style={s.modalSheet} onPress={() => {}}>
+            {(() => {
+              const earned = data.earnedBadges.includes('goal_set');
+              const cel = BADGE_CELEBRATIONS[badgeMsgIndex % BADGE_CELEBRATIONS.length];
+              return (
+                <>
+                  <Text style={s.modalEmoji}>{earned ? '📍' : '🔒'}</Text>
+                  <Text style={s.modalTitle}>{earned ? `${cel.icon} ${cel.text}` : 'Goal Setter'}</Text>
+                  <Text style={s.modalSubtitle}>{earned ? 'Savings goal set' : 'Set a savings goal to earn this badge'}</Text>
+                  <View style={s.modalDivider} />
+                  <Text style={s.modalMessage}>
+                    {earned
+                      ? 'You\'ve given your savings a purpose. Having a goal turns money saved into something meaningful — keep building.'
+                      : 'Head to the Tracker tab, tap your savings goal, and set a target amount. Having something to aim for makes every dollar saved feel real.'}
+                  </Text>
+                </>
+              );
+            })()}
+            <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setGoalSetBadgeVisible(false)}>
+              <Text style={s.modalCloseTxt}>Close</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Goal reached badge modal */}
+      <Modal visible={goalReachedBadgeVisible} transparent animationType="slide" onRequestClose={() => setGoalReachedBadgeVisible(false)}>
+        <Pressable style={s.modalOverlay} onPress={() => setGoalReachedBadgeVisible(false)}>
+          <Pressable style={s.modalSheet} onPress={() => {}}>
+            {(() => {
+              const earned = data.earnedBadges.includes('goal_reached');
+              const cel = BADGE_CELEBRATIONS[badgeMsgIndex % BADGE_CELEBRATIONS.length];
+              const progress = data.savingsGoal && data.savingsGoal > 0
+                ? Math.min(1, data.totalPaid / data.savingsGoal) : 0;
+              return (
+                <>
+                  <Text style={s.modalEmoji}>{earned ? '🎊' : '🔒'}</Text>
+                  <Text style={s.modalTitle}>{earned ? `${cel.icon} ${cel.text}` : 'Goal Met'}</Text>
+                  <Text style={s.modalSubtitle}>
+                    {earned
+                      ? 'Savings goal reached'
+                      : data.savingsGoal
+                        ? `${Math.round(progress * 100)}% of the way there`
+                        : 'Set a savings goal in the Tracker tab'}
+                  </Text>
+                  <View style={s.modalDivider} />
+                  <Text style={s.modalMessage}>
+                    {earned
+                      ? 'You set a goal and you reached it. That\'s not luck — that\'s discipline and commitment. What you\'ve built here is real.'
+                      : data.savingsGoal
+                        ? 'Every saving logged moves you closer to this badge. Keep going — you\'re doing it.'
+                        : 'Set a savings goal in the Tracker tab to start tracking your progress toward this badge.'}
+                  </Text>
+                </>
+              );
+            })()}
+            <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setGoalReachedBadgeVisible(false)}>
               <Text style={s.modalCloseTxt}>Close</Text>
             </Pressable>
           </Pressable>
