@@ -206,7 +206,7 @@ export default function Q3Screen() {
                 mode="datetime"
                 display="spinner"
                 maximumDate={new Date()}
-                onValueChange={(_evt, d) => { if (d) { setQuitDate(new Date(d.getTime())); setUserChangedDate(true); } }}
+                onChange={(_evt, d) => d && (setQuitDate(new Date(d.getTime())), setUserChangedDate(true))}
                 style={{ height: 200 }}
               />
               <Pressable style={styles.modalDone} onPress={() => setShowIOSPicker(false)}>
