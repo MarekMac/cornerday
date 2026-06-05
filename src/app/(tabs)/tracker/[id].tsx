@@ -49,6 +49,21 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function debtProgressColor(pct: number): string {
+  if (pct >= 1) return '#0a7a4e';
+  if (pct >= 0.7) return '#0F6E6E';
+  if (pct >= 0.4) return '#e67e22';
+  return '#c0392b';
+}
+
+function fmtPayoffDate(d: Date): string {
+  const days = Math.round((d.getTime() - Date.now()) / 86400000);
+  if (days <= 1) return 'Very soon';
+  if (days < 8) return `In ${days} days`;
+  if (days < 60) return `In ~${Math.round(days / 7)} weeks`;
+  return `~${d.toLocaleDateString([], { month: 'short', year: 'numeric' })}`;
+}
+
 export default function DebtDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -153,6 +168,15 @@ export default function DebtDetailScreen() {
   const pct = Number(debt.total_amount) > 0 ? Math.min(1, totalPaid / Number(debt.total_amount)) : 0;
   const isPaidOff = remaining === 0 && totalPaid > 0;
 
+  let payoffEstimate: string | null = null;
+  if (!isPaidOff && totalPaid > 0) {
+    const daysSinceAdded = Math.max(1, (Date.now() - new Date(debt.created_at).getTime()) / 86400000);
+    const dailyRate = totalPaid / daysSinceAdded;
+    if (dailyRate > 0) {
+      payoffEstimate = fmtPayoffDate(new Date(Date.now() + (remaining / dailyRate) * 86400000));
+    }
+  }
+
   return (
     <View style={s.root}>
       <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
@@ -191,11 +215,14 @@ export default function DebtDetailScreen() {
               </View>
             </View>
             <View style={s.progressTrack}>
-              <View style={[s.progressFill, { width: `${pct * 100}%` as any }]} />
+              <View style={[s.progressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct) }]} />
             </View>
-            <Text style={s.progressLbl}>
+            <Text style={[s.progressLbl, { color: debtProgressColor(pct) }]}>
               {isPaidOff ? '🎉 Fully paid off!' : `${Math.round(pct * 100)}% paid back`}
             </Text>
+            {payoffEstimate && (
+              <Text style={s.payoffEst}>📅 Est. payoff: {payoffEstimate}</Text>
+            )}
           </View>
 
           {/* Add payment */}
@@ -308,8 +335,9 @@ const s = StyleSheet.create({
   summaryVal: { fontSize: 18, fontWeight: '700' },
   summaryLbl: { fontSize: 11, color: '#888', marginTop: 2 },
   progressTrack: { height: 6, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
-  progressLbl: { fontSize: 12, color: '#0F6E6E', fontWeight: '600', textAlign: 'center' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  progressLbl: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  payoffEst: { fontSize: 12, color: '#888', textAlign: 'center', marginTop: 2 },
 
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
   cardTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 14 },

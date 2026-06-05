@@ -1,8 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,16 +12,20 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
+
+const SAVINGS_GOAL_KEY = 'cornerday_savings_goal';
 
 type MainTab = 'debts' | 'saving';
 
@@ -73,6 +78,14 @@ function fmt(amount: number, currency = 'USD') {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtPayoffDate(d: Date): string {
+  const days = Math.round((d.getTime() - Date.now()) / 86400000);
+  if (days <= 1) return 'Very soon';
+  if (days < 8) return `In ${days} days`;
+  if (days < 60) return `In ~${Math.round(days / 7)} weeks`;
+  return `~${d.toLocaleDateString([], { month: 'short', year: 'numeric' })}`;
 }
 
 function debtProgressColor(pct: number): string {
@@ -143,6 +156,17 @@ export default function TrackerIndex() {
   const [quickPayNote, setQuickPayNote] = useState('');
   const [submittingQuickPay, setSubmittingQuickPay] = useState(false);
 
+  // Pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Savings goal
+  const [savingsGoal, setSavingsGoal] = useState<number | null>(null);
+  const [goalModalVisible, setGoalModalVisible] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
+
+  // Swipe refs — one per debt card
+  const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
+
   const fetchAll = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -166,6 +190,18 @@ export default function TrackerIndex() {
 
   useEffect(() => { fetchAll().finally(() => setLoading(false)); }, [fetchAll]);
   useFocusEffect(useCallback(() => { fetchAll(); }, [fetchAll]));
+
+  useEffect(() => {
+    AsyncStorage.getItem(SAVINGS_GOAL_KEY).then(raw => {
+      if (raw) setSavingsGoal(Number(raw));
+    });
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAll();
+    setRefreshing(false);
+  }, [fetchAll]);
 
   const paidByDebt: Record<string, number> = {};
   payments.forEach(p => { paidByDebt[p.debt_id] = (paidByDebt[p.debt_id] ?? 0) + Number(p.amount); });
@@ -329,8 +365,31 @@ export default function TrackerIndex() {
     await fetchAll();
   };
 
+  // Savings goal
+  const openGoalModal = () => {
+    setGoalInput(savingsGoal ? String(savingsGoal) : '');
+    setGoalModalVisible(true);
+  };
+  const closeGoalModal = () => { Keyboard.dismiss(); setGoalModalVisible(false); setGoalInput(''); };
+  const saveGoal = async () => {
+    const val = parseFloat(goalInput);
+    if (goalInput && (isNaN(val) || val <= 0)) {
+      Alert.alert('Invalid amount', 'Please enter a valid goal amount.');
+      return;
+    }
+    if (!goalInput) {
+      await AsyncStorage.removeItem(SAVINGS_GOAL_KEY);
+      setSavingsGoal(null);
+    } else {
+      await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
+      setSavingsGoal(val);
+    }
+    closeGoalModal();
+  };
+
   // Quick pay actions
   const openQuickPay = (debt: Debt) => {
+    swipeRefs.current.forEach(ref => ref?.close());
     setQuickPayDebt(debt);
     setQuickPayAmount('');
     setQuickPayNote('');
@@ -411,7 +470,12 @@ export default function TrackerIndex() {
       </LinearGradient>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={s.body}
+          contentContainerStyle={s.bodyContent}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" colors={['#0F6E6E']} />}
+        >
 
           {/* Debt recovery card */}
           <View style={s.summaryCard}>
@@ -472,6 +536,28 @@ export default function TrackerIndex() {
                 </View>
               </>
             )}
+            <View style={s.savingsSep} />
+            {savingsGoal ? (
+              <>
+                <View style={s.goalHeader}>
+                  <Text style={s.goalLabel}>🎯 Savings goal</Text>
+                  <Pressable onPress={openGoalModal} hitSlop={8}>
+                    <Text style={s.goalEditTxt}>Edit</Text>
+                  </Pressable>
+                </View>
+                <View style={s.goalTrack}>
+                  <View style={[s.goalFill, { width: `${Math.min(1, totalManualSavings / savingsGoal) * 100}%` as any }]} />
+                </View>
+                <Text style={s.goalMeta}>
+                  {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
+                </Text>
+              </>
+            ) : (
+              <Pressable style={s.setGoalBtn} onPress={openGoalModal}>
+                <Ionicons name="flag-outline" size={15} color="#0F6E6E" />
+                <Text style={s.setGoalTxt}>Set a savings goal</Text>
+              </Pressable>
+            )}
           </View>
 
           <View style={s.sectionDivider} />
@@ -509,46 +595,73 @@ export default function TrackerIndex() {
                   const pct = Number(debt.total_amount) > 0
                     ? Math.min(1, paid / Number(debt.total_amount)) : 0;
                   const isPaidOff = remaining === 0 && paid > 0;
+
+                  let payoffEstimate: string | null = null;
+                  if (!isPaidOff && paid > 0) {
+                    const daysSince = Math.max(1, (Date.now() - new Date(debt.created_at).getTime()) / 86400000);
+                    const dailyRate = paid / daysSince;
+                    if (dailyRate > 0) {
+                      payoffEstimate = fmtPayoffDate(new Date(Date.now() + (remaining / dailyRate) * 86400000));
+                    }
+                  }
+
                   return (
-                    <Pressable
+                    <Swipeable
                       key={debt.id}
-                      style={({ pressed }) => [s.debtCard, isPaidOff && s.debtCardPaidOff, pressed && { opacity: 0.85 }]}
-                      onPress={() => router.push(`/tracker/${debt.id}`)}>
-                      <View style={s.debtTop}>
-                        <Text style={s.debtEmoji}>{categoryEmoji(debt.category)}</Text>
-                        <View style={s.debtInfo}>
-                          <Text style={s.debtName}>{debt.name}</Text>
-                          <Text style={s.debtMeta}>
-                            {isPaidOff
-                              ? `${fmt(paid, currency)} fully paid`
-                              : `${fmt(paid, currency)} paid · ${fmt(remaining, currency)} remaining`}
-                          </Text>
+                      ref={(ref) => { swipeRefs.current.set(debt.id, ref); }}
+                      friction={2}
+                      rightThreshold={60}
+                      enabled={!isPaidOff}
+                      renderRightActions={() => (
+                        <Pressable
+                          style={s.swipePayAction}
+                          onPress={() => { swipeRefs.current.get(debt.id)?.close(); openQuickPay(debt); }}>
+                          <Ionicons name="card-outline" size={22} color="#fff" />
+                          <Text style={s.swipePayTxt}>Pay</Text>
+                        </Pressable>
+                      )}>
+                      <Pressable
+                        style={({ pressed }) => [s.debtCard, isPaidOff && s.debtCardPaidOff, pressed && { opacity: 0.85 }]}
+                        onPress={() => router.push(`/tracker/${debt.id}`)}>
+                        <View style={s.debtTop}>
+                          <Text style={s.debtEmoji}>{categoryEmoji(debt.category)}</Text>
+                          <View style={s.debtInfo}>
+                            <Text style={s.debtName}>{debt.name}</Text>
+                            <Text style={s.debtMeta}>
+                              {isPaidOff
+                                ? `${fmt(paid, currency)} fully paid`
+                                : `${fmt(paid, currency)} paid · ${fmt(remaining, currency)} remaining`}
+                            </Text>
+                            {payoffEstimate && (
+                              <Text style={s.debtPayoff}>📅 Est. payoff: {payoffEstimate}</Text>
+                            )}
+                          </View>
+                          <View style={s.debtRight}>
+                            {isPaidOff ? (
+                              <View style={s.paidOffBadge}>
+                                <Text style={s.paidOffBadgeTxt}>✓ Paid off</Text>
+                              </View>
+                            ) : (
+                              <>
+                                <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
+                                <Pressable
+                                  onPress={() => openQuickPay(debt)}
+                                  hitSlop={6}
+                                  style={s.quickPayBtn}>
+                                  <Text style={s.quickPayTxt}>Pay</Text>
+                                </Pressable>
+                              </>
+                            )}
+                            <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn}>
+                              <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
+                            </Pressable>
+                          </View>
                         </View>
-                        <View style={s.debtRight}>
-                          {isPaidOff ? (
-                            <View style={s.paidOffBadge}>
-                              <Text style={s.paidOffBadgeTxt}>✓ Paid off</Text>
-                            </View>
-                          ) : (
-                            <>
-                              <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
-                              <Pressable
-                                onPress={() => openQuickPay(debt)}
-                                hitSlop={6}
-                                style={s.quickPayBtn}>
-                                <Text style={s.quickPayTxt}>Pay</Text>
-                              </Pressable>
-                            </>
-                          )}
-                          <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn}>
-                            <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
-                          </Pressable>
+                        <View style={s.debtProgressTrack}>
+                          <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct) }]} />
                         </View>
-                      </View>
-                      <View style={s.debtProgressTrack}>
-                        <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct) }]} />
-                      </View>
-                    </Pressable>
+                      </Pressable>
+                    </Swipeable>
                   );
                 })
               )}
@@ -846,6 +959,40 @@ export default function TrackerIndex() {
         </Pressable>
       </Modal>
 
+      {/* Savings goal modal */}
+      <Modal visible={goalModalVisible} transparent animationType="fade" onRequestClose={closeGoalModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
+            <Pressable style={s.sheet} onPress={() => {}}>
+              <Text style={s.sheetTitle}>Savings goal</Text>
+              <Text style={[s.fieldLbl, { marginTop: 4 }]}>Target amount</Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. 5000"
+                placeholderTextColor="#bbb"
+                keyboardType="decimal-pad"
+                value={goalInput}
+                onChangeText={setGoalInput}
+                autoFocus
+              />
+              {savingsGoal && (
+                <Pressable onPress={async () => { await AsyncStorage.removeItem(SAVINGS_GOAL_KEY); setSavingsGoal(null); closeGoalModal(); }} style={{ alignSelf: 'center', marginTop: 12 }}>
+                  <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove goal</Text>
+                </Pressable>
+              )}
+              <View style={s.sheetActions}>
+                <Pressable style={s.cancelBtn} onPress={closeGoalModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
+                </Pressable>
+                <Pressable style={s.saveBtn} onPress={saveGoal}>
+                  <Text style={s.saveBtnTxt}>Save goal</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Quick pay modal */}
       <Modal visible={!!quickPayDebt} transparent animationType="fade" onRequestClose={closeQuickPay}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -954,6 +1101,7 @@ const s = StyleSheet.create({
   debtInfo: { flex: 1 },
   debtName: { fontSize: 15, fontWeight: '700', color: '#111' },
   debtMeta: { fontSize: 12, color: '#888', marginTop: 2 },
+  debtPayoff: { fontSize: 11, color: '#aaa', marginTop: 3 },
   debtRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   debtPct: { fontSize: 13, fontWeight: '700', color: '#0F6E6E' },
   debtProgressTrack: { height: 5, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden' },
@@ -987,6 +1135,21 @@ const s = StyleSheet.create({
   },
   savingsTotalLbl: { fontSize: 13, fontWeight: '700', color: '#555' },
   savingsTotalVal: { fontSize: 18, fontWeight: '800', color: '#0a7a4e' },
+
+  goalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  goalLabel: { fontSize: 13, fontWeight: '700', color: '#111' },
+  goalEditTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '600' },
+  goalTrack: { height: 5, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
+  goalFill: { height: '100%', backgroundColor: '#0a7a4e', borderRadius: 3 },
+  goalMeta: { fontSize: 12, color: '#888' },
+  setGoalBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  setGoalTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
+
+  swipePayAction: {
+    backgroundColor: '#0F6E6E', borderRadius: 14, marginLeft: 8,
+    width: 72, alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  swipePayTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
   input: {
     borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
