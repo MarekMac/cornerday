@@ -26,11 +26,14 @@ import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, MILESTONE_NOT
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MILESTONES = [1/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
+const MILESTONES = [1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
 
 const BADGE_DEFS = [
   { type: 'started',  emoji: '🚀', label: 'Started',  days: 0 },
   { type: '1_hour',   emoji: '⏰', label: '1 Hour',   days: 1/24 },
+  { type: '3_hours',  emoji: '🌤️', label: '3 Hours',  days: 3/24 },
+  { type: '6_hours',  emoji: '☀️', label: '6 Hours',  days: 6/24 },
+  { type: '12_hours', emoji: '🌗', label: '12 Hours', days: 12/24 },
   { type: '1_day',    emoji: '🌱', label: '1 Day',    days: 1 },
   { type: '3_days',   emoji: '🌿', label: '3 Days',   days: 3 },
   { type: '1_week',   emoji: '⭐', label: '1 Week',   days: 7 },
@@ -316,7 +319,7 @@ function formatTimeLeft(days: number): string {
 
 function milestoneLabel(days: number) {
   const map: Record<number, string> = {
-    [1/24]: '1 hour',
+    [1/24]: '1 hour', [3/24]: '3 hours', [6/24]: '6 hours', [12/24]: '12 hours',
     1: '1 day', 3: '3 days', 7: '1 week', 10: '10 days',
     14: '2 weeks', 21: '3 weeks', 30: '1 month', 45: '45 days',
     60: '2 months', 90: '3 months', 120: '4 months', 150: '5 months',
