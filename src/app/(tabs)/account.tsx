@@ -30,6 +30,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
+import { generateUsername } from '@/lib/usernameGenerator';
 import {
   DEFAULT_NOTIF_PREFS,
   NotifPrefs,
@@ -629,6 +630,9 @@ export default function AccountScreen() {
                 returnKeyType="done"
                 onSubmitEditing={saveName}
               />
+              <Pressable onPress={() => setNameInput(generateUsername())} style={({ pressed }) => [s.nameShuffleBtn, pressed && { opacity: 0.6 }]} hitSlop={6}>
+                <Ionicons name="shuffle-outline" size={16} color="#0F6E6E" />
+              </Pressable>
               <Pressable onPress={saveName} disabled={savingName} style={({ pressed }) => [s.nameSaveBtn, pressed && { opacity: 0.7 }]}>
                 {savingName
                   ? <ActivityIndicator size="small" color="#fff" />
@@ -1357,6 +1361,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#ddd', borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, color: '#111', minWidth: 120,
   },
+  nameShuffleBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center' },
   nameSaveBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#0F6E6E' },
   nameSaveTxt: { color: '#fff', fontWeight: '700', fontSize: 12 },
   nameCancelBtn: { paddingVertical: 6, paddingHorizontal: 4 },
