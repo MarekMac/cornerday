@@ -27,7 +27,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import {
@@ -520,7 +520,7 @@ export default function AccountScreen() {
       }
       await supabase.from('users').delete().eq('id', user.id);
       await supabase.functions.invoke('delete-account');
-      await AsyncStorage.removeItem(ONBOARDED_KEY);
+      await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY]);
       await supabase.auth.signOut();
     }
     setSigningOut(false);

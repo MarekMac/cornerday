@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -45,6 +45,7 @@ export default function SignupScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isSignIn = mode === 'signin';
 
+  const scrollRef = useRef<ScrollView>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -224,6 +225,7 @@ export default function SignupScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'android' ? 32 : 0}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[styles.scroll, isSignIn && { paddingTop: 75 }]}
           keyboardShouldPersistTaps="handled">
           {!isSignIn && (
@@ -285,6 +287,7 @@ export default function SignupScreen() {
               placeholderTextColor="#aaa"
               secureTextEntry
               autoComplete={isSignIn ? 'current-password' : 'new-password'}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
 
             {isSignIn && (
