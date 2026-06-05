@@ -475,7 +475,7 @@ interface HomeData {
 function fmtLive(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
   const s = syms[currency] ?? currency;
-  return `${s}${amount.toFixed(2)}`;
+  return `${s}${amount.toFixed(1)}`;
 }
 
 function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
