@@ -596,15 +596,6 @@ export default function TrackerIndex() {
                     ? Math.min(1, paid / Number(debt.total_amount)) : 0;
                   const isPaidOff = remaining === 0 && paid > 0;
 
-                  let payoffEstimate: string | null = null;
-                  if (!isPaidOff && paid > 0) {
-                    const daysSince = Math.max(1, (Date.now() - new Date(debt.created_at).getTime()) / 86400000);
-                    const dailyRate = paid / daysSince;
-                    if (dailyRate > 0) {
-                      payoffEstimate = fmtPayoffDate(new Date(Date.now() + (remaining / dailyRate) * 86400000));
-                    }
-                  }
-
                   return (
                     <Swipeable
                       key={debt.id}
@@ -641,9 +632,6 @@ export default function TrackerIndex() {
                                 ? `${fmt(paid, currency)} fully paid`
                                 : `${fmt(paid, currency)} paid · ${fmt(remaining, currency)} remaining`}
                             </Text>
-                            {payoffEstimate && (
-                              <Text style={s.debtPayoff}>📅 Est. payoff: {payoffEstimate}</Text>
-                            )}
                           </View>
                           <View style={s.debtRight}>
                             {isPaidOff ? (
@@ -656,7 +644,6 @@ export default function TrackerIndex() {
                             <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn}>
                               <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
                             </Pressable>
-                            <Ionicons name="chevron-forward" size={14} color="#ddd" />
                           </View>
                         </View>
                         <View style={s.debtProgressTrack}>
