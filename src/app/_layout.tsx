@@ -19,7 +19,7 @@ import { useColorScheme } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { ONBOARDED_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { UserProvider } from '@/context/user';
 
@@ -52,7 +52,7 @@ export default function RootLayout() {
         setPendingRoute('/(tabs)');
       } else {
         // AsyncStorage flag missing (e.g. dev reload cleared storage) — check Supabase
-        const { data: userData } = await supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('motivation')
           .eq('id', sess.user.id)
@@ -60,6 +60,13 @@ export default function RootLayout() {
         if (userData?.motivation) {
           await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           setPendingRoute('/(tabs)');
+        } else if (userError?.code === 'PGRST116') {
+          // Ghost session: auth JWT still cached but user row was deleted
+          // (e.g. deleted directly from Supabase dashboard). Clear everything
+          // and sign out — the SIGNED_OUT handler will route to welcome screen.
+          await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
+          await supabase.auth.signOut();
+          return; // SIGNED_OUT event sets authChecked + pendingRoute
         } else {
           setPendingRoute(`/(onboarding)/${savedStep ?? 'q1'}`);
         }
