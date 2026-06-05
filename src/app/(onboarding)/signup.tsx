@@ -244,12 +244,6 @@ export default function SignupScreen() {
           contentContainerStyle={[styles.scroll, isSignIn && { paddingTop: 75 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {!isSignIn && (
-            <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)')}>
-              <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
-            </Pressable>
-          )}
-
           <View style={styles.header}>
             <Text style={styles.title}>
               {isSignIn ? 'Welcome back' : 'Create your account'}
