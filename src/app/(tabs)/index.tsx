@@ -1024,7 +1024,7 @@ export default function HomeScreen() {
                     <BadgeRing progress={progress} />
                     <Text style={s.badgeEmoji}>{debt.earned ? '🏦' : '🔒'}</Text>
                   </View>
-                  <Text style={[s.badgeLabel, !debt.earned && s.badgeLabelLocked]} numberOfLines={2}>{debt.name}</Text>
+                  <Text style={[s.badgeLabel, !debt.earned && s.badgeLabelLocked]} numberOfLines={2}>{debt.name}{'\n'}paid</Text>
                 </Pressable>
               );
             })}
@@ -1443,8 +1443,8 @@ export default function HomeScreen() {
               return (
                 <>
                   <Text style={s.modalEmoji}>{debt.earned ? '🏦' : '🔒'}</Text>
-                  <Text style={s.modalTitle}>{debt.earned ? `${cel.icon} ${cel.text}` : debt.name}</Text>
-                  <Text style={s.modalSubtitle}>{debt.earned ? `${debt.name} — fully paid` : `${pct}% paid off`}</Text>
+                  <Text style={s.modalTitle}>{debt.earned ? `${cel.icon} ${cel.text}` : `${debt.name} paid`}</Text>
+                  <Text style={s.modalSubtitle}>{debt.earned ? `${debt.name} — fully paid` : `${pct}% of the way there`}</Text>
                   {!debt.earned && (
                     <View style={s.modalProgressBar}>
                       <View style={[s.modalProgressFill, { width: `${pct}%` }]} />
