@@ -569,9 +569,7 @@ export default function TrackerIndex() {
                 {savingsGoal ? (
                   <>
                     <Text style={s.savingsRowLabel}>{savingsGoalFor || 'Savings goal'}</Text>
-                    <Text style={s.savingsRowSub}>
-                      {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
-                    </Text>
+                    <Text style={s.savingsRowSub}>Tap to edit</Text>
                   </>
                 ) : (
                   <>
@@ -581,12 +579,9 @@ export default function TrackerIndex() {
                 )}
               </View>
               {savingsGoal ? (
-                <View style={s.goalRightSet}>
-                  <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 15 }]}>
-                    {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
-                  </Text>
-                  <Ionicons name="create-outline" size={13} color="#bbb" />
-                </View>
+                <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 13, textAlign: 'right', lineHeight: 20 }]}>
+                  {fmt(totalManualSavings, currency)}{'\n'}{fmt(savingsGoal, currency)}
+                </Text>
               ) : (
                 <Ionicons name="chevron-forward" size={16} color="#ccc" />
               )}
