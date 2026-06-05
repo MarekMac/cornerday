@@ -46,17 +46,15 @@ export default function SignupScreen() {
   const isSignIn = mode === 'signin';
 
   const scrollRef = useRef<ScrollView>(null);
-  const emailRowRef = useRef<View>(null);
-  const passwordRowRef = useRef<View>(null);
+  const formYRef = useRef(0);
+  const emailYRef = useRef(0);
+  const passwordYRef = useRef(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const scrollToField = (ref: React.RefObject<View>) => {
+
+  const scrollToField = (fieldY: number) => {
     setTimeout(() => {
-      ref.current?.measureLayout(
-        scrollRef.current as any,
-        (_x: number, y: number) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true }),
-        () => {},
-      );
+      scrollRef.current?.scrollTo({ y: Math.max(0, formYRef.current + fieldY - 16), animated: true });
     }, 150);
   };
 
@@ -276,8 +274,8 @@ export default function SignupScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          <View style={styles.form}>
-            <View ref={emailRowRef}>
+          <View style={styles.form} onLayout={(e) => { formYRef.current = e.nativeEvent.layout.y; }}>
+            <View onLayout={(e) => { emailYRef.current = e.nativeEvent.layout.y; }}>
               <Text style={styles.fieldLabel}>Email</Text>
               <TextInput
                 style={styles.input}
@@ -288,11 +286,11 @@ export default function SignupScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
-                onFocus={() => scrollToField(emailRowRef)}
+                onFocus={() => scrollToField(emailYRef.current)}
               />
             </View>
 
-            <View ref={passwordRowRef}>
+            <View onLayout={(e) => { passwordYRef.current = e.nativeEvent.layout.y; }}>
               <Text style={styles.fieldLabel}>Password</Text>
               <TextInput
                 style={styles.input}
@@ -302,7 +300,7 @@ export default function SignupScreen() {
                 placeholderTextColor="#aaa"
                 secureTextEntry
                 autoComplete={isSignIn ? 'current-password' : 'new-password'}
-                onFocus={() => scrollToField(passwordRowRef)}
+                onFocus={() => scrollToField(passwordYRef.current)}
               />
             </View>
 
