@@ -520,7 +520,7 @@ export default function AccountScreen() {
       }
       await supabase.from('users').delete().eq('id', user.id);
       await supabase.functions.invoke('delete-account');
-      await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY]);
+      await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
       await supabase.auth.signOut();
     }
     setSigningOut(false);
@@ -530,7 +530,7 @@ export default function AccountScreen() {
 
   const executeSignOut = async () => {
     setSigningOut(true);
-    await AsyncStorage.removeItem(ONBOARDED_KEY);
+    await AsyncStorage.multiRemove([ONBOARDED_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
     await supabase.auth.signOut();
   };
 

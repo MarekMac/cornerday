@@ -7,7 +7,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import { ONBOARDED_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
 import { useOnboarding } from '@/context/onboarding';
 import { supabase } from '@/lib/supabase';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -127,6 +127,7 @@ export default function ReadyScreen() {
     }
 
     clearProgress();
+    await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
     await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
     router.replace('/(tabs)');
   };
