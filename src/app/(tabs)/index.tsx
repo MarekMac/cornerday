@@ -1196,21 +1196,18 @@ export default function HomeScreen() {
           <Text style={s.urgeLogArrow}>›</Text>
         </Pressable>
 
-        {/* Relapse card */}
-        <View style={s.relapseCard}>
-          <Text style={s.relapseTitle}>Had a slip? That's okay.</Text>
-          <Text style={s.relapseSubtitle}>
-            Recovery isn't linear. Every restart is still progress.
-          </Text>
-          <Pressable
-            style={({ pressed }) => [s.relapseBtn, pressed && s.pressed]}
-            onPress={handleRelapse}
-            disabled={relapseLoading}>
-            {relapseLoading
-              ? <ActivityIndicator color="#888" size="small" />
-              : <Text style={s.relapseBtnTxt}>Reset my streak</Text>}
-          </Pressable>
-        </View>
+        {/* Relapse row */}
+        <Pressable
+          style={({ pressed }) => [s.relapseRow, pressed && { opacity: 0.6 }]}
+          onPress={handleRelapse}
+          disabled={relapseLoading}>
+          {relapseLoading
+            ? <ActivityIndicator color="#bbb" size="small" />
+            : <>
+                <Text style={s.relapseRowLabel}>Had a slip?</Text>
+                <Text style={s.relapseRowAction}>Reset streak →</Text>
+              </>}
+        </Pressable>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -1605,25 +1602,12 @@ const s = StyleSheet.create({
   urgeLogArrow: { fontSize: 22, color: '#aaa', fontWeight: '300' },
 
   // Relapse
-  relapseCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    gap: 6,
+  relapseRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: 4,
   },
-  relapseTitle: { fontSize: 15, fontWeight: '600', color: '#333' },
-  relapseSubtitle: { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 18 },
-  relapseBtn: {
-    marginTop: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ffcdd2',
-    backgroundColor: '#fff5f5',
-  },
-  relapseBtnTxt: { fontSize: 13, color: '#c0392b', fontWeight: '600' },
+  relapseRowLabel: { fontSize: 13, color: '#bbb' },
+  relapseRowAction: { fontSize: 13, color: '#bbb' },
 
   // Week mood strip
   weekStrip: { backgroundColor: '#fff', borderRadius: 14, padding: 12, gap: 10 },
