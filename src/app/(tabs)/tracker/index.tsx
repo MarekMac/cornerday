@@ -57,7 +57,7 @@ function categoryEmoji(cat: string) {
 function fmtLive(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
   const s = syms[currency] ?? currency;
-  return `${s}${Math.round(amount).toLocaleString('en-US')}`;
+  return `${s}${amount.toFixed(2)}`;
 }
 
 function fmt(amount: number, currency = 'USD') {
@@ -177,6 +177,7 @@ export default function TrackerIndex() {
     Keyboard.dismiss();
     setDebtModalVisible(false);
     setEditingDebt(null);
+    setDebtName(''); setDebtAmount(''); setDebtCategory('other');
   };
 
   const saveDebt = async () => {
@@ -253,6 +254,7 @@ export default function TrackerIndex() {
     Keyboard.dismiss();
     setSavingModalVisible(false);
     setEditingSaving(null);
+    setSavingAmount(''); setSavingNote('');
   };
 
   const saveSaving = async () => {

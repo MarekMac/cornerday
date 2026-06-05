@@ -469,12 +469,13 @@ interface HomeData {
   totalPaid: number;
   debtItems: { id: string; name: string; totalAmount: number; paidAmount: number; earned: boolean; earnedAt: string | null }[];
   checklistCompleted: boolean;
+  checklistProgress: number; // 0–1
 }
 
 function fmtLive(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
   const s = syms[currency] ?? currency;
-  return `${s}${Math.round(amount).toLocaleString('en-US')}`;
+  return `${s}${amount.toFixed(2)}`;
 }
 
 function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
@@ -664,7 +665,8 @@ export default function HomeScreen() {
       AsyncStorage.getItem(CHECKLIST_BADGE_SENT_KEY),
     ]);
     const checklistData: Record<string, boolean> = checklistRaw ? JSON.parse(checklistRaw) : {};
-    const checklistCompleted = Object.values(checklistData).filter(Boolean).length >= CHECKLIST_TOTAL;
+    const checklistChecked = Object.values(checklistData).filter(Boolean).length;
+    const checklistCompleted = checklistChecked >= CHECKLIST_TOTAL;
     if (checklistCompleted && !checklistBadgeSent) {
       await AsyncStorage.setItem(CHECKLIST_BADGE_SENT_KEY, '1');
       const { status } = await Notifications.getPermissionsAsync();
@@ -695,6 +697,7 @@ export default function HomeScreen() {
       totalPaid,
       debtItems,
       checklistCompleted,
+      checklistProgress: CHECKLIST_TOTAL > 0 ? Math.min(1, checklistChecked / CHECKLIST_TOTAL) : 0,
       todayMood: moodRes.data?.mood ?? null,
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
@@ -818,6 +821,7 @@ export default function HomeScreen() {
         supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
         supabase.from('badges').delete().eq('user_id', user.id),
+        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
         supabase.from('losses').insert({
           user_id: user.id, type: 'streak_reset', amount: 0,
           category: 'Streak Reset',
@@ -952,7 +956,7 @@ export default function HomeScreen() {
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
                   onPress={() => { setChecklistBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
-                    <BadgeRing progress={earned ? 1 : 0} />
+                    <BadgeRing progress={earned ? 1 : data.checklistProgress} />
                     <Text style={s.badgeEmoji}>{earned ? '🛡️' : '🔒'}</Text>
                   </View>
                   <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2}>Safe Zone</Text>

@@ -27,7 +27,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import {
@@ -172,6 +172,8 @@ export default function AccountScreen() {
   const [confirmQuitDate, setConfirmQuitDate] = useState<Date | null>(null);
   const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
   const [signOutVisible, setSignOutVisible] = useState(false);
+  const [resetDataModalVisible, setResetDataModalVisible] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -389,8 +391,11 @@ export default function AccountScreen() {
         if (!rawDate) return;
         const selectedDate = new Date(rawDate.getTime());
         if (isNaN(selectedDate.getTime())) return;
+        const now = new Date();
+        const isToday = selectedDate.toDateString() === now.toDateString();
+        const timePickerSeed = isToday ? now : selectedDate;
         setTimeout(() => DateTimePickerAndroid.open({
-          value: selectedDate,
+          value: timePickerSeed,
           mode: 'time',
           is24Hour: true,
           onValueChange: (_tevt: any, rawTime?: Date) => {
@@ -399,7 +404,7 @@ export default function AccountScreen() {
             if (isNaN(selectedTime.getTime())) return;
             const merged = new Date(selectedDate.getTime());
             merged.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
-            setConfirmQuitDate(merged);
+            setConfirmQuitDate(merged > now ? now : merged);
             },
           }), 500);
       },
@@ -410,16 +415,19 @@ export default function AccountScreen() {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const iso = date.toISOString();
+      const now = new Date();
+      const clamped = date > now ? now : date;
+      const iso = clamped.toISOString();
       const dateOnly = iso.split('T')[0];
       await supabase.from('users').update({
         quit_timestamp: iso,
         quit_date: dateOnly,
       }).eq('id', user.id);
-      await supabase.from('streaks').update({
-        streak_start_date: dateOnly,
-        current_streak: 0,
-      }).eq('user_id', user.id);
+      await Promise.all([
+        supabase.from('streaks').update({ streak_start_date: dateOnly, current_streak: 0 }).eq('user_id', user.id),
+        supabase.from('badges').delete().eq('user_id', user.id),
+        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
+      ]);
       await supabase.from('losses').insert({
         user_id: user.id, type: 'quit_date_changed', amount: 0,
         category: 'Account', note: iso,
@@ -429,6 +437,73 @@ export default function AccountScreen() {
     setSaving(false);
   };
 
+
+  const resetMoodHistory = async () => {
+    setResetting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await supabase.from('mood_checkins').delete().eq('user_id', user.id);
+    setResetting(false);
+  };
+
+  const resetJournal = async () => {
+    setResetting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await supabase.from('urge_journal').delete().eq('user_id', user.id);
+    setResetting(false);
+  };
+
+  const resetMilestones = async () => {
+    setResetting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await supabase.from('badges').delete().eq('user_id', user.id);
+    await Promise.all([
+      AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
+      AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
+      AsyncStorage.removeItem(CHECKLIST_KEY),
+    ]);
+    setResetting(false);
+  };
+
+  const resetLossTracker = async () => {
+    setResetting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await Promise.all([
+        supabase.from('losses').delete().eq('user_id', user.id),
+        supabase.from('debts').delete().eq('user_id', user.id),
+        supabase.from('debt_payments').delete().eq('user_id', user.id),
+      ]);
+    }
+    setResetting(false);
+  };
+
+  const resetEverything = async () => {
+    setResetting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const today = new Date().toISOString().split('T')[0];
+      await Promise.all([
+        supabase.from('mood_checkins').delete().eq('user_id', user.id),
+        supabase.from('urge_journal').delete().eq('user_id', user.id),
+        supabase.from('badges').delete().eq('user_id', user.id),
+        supabase.from('losses').delete().eq('user_id', user.id),
+        supabase.from('debts').delete().eq('user_id', user.id),
+        supabase.from('debt_payments').delete().eq('user_id', user.id),
+        supabase.from('streaks').update({ current_streak: 0, longest_streak: 0, streak_start_date: today }).eq('user_id', user.id),
+        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
+        AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
+        AsyncStorage.removeItem(CHECKLIST_KEY),
+      ]);
+    }
+    setResetting(false);
+  };
+
+  const confirmReset = (title: string, body: string, onConfirm: () => void) => {
+    Alert.alert(title, body, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reset', style: 'destructive', onPress: onConfirm },
+    ]);
+  };
 
   const confirmDeleteAccount = () => setDeleteAccountVisible(true);
 
@@ -691,6 +766,12 @@ export default function AccountScreen() {
           <Pressable style={({ pressed }) => [s.settingsRow, pressed && { opacity: 0.7 }]} onPress={() => setNotifModalVisible(true)}>
             <Ionicons name="notifications-outline" size={18} color="#0F6E6E" style={{ marginRight: 12 }} />
             <Text style={s.settingsRowTxt}>Notification settings</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </Pressable>
+          <View style={s.settingsDivider} />
+          <Pressable style={({ pressed }) => [s.settingsRow, pressed && { opacity: 0.7 }]} onPress={() => setResetDataModalVisible(true)}>
+            <Ionicons name="refresh-outline" size={18} color="#c0392b" style={{ marginRight: 12 }} />
+            <Text style={[s.settingsRowTxt, { color: '#c0392b' }]}>Reset data</Text>
             <Ionicons name="chevron-forward" size={16} color="#ccc" />
           </Pressable>
         </View>
@@ -1089,6 +1170,97 @@ export default function AccountScreen() {
         </Pressable>
       </Modal>
 
+      {/* Reset data modal */}
+      <Modal visible={resetDataModalVisible} transparent animationType="fade" onRequestClose={() => setResetDataModalVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setResetDataModalVisible(false)}>
+          <Pressable style={s.resetSheet} onPress={() => {}}>
+            <Text style={s.resetSheetTitle}>Reset data</Text>
+            <Text style={s.resetSheetSub}>Choose what to clear. This cannot be undone.</Text>
+
+            {[
+              {
+                icon: 'happy-outline' as const,
+                label: 'Mood history',
+                desc: 'All weekly mood check-ins',
+                onPress: () => confirmReset(
+                  'Reset mood history?',
+                  'All your mood check-ins will be permanently deleted.',
+                  resetMoodHistory,
+                ),
+              },
+              {
+                icon: 'journal-outline' as const,
+                label: 'Urge journal',
+                desc: 'All logged urge entries',
+                onPress: () => confirmReset(
+                  'Reset urge journal?',
+                  'All your journal entries will be permanently deleted.',
+                  resetJournal,
+                ),
+              },
+              {
+                icon: 'ribbon-outline' as const,
+                label: 'Milestones & badges',
+                desc: 'Earned badges and prevention checklist',
+                onPress: () => confirmReset(
+                  'Reset milestones & badges?',
+                  'All earned badges and your prevention checklist progress will be cleared.',
+                  resetMilestones,
+                ),
+              },
+              {
+                icon: 'wallet-outline' as const,
+                label: 'Loss & debt tracker',
+                desc: 'All loss, payment and debt records',
+                onPress: () => confirmReset(
+                  'Reset loss & debt tracker?',
+                  'All losses, payments and debt records will be permanently deleted.',
+                  resetLossTracker,
+                ),
+              },
+            ].map(({ icon, label, desc, onPress }, i, arr) => (
+              <View key={label}>
+                <Pressable
+                  style={({ pressed }) => [s.resetRow, pressed && { opacity: 0.7 }]}
+                  onPress={() => { setResetDataModalVisible(false); setTimeout(onPress, 300); }}
+                  disabled={resetting}>
+                  <Ionicons name={icon} size={20} color="#c0392b" style={{ marginRight: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.resetRowLabel}>{label}</Text>
+                    <Text style={s.resetRowDesc}>{desc}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#ddd" />
+                </Pressable>
+                {i < arr.length - 1 && <View style={s.resetDivider} />}
+              </View>
+            ))}
+
+            <View style={s.resetNuclearSep} />
+            <Pressable
+              style={({ pressed }) => [s.resetNuclearRow, pressed && { opacity: 0.7 }]}
+              onPress={() => {
+                setResetDataModalVisible(false);
+                setTimeout(() => confirmReset(
+                  'Reset everything?',
+                  'This will clear your streak, all badges, mood history, journal, losses and debts. Your account and settings are kept.',
+                  resetEverything,
+                ), 300);
+              }}
+              disabled={resetting}>
+              <Ionicons name="nuclear-outline" size={20} color="#c0392b" style={{ marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.resetNuclearLabel}>Reset everything</Text>
+                <Text style={s.resetRowDesc}>Streak, badges, mood, journal, losses & debts</Text>
+              </View>
+            </Pressable>
+
+            <Pressable style={({ pressed }) => [s.resetCancelBtn, pressed && { opacity: 0.7 }]} onPress={() => setResetDataModalVisible(false)}>
+              <Text style={s.resetCancelTxt}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* iOS date/time picker modal */}
       {Platform.OS === 'ios' && (
         <Modal visible={showIOSModal} transparent animationType="slide">
@@ -1347,4 +1519,19 @@ const s = StyleSheet.create({
   confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   confirmSave: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
   confirmSaveTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  settingsDivider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 4 },
+
+  resetSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 420 },
+  resetSheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 4 },
+  resetSheetSub: { fontSize: 13, color: '#999', marginBottom: 20 },
+  resetRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  resetRowLabel: { fontSize: 15, fontWeight: '600', color: '#222' },
+  resetRowDesc: { fontSize: 12, color: '#999', marginTop: 1 },
+  resetDivider: { height: 1, backgroundColor: '#f5f5f5' },
+  resetNuclearSep: { height: 1, backgroundColor: '#fde8e8', marginVertical: 8 },
+  resetNuclearRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  resetNuclearLabel: { fontSize: 15, fontWeight: '700', color: '#c0392b' },
+  resetCancelBtn: { marginTop: 16, paddingVertical: 13, borderRadius: 12, backgroundColor: '#f5f5f5', alignItems: 'center' },
+  resetCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
 });
