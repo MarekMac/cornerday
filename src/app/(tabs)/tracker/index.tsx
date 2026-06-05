@@ -612,21 +612,22 @@ export default function TrackerIndex() {
                       friction={2}
                       leftThreshold={60}
                       rightThreshold={60}
+                      onSwipeableOpen={(direction) => {
+                        swipeRefs.current.get(debt.id)?.close();
+                        if (direction === 'left') confirmDeleteDebt(debt);
+                        else if (!isPaidOff) openQuickPay(debt);
+                      }}
                       renderLeftActions={() => (
-                        <Pressable
-                          style={s.swipeDeleteAction}
-                          onPress={() => { swipeRefs.current.get(debt.id)?.close(); confirmDeleteDebt(debt); }}>
+                        <View style={s.swipeDeleteAction}>
                           <Ionicons name="trash-outline" size={22} color="#fff" />
                           <Text style={s.swipeDeleteTxt}>Delete</Text>
-                        </Pressable>
+                        </View>
                       )}
                       renderRightActions={isPaidOff ? undefined : () => (
-                        <Pressable
-                          style={s.swipePayAction}
-                          onPress={() => { swipeRefs.current.get(debt.id)?.close(); openQuickPay(debt); }}>
+                        <View style={s.swipePayAction}>
                           <Ionicons name="card-outline" size={22} color="#fff" />
                           <Text style={s.swipePayTxt}>Pay</Text>
-                        </Pressable>
+                        </View>
                       )}>
                       <Pressable
                         style={({ pressed }) => [s.debtCard, isPaidOff && s.debtCardPaidOff, pressed && { opacity: 0.85 }]}
@@ -655,6 +656,7 @@ export default function TrackerIndex() {
                             <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn}>
                               <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
                             </Pressable>
+                            <Ionicons name="chevron-forward" size={14} color="#ddd" />
                           </View>
                         </View>
                         <View style={s.debtProgressTrack}>
