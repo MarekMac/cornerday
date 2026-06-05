@@ -331,8 +331,9 @@ export default function TrackerIndex() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">
 
-          {/* Summary */}
+          {/* Debt recovery card */}
           <View style={s.summaryCard}>
+            <Text style={s.summaryTitle}>Debt recovery</Text>
             <View style={s.summaryRow}>
               <View style={s.summaryCol}>
                 <Text style={[s.summaryVal, { color: '#c0392b' }]}>{fmt(totalDebt, currency)}</Text>
@@ -351,19 +352,31 @@ export default function TrackerIndex() {
               <View style={[s.progressFill, { width: `${recoveryPct * 100}%` as any }]} />
             </View>
             <Text style={s.progressLbl}>{Math.round(recoveryPct * 100)}% recovered</Text>
+          </View>
 
-            <View style={s.savingsInnerSep} />
-            <View style={s.savingsLine}>
-              <Text style={s.savingsLineLabel} numberOfLines={1}>
-                Potential savings{weeklyBet ? ` (${fmt(Number(weeklyBet), currency)}/week)` : ' (set weekly spending in Account)'}
-              </Text>
-              <Text style={s.savingsLineValue}>{fmtLive(autoSaved, currency)}</Text>
+          {/* Savings card */}
+          <View style={s.savingsCard}>
+            <Text style={s.savingsCardTitle}>Savings</Text>
+            <View style={s.savingsRow}>
+              <Text style={s.savingsRowEmoji}>💸</Text>
+              <View style={s.savingsRowBody}>
+                <Text style={s.savingsRowLabel}>Not spent since day one</Text>
+                <Text style={s.savingsRowSub}>
+                  {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Set weekly spending in Account'}
+                </Text>
+              </View>
+              <Text style={[s.savingsRowAmt, { color: '#888' }]}>{fmtLive(autoSaved, currency)}</Text>
             </View>
             {totalManualSavings > 0 && (
               <>
-                <View style={[s.savingsLine, { paddingTop: 0 }]}>
-                  <Text style={s.savingsLineLabel}>Savings banked</Text>
-                  <Text style={s.savingsLineValue}>{fmt(totalManualSavings, currency)}</Text>
+                <View style={s.savingsSep} />
+                <View style={s.savingsRow}>
+                  <Text style={s.savingsRowEmoji}>💰</Text>
+                  <View style={s.savingsRowBody}>
+                    <Text style={s.savingsRowLabel}>Actually banked</Text>
+                    <Text style={s.savingsRowSub}>Money you've set aside</Text>
+                  </View>
+                  <Text style={[s.savingsRowAmt, { color: '#0a7a4e' }]}>{fmt(totalManualSavings, currency)}</Text>
                 </View>
               </>
             )}
@@ -373,16 +386,14 @@ export default function TrackerIndex() {
 
           {/* Tabs */}
           <View style={s.tabBar}>
-            {(['debts', 'saving'] as MainTab[]).map(t => (
-              <Pressable
-                key={t}
-                style={[s.tabBtn, tab === t && { backgroundColor: t === 'debts' ? '#c0392b' : '#0F6E6E' }]}
-                onPress={() => setTab(t)}>
-                <Text style={[s.tabTxt, tab === t && s.tabTxtActive]}>
-                  {t === 'debts' ? 'Debts' : 'Savings'}
-                </Text>
-              </Pressable>
-            ))}
+            <Pressable style={s.tabBtn} onPress={() => setTab('debts')}>
+              <Text style={[s.tabTxt, tab === 'debts' && s.tabTxtDebt]}>Debts</Text>
+              {tab === 'debts' && <View style={[s.tabIndicator, { backgroundColor: '#c0392b' }]} />}
+            </Pressable>
+            <Pressable style={s.tabBtn} onPress={() => setTab('saving')}>
+              <Text style={[s.tabTxt, tab === 'saving' && s.tabTxtSaving]}>Savings</Text>
+              {tab === 'saving' && <View style={[s.tabIndicator, { backgroundColor: '#0F6E6E' }]} />}
+            </Pressable>
           </View>
 
           {/* Debts tab */}
@@ -450,23 +461,26 @@ export default function TrackerIndex() {
                   <Text style={s.emptyTxt}>No savings logged yet.{'\n'}Tap "Log a saving" to record money you've set aside.</Text>
                 </View>
               ) : (
-                <View style={s.card}>
-                  <Text style={s.cardTitle}>My Savings</Text>
-                  {savings.map(entry => (
-                    <View key={entry.id} style={s.savingItem}>
-                      <View style={s.savingLeft}>
-                        <Text style={s.savingLabel}>{entry.note || 'Saving'}</Text>
-                        <Text style={s.savingDate}>{fmtDate(entry.created_at)}</Text>
+                savings.map(entry => (
+                  <Pressable
+                    key={entry.id}
+                    style={({ pressed }) => [s.savingCard, pressed && { opacity: 0.85 }]}
+                    onPress={() => handleSavingMenu(entry)}>
+                    <View style={s.savingCardTop}>
+                      <Text style={s.savingCardEmoji}>💰</Text>
+                      <View style={s.savingCardInfo}>
+                        <Text style={s.savingCardLabel}>{entry.note || 'Saving'}</Text>
+                        <Text style={s.savingCardDate}>{fmtDate(entry.created_at)}</Text>
                       </View>
-                      <View style={s.savingRight}>
-                        <Text style={s.savingAmt}>+{fmt(Number(entry.amount), currency)}</Text>
+                      <View style={s.savingCardRight}>
+                        <Text style={s.savingCardAmt}>+{fmt(Number(entry.amount), currency)}</Text>
                         <Pressable onPress={() => handleSavingMenu(entry)} hitSlop={10} style={s.menuBtn}>
                           <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
                         </Pressable>
                       </View>
                     </View>
-                  ))}
-                </View>
+                  </Pressable>
+                ))
               )}
             </>
           )}
@@ -736,6 +750,7 @@ const s = StyleSheet.create({
   bodyContent: { padding: 16, gap: 12 },
 
   summaryCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  summaryTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8 },
   summaryRow: { flexDirection: 'row' },
   summaryCol: { flex: 1, alignItems: 'center' },
   summaryMid: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#f0f0f0' },
@@ -745,17 +760,24 @@ const s = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
   progressLbl: { fontSize: 12, color: '#0F6E6E', fontWeight: '600', textAlign: 'center' },
 
-  savingsInnerSep: { height: 1, backgroundColor: '#f0f0f0', marginTop: 6 },
-  savingsLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8 },
-  savingsLineLabel: { fontSize: 14, color: '#888', flex: 1, flexShrink: 1 },
-  savingsLineValue: { fontSize: 16, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
+  savingsCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 0 },
+  savingsCardTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  savingsRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  savingsRowEmoji: { fontSize: 22, width: 30, textAlign: 'center' },
+  savingsRowBody: { flex: 1 },
+  savingsRowLabel: { fontSize: 14, fontWeight: '600', color: '#111' },
+  savingsRowSub: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  savingsRowAmt: { fontSize: 17, fontWeight: '800' },
+  savingsSep: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 12 },
 
   sectionDivider: { height: 1, backgroundColor: '#e8e8e8', marginTop: 6, marginBottom: 4 },
 
-  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 4, gap: 2 },
-  tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
-  tabTxt: { fontSize: 13, fontWeight: '600', color: '#888' },
-  tabTxtActive: { color: '#fff' },
+  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' },
+  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', position: 'relative' },
+  tabTxt: { fontSize: 14, fontWeight: '600', color: '#bbb' },
+  tabTxtDebt: { color: '#c0392b' },
+  tabTxtSaving: { color: '#0F6E6E' },
+  tabIndicator: { position: 'absolute', bottom: 0, left: 20, right: 20, height: 2.5, borderRadius: 2 },
 
   addBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -780,18 +802,14 @@ const s = StyleSheet.create({
 
   menuBtn: { padding: 4 },
 
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 14 },
-
-  savingItem: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5',
-  },
-  savingLeft: { flex: 1, gap: 2 },
-  savingLabel: { fontSize: 14, fontWeight: '600', color: '#111' },
-  savingDate: { fontSize: 12, color: '#888' },
-  savingRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  savingAmt: { fontSize: 15, fontWeight: '700', color: '#0a7a4e' },
+  savingCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
+  savingCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  savingCardEmoji: { fontSize: 26 },
+  savingCardInfo: { flex: 1 },
+  savingCardLabel: { fontSize: 15, fontWeight: '700', color: '#111' },
+  savingCardDate: { fontSize: 12, color: '#888', marginTop: 2 },
+  savingCardRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  savingCardAmt: { fontSize: 15, fontWeight: '700', color: '#0a7a4e' },
 
   input: {
     borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
