@@ -107,9 +107,9 @@ export default function TrackerIndex() {
   const [weeklyBet, setWeeklyBet] = useState<string | null>(null);
   const [quitTs, setQuitTs] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [, setTick] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 1000);
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -176,7 +176,7 @@ export default function TrackerIndex() {
   const recoveryPct = totalDebt > 0 ? Math.min(1, totalPaid / totalDebt) : 0;
 
   const days = streakDays(quitTs);
-  const streakMs = quitTs ? Math.max(0, Date.now() - parseQuitDate(quitTs).getTime()) : 0;
+  const streakMs = quitTs ? Math.max(0, nowMs - parseQuitDate(quitTs).getTime()) : 0;
   const autoSaved = weeklyBet ? (streakMs / 86400000) * (Number(weeklyBet) / 7) : 0;
   const totalManualSavings = savings.reduce((s, e) => s + Number(e.amount), 0);
 
@@ -465,7 +465,7 @@ export default function TrackerIndex() {
                 <View style={s.savingsRow}>
                   <Text style={s.savingsRowEmoji}>💰</Text>
                   <View style={s.savingsRowBody}>
-                    <Text style={s.savingsRowLabel}>Actually banked</Text>
+                    <Text style={s.savingsRowLabel}>Total banked</Text>
                     <Text style={s.savingsRowSub}>Money you've set aside</Text>
                   </View>
                   <Text style={[s.savingsRowAmt, { color: '#0a7a4e' }]}>{fmt(totalManualSavings, currency)}</Text>
@@ -591,10 +591,6 @@ export default function TrackerIndex() {
                       </View>
                     </Pressable>
                   ))}
-                  <View style={s.savingsTotalRow}>
-                    <Text style={s.savingsTotalLbl}>Total banked</Text>
-                    <Text style={s.savingsTotalVal}>{fmt(totalManualSavings, currency)}</Text>
-                  </View>
                 </>
               )}
             </>

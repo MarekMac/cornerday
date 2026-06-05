@@ -501,16 +501,11 @@ function fmtLive(amount: number, currency = 'USD') {
   return `${s}${amount.toFixed(1)}`;
 }
 
-function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
+function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
   quitDate: string | null; weeklyBet: string | null; currency: string;
-  totalLost: number; totalPaid: number;
+  totalLost: number; totalPaid: number; nowMs: number;
 }) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const ms = quitDate ? Math.max(0, Date.now() - parseQuitDate(quitDate).getTime()) : 0;
+  const ms = quitDate ? Math.max(0, nowMs - parseQuitDate(quitDate).getTime()) : 0;
   const moneySaved = (ms / 86400000) * weeklyToDaily(weeklyBet);
   return (
     <View style={s.savedCard}>
@@ -530,7 +525,7 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
           <View style={s.savedRow}>
             <Text style={s.savedEmoji}>💰</Text>
             <View style={s.savedBody}>
-              <Text style={s.savedLabel}>Actually banked</Text>
+              <Text style={s.savedLabel}>Total banked</Text>
               <Text style={s.savedSub}>Money you've set aside</Text>
             </View>
             <Text style={[s.savedAmt, { color: '#0a7a4e' }]}>{fmt(totalPaid, currency)}</Text>
@@ -797,6 +792,7 @@ export default function HomeScreen() {
   }, [fetchData, randomQuote]);
 
   // Must be before any early returns to follow Rules of Hooks
+  const nowMs = useMemo(() => Date.now(), [tick]);
   const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
   const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
 
@@ -943,7 +939,7 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" />}>
 
         {/* Stats */}
-        <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} />
+        <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} nowMs={nowMs} />
 
         {/* Badges */}
         <View style={s.card}>
