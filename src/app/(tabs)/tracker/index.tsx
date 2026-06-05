@@ -23,10 +23,8 @@ import { Swipeable } from 'react-native-gesture-handler';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
-
-const SAVINGS_GOAL_KEY = 'cornerday_savings_goal';
-const SAVINGS_GOAL_FOR_KEY = 'cornerday_savings_goal_for';
 
 type MainTab = 'debts' | 'saving';
 
@@ -163,9 +161,11 @@ export default function TrackerIndex() {
   // Savings goal
   const [savingsGoal, setSavingsGoal] = useState<number | null>(null);
   const [savingsGoalFor, setSavingsGoalFor] = useState<string>('');
+  const [savingsGoalIcon, setSavingsGoalIcon] = useState<string>('🎯');
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [goalInput, setGoalInput] = useState('');
   const [goalForInput, setGoalForInput] = useState('');
+  const [goalIconInput, setGoalIconInput] = useState<string>('🎯');
 
   // Swipe refs — one per debt card
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
@@ -198,9 +198,11 @@ export default function TrackerIndex() {
     Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
-    ]).then(([rawGoal, rawFor]) => {
+      AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
+    ]).then(([rawGoal, rawFor, rawIcon]) => {
       if (rawGoal) setSavingsGoal(Number(rawGoal));
       if (rawFor) setSavingsGoalFor(rawFor);
+      if (rawIcon) setSavingsGoalIcon(rawIcon);
     });
   }, []);
 
@@ -376,6 +378,7 @@ export default function TrackerIndex() {
   const openGoalModal = () => {
     setGoalInput(savingsGoal ? String(savingsGoal) : '');
     setGoalForInput(savingsGoalFor);
+    setGoalIconInput(savingsGoalIcon);
     setGoalModalVisible(true);
   };
   const closeGoalModal = () => {
@@ -383,6 +386,7 @@ export default function TrackerIndex() {
     setGoalModalVisible(false);
     setGoalInput('');
     setGoalForInput('');
+    setGoalIconInput('🎯');
   };
   const saveGoal = async () => {
     const val = parseFloat(goalInput);
@@ -391,16 +395,20 @@ export default function TrackerIndex() {
       return;
     }
     if (!goalInput) {
-      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY]);
+      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
       setSavingsGoal(null);
       setSavingsGoalFor('');
+      setSavingsGoalIcon('🎯');
     } else {
       const forVal = goalForInput.trim();
+      const iconVal = goalIconInput || '🎯';
       await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
+      await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
       if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
       else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
       setSavingsGoal(val);
       setSavingsGoalFor(forVal);
+      setSavingsGoalIcon(iconVal);
     }
     closeGoalModal();
   };
@@ -556,7 +564,7 @@ export default function TrackerIndex() {
             )}
             <View style={s.savingsSep} />
             <Pressable style={s.savingsRow} onPress={openGoalModal}>
-              <Text style={s.savingsRowEmoji}>🎯</Text>
+              <Text style={s.savingsRowEmoji}>{savingsGoalIcon}</Text>
               <View style={s.savingsRowBody}>
                 {savingsGoal ? (
                   <>
@@ -573,9 +581,12 @@ export default function TrackerIndex() {
                 )}
               </View>
               {savingsGoal ? (
-                <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 15 }]}>
-                  {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
-                </Text>
+                <View style={s.goalRightSet}>
+                  <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 15 }]}>
+                    {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
+                  </Text>
+                  <Ionicons name="create-outline" size={13} color="#bbb" />
+                </View>
               ) : (
                 <Ionicons name="chevron-forward" size={16} color="#ccc" />
               )}
@@ -982,6 +993,17 @@ export default function TrackerIndex() {
           <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <Text style={s.sheetTitle}>Savings goal</Text>
+              <Text style={s.fieldLbl}>Icon</Text>
+              <View style={s.iconGrid}>
+                {GOAL_ICONS.map(icon => (
+                  <Pressable
+                    key={icon}
+                    style={[s.iconChip, goalIconInput === icon && s.iconChipActive]}
+                    onPress={() => setGoalIconInput(icon)}>
+                    <Text style={s.iconChipEmoji}>{icon}</Text>
+                  </Pressable>
+                ))}
+              </View>
               <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
               <TextInput
                 style={s.input}
@@ -1173,6 +1195,17 @@ const s = StyleSheet.create({
   savingsTotalLbl: { fontSize: 13, fontWeight: '700', color: '#555' },
   savingsTotalVal: { fontSize: 18, fontWeight: '800', color: '#0a7a4e' },
 
+
+  goalRightSet: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  iconChip: {
+    width: 44, height: 44, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: 'transparent',
+  },
+  iconChipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
+  iconChipEmoji: { fontSize: 22 },
 
   swipeDeleteAction: {
     backgroundColor: '#c0392b', borderRadius: 14, marginRight: 8,

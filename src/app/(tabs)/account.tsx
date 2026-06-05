@@ -27,7 +27,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -164,6 +164,15 @@ export default function AccountScreen() {
   const [emailCopied, setEmailCopied] = useState(false);
 
   const [showSpendingModal, setShowSpendingModal] = useState(false);
+
+  // Savings goal (AsyncStorage)
+  const [savingsGoal, setSavingsGoal] = useState<number | null>(null);
+  const [savingsGoalFor, setSavingsGoalFor] = useState('');
+  const [savingsGoalIcon, setSavingsGoalIcon] = useState('🎯');
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
+  const [goalForInput, setGoalForInput] = useState('');
+  const [goalIconInput, setGoalIconInput] = useState('🎯');
   const [spendingCurrency, setSpendingCurrency] = useState('USD');
   const [spendingChip, setSpendingChip] = useState('');
   const [spendingCustom, setSpendingCustom] = useState('');
@@ -225,7 +234,47 @@ export default function AccountScreen() {
 
   useEffect(() => {
     fetchProfile().finally(() => setLoading(false));
+    Promise.all([
+      AsyncStorage.getItem(SAVINGS_GOAL_KEY),
+      AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
+      AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
+    ]).then(([rawGoal, rawFor, rawIcon]) => {
+      if (rawGoal) setSavingsGoal(Number(rawGoal));
+      if (rawFor) setSavingsGoalFor(rawFor);
+      if (rawIcon) setSavingsGoalIcon(rawIcon);
+    });
   }, [fetchProfile]);
+
+  const openGoalModal = () => {
+    setGoalInput(savingsGoal ? String(savingsGoal) : '');
+    setGoalForInput(savingsGoalFor);
+    setGoalIconInput(savingsGoalIcon);
+    setShowGoalModal(true);
+  };
+  const closeGoalModal = () => {
+    setShowGoalModal(false);
+    setGoalInput(''); setGoalForInput(''); setGoalIconInput('🎯');
+  };
+  const saveGoal = async () => {
+    const val = parseFloat(goalInput);
+    if (goalInput && (isNaN(val) || val <= 0)) {
+      Alert.alert('Invalid amount', 'Please enter a valid amount.');
+      return;
+    }
+    if (!goalInput) {
+      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+      setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
+    } else {
+      const forVal = goalForInput.trim();
+      const iconVal = goalIconInput || '🎯';
+      await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
+      await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
+      if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
+      else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
+      setSavingsGoal(val); setSavingsGoalFor(forVal); setSavingsGoalIcon(iconVal);
+    }
+    closeGoalModal();
+  };
 
   const openFieldModal = (field: FieldKey) => {
     const config = FIELD_CONFIG[field];
@@ -721,6 +770,21 @@ export default function AccountScreen() {
               </Pressable>
             </View>
           </View>
+          <View style={s.infoRow}>
+            <Text style={s.infoLabel}>Savings goal</Text>
+            <View style={s.infoValueRow}>
+              <Text style={[s.infoValue, !savingsGoal && s.infoValueEmpty]}>
+                {savingsGoal
+                  ? `${savingsGoalIcon} ${savingsGoalFor || 'Goal'} · ${CURRENCIES.find(c => c.code === profile?.currency)?.symbol ?? ''}${savingsGoal.toLocaleString()}`
+                  : 'Not set'}
+              </Text>
+              <Pressable
+                onPress={openGoalModal}
+                style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
+                <Text style={s.editBtnTxt}>{savingsGoal ? 'Edit' : 'Add'}</Text>
+              </Pressable>
+            </View>
+          </View>
 
           {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map(field => {
             const config = FIELD_CONFIG[field];
@@ -840,6 +904,69 @@ export default function AccountScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Savings goal modal */}
+      <Modal visible={showGoalModal} transparent animationType="slide" onRequestClose={closeGoalModal}>
+        <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
+          <Pressable style={s.editFieldSheet} onPress={() => {}}>
+            <View style={s.editFieldHandle} />
+            <Text style={s.editFieldTitle}>Savings goal</Text>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Icon</Text>
+              <View style={s.goalIconGrid}>
+                {GOAL_ICONS.map(icon => (
+                  <Pressable
+                    key={icon}
+                    style={[s.goalIconChip, goalIconInput === icon && s.goalIconChipActive]}
+                    onPress={() => setGoalIconInput(icon)}>
+                    <Text style={s.goalIconChipEmoji}>{icon}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={s.spendingCustomLabel}>What are you saving for? <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+              <TextInput
+                style={s.spendingInput}
+                placeholder="e.g. Holiday, New car, Emergency fund"
+                placeholderTextColor="#bbb"
+                value={goalForInput}
+                onChangeText={setGoalForInput}
+                maxLength={40}
+              />
+              <Text style={s.spendingCustomLabel}>Target amount</Text>
+              <View style={s.spendingInputRow}>
+                <Text style={s.spendingSymbol}>{CURRENCIES.find(c => c.code === profile?.currency)?.symbol ?? '$'}</Text>
+                <TextInput
+                  style={s.spendingInput}
+                  placeholder="e.g. 5000"
+                  placeholderTextColor="#bbb"
+                  keyboardType="decimal-pad"
+                  value={goalInput}
+                  onChangeText={setGoalInput}
+                />
+              </View>
+              {savingsGoal && (
+                <Pressable
+                  onPress={async () => {
+                    await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+                    setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
+                    closeGoalModal();
+                  }}
+                  style={{ alignSelf: 'center', marginTop: 12 }}>
+                  <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove goal</Text>
+                </Pressable>
+              )}
+            </ScrollView>
+            <View style={[s.modalActions, { marginTop: 16 }]}>
+              <Pressable style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={closeGoalModal}>
+                <Text style={s.modalBtnCancel}>Cancel</Text>
+              </Pressable>
+              <Pressable style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]} onPress={saveGoal}>
+                <Text style={s.modalBtnSaveTxt}>Save goal</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Weekly spending modal */}
       <Modal visible={showSpendingModal} transparent animationType="slide">
@@ -1464,6 +1591,10 @@ const s = StyleSheet.create({
   spendingChipTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
   spendingChipTxtSelected: { color: '#0F6E6E' },
   spendingCustomLabel: { fontSize: 13, color: '#666', marginBottom: 10 },
+  goalIconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  goalIconChip: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: 'transparent' },
+  goalIconChipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
+  goalIconChipEmoji: { fontSize: 22 },
   spendingInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#ddd', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fafafa' },
   spendingSymbol: { fontSize: 16, color: '#555', marginRight: 6 },
   spendingInput: { flex: 1, fontSize: 15, color: '#111' },

@@ -6,3 +6,7 @@ export const CHECKLIST_KEY = 'cornerday_prevention_checklist';
 export const CHECKLIST_TOTAL = 13;
 export const CHECKLIST_BADGE_SENT_KEY = 'cornerday_checklist_badge_sent';
 export const MILESTONE_NOTIFS_KEY = 'cornerday_milestone_notifs_sent';
+export const SAVINGS_GOAL_KEY = 'cornerday_savings_goal';
+export const SAVINGS_GOAL_FOR_KEY = 'cornerday_savings_goal_for';
+export const SAVINGS_GOAL_ICON_KEY = 'cornerday_savings_goal_icon';
+export const GOAL_ICONS = ['🎯','🏖️','✈️','🚗','🏠','💍','📱','🎓','💪','🛡️','👶','🎮','🌟','💰','🐕'] as const;
