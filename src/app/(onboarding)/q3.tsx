@@ -43,13 +43,14 @@ export default function Q3Screen() {
   const [selected, setSelected] = useState('');
   const [custom, setCustom] = useState('');
   const [quitDate, setQuitDate] = useState(new Date());
+  const [userChangedDate, setUserChangedDate] = useState(false);
   const [showIOSPicker, setShowIOSPicker] = useState(false);
 
   useEffect(() => {
     if (!isLoaded) return;
     if (data.currency) setCurrency(data.currency);
     if (data.weeklyBet) setSelected(data.weeklyBet);
-    if (data.quitDate) setQuitDate(new Date(data.quitDate));
+    if (data.quitDate) { setQuitDate(new Date(data.quitDate)); setUserChangedDate(true); }
   }, [isLoaded]);
 
   const symbol = CURRENCIES.find(c => c.code === currency)?.symbol ?? '$';
@@ -79,7 +80,7 @@ export default function Q3Screen() {
                 if (isNaN(time.getTime())) return;
                 const merged = new Date(date.getTime());
                 merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
-                if (!isNaN(merged.getTime())) setQuitDate(merged);
+                if (!isNaN(merged.getTime())) { setQuitDate(merged); setUserChangedDate(true); }
               },
             });
           }, 500);
@@ -92,7 +93,7 @@ export default function Q3Screen() {
     const value = custom.trim() ? custom.trim() : selected || null;
     setField('weeklyBet', value);
     setField('currency', currency);
-    setField('quitDate', quitDate.toISOString());
+    setField('quitDate', userChangedDate ? quitDate.toISOString() : null);
     saveStep('q4');
     router.push('/(onboarding)/q4');
   };
@@ -100,7 +101,7 @@ export default function Q3Screen() {
   const handleSkip = () => {
     setField('weeklyBet', null);
     setField('currency', currency);
-    setField('quitDate', new Date().toISOString());
+    setField('quitDate', null);
     saveStep('q4');
     router.push('/(onboarding)/q4');
   };
@@ -205,7 +206,7 @@ export default function Q3Screen() {
                 mode="datetime"
                 display="spinner"
                 maximumDate={new Date()}
-                onValueChange={(_evt, d) => d && setQuitDate(new Date(d.getTime()))}
+                onValueChange={(_evt, d) => { if (d) { setQuitDate(new Date(d.getTime())); setUserChangedDate(true); } }}
                 style={{ height: 200 }}
               />
               <Pressable style={styles.modalDone} onPress={() => setShowIOSPicker(false)}>

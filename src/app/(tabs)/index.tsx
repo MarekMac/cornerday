@@ -611,11 +611,14 @@ export default function HomeScreen() {
       // Immediate notification for each newly awarded milestone (respects notif_milestone pref)
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       if (notifStatus === 'granted' && (profile?.notif_milestone ?? true)) {
-        for (const b of toLog) {
+        for (const b of toAward) {
+          const isStart = b.type === 'started';
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: `${b.emoji} ${b.label} milestone!`,
-              body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
+              title: isStart ? `${b.emoji} Your journey has started!` : `${b.emoji} ${b.label} milestone!`,
+              body: isStart
+                ? `You've made the decision to change. That's the hardest part — keep going.`
+                : `You've been clean for ${b.label}. That's a real achievement — keep going.`,
               data: { screen: '/(tabs)/' },
             },
             trigger: Platform.OS === 'android'
