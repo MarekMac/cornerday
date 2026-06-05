@@ -16,6 +16,7 @@ if (__DEV__) {
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Slot, useRouter, useRootNavigationState } from 'expo-router';
 import { useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Session } from '@supabase/supabase-js';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
@@ -99,11 +100,13 @@ export default function RootLayout() {
   }, [authChecked, navigationState?.key, pendingRoute]);
 
   return (
-    <UserProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-        <Slot />
-      </ThemeProvider>
-    </UserProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <UserProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <AnimatedSplashOverlay />
+          <Slot />
+        </ThemeProvider>
+      </UserProvider>
+    </GestureHandlerRootView>
   );
 }
