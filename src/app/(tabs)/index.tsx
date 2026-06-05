@@ -572,7 +572,7 @@ export default function HomeScreen() {
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
   useEffect(() => {
     if (!data?.quitDate) return;
-    const ms = Math.max(0, Date.now() - new Date(data.quitDate).getTime());
+    const ms = Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime());
     const { next } = getMilestone(ms);
     if (prevNextMilestone.current !== null && prevNextMilestone.current !== next) {
       fetchData();
@@ -620,18 +620,20 @@ export default function HomeScreen() {
       ? Math.max(0, Date.now() - parseQuitDate(quitStr).getTime()) / 86400000
       : 0;
 
-    // Merge AsyncStorage local record into earnedBadges so that badges whose
-    // DB insert failed are still treated as already awarded on subsequent runs.
-    // This is the single guard for DB insert, journal, and notification.
+    // localEarned is the notification/insert dedup guard stored in AsyncStorage.
+    // It is intentionally kept separate from earnedBadges (DB-only) so that
+    // clearing badges from the DB actually clears them from the UI, while still
+    // preventing immediate re-award of milestones the current streak qualifies for.
     const localRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
     const localEarned: string[] = localRaw ? JSON.parse(localRaw) : [];
-    localEarned.forEach(t => { if (!earnedBadges.includes(t)) earnedBadges.push(t); });
+    const dedupeGuard = new Set([...earnedBadges, ...localEarned]);
 
-    const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !earnedBadges.includes(b.type));
+    const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
+    let currentLocal = [...localEarned]; // tracks live state of MILESTONE_NOTIFS_KEY this run
     if (toAward.length > 0) {
       // Persist to AsyncStorage first — prevents repeat journal/notification even if DB insert fails
-      const updatedLocal = [...localEarned, ...toAward.map(b => b.type)];
-      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(updatedLocal));
+      currentLocal = [...currentLocal, ...toAward.map(b => b.type)];
+      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(currentLocal));
 
       await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
 
@@ -691,7 +693,7 @@ export default function HomeScreen() {
       return { id: d.id, name: d.name, totalAmount: Number(d.total_amount), paidAmount, earned, earnedAt: badgeTimestamps[badgeType] ?? null };
     });
     const newDebtBadges = debtItems
-      .filter(d => d.earned && !earnedBadges.includes(`debt_${d.id}`))
+      .filter(d => d.earned && !dedupeGuard.has(`debt_${d.id}`))
       .map(d => ({ user_id: user.id, badge_type: `debt_${d.id}` }));
     if (newDebtBadges.length > 0) {
       await supabase.from('badges').insert(newDebtBadges);
@@ -708,17 +710,17 @@ export default function HomeScreen() {
     const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
     const newGoalBadges: { user_id: string; badge_type: string }[] = [];
-    if (savingsGoalAmount && !earnedBadges.includes('goal_set')) {
+    if (savingsGoalAmount && !dedupeGuard.has('goal_set')) {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_set' });
     }
-    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !earnedBadges.includes('goal_reached')) {
+    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !dedupeGuard.has('goal_reached')) {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_reached' });
     }
     if (newGoalBadges.length > 0) {
-      // Persist to AsyncStorage first — same guard used for streak milestones.
-      // Prevents repeat notifications if the DB insert fails or races.
-      const updatedLocal = [...localEarned, ...newGoalBadges.map(b => b.badge_type)];
-      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(updatedLocal));
+      // Persist to AsyncStorage first — uses currentLocal which already includes any
+      // streak milestones written this same fetchData call, preventing overwrite.
+      currentLocal = [...currentLocal, ...newGoalBadges.map(b => b.badge_type)];
+      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(currentLocal));
 
       await supabase.from('badges').insert(newGoalBadges);
       // Log goal_reached to activity log (goal_set is logged at save time in tracker/account)

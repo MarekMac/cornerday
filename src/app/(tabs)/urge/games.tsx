@@ -431,7 +431,7 @@ function WordScrambleGame() {
       if (next >= TOTAL_WORDS) {
         setTimeout(() => setState(prev => ({ ...prev, done: true })), 800);
       } else {
-        setTimeout(() => setState(makeWordState(next, score)), 800);
+        setTimeout(() => setState(prev => makeWordState(next, prev.score)), 800);
       }
     }
   };

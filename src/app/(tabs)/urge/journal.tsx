@@ -337,7 +337,7 @@ export default function JournalScreen() {
         supabase.from('debts').delete().eq('user_id', user.id),
         supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
       ]);
-      fetchFeed();
+      await fetchFeed();
     }
     setClearAllVisible(false);
     setClearingAll(false);
