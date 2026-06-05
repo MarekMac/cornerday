@@ -1024,7 +1024,7 @@ export default function HomeScreen() {
                     <BadgeRing progress={progress} />
                     <Text style={s.badgeEmoji}>{debt.earned ? '🏦' : '🔒'}</Text>
                   </View>
-                  <Text style={[s.badgeLabel, !debt.earned && s.badgeLabelLocked]} numberOfLines={2}>{debt.name}{'\n'}paid</Text>
+                  <Text style={[s.badgeLabel, !debt.earned && s.badgeLabelLocked]} numberOfLines={1} ellipsizeMode="tail">{debt.name} paid</Text>
                 </Pressable>
               );
             })}
@@ -1037,7 +1037,7 @@ export default function HomeScreen() {
                     <BadgeRing progress={earned ? 1 : data.checklistProgress} />
                     <Text style={s.badgeEmoji}>{earned ? '🛡️' : '🔒'}</Text>
                   </View>
-                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2}>Safe Zone</Text>
+                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={1}>Safe Zone</Text>
                 </Pressable>
               );
             })()}
@@ -1050,7 +1050,7 @@ export default function HomeScreen() {
                     <BadgeRing progress={earned ? 1 : 0} />
                     <Text style={s.badgeEmoji}>{earned ? '📍' : '🔒'}</Text>
                   </View>
-                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2}>Goal Setter</Text>
+                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={1}>Goal Setter</Text>
                 </Pressable>
               );
             })()}
@@ -1065,7 +1065,7 @@ export default function HomeScreen() {
                     <BadgeRing progress={earned ? 1 : progress} />
                     <Text style={s.badgeEmoji}>{earned ? '🎊' : '🔒'}</Text>
                   </View>
-                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2}>Goal Met</Text>
+                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={1}>Goal Met</Text>
                 </Pressable>
               );
             })()}
