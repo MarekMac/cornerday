@@ -26,6 +26,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '@/lib/supabase';
 
 const SAVINGS_GOAL_KEY = 'cornerday_savings_goal';
+const SAVINGS_GOAL_FOR_KEY = 'cornerday_savings_goal_for';
 
 type MainTab = 'debts' | 'saving';
 
@@ -161,8 +162,10 @@ export default function TrackerIndex() {
 
   // Savings goal
   const [savingsGoal, setSavingsGoal] = useState<number | null>(null);
+  const [savingsGoalFor, setSavingsGoalFor] = useState<string>('');
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [goalInput, setGoalInput] = useState('');
+  const [goalForInput, setGoalForInput] = useState('');
 
   // Swipe refs — one per debt card
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
@@ -192,8 +195,12 @@ export default function TrackerIndex() {
   useFocusEffect(useCallback(() => { fetchAll(); }, [fetchAll]));
 
   useEffect(() => {
-    AsyncStorage.getItem(SAVINGS_GOAL_KEY).then(raw => {
-      if (raw) setSavingsGoal(Number(raw));
+    Promise.all([
+      AsyncStorage.getItem(SAVINGS_GOAL_KEY),
+      AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
+    ]).then(([rawGoal, rawFor]) => {
+      if (rawGoal) setSavingsGoal(Number(rawGoal));
+      if (rawFor) setSavingsGoalFor(rawFor);
     });
   }, []);
 
@@ -368,9 +375,15 @@ export default function TrackerIndex() {
   // Savings goal
   const openGoalModal = () => {
     setGoalInput(savingsGoal ? String(savingsGoal) : '');
+    setGoalForInput(savingsGoalFor);
     setGoalModalVisible(true);
   };
-  const closeGoalModal = () => { Keyboard.dismiss(); setGoalModalVisible(false); setGoalInput(''); };
+  const closeGoalModal = () => {
+    Keyboard.dismiss();
+    setGoalModalVisible(false);
+    setGoalInput('');
+    setGoalForInput('');
+  };
   const saveGoal = async () => {
     const val = parseFloat(goalInput);
     if (goalInput && (isNaN(val) || val <= 0)) {
@@ -378,11 +391,16 @@ export default function TrackerIndex() {
       return;
     }
     if (!goalInput) {
-      await AsyncStorage.removeItem(SAVINGS_GOAL_KEY);
+      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY]);
       setSavingsGoal(null);
+      setSavingsGoalFor('');
     } else {
+      const forVal = goalForInput.trim();
       await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
+      if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
+      else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
       setSavingsGoal(val);
+      setSavingsGoalFor(forVal);
     }
     closeGoalModal();
   };
@@ -537,27 +555,31 @@ export default function TrackerIndex() {
               </>
             )}
             <View style={s.savingsSep} />
-            {savingsGoal ? (
-              <>
-                <View style={s.goalHeader}>
-                  <Text style={s.goalLabel}>🎯 Savings goal</Text>
-                  <Pressable onPress={openGoalModal} hitSlop={8}>
-                    <Text style={s.goalEditTxt}>Edit</Text>
-                  </Pressable>
-                </View>
-                <View style={s.goalTrack}>
-                  <View style={[s.goalFill, { width: `${Math.min(1, totalManualSavings / savingsGoal) * 100}%` as any }]} />
-                </View>
-                <Text style={s.goalMeta}>
-                  {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
+            <Pressable style={s.savingsRow} onPress={openGoalModal}>
+              <Text style={s.savingsRowEmoji}>🎯</Text>
+              <View style={s.savingsRowBody}>
+                {savingsGoal ? (
+                  <>
+                    <Text style={s.savingsRowLabel}>{savingsGoalFor || 'Savings goal'}</Text>
+                    <Text style={s.savingsRowSub}>
+                      {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={s.savingsRowLabel}>Set a savings goal</Text>
+                    <Text style={s.savingsRowSub}>Tap to add a target amount</Text>
+                  </>
+                )}
+              </View>
+              {savingsGoal ? (
+                <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 15 }]}>
+                  {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
                 </Text>
-              </>
-            ) : (
-              <Pressable style={s.setGoalBtn} onPress={openGoalModal}>
-                <Ionicons name="flag-outline" size={15} color="#0F6E6E" />
-                <Text style={s.setGoalTxt}>Set a savings goal</Text>
-              </Pressable>
-            )}
+              ) : (
+                <Ionicons name="chevron-forward" size={16} color="#ccc" />
+              )}
+            </Pressable>
           </View>
 
           <View style={s.sectionDivider} />
@@ -960,7 +982,17 @@ export default function TrackerIndex() {
           <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <Text style={s.sheetTitle}>Savings goal</Text>
-              <Text style={[s.fieldLbl, { marginTop: 4 }]}>Target amount</Text>
+              <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. Holiday, New car, Emergency fund"
+                placeholderTextColor="#bbb"
+                value={goalForInput}
+                onChangeText={setGoalForInput}
+                maxLength={40}
+                autoFocus
+              />
+              <Text style={s.fieldLbl}>Target amount</Text>
               <TextInput
                 style={s.input}
                 placeholder="e.g. 5000"
@@ -968,10 +1000,16 @@ export default function TrackerIndex() {
                 keyboardType="decimal-pad"
                 value={goalInput}
                 onChangeText={setGoalInput}
-                autoFocus
               />
               {savingsGoal && (
-                <Pressable onPress={async () => { await AsyncStorage.removeItem(SAVINGS_GOAL_KEY); setSavingsGoal(null); closeGoalModal(); }} style={{ alignSelf: 'center', marginTop: 12 }}>
+                <Pressable
+                  onPress={async () => {
+                    await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY]);
+                    setSavingsGoal(null);
+                    setSavingsGoalFor('');
+                    closeGoalModal();
+                  }}
+                  style={{ alignSelf: 'center', marginTop: 12 }}>
                   <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove goal</Text>
                 </Pressable>
               )}
@@ -1135,14 +1173,6 @@ const s = StyleSheet.create({
   savingsTotalLbl: { fontSize: 13, fontWeight: '700', color: '#555' },
   savingsTotalVal: { fontSize: 18, fontWeight: '800', color: '#0a7a4e' },
 
-  goalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  goalLabel: { fontSize: 13, fontWeight: '700', color: '#111' },
-  goalEditTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '600' },
-  goalTrack: { height: 5, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
-  goalFill: { height: '100%', backgroundColor: '#0a7a4e', borderRadius: 3 },
-  goalMeta: { fontSize: 12, color: '#888' },
-  setGoalBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  setGoalTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
 
   swipeDeleteAction: {
     backgroundColor: '#c0392b', borderRadius: 14, marginRight: 8,
