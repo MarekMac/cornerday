@@ -90,7 +90,7 @@ export default function ReadyScreen() {
     const dy = String(quitTimestamp.getDate()).padStart(2, '0');
     const today = `${y}-${mo}-${dy}`;
 
-    const [updateResult, streakResult] = await Promise.all([
+    const [updateResult, streakResult, journeyResult] = await Promise.all([
       supabase.from('users').update({
         display_name: username,
         motivation: data.motivation ?? '',
@@ -110,6 +110,14 @@ export default function ReadyScreen() {
         streak_start_date: today,
         last_check_in: today,
       }, { onConflict: 'user_id' }),
+
+      supabase.from('losses').insert({
+        user_id: user.id,
+        type: 'journey_started',
+        amount: 0,
+        category: 'Journal',
+        note: null,
+      }),
     ]);
 
     if (updateResult.error || streakResult.error) {

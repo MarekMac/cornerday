@@ -37,7 +37,8 @@ type FeedEntry =
   | { kind: 'saving_deleted';   id: string; amount: number; note: string | null; created_at: string }
   | { kind: 'milestone_earned'; id: string; amount: number; note: string | null; created_at: string }
   | { kind: 'debt_paid_off';    id: string; amount: number; note: string | null; created_at: string }
-  | { kind: 'quit_date_changed';id: string; note: string | null; created_at: string };
+  | { kind: 'quit_date_changed';id: string; note: string | null; created_at: string }
+  | { kind: 'journey_started'; id: string; note: string | null; created_at: string };
 
 function triggerLabel(key: string) {
   return TRIGGERS.find(t => t.key === key)?.label ?? key;
@@ -261,6 +262,20 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
     );
   }
 
+  if (entry.kind === 'journey_started') {
+    return (
+      <View style={s.card}>
+        <View style={s.cardTop}>
+          <View style={[s.pill, s.pillGreen]}>
+            <Text style={[s.pillTxt, s.pillTxtGreen]}>Journey started 🌱</Text>
+          </View>
+          <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
+        </View>
+        <Text style={s.cardTitle}>The day you turned it around</Text>
+      </View>
+    );
+  }
+
   return null;
 }
 
@@ -281,7 +296,7 @@ export default function JournalScreen() {
       supabase.from('debt_payments').select('id, amount, note, created_at, debts(name)').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('losses').select('id, note, created_at').eq('user_id', user.id).eq('type', 'streak_reset'),
-      supabase.from('losses').select('id, type, amount, note, created_at').eq('user_id', user.id).in('type', ['debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed']),
+      supabase.from('losses').select('id, type, amount, note, created_at').eq('user_id', user.id).in('type', ['debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
       supabase.from('users').select('currency').eq('id', user.id).single(),
     ]);
 
@@ -320,7 +335,7 @@ export default function JournalScreen() {
         supabase.from('urge_journal').delete().eq('user_id', user.id),
         supabase.from('debt_payments').delete().eq('user_id', user.id),
         supabase.from('debts').delete().eq('user_id', user.id),
-        supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed']),
+        supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
       ]);
       fetchFeed();
     }
