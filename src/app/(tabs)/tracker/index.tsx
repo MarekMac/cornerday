@@ -174,11 +174,14 @@ export default function TrackerIndex() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [debtsRes, paymentsRes, savingsRes, profileRes] = await Promise.all([
+    const [debtsRes, paymentsRes, savingsRes, profileRes, rawGoal, rawFor, rawIcon] = await Promise.all([
       supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
       supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date').eq('id', user.id).single(),
+      AsyncStorage.getItem(SAVINGS_GOAL_KEY),
+      AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
+      AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
     ]);
 
     setDebts((debtsRes.data ?? []) as Debt[]);
@@ -189,22 +192,13 @@ export default function TrackerIndex() {
       setWeeklyBet(profileRes.data.weekly_bet ?? null);
       setQuitTs(profileRes.data.quit_timestamp ?? profileRes.data.quit_date ?? null);
     }
+    setSavingsGoal(rawGoal ? Number(rawGoal) : null);
+    setSavingsGoalFor(rawFor ?? '');
+    setSavingsGoalIcon(rawIcon ?? '🎯');
   }, []);
 
   useEffect(() => { fetchAll().finally(() => setLoading(false)); }, [fetchAll]);
   useFocusEffect(useCallback(() => { fetchAll(); }, [fetchAll]));
-
-  useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem(SAVINGS_GOAL_KEY),
-      AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
-      AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
-    ]).then(([rawGoal, rawFor, rawIcon]) => {
-      if (rawGoal) setSavingsGoal(Number(rawGoal));
-      if (rawFor) setSavingsGoalFor(rawFor);
-      if (rawIcon) setSavingsGoalIcon(rawIcon);
-    });
-  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
