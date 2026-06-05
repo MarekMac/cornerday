@@ -2,9 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -49,14 +50,19 @@ export default function SignupScreen() {
   const formYRef = useRef(0);
   const emailYRef = useRef(0);
   const passwordYRef = useRef(0);
+  const activeFieldRef = useRef<'email' | 'password' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const scrollToField = (fieldY: number) => {
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: Math.max(0, formYRef.current + fieldY - 16), animated: true });
-    }, 150);
-  };
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      if (!activeFieldRef.current || !scrollRef.current) return;
+      const fieldY = activeFieldRef.current === 'email' ? emailYRef.current : passwordYRef.current;
+      scrollRef.current.scrollTo({ y: Math.max(0, formYRef.current + fieldY - 16), animated: true });
+    });
+    return () => sub.remove();
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -286,7 +292,7 @@ export default function SignupScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
-                onFocus={() => scrollToField(emailYRef.current)}
+                onFocus={() => { activeFieldRef.current = 'email'; }}
               />
             </View>
 
@@ -300,7 +306,7 @@ export default function SignupScreen() {
                 placeholderTextColor="#aaa"
                 secureTextEntry
                 autoComplete={isSignIn ? 'current-password' : 'new-password'}
-                onFocus={() => scrollToField(passwordYRef.current)}
+                onFocus={() => { activeFieldRef.current = 'password'; }}
               />
             </View>
 
