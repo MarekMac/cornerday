@@ -46,8 +46,20 @@ export default function SignupScreen() {
   const isSignIn = mode === 'signin';
 
   const scrollRef = useRef<ScrollView>(null);
+  const emailRowRef = useRef<View>(null);
+  const passwordRowRef = useRef<View>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const scrollToField = (ref: React.RefObject<View>) => {
+    setTimeout(() => {
+      ref.current?.measureLayout(
+        scrollRef.current as any,
+        (_x: number, y: number) => scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true }),
+        () => {},
+      );
+    }, 150);
+  };
+
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [facebookLoading, setFacebookLoading] = useState(false);
@@ -222,8 +234,7 @@ export default function SignupScreen() {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'android' ? 32 : 0}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={[styles.scroll, isSignIn && { paddingTop: 75 }]}
@@ -266,29 +277,34 @@ export default function SignupScreen() {
           </View>
 
           <View style={styles.form}>
-            <Text style={styles.fieldLabel}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor="#aaa"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-            />
+            <View ref={emailRowRef}>
+              <Text style={styles.fieldLabel}>Email</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor="#aaa"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                onFocus={() => scrollToField(emailRowRef)}
+              />
+            </View>
 
-            <Text style={styles.fieldLabel}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder={isSignIn ? 'Your password' : 'At least 6 characters'}
-              placeholderTextColor="#aaa"
-              secureTextEntry
-              autoComplete={isSignIn ? 'current-password' : 'new-password'}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
-            />
+            <View ref={passwordRowRef}>
+              <Text style={styles.fieldLabel}>Password</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder={isSignIn ? 'Your password' : 'At least 6 characters'}
+                placeholderTextColor="#aaa"
+                secureTextEntry
+                autoComplete={isSignIn ? 'current-password' : 'new-password'}
+                onFocus={() => scrollToField(passwordRowRef)}
+              />
+            </View>
 
             {isSignIn && (
               <Pressable
