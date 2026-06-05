@@ -514,7 +514,6 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
   const moneySaved = (ms / 86400000) * weeklyToDaily(weeklyBet);
   return (
     <View style={s.savedCard}>
-      <Text style={s.savedTitle}>Savings</Text>
       <View style={s.savedRow}>
         <Text style={s.savedEmoji}>💸</Text>
         <View style={s.savedBody}>
