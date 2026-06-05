@@ -238,11 +238,12 @@ export default function SignupScreen() {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior="padding">
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={[styles.scroll, isSignIn && { paddingTop: 75 }]}
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
           {!isSignIn && (
             <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)')}>
               <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
@@ -371,7 +372,7 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 28,
     paddingTop: 32,
-    paddingBottom: 48,
+    paddingBottom: 320,
   },
   backBtn: {
     padding: 4,
