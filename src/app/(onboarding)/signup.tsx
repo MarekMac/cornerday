@@ -59,7 +59,7 @@ export default function SignupScreen() {
     const sub = Keyboard.addListener('keyboardDidShow', () => {
       if (!activeFieldRef.current || !scrollRef.current) return;
       const fieldY = activeFieldRef.current === 'email' ? emailYRef.current : passwordYRef.current;
-      scrollRef.current.scrollTo({ y: Math.max(0, formYRef.current + fieldY - 16), animated: true });
+      scrollRef.current.scrollTo({ y: 200, animated: true });
     });
     return () => sub.remove();
   }, []);
