@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -907,6 +908,7 @@ export default function AccountScreen() {
 
       {/* Savings goal modal */}
       <Modal visible={showGoalModal} transparent animationType="slide" onRequestClose={closeGoalModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
           <Pressable style={s.editFieldSheet} onPress={() => {}}>
             <View style={s.editFieldHandle} />
@@ -966,6 +968,7 @@ export default function AccountScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Weekly spending modal */}

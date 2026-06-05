@@ -984,52 +984,53 @@ export default function TrackerIndex() {
 
       {/* Savings goal modal */}
       <Modal visible={goalModalVisible} transparent animationType="fade" onRequestClose={closeGoalModal}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <Text style={s.sheetTitle}>Savings goal</Text>
-              <Text style={s.fieldLbl}>Icon</Text>
-              <View style={s.iconGrid}>
-                {GOAL_ICONS.map(icon => (
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={s.fieldLbl}>Icon</Text>
+                <View style={s.iconGrid}>
+                  {GOAL_ICONS.map(icon => (
+                    <Pressable
+                      key={icon}
+                      style={[s.iconChip, goalIconInput === icon && s.iconChipActive]}
+                      onPress={() => setGoalIconInput(icon)}>
+                      <Text style={s.iconChipEmoji}>{icon}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. Holiday, New car, Emergency fund"
+                  placeholderTextColor="#bbb"
+                  value={goalForInput}
+                  onChangeText={setGoalForInput}
+                  maxLength={40}
+                />
+                <Text style={s.fieldLbl}>Target amount</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. 5000"
+                  placeholderTextColor="#bbb"
+                  keyboardType="decimal-pad"
+                  value={goalInput}
+                  onChangeText={setGoalInput}
+                />
+                {savingsGoal && (
                   <Pressable
-                    key={icon}
-                    style={[s.iconChip, goalIconInput === icon && s.iconChipActive]}
-                    onPress={() => setGoalIconInput(icon)}>
-                    <Text style={s.iconChipEmoji}>{icon}</Text>
+                    onPress={async () => {
+                      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY]);
+                      setSavingsGoal(null);
+                      setSavingsGoalFor('');
+                      closeGoalModal();
+                    }}
+                    style={{ alignSelf: 'center', marginTop: 12 }}>
+                    <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove goal</Text>
                   </Pressable>
-                ))}
-              </View>
-              <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
-              <TextInput
-                style={s.input}
-                placeholder="e.g. Holiday, New car, Emergency fund"
-                placeholderTextColor="#bbb"
-                value={goalForInput}
-                onChangeText={setGoalForInput}
-                maxLength={40}
-                autoFocus
-              />
-              <Text style={s.fieldLbl}>Target amount</Text>
-              <TextInput
-                style={s.input}
-                placeholder="e.g. 5000"
-                placeholderTextColor="#bbb"
-                keyboardType="decimal-pad"
-                value={goalInput}
-                onChangeText={setGoalInput}
-              />
-              {savingsGoal && (
-                <Pressable
-                  onPress={async () => {
-                    await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY]);
-                    setSavingsGoal(null);
-                    setSavingsGoalFor('');
-                    closeGoalModal();
-                  }}
-                  style={{ alignSelf: 'center', marginTop: 12 }}>
-                  <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove goal</Text>
-                </Pressable>
-              )}
+                )}
+              </ScrollView>
               <View style={s.sheetActions}>
                 <Pressable style={s.cancelBtn} onPress={closeGoalModal}>
                   <Text style={s.cancelBtnTxt}>Cancel</Text>
