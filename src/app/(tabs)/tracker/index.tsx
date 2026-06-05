@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -73,6 +75,13 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function debtProgressColor(pct: number): string {
+  if (pct >= 1) return '#0a7a4e';
+  if (pct >= 0.7) return '#0F6E6E';
+  if (pct >= 0.4) return '#e67e22';
+  return '#c0392b';
+}
+
 function parseQuitDate(quitDate: string): Date {
   if (/^\d{4}-\d{2}-\d{2}$/.test(quitDate)) {
     const [y, mo, d] = quitDate.split('-').map(Number);
@@ -127,6 +136,12 @@ export default function TrackerIndex() {
   const [savingAmount, setSavingAmount] = useState('');
   const [savingNote, setSavingNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Quick pay modal
+  const [quickPayDebt, setQuickPayDebt] = useState<Debt | null>(null);
+  const [quickPayAmount, setQuickPayAmount] = useState('');
+  const [quickPayNote, setQuickPayNote] = useState('');
+  const [submittingQuickPay, setSubmittingQuickPay] = useState(false);
 
   const fetchAll = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -314,6 +329,73 @@ export default function TrackerIndex() {
     await fetchAll();
   };
 
+  // Quick pay actions
+  const openQuickPay = (debt: Debt) => {
+    setQuickPayDebt(debt);
+    setQuickPayAmount('');
+    setQuickPayNote('');
+  };
+
+  const closeQuickPay = () => {
+    Keyboard.dismiss();
+    setQuickPayDebt(null);
+    setQuickPayAmount('');
+    setQuickPayNote('');
+  };
+
+  const saveQuickPay = async () => {
+    if (!quickPayDebt) return;
+    const val = parseFloat(quickPayAmount);
+    if (!quickPayAmount || isNaN(val) || val <= 0) {
+      Alert.alert('Invalid amount', 'Please enter a valid amount.');
+      return;
+    }
+    const paid = paidByDebt[quickPayDebt.id] ?? 0;
+    const remaining = Math.max(0, Number(quickPayDebt.total_amount) - paid);
+    if (Math.round(val * 100) > Math.round(remaining * 100)) {
+      Alert.alert('Too much', `You only owe ${fmt(remaining, currency)} on this debt.`);
+      return;
+    }
+    const isPayingOff = Math.round(val * 100) === Math.round(remaining * 100);
+    setSubmittingQuickPay(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('debt_payments').insert({
+        user_id: user.id, debt_id: quickPayDebt.id,
+        amount: val, note: quickPayNote.trim() || null,
+      });
+      if (isPayingOff) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '🎉 Debt paid off!',
+            body: `You've fully paid off "${quickPayDebt.name}". That's a huge step — well done.`,
+            data: { screen: '/(tabs)/tracker' },
+          },
+          trigger: null,
+        });
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'debt_paid_off', amount: Number(quickPayDebt.total_amount),
+          category: 'Debt', note: quickPayDebt.name,
+        });
+      }
+      closeQuickPay();
+      await fetchAll();
+    }
+    setSubmittingQuickPay(false);
+  };
+
+  // Sort: unpaid first (by remaining desc), paid-off last
+  const sortedDebts = [...debts].sort((a, b) => {
+    const paidA = paidByDebt[a.id] ?? 0;
+    const paidB = paidByDebt[b.id] ?? 0;
+    const remA = Math.max(0, Number(a.total_amount) - paidA);
+    const remB = Math.max(0, Number(b.total_amount) - paidB);
+    const doneA = remA === 0 && paidA > 0;
+    const doneB = remB === 0 && paidB > 0;
+    if (doneA !== doneB) return doneA ? 1 : -1;
+    return remB - remA;
+  });
+
   if (loading) {
     return <View style={s.center}><ActivityIndicator size="large" color="#0F6E6E" /></View>;
   }
@@ -334,24 +416,34 @@ export default function TrackerIndex() {
           {/* Debt recovery card */}
           <View style={s.summaryCard}>
             <Text style={s.summaryTitle}>Debt recovery</Text>
-            <View style={s.summaryRow}>
-              <View style={s.summaryCol}>
-                <Text style={[s.summaryVal, { color: '#c0392b' }]}>{fmt(totalDebt, currency)}</Text>
-                <Text style={s.summaryLbl}>Total debt</Text>
+            {totalDebt === 0 ? (
+              <View style={s.summaryEmpty}>
+                <Text style={s.summaryEmptyIcon}>💳</Text>
+                <Text style={s.summaryEmptyTitle}>No debts tracked yet</Text>
+                <Text style={s.summaryEmptyBody}>Add a debt below to start tracking your recovery progress.</Text>
               </View>
-              <View style={[s.summaryCol, s.summaryMid]}>
-                <Text style={[s.summaryVal, { color: '#0F6E6E' }]}>{fmt(totalPaid, currency)}</Text>
-                <Text style={s.summaryLbl}>Paid back</Text>
-              </View>
-              <View style={s.summaryCol}>
-                <Text style={[s.summaryVal, { color: '#555' }]}>{fmt(stillOwed, currency)}</Text>
-                <Text style={s.summaryLbl}>Still owed</Text>
-              </View>
-            </View>
-            <View style={s.progressTrack}>
-              <View style={[s.progressFill, { width: `${recoveryPct * 100}%` as any }]} />
-            </View>
-            <Text style={s.progressLbl}>{Math.round(recoveryPct * 100)}% recovered</Text>
+            ) : (
+              <>
+                <View style={s.summaryRow}>
+                  <View style={s.summaryCol}>
+                    <Text style={[s.summaryVal, { color: '#c0392b' }]}>{fmt(totalDebt, currency)}</Text>
+                    <Text style={s.summaryLbl}>Total debt</Text>
+                  </View>
+                  <View style={[s.summaryCol, s.summaryMid]}>
+                    <Text style={[s.summaryVal, { color: '#0F6E6E' }]}>{fmt(totalPaid, currency)}</Text>
+                    <Text style={s.summaryLbl}>Paid back</Text>
+                  </View>
+                  <View style={s.summaryCol}>
+                    <Text style={[s.summaryVal, { color: '#555' }]}>{fmt(stillOwed, currency)}</Text>
+                    <Text style={s.summaryLbl}>Still owed</Text>
+                  </View>
+                </View>
+                <View style={s.progressTrack}>
+                  <View style={[s.progressFill, { width: `${recoveryPct * 100}%` as any }]} />
+                </View>
+                <Text style={s.progressLbl}>{Math.round(recoveryPct * 100)}% recovered</Text>
+              </>
+            )}
           </View>
 
           {/* Savings card */}
@@ -411,33 +503,50 @@ export default function TrackerIndex() {
                   <Text style={s.emptyTxt}>No debts added yet.{'\n'}Tap "Add a debt" to start tracking what you owe.</Text>
                 </View>
               ) : (
-                debts.map(debt => {
+                sortedDebts.map(debt => {
                   const paid = paidByDebt[debt.id] ?? 0;
                   const remaining = Math.max(0, Number(debt.total_amount) - paid);
                   const pct = Number(debt.total_amount) > 0
                     ? Math.min(1, paid / Number(debt.total_amount)) : 0;
+                  const isPaidOff = remaining === 0 && paid > 0;
                   return (
                     <Pressable
                       key={debt.id}
-                      style={({ pressed }) => [s.debtCard, pressed && { opacity: 0.85 }]}
+                      style={({ pressed }) => [s.debtCard, isPaidOff && s.debtCardPaidOff, pressed && { opacity: 0.85 }]}
                       onPress={() => router.push(`/tracker/${debt.id}`)}>
                       <View style={s.debtTop}>
                         <Text style={s.debtEmoji}>{categoryEmoji(debt.category)}</Text>
                         <View style={s.debtInfo}>
                           <Text style={s.debtName}>{debt.name}</Text>
                           <Text style={s.debtMeta}>
-                            {fmt(paid, currency)} paid · {fmt(remaining, currency)} remaining
+                            {isPaidOff
+                              ? `${fmt(paid, currency)} fully paid`
+                              : `${fmt(paid, currency)} paid · ${fmt(remaining, currency)} remaining`}
                           </Text>
                         </View>
                         <View style={s.debtRight}>
-                          <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
+                          {isPaidOff ? (
+                            <View style={s.paidOffBadge}>
+                              <Text style={s.paidOffBadgeTxt}>✓ Paid off</Text>
+                            </View>
+                          ) : (
+                            <>
+                              <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
+                              <Pressable
+                                onPress={() => openQuickPay(debt)}
+                                hitSlop={6}
+                                style={s.quickPayBtn}>
+                                <Text style={s.quickPayTxt}>Pay</Text>
+                              </Pressable>
+                            </>
+                          )}
                           <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn}>
                             <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
                           </Pressable>
                         </View>
                       </View>
                       <View style={s.debtProgressTrack}>
-                        <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any }]} />
+                        <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct) }]} />
                       </View>
                     </Pressable>
                   );
@@ -461,26 +570,32 @@ export default function TrackerIndex() {
                   <Text style={s.emptyTxt}>No savings logged yet.{'\n'}Tap "Log a saving" to record money you've set aside.</Text>
                 </View>
               ) : (
-                savings.map(entry => (
-                  <Pressable
-                    key={entry.id}
-                    style={({ pressed }) => [s.savingCard, pressed && { opacity: 0.85 }]}
-                    onPress={() => handleSavingMenu(entry)}>
-                    <View style={s.savingCardTop}>
-                      <Text style={s.savingCardEmoji}>💰</Text>
-                      <View style={s.savingCardInfo}>
-                        <Text style={s.savingCardLabel}>{entry.note || 'Saving'}</Text>
-                        <Text style={s.savingCardDate}>{fmtDate(entry.created_at)}</Text>
+                <>
+                  {savings.map(entry => (
+                    <Pressable
+                      key={entry.id}
+                      style={({ pressed }) => [s.savingCard, pressed && { opacity: 0.85 }]}
+                      onPress={() => handleSavingMenu(entry)}>
+                      <View style={s.savingCardTop}>
+                        <Text style={s.savingCardEmoji}>💰</Text>
+                        <View style={s.savingCardInfo}>
+                          <Text style={s.savingCardLabel}>{entry.note || 'Saving'}</Text>
+                          <Text style={s.savingCardDate}>{fmtDate(entry.created_at)}</Text>
+                        </View>
+                        <View style={s.savingCardRight}>
+                          <Text style={s.savingCardAmt}>+{fmt(Number(entry.amount), currency)}</Text>
+                          <Pressable onPress={() => handleSavingMenu(entry)} hitSlop={10} style={s.menuBtn}>
+                            <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
+                          </Pressable>
+                        </View>
                       </View>
-                      <View style={s.savingCardRight}>
-                        <Text style={s.savingCardAmt}>+{fmt(Number(entry.amount), currency)}</Text>
-                        <Pressable onPress={() => handleSavingMenu(entry)} hitSlop={10} style={s.menuBtn}>
-                          <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
-                        </Pressable>
-                      </View>
-                    </View>
-                  </Pressable>
-                ))
+                    </Pressable>
+                  ))}
+                  <View style={s.savingsTotalRow}>
+                    <Text style={s.savingsTotalLbl}>Total banked</Text>
+                    <Text style={s.savingsTotalVal}>{fmt(totalManualSavings, currency)}</Text>
+                  </View>
+                </>
               )}
             </>
           )}
@@ -705,7 +820,7 @@ export default function TrackerIndex() {
       <Modal visible={!!menuSaving} transparent animationType="fade" onRequestClose={() => setMenuSaving(null)}>
         <Pressable style={s.menuOverlay} onPress={() => setMenuSaving(null)}>
           <Pressable style={s.menuSheet} onPress={() => {}}>
-            
+
             {menuSaving && (
               <>
                 <View style={s.menuHeader}>
@@ -733,6 +848,48 @@ export default function TrackerIndex() {
             <View style={{ height: Math.max(16, insets.bottom) }} />
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Quick pay modal */}
+      <Modal visible={!!quickPayDebt} transparent animationType="fade" onRequestClose={closeQuickPay}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={s.modalOverlay} onPress={closeQuickPay}>
+            <Pressable style={s.sheet} onPress={() => {}}>
+              <Text style={s.sheetTitle}>Log a payment</Text>
+              {quickPayDebt && (
+                <Text style={[s.fieldLbl, { marginTop: 4 }]}>{quickPayDebt.name}</Text>
+              )}
+              <Text style={s.fieldLbl}>Amount</Text>
+              <TextInput
+                style={s.input}
+                placeholder={quickPayDebt ? `Up to ${fmt(Math.max(0, Number(quickPayDebt.total_amount) - (paidByDebt[quickPayDebt.id] ?? 0)), currency)}` : ''}
+                placeholderTextColor="#bbb"
+                keyboardType="decimal-pad"
+                value={quickPayAmount}
+                onChangeText={setQuickPayAmount}
+                autoFocus
+              />
+              <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. Monthly instalment"
+                placeholderTextColor="#bbb"
+                value={quickPayNote}
+                onChangeText={setQuickPayNote}
+              />
+              <View style={s.sheetActions}>
+                <Pressable style={s.cancelBtn} onPress={closeQuickPay}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[s.saveBtn, submittingQuickPay && s.btnDisabled]} onPress={saveQuickPay} disabled={submittingQuickPay}>
+                  {submittingQuickPay
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={s.saveBtnTxt}>Save payment</Text>}
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -789,7 +946,13 @@ const s = StyleSheet.create({
   emptyCard: { backgroundColor: '#fff', borderRadius: 14, padding: 24, alignItems: 'center' },
   emptyTxt: { fontSize: 14, color: '#aaa', textAlign: 'center', lineHeight: 22 },
 
+  summaryEmpty: { alignItems: 'center', paddingVertical: 12, gap: 6 },
+  summaryEmptyIcon: { fontSize: 32 },
+  summaryEmptyTitle: { fontSize: 15, fontWeight: '700', color: '#555' },
+  summaryEmptyBody: { fontSize: 13, color: '#aaa', textAlign: 'center', lineHeight: 20 },
+
   debtCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  debtCardPaidOff: { borderWidth: 1.5, borderColor: '#b2dfdb' },
   debtTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   debtEmoji: { fontSize: 26 },
   debtInfo: { flex: 1 },
@@ -799,6 +962,16 @@ const s = StyleSheet.create({
   debtPct: { fontSize: 13, fontWeight: '700', color: '#0F6E6E' },
   debtProgressTrack: { height: 5, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden' },
   debtProgressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
+
+  paidOffBadge: { backgroundColor: '#e8f5e9', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  paidOffBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#0a7a4e' },
+
+  quickPayBtn: {
+    backgroundColor: '#e6f7f7', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: '#0F6E6E',
+  },
+  quickPayTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
 
   menuBtn: { padding: 4 },
 
@@ -810,6 +983,14 @@ const s = StyleSheet.create({
   savingCardDate: { fontSize: 12, color: '#888', marginTop: 2 },
   savingCardRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   savingCardAmt: { fontSize: 15, fontWeight: '700', color: '#0a7a4e' },
+
+  savingsTotalRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+    borderTopWidth: 2, borderTopColor: '#e6f7f7',
+  },
+  savingsTotalLbl: { fontSize: 13, fontWeight: '700', color: '#555' },
+  savingsTotalVal: { fontSize: 18, fontWeight: '800', color: '#0a7a4e' },
 
   input: {
     borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
