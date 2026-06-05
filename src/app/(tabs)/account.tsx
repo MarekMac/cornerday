@@ -542,6 +542,7 @@ export default function AccountScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const today = new Date().toISOString().split('T')[0];
+      const nowIso = new Date().toISOString();
       await Promise.all([
         supabase.from('mood_checkins').delete().eq('user_id', user.id),
         supabase.from('urge_journal').delete().eq('user_id', user.id),
@@ -549,6 +550,7 @@ export default function AccountScreen() {
         supabase.from('losses').delete().eq('user_id', user.id),
         supabase.from('debts').delete().eq('user_id', user.id),
         supabase.from('debt_payments').delete().eq('user_id', user.id),
+        supabase.from('users').update({ quit_date: today, quit_timestamp: nowIso }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: 0, longest_streak: 0, streak_start_date: today }).eq('user_id', user.id),
         AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
         AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
