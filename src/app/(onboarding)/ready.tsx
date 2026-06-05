@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Ellipse, Line, Path, Rect } from 'react-native-svg';
 
 import { ONBOARDED_KEY } from '@/constants/storage-keys';
@@ -74,6 +74,7 @@ const CHECKLIST = [
 
 export default function ReadyScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { data, clearProgress } = useOnboarding();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -137,7 +138,12 @@ export default function ReadyScreen() {
 
   return (
     <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']} style={styles.gradient}>
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q5')}>
+          <Ionicons name="chevron-back" size={26} color="#fff" />
+        </Pressable>
         <View style={styles.hero}>
           <Text style={styles.checkmark}>🌟</Text>
           <Text style={styles.title}>You're all set!</Text>
@@ -195,7 +201,7 @@ export default function ReadyScreen() {
 
         <View style={styles.spacer} />
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
           <Pressable
             style={({ pressed }) => [styles.btn, pressed && styles.pressed]}
             onPress={handleGo}
@@ -215,11 +221,17 @@ export default function ReadyScreen() {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1, paddingHorizontal: 28 },
+  backBtn: {
+    alignSelf: 'flex-start',
+    padding: 4,
+    marginTop: 8,
+    marginLeft: -4,
+  },
   checkmark: { fontSize: 64, marginBottom: 8 },
   hero: {
     alignItems: 'center',
-    paddingTop: 110,
-    paddingBottom: 32,
+    paddingTop: 48,
+    paddingBottom: 24,
     gap: 12,
   },
   spacer: { flex: 1 },
@@ -327,7 +339,7 @@ title: {
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
-  footer: { paddingBottom: 32 },
+  footer: { paddingBottom: 0 },
   btn: {
     backgroundColor: '#fff',
     borderRadius: 14,
