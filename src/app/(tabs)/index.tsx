@@ -1211,7 +1211,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Badge detail modal */}
-      <Modal visible={!!selectedBadge} transparent animationType="slide" onRequestClose={() => setSelectedBadge(null)}>
+      <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => setSelectedBadge(null)}>
         <Pressable style={s.modalOverlay} onPress={() => setSelectedBadge(null)}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {selectedBadge && (() => {
@@ -1334,7 +1334,7 @@ export default function HomeScreen() {
 
       {/* Debt badge modal */}
       {/* Prevention checklist badge modal */}
-      <Modal visible={checklistBadgeVisible} transparent animationType="slide" onRequestClose={() => setChecklistBadgeVisible(false)}>
+      <Modal visible={checklistBadgeVisible} transparent animationType="fade" onRequestClose={() => setChecklistBadgeVisible(false)}>
         <Pressable style={s.modalOverlay} onPress={() => setChecklistBadgeVisible(false)}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {(() => {
@@ -1366,7 +1366,7 @@ export default function HomeScreen() {
       </Modal>
 
       {/* Goal setter badge modal */}
-      <Modal visible={goalSetBadgeVisible} transparent animationType="slide" onRequestClose={() => setGoalSetBadgeVisible(false)}>
+      <Modal visible={goalSetBadgeVisible} transparent animationType="fade" onRequestClose={() => setGoalSetBadgeVisible(false)}>
         <Pressable style={s.modalOverlay} onPress={() => setGoalSetBadgeVisible(false)}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {(() => {
@@ -1394,7 +1394,7 @@ export default function HomeScreen() {
       </Modal>
 
       {/* Goal reached badge modal */}
-      <Modal visible={goalReachedBadgeVisible} transparent animationType="slide" onRequestClose={() => setGoalReachedBadgeVisible(false)}>
+      <Modal visible={goalReachedBadgeVisible} transparent animationType="fade" onRequestClose={() => setGoalReachedBadgeVisible(false)}>
         <Pressable style={s.modalOverlay} onPress={() => setGoalReachedBadgeVisible(false)}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {(() => {
@@ -1431,7 +1431,7 @@ export default function HomeScreen() {
         </Pressable>
       </Modal>
 
-      <Modal visible={!!selectedDebtId} transparent animationType="slide" onRequestClose={() => setSelectedDebtId(null)}>
+      <Modal visible={!!selectedDebtId} transparent animationType="fade" onRequestClose={() => setSelectedDebtId(null)}>
         <Pressable style={s.modalOverlay} onPress={() => setSelectedDebtId(null)}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {selectedDebtId && (() => {
@@ -1635,11 +1635,11 @@ const s = StyleSheet.create({
   pressed: { opacity: 0.7 },
 
   // Badge modal
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
   modalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 93, gap: 8,
-    elevation: 0, shadowOpacity: 0,
+    backgroundColor: '#fff', borderRadius: 22, width: '100%',
+    padding: 24, gap: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
   modalEmoji: { fontSize: 48, textAlign: 'center', marginBottom: 4 },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#111', textAlign: 'center' },
@@ -1652,7 +1652,7 @@ const s = StyleSheet.create({
   modalProgressFill: { height: '100%', backgroundColor: '#22c55e', borderRadius: 3 },
   modalMessage: { fontSize: 13, color: '#888', fontStyle: 'italic', textAlign: 'center', lineHeight: 18, marginTop: 8 },
   modalClose: {
-    marginTop: 30, backgroundColor: '#0F6E6E', borderRadius: 14,
+    marginTop: 16, backgroundColor: '#0F6E6E', borderRadius: 14,
     paddingVertical: 14, alignItems: 'center',
   },
   modalCloseTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
