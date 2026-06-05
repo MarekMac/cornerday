@@ -284,21 +284,26 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 function formatBest(days: number, ms: number) {
   const hours = Math.floor((ms % 86400000) / 3600000);
   const mins = Math.floor((ms % 3600000) / 60000);
-  const years = Math.floor(days / 365);
-  const remainingDays = days % 365;
-  const isCurrentBest = Math.floor(ms / 86400000) === days;
-
+  const totalDays = Math.floor(ms / 86400000);
+  const weeks = Math.floor(totalDays / 7);
+  const months = Math.floor(totalDays / 30);
+  const years = Math.floor(totalDays / 365);
+  const isCurrentBest = totalDays === days;
 
   if (isCurrentBest) {
-    if (days === 0 && hours === 0) return plural(mins, 'minute');
-    if (days === 0) return `${plural(hours, 'hour')} and ${plural(mins, 'minute')}`;
-    if (years >= 1) return `${plural(years, 'year')} and ${plural(remainingDays, 'day')}`;
-    return `${plural(days, 'day')} and ${plural(hours, 'hour')}`;
+    if (totalDays === 0 && hours === 0) return `${mins}m`;
+    if (totalDays === 0) return `${hours}h ${mins}m`;
+    if (totalDays < 7) return `${totalDays}d ${hours}h`;
+    if (totalDays < 30) return `${weeks}w ${totalDays % 7}d`;
+    if (totalDays < 365) return `${months}mo ${totalDays % 30}d`;
+    return `${years}y ${Math.floor((totalDays % 365) / 30)}mo`;
   }
 
   if (days === 0) return 'just started';
-  if (years >= 1) return `${plural(years, 'year')} and ${plural(remainingDays, 'day')}`;
-  return plural(days, 'day');
+  if (days < 7) return `${days}d`;
+  if (days < 30) return `${Math.floor(days / 7)}w ${days % 7}d`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ${days % 30}d`;
+  return `${Math.floor(days / 365)}y ${Math.floor((days % 365) / 30)}mo`;
 }
 
 function formatTimeLeft(days: number): string {
