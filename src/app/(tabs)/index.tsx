@@ -512,21 +512,29 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid }: {
   }, []);
   const ms = quitDate ? Math.max(0, Date.now() - parseQuitDate(quitDate).getTime()) : 0;
   const moneySaved = (ms / 86400000) * weeklyToDaily(weeklyBet);
-  const hint = weeklyBet
-    ? `(${fmt(Number(weeklyBet), currency)}/week)`
-    : '(set weekly spending in Tracker)';
   return (
     <View style={s.savedCard}>
+      <Text style={s.savedTitle}>Savings</Text>
       <View style={s.savedRow}>
-        <Text style={s.savedLabel} numberOfLines={1}>Potential savings {hint}</Text>
-        <Text style={s.savedValue}>{fmtLive(moneySaved, currency)}</Text>
+        <Text style={s.savedEmoji}>💸</Text>
+        <View style={s.savedBody}>
+          <Text style={s.savedLabel}>Not spent since day one</Text>
+          <Text style={s.savedSub}>
+            {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Set weekly spending in Tracker'}
+          </Text>
+        </View>
+        <Text style={[s.savedAmt, { color: '#888' }]}>{fmtLive(moneySaved, currency)}</Text>
       </View>
       {totalPaid > 0 && (
         <>
           <View style={s.savedSep} />
           <View style={s.savedRow}>
-            <Text style={s.savedLabel} numberOfLines={1}>Savings banked</Text>
-            <Text style={s.savedValue}>{fmt(totalPaid, currency)}</Text>
+            <Text style={s.savedEmoji}>💰</Text>
+            <View style={s.savedBody}>
+              <Text style={s.savedLabel}>Actually banked</Text>
+              <Text style={s.savedSub}>Money you've set aside</Text>
+            </View>
+            <Text style={[s.savedAmt, { color: '#0a7a4e' }]}>{fmt(totalPaid, currency)}</Text>
           </View>
         </>
       )}
@@ -1389,13 +1397,15 @@ const s = StyleSheet.create({
   whyValue: { fontSize: 14, color: '#111', fontWeight: '600' },
 
   // Stats
-  savedCard: {
-    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, gap: 6,
-  },
-  savedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  savedSep: { height: 1, backgroundColor: '#f0f0f0' },
-  savedLabel: { fontSize: 14, color: '#888', flexShrink: 1, flex: 1 },
-  savedValue: { fontSize: 16, fontWeight: '800', color: '#0F6E6E', flexShrink: 0 },
+  savedCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
+  savedTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  savedRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  savedSep: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 12 },
+  savedEmoji: { fontSize: 22, width: 30, textAlign: 'center' },
+  savedBody: { flex: 1 },
+  savedLabel: { fontSize: 14, fontWeight: '600', color: '#111' },
+  savedSub: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  savedAmt: { fontSize: 17, fontWeight: '800' },
 
   // Card
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
