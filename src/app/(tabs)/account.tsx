@@ -174,6 +174,7 @@ export default function AccountScreen() {
   const [signOutVisible, setSignOutVisible] = useState(false);
   const [resetDataModalVisible, setResetDataModalVisible] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [pendingReset, setPendingReset] = useState<{ title: string; body: string; onConfirm: () => void } | null>(null);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -438,17 +439,15 @@ export default function AccountScreen() {
   };
 
 
-  const resetMoodHistory = async () => {
-    setResetting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('mood_checkins').delete().eq('user_id', user.id);
-    setResetting(false);
-  };
-
   const resetJournal = async () => {
     setResetting(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('urge_journal').delete().eq('user_id', user.id);
+    if (user) {
+      await Promise.all([
+        supabase.from('urge_journal').delete().eq('user_id', user.id),
+        supabase.from('mood_checkins').delete().eq('user_id', user.id),
+      ]);
+    }
     setResetting(false);
   };
 
@@ -499,10 +498,7 @@ export default function AccountScreen() {
   };
 
   const confirmReset = (title: string, body: string, onConfirm: () => void) => {
-    Alert.alert(title, body, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reset', style: 'destructive', onPress: onConfirm },
-    ]);
+    setPendingReset({ title, body, onConfirm });
   };
 
   const confirmDeleteAccount = () => setDeleteAccountVisible(true);
@@ -1179,22 +1175,12 @@ export default function AccountScreen() {
 
             {[
               {
-                icon: 'happy-outline' as const,
-                label: 'Mood history',
-                desc: 'All weekly mood check-ins',
-                onPress: () => confirmReset(
-                  'Reset mood history?',
-                  'All your mood check-ins will be permanently deleted.',
-                  resetMoodHistory,
-                ),
-              },
-              {
                 icon: 'journal-outline' as const,
-                label: 'Urge journal',
-                desc: 'All logged urge entries',
+                label: 'Journal',
+                desc: 'Urge entries and mood check-ins',
                 onPress: () => confirmReset(
-                  'Reset urge journal?',
-                  'All your journal entries will be permanently deleted.',
+                  'Reset journal?',
+                  'All urge journal entries and mood check-ins will be permanently deleted.',
                   resetJournal,
                 ),
               },
@@ -1222,7 +1208,7 @@ export default function AccountScreen() {
               <View key={label}>
                 <Pressable
                   style={({ pressed }) => [s.resetRow, pressed && { opacity: 0.7 }]}
-                  onPress={() => { setResetDataModalVisible(false); setTimeout(onPress, 300); }}
+                  onPress={() => { setResetDataModalVisible(false); onPress(); }}
                   disabled={resetting}>
                   <Ionicons name={icon} size={20} color="#c0392b" style={{ marginRight: 12 }} />
                   <View style={{ flex: 1 }}>
@@ -1240,11 +1226,11 @@ export default function AccountScreen() {
               style={({ pressed }) => [s.resetNuclearRow, pressed && { opacity: 0.7 }]}
               onPress={() => {
                 setResetDataModalVisible(false);
-                setTimeout(() => confirmReset(
+                confirmReset(
                   'Reset everything?',
                   'This will clear your streak, all badges, mood history, journal, losses and debts. Your account and settings are kept.',
                   resetEverything,
-                ), 300);
+                );
               }}
               disabled={resetting}>
               <Ionicons name="nuclear-outline" size={20} color="#c0392b" style={{ marginRight: 12 }} />
@@ -1257,6 +1243,31 @@ export default function AccountScreen() {
             <Pressable style={({ pressed }) => [s.resetCancelBtn, pressed && { opacity: 0.7 }]} onPress={() => setResetDataModalVisible(false)}>
               <Text style={s.resetCancelTxt}>Cancel</Text>
             </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Reset confirmation modal */}
+      <Modal visible={!!pendingReset} transparent animationType="fade" onRequestClose={() => setPendingReset(null)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setPendingReset(null)}>
+          <Pressable style={s.resetConfirmSheet} onPress={() => {}}>
+            <View style={s.resetConfirmIconWrap}>
+              <Ionicons name="warning-outline" size={28} color="#c0392b" />
+            </View>
+            <Text style={s.resetConfirmTitle}>{pendingReset?.title}</Text>
+            <Text style={s.resetConfirmBody}>{pendingReset?.body}</Text>
+            <View style={s.resetConfirmActions}>
+              <Pressable
+                style={({ pressed }) => [s.resetConfirmCancel, pressed && { opacity: 0.7 }]}
+                onPress={() => setPendingReset(null)}>
+                <Text style={s.resetConfirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [s.resetConfirmBtn, pressed && { opacity: 0.85 }]}
+                onPress={() => { pendingReset?.onConfirm(); setPendingReset(null); }}>
+                <Text style={s.resetConfirmBtnTxt}>Reset</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1534,4 +1545,14 @@ const s = StyleSheet.create({
   resetNuclearLabel: { fontSize: 15, fontWeight: '700', color: '#c0392b' },
   resetCancelBtn: { marginTop: 16, paddingVertical: 13, borderRadius: 12, backgroundColor: '#f5f5f5', alignItems: 'center' },
   resetCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
+
+  resetConfirmSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' },
+  resetConfirmIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fde8e8', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  resetConfirmTitle: { fontSize: 17, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
+  resetConfirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  resetConfirmActions: { flexDirection: 'row', gap: 10, width: '100%' },
+  resetConfirmCancel: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: '#f5f5f5', alignItems: 'center' },
+  resetConfirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#555' },
+  resetConfirmBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: '#c0392b', alignItems: 'center' },
+  resetConfirmBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });
