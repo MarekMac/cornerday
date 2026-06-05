@@ -230,13 +230,38 @@ function getMilestone(ms: number) {
   const prevIdx = MILESTONES.indexOf(next) - 1;
   const prev = prevIdx >= 0 ? MILESTONES[prevIdx] : 0;
   const progress = prev === next ? 1 : (days - prev) / (next - prev);
-  const daysToGo = Math.max(0, next - Math.floor(days));
   const remainingMs = Math.max(0, next * 86400000 - ms);
-  const hoursToGo = Math.floor(remainingMs / 3600000);
-  const minsToGo = Math.floor((remainingMs % 3600000) / 60000);
-  const secsToGo = Math.floor((remainingMs % 60000) / 1000);
-  const hoursComponent = Math.floor((remainingMs % 86400000) / 3600000);
-  return { next, daysToGo, hoursToGo, minsToGo, secsToGo, hoursComponent, remainingMs, progress: Math.min(1, Math.max(0, progress)) };
+  return { next, remainingMs, progress: Math.min(1, Math.max(0, progress)) };
+}
+
+function fmtCountdown(ms: number): string {
+  const totalMins = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const days = Math.floor(ms / 86400000);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
+  if (years >= 1) {
+    const rem = Math.floor((days % 365) / 30);
+    return rem > 0 ? `${years}y ${rem}mo` : `${years}y`;
+  }
+  if (months >= 1) {
+    const rem = Math.floor((days % 30) / 7);
+    return rem > 0 ? `${months}mo ${rem}w` : `${months}mo`;
+  }
+  if (weeks >= 1) {
+    const rem = days % 7;
+    return rem > 0 ? `${weeks}w ${rem}d` : `${weeks}w`;
+  }
+  if (days >= 1) {
+    const rem = Math.floor((ms % 86400000) / 3600000);
+    return rem > 0 ? `${days}d ${rem}h` : `${days}d`;
+  }
+  if (hours >= 1) {
+    const rem = Math.floor((ms % 3600000) / 60000);
+    return rem > 0 ? `${hours}h ${rem}m` : `${hours}h`;
+  }
+  return totalMins > 0 ? `${totalMins}m` : '< 1m';
 }
 
 function weeklyToDaily(weeklyBet: string | null) {
@@ -444,10 +469,8 @@ function SubDayCountdown({ quitDate, nextDays, style }: { quitDate: string; next
   }, []);
   const targetMs = parseQuitDate(quitDate).getTime() + nextDays * 86400000;
   const remaining = Math.max(0, targetMs - Date.now());
-  const mins = Math.floor(remaining / 60000);
-  const secs = Math.floor((remaining % 60000) / 1000);
   if (remaining <= 0) return <Text style={style}>{`🎉 ${milestoneLabel(nextDays)} — milestone reached!`}</Text>;
-  return <Text style={style}>{`${mins}m ${secs}s to reach ${milestoneLabel(nextDays)}`}</Text>;
+  return <Text style={style}>{`${fmtCountdown(remaining)} to reach ${milestoneLabel(nextDays)}`}</Text>;
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -861,7 +884,7 @@ export default function HomeScreen() {
 
   if (!data) return null;
 
-  const { next, daysToGo, hoursToGo, minsToGo, secsToGo, hoursComponent, remainingMs, progress } = getMilestone(streakMs);
+  const { next, remainingMs, progress } = getMilestone(streakMs);
   const motivations = (data.motivation ?? '').split(',').filter(Boolean).map(
     m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' }
   );
@@ -891,9 +914,7 @@ export default function HomeScreen() {
                   : <Text style={s.milestoneTxt}>
                       {remainingMs <= 0
                         ? `🎉 ${milestoneLabel(next)} — milestone reached!`
-                        : daysToGo === 1
-                          ? `${hoursToGo}h ${minsToGo}m to reach ${milestoneLabel(next)}`
-                          : `${daysToGo}d ${hoursComponent}h to reach ${milestoneLabel(next)}`}
+                        : `${fmtCountdown(remainingMs)} to reach ${milestoneLabel(next)}`}
                     </Text>
                 }
                 <Text style={s.longestTxt}>Best: {formatBest(data.longestStreak, streakMs)}</Text>
