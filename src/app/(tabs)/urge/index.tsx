@@ -22,6 +22,8 @@ import { type ExerciseKey, EXERCISES, renderExercise } from './exercises';
 const { width: SCREEN_W } = Dimensions.get('window');
 // body padding (16×2=32) + section padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 84
 const GAME_TILE_W = Math.floor((SCREEN_W - 84) / 3);
+// picker overlay has only its own padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 52
+const PICKER_TILE_W = Math.floor((SCREEN_W - 52) / 3);
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -155,6 +157,7 @@ export default function UrgeScreen() {
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
   const [expandedDistraction, setExpandedDistraction] = useState<string | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
+  const [showGamePicker, setShowGamePicker] = useState(false);
 
   const isMounted = useRef(true);
 
@@ -235,7 +238,7 @@ export default function UrgeScreen() {
         )
       );
     } else if (d.action === 'game') {
-      setActiveGame('breathing');
+      setShowGamePicker(true);
     }
   };
 
@@ -406,6 +409,48 @@ export default function UrgeScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Game + Exercise picker overlay */}
+      {showGamePicker && (
+        <View style={StyleSheet.absoluteFill}>
+          <SafeAreaView style={s.gameOverlay} edges={['top', 'bottom']}>
+            <View style={s.gameOverlayHeader}>
+              <Text style={s.gameOverlayTitle}>Pick an activity</Text>
+              <Pressable style={s.gameCloseBtn} onPress={() => setShowGamePicker(false)}>
+                <Text style={s.gameCloseBtnTxt}>✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.pickerContent}>
+              <Text style={s.pickerSectionTitle}>Focus Games</Text>
+              <Text style={s.gamesSectionSub}>Engage your mind, ease the urge</Text>
+              <View style={s.pickerGrid}>
+                {GAMES.map(game => (
+                  <Pressable
+                    key={game.key}
+                    style={({ pressed }) => [s.pickerTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
+                    onPress={() => setActiveGame(game.key)}>
+                    <Text style={s.gameTileEmoji}>{game.emoji}</Text>
+                    <Text style={s.gameTileTitle}>{game.title}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={[s.pickerSectionTitle, { marginTop: 8 }]}>Guided Exercises</Text>
+              <Text style={s.gamesSectionSub}>Mindfulness and grounding techniques</Text>
+              <View style={s.pickerGrid}>
+                {EXERCISES.map(ex => (
+                  <Pressable
+                    key={ex.key}
+                    style={({ pressed }) => [s.pickerTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
+                    onPress={() => setActiveExercise(ex.key)}>
+                    <Text style={s.gameTileEmoji}>{ex.emoji}</Text>
+                    <Text style={s.gameTileTitle}>{ex.title}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      )}
 
       {/* Game overlay */}
       {activeGame !== null && (
@@ -763,6 +808,16 @@ const s = StyleSheet.create({
   therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: '#c0392b' },
   therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#a8d8d0' },
   therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
+
+  // Game/exercise picker
+  pickerContent: { padding: 16, paddingBottom: 32, gap: 8 },
+  pickerSectionTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 2 },
+  pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pickerTile: {
+    width: PICKER_TILE_W, backgroundColor: '#f4fafa', borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 4, alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: '#d4eeee',
+  },
 
   // Focus games
   gamesSection: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
