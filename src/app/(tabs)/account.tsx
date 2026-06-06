@@ -28,7 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -591,7 +591,7 @@ export default function AccountScreen() {
       }
       await supabase.from('users').delete().eq('id', user.id);
       await supabase.functions.invoke('delete-account');
-      await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+      await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
       await supabase.auth.signOut();
     }
     setSigningOut(false);
@@ -601,7 +601,7 @@ export default function AccountScreen() {
 
   const executeSignOut = async () => {
     setSigningOut(true);
-    await AsyncStorage.multiRemove([ONBOARDED_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
+    await AsyncStorage.multiRemove([ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
     await supabase.auth.signOut();
   };
 
