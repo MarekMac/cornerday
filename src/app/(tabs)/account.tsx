@@ -28,7 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -179,6 +179,12 @@ export default function AccountScreen() {
   const [spendingCustom, setSpendingCustom] = useState('');
   const [savingSpending, setSavingSpending] = useState(false);
 
+  const [trustedContactName, setTrustedContactName] = useState('');
+  const [trustedContactPhone, setTrustedContactPhone] = useState('');
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactNameInput, setContactNameInput] = useState('');
+  const [contactPhoneInput, setContactPhoneInput] = useState('');
+
   const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
   const [confirmQuitDate, setConfirmQuitDate] = useState<Date | null>(null);
   const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
@@ -239,10 +245,16 @@ export default function AccountScreen() {
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
-    ]).then(([rawGoal, rawFor, rawIcon]) => {
+      AsyncStorage.getItem(TRUSTED_CONTACT_KEY),
+    ]).then(([rawGoal, rawFor, rawIcon, rawContact]) => {
       if (rawGoal) setSavingsGoal(Number(rawGoal));
       if (rawFor) setSavingsGoalFor(rawFor);
       if (rawIcon) setSavingsGoalIcon(rawIcon);
+      if (rawContact) {
+        const c = JSON.parse(rawContact);
+        setTrustedContactName(c.name ?? '');
+        setTrustedContactPhone(c.phone ?? '');
+      }
     });
   }, [fetchProfile]);
 
@@ -285,6 +297,26 @@ export default function AccountScreen() {
       setSavingsGoal(val); setSavingsGoalFor(forVal); setSavingsGoalIcon(iconVal);
     }
     closeGoalModal();
+  };
+
+  const openContactModal = () => {
+    setContactNameInput(trustedContactName);
+    setContactPhoneInput(trustedContactPhone);
+    setShowContactModal(true);
+  };
+  const saveContact = async () => {
+    const name = contactNameInput.trim();
+    const phone = contactPhoneInput.trim();
+    if (!name && !phone) {
+      await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
+      setTrustedContactName('');
+      setTrustedContactPhone('');
+    } else {
+      await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone }));
+      setTrustedContactName(name);
+      setTrustedContactPhone(phone);
+    }
+    setShowContactModal(false);
   };
 
   const openFieldModal = (field: FieldKey) => {
@@ -807,6 +839,22 @@ export default function AccountScreen() {
             </View>
           </View>
 
+          <View style={s.infoRow}>
+            <Text style={s.infoLabel}>Trusted contact</Text>
+            <View style={s.infoValueRow}>
+              <Text style={[s.infoValue, !trustedContactName && s.infoValueEmpty]}>
+                {trustedContactName
+                  ? `${trustedContactName}${trustedContactPhone ? ` · ${trustedContactPhone}` : ''}`
+                  : 'Not set'}
+              </Text>
+              <Pressable
+                onPress={openContactModal}
+                style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
+                <Text style={s.editBtnTxt}>{trustedContactName ? 'Edit' : 'Add'}</Text>
+              </Pressable>
+            </View>
+          </View>
+
           {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map(field => {
             const config = FIELD_CONFIG[field];
             const raw = field === 'motivation' ? profile?.motivation
@@ -990,6 +1038,46 @@ export default function AccountScreen() {
           </Pressable>
         </Pressable>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Trusted contact modal */}
+      <Modal visible={showContactModal} transparent animationType="slide">
+        <Pressable style={s.modalOverlay} onPress={() => setShowContactModal(false)}>
+          <Pressable style={s.editFieldSheet} onPress={() => {}}>
+            <View style={s.editFieldHandle} />
+            <Text style={s.editFieldTitle}>Trusted contact</Text>
+            <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Their name</Text>
+            <TextInput
+              style={[s.spendingInput, { flex: 0, marginBottom: 16 }]}
+              value={contactNameInput}
+              onChangeText={setContactNameInput}
+              placeholder="e.g. Mum, John"
+              placeholderTextColor="#bbb"
+              autoCapitalize="words"
+            />
+            <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Phone number</Text>
+            <TextInput
+              style={[s.spendingInput, { flex: 0, marginBottom: 24 }]}
+              value={contactPhoneInput}
+              onChangeText={setContactPhoneInput}
+              placeholder="+1 555 000 0000"
+              placeholderTextColor="#bbb"
+              keyboardType="phone-pad"
+            />
+            <View style={s.modalActions}>
+              <Pressable
+                style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                onPress={() => setShowContactModal(false)}>
+                <Text style={s.modalBtnCancel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
+                onPress={saveContact}>
+                <Text style={s.modalBtnSaveTxt}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Weekly spending modal */}

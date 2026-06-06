@@ -10,3 +10,4 @@ export const SAVINGS_GOAL_KEY = 'cornerday_savings_goal';
 export const SAVINGS_GOAL_FOR_KEY = 'cornerday_savings_goal_for';
 export const SAVINGS_GOAL_ICON_KEY = 'cornerday_savings_goal_icon';
 export const GOAL_ICONS = ['🎯','🏖️','✈️','🚗','🏠','💍','📱','🎓','💪','🛡️','👶','🎮','🌟','💰','🐕'] as const;
+export const TRUSTED_CONTACT_KEY = 'cornerday_trusted_contact';

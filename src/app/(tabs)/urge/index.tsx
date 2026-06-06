@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Linking,
@@ -22,6 +23,9 @@ const { width: SCREEN_W } = Dimensions.get('window');
 // body padding (16×2=32) + section padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 84
 const GAME_TILE_W = Math.floor((SCREEN_W - 84) / 3);
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { TRUSTED_CONTACT_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 
 const MOTIVATION_MAP: Record<string, { label: string; emoji: string }> = {
@@ -100,11 +104,28 @@ const THERAPY_RESOURCES = [
 ];
 
 const DISTRACTIONS = [
-  { emoji: '🚶', label: 'Go for a walk' },
-  { emoji: '📞', label: 'Call someone you trust' },
-  { emoji: '🎮', label: 'Play a game' },
-  { emoji: '🎵', label: 'Listen to music' },
-  { emoji: '🍵', label: 'Make a hot drink' },
+  {
+    emoji: '🚶', label: 'Go for a walk', sub: 'Step outside for 5–10 minutes',
+    tip: 'Movement breaks the mental loop. Even a short walk around the block shifts your mood.',
+    action: 'expand' as const,
+  },
+  {
+    emoji: '📞', label: 'Call someone you trust', sub: 'Hear a familiar voice',
+    action: 'call' as const,
+  },
+  {
+    emoji: '🎵', label: 'Listen to music', sub: 'Put on something you love',
+    action: 'music' as const,
+  },
+  {
+    emoji: '🍵', label: 'Make a hot drink', sub: 'Slow down with a warm cup',
+    tip: 'Make it intentionally — boil the kettle, pick your drink, and focus on the warmth in your hands.',
+    action: 'expand' as const,
+  },
+  {
+    emoji: '🎮', label: 'Play a focus game', sub: 'Engage your mind for a few minutes',
+    action: 'game' as const,
+  },
 ];
 
 const TRIGGERS = [
@@ -135,6 +156,8 @@ export default function UrgeScreen() {
   const [saved, setSaved] = useState(false);
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
+  const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
+  const [expandedDistraction, setExpandedDistraction] = useState<string | null>(null);
 
   const breathScale = useRef(new Animated.Value(0.5)).current;
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -145,8 +168,12 @@ export default function UrgeScreen() {
   const fetchMotivation = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase.from('users').select('motivation').eq('id', user.id).single();
+    const [{ data }, rawContact] = await Promise.all([
+      supabase.from('users').select('motivation').eq('id', user.id).single(),
+      AsyncStorage.getItem(TRUSTED_CONTACT_KEY),
+    ]);
     setMotivation(data?.motivation ?? null);
+    if (rawContact) setTrustedContact(JSON.parse(rawContact));
   }, []);
 
   useEffect(() => { fetchMotivation().finally(() => setLoading(false)); }, [fetchMotivation]);
@@ -231,6 +258,33 @@ export default function UrgeScreen() {
   const canSave = selectedTrigger !== null && outcome !== null &&
     (selectedTrigger !== 'other' || customTrigger.trim().length > 0);
 
+  const handleDistraction = (d: typeof DISTRACTIONS[0]) => {
+    if (d.action === 'expand') {
+      setExpandedDistraction(prev => prev === d.label ? null : d.label);
+    } else if (d.action === 'call') {
+      if (trustedContact?.phone) {
+        Linking.openURL(`tel:${trustedContact.phone}`);
+      } else {
+        Alert.alert(
+          'No contact saved',
+          'Add a trusted contact in Account settings to enable quick calling.',
+          [
+            { text: 'Go to Settings', onPress: () => router.push('/(tabs)/account') },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
+      }
+    } else if (d.action === 'music') {
+      Linking.openURL('music://').catch(() =>
+        Linking.openURL('spotify://').catch(() =>
+          Alert.alert('Open your music app', 'Put on something you love — music shifts your mood fast.')
+        )
+      );
+    } else if (d.action === 'game') {
+      setActiveGame('breathing');
+    }
+  };
+
   const phaseLabel =
     breathPhase === 'inhale' ? 'Breathe in...' :
     breathPhase === 'hold'   ? 'Hold...' :
@@ -270,23 +324,7 @@ export default function UrgeScreen() {
           </View>
         </View>
 
-        {/* Log a moment */}
-        <View style={s.logCard}>
-          <Text style={s.logTitle}>Log a moment</Text>
-          <Text style={s.logSub}>Record how you handled it</Text>
-          <View style={s.logBtns}>
-            <Pressable
-              style={({ pressed }) => [s.logBtn, s.logBtnGreen, pressed && { opacity: 0.85 }]}
-              onPress={() => openLog('overcame')}>
-              <Text style={s.logBtnTxtGreen}>Overcame it ✓</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [s.logBtn, s.logBtnRed, pressed && { opacity: 0.85 }]}
-              onPress={() => openLog('slipped')}>
-              <Text style={s.logBtnTxtRed}>Had a slip</Text>
-            </Pressable>
-          </View>
-        </View>
+        <Text style={s.sectionHeader}>Right now</Text>
 
         {/* Breathing exercise */}
         <View style={s.breathCard}>
@@ -307,30 +345,43 @@ export default function UrgeScreen() {
           </Pressable>
         </View>
 
-        {/* Distractions */}
+        {/* Distractions — actionable */}
         <View style={s.card}>
           <Text style={s.cardTitle}>Try a distraction</Text>
-          {DISTRACTIONS.map((d, i) => (
-            <View
-              key={d.label}
-              style={[s.distractionRow, i < DISTRACTIONS.length - 1 && s.distractionBorder]}>
-              <Text style={s.distractionEmoji}>{d.emoji}</Text>
-              <Text style={s.distractionLabel}>{d.label}</Text>
-            </View>
-          ))}
+          {DISTRACTIONS.map((d, i) => {
+            const isLast = i === DISTRACTIONS.length - 1;
+            const isExpanded = expandedDistraction === d.label;
+            const isCall = d.action === 'call';
+            const callLabel = trustedContact?.name ? `📞 Call ${trustedContact.name}` : '📞 Call';
+            return (
+              <View key={d.label}>
+                <Pressable
+                  style={[s.distractionRow, !isLast && !isExpanded && s.distractionBorder]}
+                  onPress={() => handleDistraction(d)}>
+                  <Text style={s.distractionEmoji}>{d.emoji}</Text>
+                  <View style={s.distractionText}>
+                    <Text style={s.distractionLabel}>{d.label}</Text>
+                    <Text style={s.distractionSub}>{d.sub}</Text>
+                  </View>
+                  {isCall && trustedContact?.phone ? (
+                    <View style={s.callBtn}>
+                      <Text style={s.callBtnTxt}>{callLabel}</Text>
+                    </View>
+                  ) : isCall && !trustedContact?.phone ? (
+                    <Text style={s.distractionLink}>Set up ›</Text>
+                  ) : (
+                    <Text style={s.distractionArrow}>{isExpanded ? '∨' : '›'}</Text>
+                  )}
+                </Pressable>
+                {isExpanded && 'tip' in d && (
+                  <Text style={[s.distractionTip, !isLast && s.distractionBorder]}>
+                    {d.tip}
+                  </Text>
+                )}
+              </View>
+            );
+          })}
         </View>
-
-        {/* Prevention checklist */}
-        <Pressable
-          style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.85 }]}
-          onPress={() => router.push('/(tabs)/urge/checklist')}>
-          <Text style={s.checklistBtnIcon}>✅</Text>
-          <View style={s.checklistBtnText}>
-            <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
-            <Text style={s.checklistBtnSub}>Practical steps to protect your recovery</Text>
-          </View>
-          <Text style={s.checklistBtnChevron}>›</Text>
-        </Pressable>
 
         {/* Focus games grid */}
         <View style={s.gamesSection}>
@@ -348,6 +399,38 @@ export default function UrgeScreen() {
             ))}
           </View>
         </View>
+
+        <Text style={s.sectionHeader}>When you're ready</Text>
+
+        {/* Log a moment */}
+        <View style={s.logCard}>
+          <Text style={s.logTitle}>Log a moment</Text>
+          <Text style={s.logSub}>Record how you handled it</Text>
+          <View style={s.logBtns}>
+            <Pressable
+              style={({ pressed }) => [s.logBtn, s.logBtnGreen, pressed && { opacity: 0.85 }]}
+              onPress={() => openLog('overcame')}>
+              <Text style={s.logBtnTxtGreen}>Overcame it ✓</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [s.logBtn, s.logBtnRed, pressed && { opacity: 0.85 }]}
+              onPress={() => openLog('slipped')}>
+              <Text style={s.logBtnTxtRed}>Had a slip</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Prevention checklist */}
+        <Pressable
+          style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/(tabs)/urge/checklist')}>
+          <Text style={s.checklistBtnIcon}>✅</Text>
+          <View style={s.checklistBtnText}>
+            <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
+            <Text style={s.checklistBtnSub}>Practical steps to protect your recovery</Text>
+          </View>
+          <Text style={s.checklistBtnChevron}>›</Text>
+        </Pressable>
 
         {/* Crisis resources */}
         <View style={s.crisisCard}>
@@ -602,10 +685,29 @@ const s = StyleSheet.create({
   breathBtnStop: { backgroundColor: '#888' },
   breathBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
-  distractionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
+  sectionHeader: {
+    fontSize: 11, fontWeight: '700', color: '#888', textTransform: 'uppercase',
+    letterSpacing: 0.8, marginTop: 4, marginBottom: -4, paddingHorizontal: 2,
+  },
+
+  distractionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   distractionBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   distractionEmoji: { fontSize: 22 },
-  distractionLabel: { fontSize: 15, color: '#333', fontWeight: '500' },
+  distractionText: { flex: 1, gap: 1 },
+  distractionLabel: { fontSize: 15, color: '#333', fontWeight: '600' },
+  distractionSub: { fontSize: 12, color: '#aaa' },
+  distractionArrow: { fontSize: 20, color: '#ccc', fontWeight: '300' },
+  distractionLink: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
+  distractionTip: {
+    fontSize: 13, color: '#555', lineHeight: 19,
+    backgroundColor: '#f4fafa', borderRadius: 8, padding: 10, marginBottom: 10,
+  },
+  callBtn: {
+    backgroundColor: '#e6f7f0', borderRadius: 20,
+    paddingVertical: 6, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: '#a8d8c0',
+  },
+  callBtnTxt: { fontSize: 13, fontWeight: '700', color: '#0a7a4e' },
 
   crisisCard: {
     backgroundColor: '#fff8f8', borderRadius: 14, padding: 16, gap: 8,
