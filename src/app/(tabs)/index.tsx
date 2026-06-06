@@ -754,14 +754,14 @@ export default function HomeScreen() {
     }
     if (newGoalBadges.length > 0) {
       await supabase.from('badges').insert(newGoalBadges);
-      // Log goal_reached to activity log (goal_set is logged at save time in tracker/account)
-      const reachedBadge = newGoalBadges.find(b => b.badge_type === 'goal_reached');
-      if (reachedBadge && savingsGoalAmount) {
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'goal_reached', amount: savingsGoalAmount,
-          category: 'Goal', note: '🎊 Savings goal reached',
-        });
-      }
+      const logRows = newGoalBadges.map(b => ({
+        user_id: user.id,
+        type: 'milestone_earned' as const,
+        amount: b.badge_type === 'goal_reached' ? (savingsGoalAmount ?? 0) : 0,
+        category: 'Milestone',
+        note: b.badge_type === 'goal_set' ? '📍 Goal Setter badge earned' : '🎊 Savings goal reached',
+      }));
+      await supabase.from('losses').insert(logRows);
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       for (const b of newGoalBadges) {
         earnedBadges.push(b.badge_type);
@@ -775,7 +775,7 @@ export default function HomeScreen() {
               data: { screen: '/(tabs)/' },
             },
             trigger: Platform.OS === 'android'
-              ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
+              ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
               : null,
           });
         }
@@ -788,6 +788,10 @@ export default function HomeScreen() {
     const checklistCompleted = checklistChecked >= CHECKLIST_TOTAL;
     if (checklistCompleted && !checklistBadgeSent) {
       await AsyncStorage.setItem(CHECKLIST_BADGE_SENT_KEY, '1');
+      await supabase.from('losses').insert({
+        user_id: user.id, type: 'milestone_earned', amount: 0,
+        category: 'Milestone', note: '🛡️ Safe Zone — prevention checklist completed',
+      });
       const { status } = await Notifications.getPermissionsAsync();
       if (status === 'granted') {
         await Notifications.scheduleNotificationAsync({
@@ -797,7 +801,7 @@ export default function HomeScreen() {
             data: { screen: '/(tabs)/' },
           },
           trigger: Platform.OS === 'android'
-            ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
+            ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
             : null,
         });
       }
