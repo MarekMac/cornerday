@@ -475,6 +475,9 @@ function BreathingExercise() {
 
 // ── Render router ─────────────────────────────────────────────────────────────
 
+// Required by Expo Router — this file is a utility module, not a screen
+export default function ExercisesModule() { return null; }
+
 export function renderExercise(key: ExerciseKey): React.ReactNode {
   switch (key) {
     case 'breathing':    return <BreathingExercise />;
@@ -556,3 +559,4 @@ const es = StyleSheet.create({
   },
   breathLabel: { fontSize: 16, fontWeight: '600', color: '#0F6E6E', textAlign: 'center' },
 });
+

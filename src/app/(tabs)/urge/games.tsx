@@ -891,6 +891,9 @@ function GroundingGame() {
   );
 }
 
+// Required by Expo Router — this file is a utility module, not a screen
+export default function GamesModule() { return null; }
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 export function renderGame(key: GameKey) {
   switch (key) {
