@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
@@ -228,17 +228,17 @@ export default function UrgeScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.75,
     });
     if (result.canceled) return;
     const src = result.assets[0].uri;
-    const dest = `${FileSystem.documentDirectory}motivation_photo.jpg`;
-    await FileSystem.copyAsync({ from: src, to: dest });
-    await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, dest);
-    setMotivationPhoto(dest);
+    const destFile = new File(Paths.document, 'motivation_photo.jpg');
+    await new File(src).copy(destFile);
+    await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
+    setMotivationPhoto(destFile.uri);
   };
 
   const handleDistraction = (d: typeof DISTRACTIONS[0]) => {
