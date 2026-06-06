@@ -1289,14 +1289,20 @@ export default function HomeScreen() {
               const earnedAt = data.badgeTimestamps[selectedBadge.type];
               const dailyRate = weeklyToDaily(data.weeklyBet);
               const streakFrac = streakMs / 86400000;
-              const progress = earned ? 1 : selectedBadge.days > 0 ? Math.min(1, streakFrac / selectedBadge.days) : 1;
+              // Treat as completed if streak has already passed this milestone,
+              // even if the DB row is missing (e.g. after a reset without re-award)
+              const isPast = streakFrac >= selectedBadge.days;
+              const progress = (earned || isPast) ? 1 : selectedBadge.days > 0 ? Math.min(1, streakFrac / selectedBadge.days) : 1;
               const pct = Math.round(progress * 100);
 
-              if (earned) {
-                const earnedDate = data.quitDate
-                  ? new Date(parseQuitDate(data.quitDate).getTime() + selectedBadge.days * 86400000)
-                  : null;
-                const daysSince = Math.floor(streakFrac - selectedBadge.days);
+              if (earned || isPast) {
+                // Prefer actual earned_at timestamp; fall back to calculated completion date
+                const completedDate = earnedAt
+                  ? new Date(earnedAt)
+                  : (data.quitDate
+                    ? new Date(parseQuitDate(data.quitDate).getTime() + selectedBadge.days * 86400000)
+                    : null);
+                const daysSince = Math.max(0, Math.floor(streakFrac - selectedBadge.days));
                 const savedAtMilestone = selectedBadge.days * dailyRate;
                 const savedTotal = streakDays * dailyRate;
                 return (
@@ -1305,10 +1311,10 @@ export default function HomeScreen() {
                     <Text style={s.modalTitle}>{BADGE_CELEBRATIONS[badgeMsgIndex % BADGE_CELEBRATIONS.length].icon} {BADGE_CELEBRATIONS[badgeMsgIndex % BADGE_CELEBRATIONS.length].text}</Text>
                     <Text style={s.modalSubtitle}>{selectedBadge.label} milestone reached</Text>
                     <View style={s.modalDivider} />
-                    {earnedDate && (
+                    {completedDate && (
                       <View style={s.modalRow}>
                         <Text style={s.modalRowLabel}>Completed on</Text>
-                        <Text style={s.modalRowValue}>{earnedDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+                        <Text style={s.modalRowValue}>{completedDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
                       </View>
                     )}
                     <View style={s.modalRow}>
