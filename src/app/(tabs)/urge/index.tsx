@@ -19,8 +19,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { type GameKey, GAMES, renderGame } from './games';
-import { type ExerciseKey, EXERCISES, renderExercise } from './exercises';
+import { type GameKey, GAMES, renderGame } from '@/lib/games';
+import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 // body padding (16×2=32) + section padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 84

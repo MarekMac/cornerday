@@ -475,9 +475,6 @@ function BreathingExercise() {
 
 // ── Render router ─────────────────────────────────────────────────────────────
 
-// Required by Expo Router — this file is a utility module, not a screen
-export default function ExercisesModule() { return null; }
-
 export function renderExercise(key: ExerciseKey): React.ReactNode {
   switch (key) {
     case 'breathing':    return <BreathingExercise />;
