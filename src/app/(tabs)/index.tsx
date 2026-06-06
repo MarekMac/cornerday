@@ -657,16 +657,13 @@ export default function HomeScreen() {
     // It is intentionally kept separate from earnedBadges (DB-only) so that
     // clearing badges from the DB actually clears them from the UI, while still
     // preventing immediate re-award of milestones the current streak qualifies for.
-    const localRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
-    const localEarned: string[] = localRaw ? JSON.parse(localRaw) : [];
-    const dedupeGuard = new Set([...earnedBadges, ...localEarned]);
+    // dedupeGuard is DB-only: only rows already in the badges table block re-insertion.
+    // AsyncStorage (MILESTONE_NOTIFS_KEY) is no longer used as an insert guard — keeping it
+    // caused stale entries to permanently block re-award after a milestone reset.
+    const dedupeGuard = new Set([...earnedBadges]);
 
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
-    let currentLocal = [...localEarned]; // tracks live state of MILESTONE_NOTIFS_KEY this run
     if (toAward.length > 0) {
-      // Persist to AsyncStorage first — prevents repeat journal/notification even if DB insert fails
-      currentLocal = [...currentLocal, ...toAward.map(b => b.type)];
-      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(currentLocal));
 
       await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
 
@@ -752,11 +749,6 @@ export default function HomeScreen() {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_reached' });
     }
     if (newGoalBadges.length > 0) {
-      // Persist to AsyncStorage first — uses currentLocal which already includes any
-      // streak milestones written this same fetchData call, preventing overwrite.
-      currentLocal = [...currentLocal, ...newGoalBadges.map(b => b.badge_type)];
-      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(currentLocal));
-
       await supabase.from('badges').insert(newGoalBadges);
       // Log goal_reached to activity log (goal_set is logged at save time in tracker/account)
       const reachedBadge = newGoalBadges.find(b => b.badge_type === 'goal_reached');
