@@ -657,14 +657,15 @@ export default function HomeScreen() {
     // It is intentionally kept separate from earnedBadges (DB-only) so that
     // clearing badges from the DB actually clears them from the UI, while still
     // preventing immediate re-award of milestones the current streak qualifies for.
-    // dedupeGuard is DB-only: only rows already in the badges table block re-insertion.
-    // AsyncStorage (MILESTONE_NOTIFS_KEY) is no longer used as an insert guard — keeping it
-    // caused stale entries to permanently block re-award after a milestone reset.
+    // Insert dedup uses DB rows only — stale AsyncStorage entries no longer block re-insertion.
+    // Notification dedup uses AsyncStorage — prevents re-notifying on every tab focus even if
+    // the DB insert somehow hasn't landed yet.
+    const notifRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
+    const alreadyNotified = new Set<string>(notifRaw ? JSON.parse(notifRaw) : []);
     const dedupeGuard = new Set([...earnedBadges]);
 
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
     if (toAward.length > 0) {
-
       await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
 
       // Log all milestones except 'started' (days=0)
@@ -676,23 +677,29 @@ export default function HomeScreen() {
         })));
       }
 
-      // Immediate notification for each newly awarded milestone (respects notif_milestone pref)
-      const { status: notifStatus } = await Notifications.getPermissionsAsync();
-      if (notifStatus === 'granted' && (profile?.notif_milestone ?? true)) {
-        for (const b of toAward) {
-          const isStart = b.type === 'started';
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: isStart ? `${b.emoji} Your journey has started!` : `${b.emoji} ${b.label} milestone!`,
-              body: isStart
-                ? `You've made the decision to change. That's the hardest part — keep going.`
-                : `You've been clean for ${b.label}. That's a real achievement — keep going.`,
-              data: { screen: '/(tabs)/' },
-            },
-            trigger: Platform.OS === 'android'
-              ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: 'cornerday' } as any
-              : null,
-          });
+      // Only notify for badges not yet notified (guards against repeated tab-focus runs)
+      const toNotify = toAward.filter(b => !alreadyNotified.has(b.type));
+      if (toNotify.length > 0) {
+        const newNotified = [...alreadyNotified, ...toNotify.map(b => b.type)];
+        await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(newNotified));
+
+        const { status: notifStatus } = await Notifications.getPermissionsAsync();
+        if (notifStatus === 'granted' && (profile?.notif_milestone ?? true)) {
+          for (const b of toNotify) {
+            const isStart = b.type === 'started';
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: isStart ? `${b.emoji} Your journey has started!` : `${b.emoji} ${b.label} milestone!`,
+                body: isStart
+                  ? `You've made the decision to change. That's the hardest part — keep going.`
+                  : `You've been clean for ${b.label}. That's a real achievement — keep going.`,
+                data: { screen: '/(tabs)/' },
+              },
+              trigger: Platform.OS === 'android'
+                ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
+                : null,
+            });
+          }
         }
       }
 
