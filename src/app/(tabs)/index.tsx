@@ -653,13 +653,10 @@ export default function HomeScreen() {
       ? Math.max(0, Date.now() - parseQuitDate(quitStr).getTime()) / 86400000
       : 0;
 
-    // localEarned is the notification/insert dedup guard stored in AsyncStorage.
-    // It is intentionally kept separate from earnedBadges (DB-only) so that
-    // clearing badges from the DB actually clears them from the UI, while still
-    // preventing immediate re-award of milestones the current streak qualifies for.
-    // Insert dedup uses DB rows only — stale AsyncStorage entries no longer block re-insertion.
-    // Notification dedup uses AsyncStorage — prevents re-notifying on every tab focus even if
-    // the DB insert somehow hasn't landed yet.
+    // Two separate guards:
+    // dedupeGuard (DB-only)  — blocks re-inserting a badge already in the DB
+    // alreadyNotified (AsyncStorage) — blocks re-firing the notification even if the DB
+    //   insert hasn't landed yet or fetchData runs again on tab focus
     const notifRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
     const alreadyNotified = new Set<string>(notifRaw ? JSON.parse(notifRaw) : []);
     const dedupeGuard = new Set([...earnedBadges]);
