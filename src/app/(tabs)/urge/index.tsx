@@ -1,10 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image,
   Linking,
   Modal,
   Pressable,
@@ -27,7 +30,7 @@ const PICKER_TILE_W = Math.floor((SCREEN_W - 52) / 3);
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { TRUSTED_CONTACT_KEY } from '@/constants/storage-keys';
+import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 
 const MOTIVATION_MAP: Record<string, { label: string; emoji: string }> = {
@@ -155,6 +158,7 @@ export default function UrgeScreen() {
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
+  const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
   const [expandedDistraction, setExpandedDistraction] = useState<string | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
   const [showGamePicker, setShowGamePicker] = useState(false);
@@ -166,12 +170,14 @@ export default function UrgeScreen() {
   const fetchMotivation = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const [{ data }, rawContact] = await Promise.all([
+    const [{ data }, rawContact, rawPhoto] = await Promise.all([
       supabase.from('users').select('motivation').eq('id', user.id).single(),
       AsyncStorage.getItem(TRUSTED_CONTACT_KEY),
+      AsyncStorage.getItem(MOTIVATION_PHOTO_KEY),
     ]);
     setMotivation(data?.motivation ?? null);
     if (rawContact) setTrustedContact(JSON.parse(rawContact));
+    if (rawPhoto) setMotivationPhoto(rawPhoto);
   }, []);
 
   useEffect(() => { fetchMotivation().finally(() => setLoading(false)); }, [fetchMotivation]);
@@ -214,6 +220,26 @@ export default function UrgeScreen() {
 
   const canSave = selectedTrigger !== null && outcome !== null &&
     (selectedTrigger !== 'other' || customTrigger.trim().length > 0);
+
+  const pickMotivationPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Allow photo access in your device settings to add a photo.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.75,
+    });
+    if (result.canceled) return;
+    const src = result.assets[0].uri;
+    const dest = `${FileSystem.documentDirectory}motivation_photo.jpg`;
+    await FileSystem.copyAsync({ from: src, to: dest });
+    await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, dest);
+    setMotivationPhoto(dest);
+  };
 
   const handleDistraction = (d: typeof DISTRACTIONS[0]) => {
     if (d.action === 'expand') {
@@ -263,14 +289,31 @@ export default function UrgeScreen() {
 
         {/* Your why */}
         <View style={s.whyCard}>
-          <View style={s.whyText}>
-            <Text style={s.whyLbl}>Remember your why</Text>
-            {motivations.map((m, i) => (
-              <View key={i} style={s.whyRow}>
-                <Text style={s.whyEmoji}>{m.emoji}</Text>
-                <Text style={s.whyVal}>{m.label}</Text>
-              </View>
-            ))}
+          <View style={s.whyInner}>
+            <View style={s.whyText}>
+              <Text style={s.whyLbl}>Remember your why</Text>
+              {motivations.map((m, i) => (
+                <View key={i} style={s.whyRow}>
+                  <Text style={s.whyEmoji}>{m.emoji}</Text>
+                  <Text style={s.whyVal}>{m.label}</Text>
+                </View>
+              ))}
+            </View>
+            <Pressable onPress={pickMotivationPhoto} style={s.whyPhotoBtn}>
+              {motivationPhoto ? (
+                <View>
+                  <Image source={{ uri: motivationPhoto }} style={s.whyPhoto} />
+                  <View style={s.whyPhotoBadge}>
+                    <Text style={s.whyPhotoBadgeIcon}>📷</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={s.whyPhotoEmpty}>
+                  <Text style={{ fontSize: 20 }}>📷</Text>
+                  <Text style={s.whyPhotoEmptyTxt}>Add photo</Text>
+                </View>
+              )}
+            </Pressable>
           </View>
         </View>
 
@@ -666,11 +709,26 @@ const s = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 14, padding: 14,
     borderLeftWidth: 4, borderLeftColor: '#0F6E6E',
   },
-  whyEmoji: { fontSize: 18 },
-  whyText: { gap: 6 },
+  whyInner: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  whyText: { flex: 1, gap: 6 },
   whyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   whyLbl: { fontSize: 11, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  whyEmoji: { fontSize: 18 },
   whyVal: { fontSize: 15, color: '#111', fontWeight: '600' },
+  whyPhotoBtn: { alignItems: 'center' },
+  whyPhoto: { width: 76, height: 76, borderRadius: 10 },
+  whyPhotoBadge: {
+    position: 'absolute', bottom: -4, right: -4,
+    backgroundColor: '#fff', borderRadius: 8, padding: 2,
+    borderWidth: 1, borderColor: '#e0e0e0',
+  },
+  whyPhotoBadgeIcon: { fontSize: 11 },
+  whyPhotoEmpty: {
+    width: 76, height: 76, borderRadius: 10,
+    backgroundColor: '#f0fafa', borderWidth: 1.5, borderColor: '#a8d8d0',
+    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 2,
+  },
+  whyPhotoEmptyTxt: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
 
   logCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
   logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
