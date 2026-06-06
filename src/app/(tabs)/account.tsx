@@ -516,10 +516,8 @@ export default function AccountScreen() {
     setResetting(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) await supabase.from('badges').delete().eq('user_id', user.id);
-    // MILESTONE_NOTIFS_KEY is intentionally kept — it acts as a dedup guard that
-    // prevents the home screen from immediately re-awarding every milestone the
-    // current streak already qualifies for on next focus.
     await Promise.all([
+      AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
       AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
       AsyncStorage.removeItem(CHECKLIST_KEY),
     ]);
