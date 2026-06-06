@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type GameKey, GAMES, renderGame } from './games';
+import { type ExerciseKey, EXERCISES, renderExercise } from './exercises';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 // body padding (16×2=32) + section padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 84
@@ -158,6 +159,7 @@ export default function UrgeScreen() {
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
   const [expandedDistraction, setExpandedDistraction] = useState<string | null>(null);
+  const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
 
   const breathScale = useRef(new Animated.Value(0.5)).current;
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -400,6 +402,23 @@ export default function UrgeScreen() {
           </View>
         </View>
 
+        {/* Exercises grid */}
+        <View style={s.gamesSection}>
+          <Text style={s.gamesSectionTitle}>Guided Exercises</Text>
+          <Text style={s.gamesSectionSub}>Mindfulness and grounding techniques</Text>
+          <View style={s.gamesGrid}>
+            {EXERCISES.map(ex => (
+              <Pressable
+                key={ex.key}
+                style={({ pressed }) => [s.gameTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
+                onPress={() => setActiveExercise(ex.key)}>
+                <Text style={s.gameTileEmoji}>{ex.emoji}</Text>
+                <Text style={s.gameTileTitle}>{ex.title}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <Text style={s.sectionHeader}>When you're ready</Text>
 
         {/* Log a moment */}
@@ -479,6 +498,29 @@ export default function UrgeScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
               {renderGame(activeGame)}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      )}
+
+      {/* Exercise overlay */}
+      {activeExercise !== null && (
+        <View style={StyleSheet.absoluteFill}>
+          <SafeAreaView style={s.gameOverlay} edges={['top', 'bottom']}>
+            <View style={s.gameOverlayHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 20 }}>{EXERCISES.find(e => e.key === activeExercise)?.emoji}</Text>
+                <Text style={s.gameOverlayTitle}>{EXERCISES.find(e => e.key === activeExercise)?.title}</Text>
+              </View>
+              <Pressable style={s.gameCloseBtn} onPress={() => setActiveExercise(null)}>
+                <Text style={s.gameCloseBtnTxt}>✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
+              {renderExercise(activeExercise)}
             </ScrollView>
           </SafeAreaView>
         </View>
