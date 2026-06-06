@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Dimensions,
   Linking,
   Modal,
@@ -139,13 +138,9 @@ const TRIGGERS = [
   { key: 'other',       label: 'Other' },
 ];
 
-type BreathPhase = 'idle' | 'inhale' | 'hold' | 'exhale';
-
 export default function UrgeScreen() {
   const [motivation, setMotivation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [breathRunning, setBreathRunning] = useState(false);
-  const [breathPhase, setBreathPhase] = useState<BreathPhase>('idle');
 
   // Log urge modal
   const [modalVisible, setModalVisible] = useState(false);
@@ -161,8 +156,6 @@ export default function UrgeScreen() {
   const [expandedDistraction, setExpandedDistraction] = useState<string | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
 
-  const breathScale = useRef(new Animated.Value(0.5)).current;
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMounted = useRef(true);
 
   useEffect(() => { return () => { isMounted.current = false; }; }, []);
@@ -179,47 +172,6 @@ export default function UrgeScreen() {
   }, []);
 
   useEffect(() => { fetchMotivation().finally(() => setLoading(false)); }, [fetchMotivation]);
-
-  const runCycle = useCallback(() => {
-    if (!isMounted.current) return;
-    setBreathPhase('inhale');
-    Animated.timing(breathScale, {
-      toValue: 1, duration: 4000, useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (!finished || !isMounted.current) return;
-      setBreathPhase('hold');
-      holdTimer.current = setTimeout(() => {
-        if (!isMounted.current) return;
-        setBreathPhase('exhale');
-        Animated.timing(breathScale, {
-          toValue: 0.5, duration: 4000, useNativeDriver: true,
-        }).start(({ finished }) => {
-          if (finished && isMounted.current) runCycle();
-        });
-      }, 4000);
-    });
-  }, [breathScale]);
-
-  const startBreathing = () => {
-    breathScale.setValue(0.5);
-    setBreathRunning(true);
-    runCycle();
-  };
-
-  const stopBreathing = () => {
-    breathScale.stopAnimation();
-    breathScale.setValue(0.5);
-    if (holdTimer.current) clearTimeout(holdTimer.current);
-    setBreathRunning(false);
-    setBreathPhase('idle');
-  };
-
-  useEffect(() => {
-    return () => {
-      breathScale.stopAnimation();
-      if (holdTimer.current) clearTimeout(holdTimer.current);
-    };
-  }, [breathScale]);
 
   const openLog = (presetOutcome: 'overcame' | 'slipped') => {
     setOutcome(presetOutcome);
@@ -287,12 +239,6 @@ export default function UrgeScreen() {
     }
   };
 
-  const phaseLabel =
-    breathPhase === 'inhale' ? 'Breathe in...' :
-    breathPhase === 'hold'   ? 'Hold...' :
-    breathPhase === 'exhale' ? 'Breathe out...' :
-    'Tap to start';
-
   const motivations = (motivation ?? '').split(',').filter(Boolean)
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
@@ -327,25 +273,6 @@ export default function UrgeScreen() {
         </View>
 
         <Text style={s.sectionHeader}>Right now</Text>
-
-        {/* Breathing exercise */}
-        <View style={s.breathCard}>
-          <Text style={s.cardTitle}>Breathing Exercise</Text>
-          <Text style={s.breathDesc}>4 seconds — in, hold, out</Text>
-          <View style={s.breathRing}>
-            <Animated.View style={[s.breathCircle, { transform: [{ scale: breathScale }] }]} />
-            <Text style={s.breathPhaseLabel}>{phaseLabel}</Text>
-          </View>
-          <Pressable
-            style={({ pressed }) => [
-              s.breathBtn,
-              breathRunning ? s.breathBtnStop : s.breathBtnStart,
-              pressed && { opacity: 0.85 },
-            ]}
-            onPress={breathRunning ? stopBreathing : startBreathing}>
-            <Text style={s.breathBtnTxt}>{breathRunning ? 'Stop' : 'Start breathing'}</Text>
-          </Pressable>
-        </View>
 
         {/* Distractions — actionable */}
         <View style={s.card}>
@@ -711,21 +638,8 @@ const s = StyleSheet.create({
   logBtnTxtGreen: { fontSize: 14, fontWeight: '700', color: '#0a7a4e' },
   logBtnTxtRed: { fontSize: 14, fontWeight: '700', color: '#c0392b' },
 
-  breathCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, alignItems: 'center' },
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
   cardTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 6 },
-  breathDesc: { fontSize: 13, color: '#888', marginBottom: 20 },
-
-  breathRing: { width: 150, height: 150, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  breathCircle: {
-    position: 'absolute', width: 150, height: 150, borderRadius: 75,
-    backgroundColor: '#e6f7f7', borderWidth: 3, borderColor: '#0F6E6E',
-  },
-  breathPhaseLabel: { fontSize: 15, fontWeight: '600', color: '#0F6E6E', textAlign: 'center' },
-  breathBtn: { paddingVertical: 12, paddingHorizontal: 32, borderRadius: 24 },
-  breathBtnStart: { backgroundColor: '#0F6E6E' },
-  breathBtnStop: { backgroundColor: '#888' },
-  breathBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   sectionHeader: {
     fontSize: 11, fontWeight: '700', color: '#888', textTransform: 'uppercase',

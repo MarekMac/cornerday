@@ -9,10 +9,11 @@ import {
 } from 'react-native';
 
 export type ExerciseKey =
-  | 'body_scan' | 'muscle_relax' | 'gratitude' | 'affirmations'
-  | 'urge_surfing' | 'stop' | 'visualise' | 'worry_drop' | 'cool_down';
+  | 'breathing' | 'body_scan' | 'muscle_relax' | 'gratitude' | 'affirmations'
+  | 'urge_surfing' | 'stop' | 'visualise' | 'worry_drop';
 
 export const EXERCISES: { key: ExerciseKey; emoji: string; title: string; desc: string }[] = [
+  { key: 'breathing',    emoji: '🌬️', title: 'Breathing',    desc: '4-4-4 calm breathing cycle' },
   { key: 'body_scan',    emoji: '🧘', title: 'Body Scan',    desc: 'Guided awareness from feet to head' },
   { key: 'muscle_relax', emoji: '💪', title: 'Muscle Relax', desc: 'Progressive tension and release' },
   { key: 'gratitude',    emoji: '🙏', title: 'Gratitude',    desc: 'Name three things you are thankful for' },
@@ -21,7 +22,6 @@ export const EXERCISES: { key: ExerciseKey; emoji: string; title: string; desc: 
   { key: 'stop',         emoji: '🛑', title: 'STOP',         desc: 'Stop, Take a breath, Observe, Proceed' },
   { key: 'visualise',    emoji: '🌅', title: 'Visualise',    desc: 'Picture your life one year from now' },
   { key: 'worry_drop',   emoji: '✍️', title: 'Worry Drop',   desc: 'Write it down and let it go' },
-  { key: 'cool_down',    emoji: '❄️', title: 'Cool Down',    desc: 'Reset with cold water' },
 ];
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -413,49 +413,62 @@ function WorryDrop() {
   );
 }
 
-// ── 9. Cool Down ──────────────────────────────────────────────────────────────
+// ── 9. Breathing ─────────────────────────────────────────────────────────────
 
-const COOL_SECS = 30;
+type BreathPhase = 'idle' | 'inhale' | 'hold' | 'exhale';
 
-function CoolDown() {
-  const [started, setStarted] = useState(false);
-  const [count, setCount] = useState(COOL_SECS);
-  const [done, setDone] = useState(false);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+function BreathingExercise() {
+  const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState<BreathPhase>('idle');
+  const breathScale = useRef(new Animated.Value(0.5)).current;
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
 
-  const start = () => {
-    setStarted(true);
-    setCount(COOL_SECS);
-    timer.current = setInterval(() => {
-      setCount(c => {
-        if (c <= 1) {
-          clearInterval(timer.current!);
-          setDone(true);
-          return 0;
-        }
-        return c - 1;
-      });
-    }, 1000);
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+      breathScale.stopAnimation();
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+    };
+  }, [breathScale]);
+
+  const runCycle = useCallback(() => {
+    if (!mounted.current) return;
+    setPhase('inhale');
+    Animated.timing(breathScale, { toValue: 1, duration: 4000, useNativeDriver: true }).start(({ finished }) => {
+      if (!finished || !mounted.current) return;
+      setPhase('hold');
+      holdTimer.current = setTimeout(() => {
+        if (!mounted.current) return;
+        setPhase('exhale');
+        Animated.timing(breathScale, { toValue: 0.5, duration: 4000, useNativeDriver: true }).start(({ finished: f }) => {
+          if (f && mounted.current) runCycle();
+        });
+      }, 4000);
+    });
+  }, [breathScale]);
+
+  const start = () => { breathScale.setValue(0.5); setRunning(true); runCycle(); };
+  const stop = () => {
+    breathScale.stopAnimation(); breathScale.setValue(0.5);
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    setRunning(false); setPhase('idle');
   };
 
-  useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
-
-  if (done) return <Wrap><Done message="Your nervous system has reset. The urge is weaker now." /></Wrap>;
+  const phaseLabel = phase === 'inhale' ? 'Breathe in...' : phase === 'hold' ? 'Hold...' : phase === 'exhale' ? 'Breathe out...' : 'Tap to start';
 
   return (
     <Wrap>
-      <Text style={es.gratitudeTitle}>Splash cold water on your face</Text>
-      <Text style={[es.subtleSub, { marginBottom: 8 }]}>
-        Or hold something cold in your hands. Cold activates the dive reflex — it slows your heart rate and calms your nervous system within seconds.
-      </Text>
-      {!started ? (
-        <Btn label="Start 30-second timer" onPress={start} />
-      ) : (
-        <View style={es.coolTimerWrap}>
-          <Text style={es.coolCount}>{count}</Text>
-          <Text style={es.coolCountLabel}>seconds</Text>
-        </View>
-      )}
+      <Text style={es.subtleSub}>4 seconds in · 4 seconds hold · 4 seconds out</Text>
+      <View style={es.breathRing}>
+        <Animated.View style={[es.breathCircle, { transform: [{ scale: breathScale }] }]} />
+        <Text style={es.breathLabel}>{phaseLabel}</Text>
+      </View>
+      <Pressable
+        style={[es.btn, { backgroundColor: running ? '#888' : '#0F6E6E' }]}
+        onPress={running ? stop : start}>
+        <Text style={es.btnTxt}>{running ? 'Stop' : 'Start breathing'}</Text>
+      </Pressable>
     </Wrap>
   );
 }
@@ -464,6 +477,7 @@ function CoolDown() {
 
 export function renderExercise(key: ExerciseKey): React.ReactNode {
   switch (key) {
+    case 'breathing':    return <BreathingExercise />;
     case 'body_scan':    return <BodyScan />;
     case 'muscle_relax': return <MuscleRelax />;
     case 'gratitude':    return <Gratitude />;
@@ -472,7 +486,6 @@ export function renderExercise(key: ExerciseKey): React.ReactNode {
     case 'stop':         return <Stop />;
     case 'visualise':    return <Visualise />;
     case 'worry_drop':   return <WorryDrop />;
-    case 'cool_down':    return <CoolDown />;
   }
 }
 
@@ -536,7 +549,10 @@ const es = StyleSheet.create({
     padding: 14, fontSize: 15, color: '#111', minHeight: 130,
   },
 
-  coolTimerWrap: { alignItems: 'center', paddingVertical: 24 },
-  coolCount: { fontSize: 80, fontWeight: '900', color: '#0F6E6E' },
-  coolCountLabel: { fontSize: 16, color: '#888', marginTop: -8 },
+  breathRing: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  breathCircle: {
+    position: 'absolute', width: 180, height: 180, borderRadius: 90,
+    backgroundColor: '#e6f7f7', borderWidth: 3, borderColor: '#0F6E6E',
+  },
+  breathLabel: { fontSize: 16, fontWeight: '600', color: '#0F6E6E', textAlign: 'center' },
 });
