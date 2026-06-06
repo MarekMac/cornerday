@@ -19,7 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { type GameKey, GAMES, renderGame } from './games';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const GAME_TILE_W = (SCREEN_W - 48) / 3;
+// body padding (16×2=32) + section padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 84
+const GAME_TILE_W = Math.floor((SCREEN_W - 84) / 3);
 
 import { supabase } from '@/lib/supabase';
 
@@ -712,11 +713,11 @@ const s = StyleSheet.create({
   gamesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   gameTile: {
     width: GAME_TILE_W, backgroundColor: '#f4fafa', borderRadius: 12,
-    paddingVertical: 14, paddingHorizontal: 6, alignItems: 'center', gap: 5,
+    paddingVertical: 14, paddingHorizontal: 4, alignItems: 'center', gap: 4,
     borderWidth: 1, borderColor: '#d4eeee',
   },
-  gameTileEmoji: { fontSize: 26 },
-  gameTileTitle: { fontSize: 11, fontWeight: '700', color: '#0F6E6E', textAlign: 'center', lineHeight: 14 },
+  gameTileEmoji: { fontSize: 28 },
+  gameTileTitle: { fontSize: 10, fontWeight: '700', color: '#0F6E6E', textAlign: 'center', lineHeight: 13 },
 
   // Game overlay
   gameOverlay: { flex: 1, backgroundColor: '#f5f5f5' },
