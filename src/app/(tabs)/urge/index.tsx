@@ -254,8 +254,7 @@ export default function UrgeScreen() {
       <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
-            <Text style={s.headerTitle}>Urge Support</Text>
-            <Text style={s.headerSub}>You've got this. One moment at a time.</Text>
+            <Text style={s.headerTitle}>Support</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
