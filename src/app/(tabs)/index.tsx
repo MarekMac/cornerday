@@ -22,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, MILESTONE_NOTIFS_KEY, SAVINGS_GOAL_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, MILESTONE_NOTIFS_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -481,6 +481,37 @@ function SubDayCountdown({ quitDate, nextDays, style }: { quitDate: string; next
   return <Text style={style}>{`${fmtCountdown(remaining)} to reach ${milestoneLabel(nextDays)}`}</Text>;
 }
 
+function SavingsGoalCard({ goal, totalPaid, goalFor, goalIcon, currency }: {
+  goal: number; totalPaid: number; goalFor: string; goalIcon: string; currency: string;
+}) {
+  const pct = Math.min(1, goal > 0 ? totalPaid / goal : 0);
+  const pctDisplay = Math.round(pct * 100);
+  const remaining = Math.max(0, goal - totalPaid);
+  const done = pct >= 1;
+  return (
+    <View style={s.goalCard}>
+      <View style={s.goalRow}>
+        <Text style={s.goalEmoji}>{goalIcon}</Text>
+        <View style={s.goalBody}>
+          <Text style={s.goalLabel}>{done ? 'Goal reached! ' : 'Saving towards'}</Text>
+          <Text style={s.goalName} numberOfLines={1}>{goalFor || 'My goal'}</Text>
+        </View>
+        <View style={s.goalAmts}>
+          <Text style={s.goalPaid}>{fmt(totalPaid, currency)}</Text>
+          <Text style={s.goalTotal}>of {fmt(goal, currency)}</Text>
+        </View>
+      </View>
+      <View style={s.goalBarBg}>
+        <View style={[s.goalBarFill, { width: `${pctDisplay}%` as any }, done && s.goalBarDone]} />
+      </View>
+      <View style={s.goalFootRow}>
+        <Text style={[s.goalPct, done && { color: '#0a7a4e' }]}>{pctDisplay}% complete</Text>
+        {!done && <Text style={s.goalRemaining}>{fmt(remaining, currency)} to go</Text>}
+      </View>
+    </View>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 interface HomeData {
@@ -502,6 +533,8 @@ interface HomeData {
   checklistCompleted: boolean;
   checklistProgress: number; // 0–1
   savingsGoal: number | null;
+  savingsGoalFor: string;
+  savingsGoalIcon: string;
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -598,7 +631,7 @@ export default function HomeScreen() {
     const today = todayStr();
 
     const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes] = await Promise.all([
-      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency').eq('id', user.id).single(),
+      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone').eq('id', user.id).single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
@@ -701,8 +734,10 @@ export default function HomeScreen() {
     }
 
     // Savings goal badges
-    const [savingsGoalRaw, checklistRaw, checklistBadgeSent] = await Promise.all([
+    const [savingsGoalRaw, savingsGoalForRaw, savingsGoalIconRaw, checklistRaw, checklistBadgeSent] = await Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
+      AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
+      AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
       AsyncStorage.getItem(CHECKLIST_KEY),
       AsyncStorage.getItem(CHECKLIST_BADGE_SENT_KEY),
     ]);
@@ -787,6 +822,8 @@ export default function HomeScreen() {
       checklistCompleted,
       checklistProgress: CHECKLIST_TOTAL > 0 ? Math.min(1, checklistChecked / CHECKLIST_TOTAL) : 0,
       savingsGoal: savingsGoalAmount,
+      savingsGoalFor: savingsGoalForRaw ?? '',
+      savingsGoalIcon: savingsGoalIconRaw ?? '🎯',
       todayMood: moodRes.data?.mood ?? null,
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
@@ -1002,6 +1039,17 @@ export default function HomeScreen() {
         {/* Stats */}
         <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} nowMs={nowMs} />
 
+        {/* Savings goal progress */}
+        {data.savingsGoal !== null && data.savingsGoal > 0 && (
+          <SavingsGoalCard
+            goal={data.savingsGoal}
+            totalPaid={data.totalPaid}
+            goalFor={data.savingsGoalFor}
+            goalIcon={data.savingsGoalIcon}
+            currency={data.currency}
+          />
+        )}
+
         {/* Badges */}
         <View style={s.card}>
           <View style={s.milestonesHeader}>
@@ -1197,6 +1245,18 @@ export default function HomeScreen() {
           <View style={s.urgeLogText}>
             <Text style={s.urgeLogTitle}>My Journal</Text>
             <Text style={s.urgeLogSub}>View your urges, payments and savings</Text>
+          </View>
+          <Text style={s.urgeLogArrow}>›</Text>
+        </Pressable>
+
+        {/* Analytics */}
+        <Pressable
+          style={({ pressed }) => [s.urgeLogCard, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/analytics' as any)}>
+          <Text style={s.urgeLogIcon}>📊</Text>
+          <View style={s.urgeLogText}>
+            <Text style={s.urgeLogTitle}>Progress Analytics</Text>
+            <Text style={s.urgeLogSub}>Mood trends, savings history & more</Text>
           </View>
           <Text style={s.urgeLogArrow}>›</Text>
         </Pressable>
@@ -1685,4 +1745,21 @@ const s = StyleSheet.create({
   confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
   confirmReset: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
   confirmResetTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  // Savings goal card
+  goalCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  goalRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  goalEmoji: { fontSize: 26, width: 32, textAlign: 'center' },
+  goalBody: { flex: 1, gap: 2 },
+  goalLabel: { fontSize: 11, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  goalName: { fontSize: 14, fontWeight: '700', color: '#111' },
+  goalAmts: { alignItems: 'flex-end' },
+  goalPaid: { fontSize: 15, fontWeight: '800', color: '#0F6E6E' },
+  goalTotal: { fontSize: 11, color: '#aaa' },
+  goalBarBg: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
+  goalBarFill: { height: '100%', backgroundColor: '#1a9a9a', borderRadius: 4 },
+  goalBarDone: { backgroundColor: '#0a7a4e' },
+  goalFootRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  goalPct: { fontSize: 12, color: '#0F6E6E', fontWeight: '600' },
+  goalRemaining: { fontSize: 12, color: '#aaa' },
 });

@@ -617,7 +617,7 @@ const s = StyleSheet.create({
   crisisNote: { fontSize: 12, color: '#888', textAlign: 'center' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalBackdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22,
     padding: 20, maxHeight: '85%',
