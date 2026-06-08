@@ -1,9 +1,9 @@
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs, router, usePathname } from 'expo-router';
+import { Tabs, router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
-import { Animated, Dimensions, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import {
@@ -25,9 +25,6 @@ const TAB_ICONS: Record<string, IoniconName> = {
   community: 'people',
 };
 
-const TAB_ROUTES = ['index', 'tracker', 'urge', 'coach', 'community'];
-const SCREEN_W = Dimensions.get('window').width;
-
 // ─── Tab Button ───────────────────────────────────────────────────────────────
 
 function TabButton({
@@ -43,32 +40,27 @@ function TabButton({
 }) {
   const iconName = TAB_ICONS[route] ?? 'ellipse';
   const scale = useRef(new Animated.Value(1)).current;
-  const pillAnim = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
-  const labelAnim = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const activeAnim = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(pillAnim, { toValue: isFocused ? 1 : 0, speed: 20, bounciness: 3, useNativeDriver: true }),
-      Animated.spring(labelAnim, { toValue: isFocused ? 1 : 0, speed: 18, bounciness: 6, useNativeDriver: true }),
-    ]).start();
+    Animated.timing(activeAnim, {
+      toValue: isFocused ? 1 : 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
   }, [isFocused]);
 
   const handlePress = () => {
     Animated.sequence([
-      Animated.timing(scale, { toValue: 0.80, duration: 80, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 0.80, duration: 75, useNativeDriver: true }),
       Animated.spring(scale, { toValue: 1, speed: 22, bounciness: 10, useNativeDriver: true }),
     ]).start();
     onPress();
   };
 
   return (
-    <Pressable
-      onPress={handlePress}
-      style={[tbs.tab, isFocused && tbs.tabActive]}
-    >
-      {/* Animated teal pill background */}
-      <Animated.View style={[StyleSheet.absoluteFill, tbs.pillBg, { opacity: pillAnim }]} />
-
+    <Pressable onPress={handlePress} style={[tbs.tab, isFocused && tbs.tabActive]}>
+      <Animated.View style={[StyleSheet.absoluteFill, tbs.pillBg, { opacity: activeAnim }]} />
       <Animated.View style={[tbs.tabInner, { transform: [{ scale }] }]}>
         <Ionicons
           name={isFocused ? iconName : `${iconName}-outline` as IoniconName}
@@ -76,7 +68,7 @@ function TabButton({
           color={isFocused ? '#fff' : '#888'}
         />
         {isFocused && (
-          <Animated.View style={{ opacity: labelAnim, transform: [{ scale: labelAnim }] }}>
+          <Animated.View style={{ opacity: activeAnim, transform: [{ scale: activeAnim }] }}>
             <Text style={tbs.label} numberOfLines={1}>{label}</Text>
           </Animated.View>
         )}
@@ -105,7 +97,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
           return (
             <TabButton
-              key={route.key}
+              key={route.name}
               route={route.name}
               isFocused={isFocused}
               label={options.title ?? route.name}
@@ -146,83 +138,13 @@ const tbs = StyleSheet.create({
   },
   tabActive: { flex: 2 },
   pillBg: { borderRadius: 22, backgroundColor: '#0F6E6E' },
-  tabInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 4,
-  },
+  tabInner: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 4 },
   label: { color: '#fff', fontSize: 12, fontWeight: '700', flexShrink: 1 },
 });
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function TabsLayout() {
-  const pathname = usePathname();
-  const currentIndexRef = useRef(0);
-  const navigateRef = useRef((_i: number) => {});
-
-  // Screen transition animation
-  const screenAnim = useRef(new Animated.Value(0)).current;
-  const dragAnim = useRef(new Animated.Value(0)).current;
-  const directionRef = useRef(0); // -1 left, +1 right
-
-  useEffect(() => {
-    const segment = pathname.replace('/(tabs)', '').replace(/^\//, '').split('/')[0] || 'index';
-    const idx = TAB_ROUTES.indexOf(segment);
-    if (idx !== -1) currentIndexRef.current = idx;
-  }, [pathname]);
-
-  // Fade+slide in when pathname changes
-  useEffect(() => {
-    screenAnim.setValue(directionRef.current * 0.04 * SCREEN_W);
-    Animated.parallel([
-      Animated.spring(screenAnim, { toValue: 0, speed: 22, bounciness: 4, useNativeDriver: true }),
-    ]).start();
-  }, [pathname]);
-
-  navigateRef.current = (index: number) => {
-    const route = TAB_ROUTES[index];
-    router.navigate(route === 'index' ? '/(tabs)' : `/(tabs)/${route}` as any);
-  };
-
-  const swipe = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 30 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
-      onPanResponderMove: (_, g) => {
-        const idx = currentIndexRef.current;
-        const atStart = idx === 0 && g.dx > 0;
-        const atEnd = idx === TAB_ROUTES.length - 1 && g.dx < 0;
-        if (atStart || atEnd) {
-          dragAnim.setValue(g.dx * 0.08); // resist at edges
-        } else {
-          dragAnim.setValue(g.dx * 0.25); // damped follow
-        }
-      },
-      onPanResponderRelease: (_, g) => {
-        const idx = currentIndexRef.current;
-        const shouldNext = g.vx < -0.4 && g.dx < -50 && idx < TAB_ROUTES.length - 1;
-        const shouldPrev = g.vx > 0.4 && g.dx > 50 && idx > 0;
-
-        if (shouldNext || shouldPrev) {
-          directionRef.current = shouldNext ? -1 : 1;
-          const exitX = shouldNext ? -SCREEN_W * 0.15 : SCREEN_W * 0.15;
-          Animated.timing(dragAnim, { toValue: exitX, duration: 120, useNativeDriver: true }).start(() => {
-            dragAnim.setValue(0);
-            navigateRef.current(shouldNext ? idx + 1 : idx - 1);
-          });
-        } else {
-          directionRef.current = 0;
-          Animated.spring(dragAnim, { toValue: 0, speed: 20, bounciness: 6, useNativeDriver: true }).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(dragAnim, { toValue: 0, speed: 20, bounciness: 0, useNativeDriver: true }).start();
-      },
-    })
-  ).current;
-
   useEffect(() => {
     configureNotificationHandler();
     const init = async () => {
@@ -256,42 +178,37 @@ export default function TabsLayout() {
   }, []);
 
   return (
-    <Animated.View
-      style={[{ flex: 1 }, { transform: [{ translateX: Animated.add(screenAnim, dragAnim) }] }]}
-      {...swipe.panHandlers}
+    <Tabs
+      tabBar={props => <CustomTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: { backgroundColor: '#1a1a1a', borderTopWidth: 0, elevation: 0 },
+      }}
     >
-      <Tabs
-        tabBar={props => <CustomTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: { backgroundColor: '#1a1a1a', borderTopWidth: 0, elevation: 0 },
-        }}
-      >
-        <Tabs.Screen name="index" options={{ title: 'Home' }} />
-        <Tabs.Screen
-          name="tracker"
-          options={{ title: 'Tracker' }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => { e.preventDefault(); navigation.navigate('tracker', { screen: 'index' }); },
-          })}
-        />
-        <Tabs.Screen
-          name="urge"
-          options={{ title: 'Support' }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => { e.preventDefault(); navigation.navigate('urge', { screen: 'index' }); },
-          })}
-        />
-        <Tabs.Screen name="coach" options={{ title: 'Coach' }} />
-        <Tabs.Screen
-          name="community"
-          options={{ title: 'Community' }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => { e.preventDefault(); navigation.navigate('community', { screen: 'index' }); },
-          })}
-        />
-        <Tabs.Screen name="account" options={{ href: null }} />
-      </Tabs>
-    </Animated.View>
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen
+        name="tracker"
+        options={{ title: 'Tracker' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('tracker', { screen: 'index' }); },
+        })}
+      />
+      <Tabs.Screen
+        name="urge"
+        options={{ title: 'Support' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('urge', { screen: 'index' }); },
+        })}
+      />
+      <Tabs.Screen name="coach" options={{ title: 'Coach' }} />
+      <Tabs.Screen
+        name="community"
+        options={{ title: 'Community' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('community', { screen: 'index' }); },
+        })}
+      />
+      <Tabs.Screen name="account" options={{ href: null }} />
+    </Tabs>
   );
 }
