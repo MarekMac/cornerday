@@ -68,10 +68,9 @@ export default function PostDetail() {
           if (data) {
             setComments(prev => {
               if (prev.some(c => c.id === (data as any).id)) return prev;
+              setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
               return [...prev, data as Comment];
             });
-            setPost(p => p ? { ...p, comments_count: p.comments_count + 1 } : p);
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
           }
         }
       )
@@ -166,7 +165,6 @@ export default function PostDetail() {
         if (prev.some(c => c.id === (data as any).id)) return prev;
         return [...prev, newComment];
       });
-      setPost(p => p ? { ...p, comments_count: p.comments_count + 1 } : p);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
     }
     setSubmitting(false);
@@ -302,7 +300,7 @@ export default function PostDetail() {
       <View style={s.postMeta}>
         <Pressable onPress={() => inputRef.current?.focus()} hitSlop={6}>
           <Text style={s.metaTxt}>
-            💬 {post.comments_count} {post.comments_count === 1 ? 'comment' : 'comments'}
+            💬 {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
           </Text>
         </Pressable>
         <Pressable style={s.shareBtn} onPress={sharePost} hitSlop={6}>
