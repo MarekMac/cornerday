@@ -71,7 +71,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const visibleRoutes = state.routes.filter(r => r.name !== 'account');
 
   return (
-    <View style={[tbs.wrapper, { paddingBottom: Math.max(insets.bottom + (Platform.OS === 'android' ? 20 : 0), 28) }]}>
+    <View style={[tbs.wrapper, { paddingBottom: Math.max(insets.bottom + (Platform.OS === 'android' ? 12 : 0), 20) }]}>
       <View style={tbs.bar}>
         {visibleRoutes.map((route) => {
           const { options } = descriptors[route.key];
