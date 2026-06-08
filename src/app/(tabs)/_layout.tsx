@@ -107,7 +107,7 @@ const tbs = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 14,
     paddingTop: 6,
-    backgroundColor: '#edf0f0',
+    backgroundColor: '#1a1a1a',
   },
   bar: {
     flexDirection: 'row',
@@ -185,7 +185,7 @@ export default function TabsLayout() {
       tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { backgroundColor: '#edf0f0', borderTopWidth: 0, elevation: 0 },
+        tabBarStyle: { backgroundColor: '#1a1a1a', borderTopWidth: 0, elevation: 0 },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
