@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -10,6 +11,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -746,10 +748,10 @@ export default function HomeScreen() {
     const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
     const newGoalBadges: { user_id: string; badge_type: string }[] = [];
-    if (savingsGoalAmount && !dedupeGuard.has('goal_set')) {
+    if (savingsGoalAmount && !dedupeGuard.has('goal_set') && !alreadyNotified.has('goal_set')) {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_set' });
     }
-    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !dedupeGuard.has('goal_reached')) {
+    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !dedupeGuard.has('goal_reached') && !alreadyNotified.has('goal_reached')) {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_reached' });
     }
     if (newGoalBadges.length > 0) {
@@ -762,6 +764,10 @@ export default function HomeScreen() {
         note: b.badge_type === 'goal_set' ? '📍 Goal Setter badge earned' : '🎊 Savings goal reached',
       }));
       await supabase.from('losses').insert(logRows);
+      // Persist to alreadyNotified before sending — same dedup pattern as streak milestones
+      const newNotified = [...alreadyNotified, ...newGoalBadges.map(b => b.badge_type)];
+      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(newNotified));
+      newGoalBadges.forEach(b => alreadyNotified.add(b.badge_type));
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       for (const b of newGoalBadges) {
         earnedBadges.push(b.badge_type);
@@ -894,6 +900,24 @@ export default function HomeScreen() {
   const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
   const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
 
+  const shareStreak = async () => {
+    const label = streakDays >= 1
+      ? `${streakDays} day${streakDays !== 1 ? 's' : ''}`
+      : `${streakValue} ${streakUnit}`;
+    await Share.share({
+      message: `${label} free from gambling! 💪\n\nThe day you turn it around starts today. #CornerDay`,
+      title: 'My Recovery Streak',
+    });
+  };
+
+  const shareMilestone = async () => {
+    if (!selectedBadge) return;
+    await Share.share({
+      message: `I just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji}\n\n${streakDays} days free from gambling and counting. 💪\n#CornerDay #Recovery`,
+      title: `${selectedBadge.label} Milestone`,
+    });
+  };
+
   const handleMood = async (mood: number, note?: string) => {
     if (!data) return;
     setMoodSubmitting(true);
@@ -1007,7 +1031,12 @@ export default function HomeScreen() {
             <View style={s.streakCard}>
               <CircularProgress progress={progress} next={next} />
               <View style={s.streakRight}>
-                <Text style={s.streakTitle}>Current streak</Text>
+                <View style={s.streakTitleRow}>
+                  <Text style={s.streakTitle}>Current streak</Text>
+                  <Pressable onPress={shareStreak} hitSlop={8}>
+                    <Ionicons name="share-outline" size={15} color="rgba(255,255,255,0.65)" />
+                  </Pressable>
+                </View>
                 <LiveCounter quitDate={data.quitDate} />
                 <View style={s.separator} />
                 {next < 1 && data.quitDate
@@ -1372,9 +1401,17 @@ export default function HomeScreen() {
                 );
               }
             })()}
-            <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setSelectedBadge(null)}>
-              <Text style={s.modalCloseTxt}>Close</Text>
-            </Pressable>
+            <View style={s.modalActions}>
+              {selectedBadge && (data.earnedBadges.includes(selectedBadge.type) || streakMs / 86400000 >= selectedBadge.days) && (
+                <Pressable style={({ pressed }) => [s.modalShareBtn, pressed && { opacity: 0.7 }]} onPress={shareMilestone}>
+                  <Ionicons name="share-outline" size={16} color="#0F6E6E" />
+                  <Text style={s.modalShareTxt}>Share</Text>
+                </Pressable>
+              )}
+              <Pressable style={({ pressed }) => [s.modalClose, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => setSelectedBadge(null)}>
+                <Text style={s.modalCloseTxt}>Close</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1578,6 +1615,7 @@ const s = StyleSheet.create({
     gap: 16,
   },
   streakRight: { flex: 1, gap: 6 },
+  streakTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   streakTitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
   milestoneTxt: { fontSize: 13, color: '#fff', fontWeight: '500' },
@@ -1727,8 +1765,15 @@ const s = StyleSheet.create({
   modalProgressBar: { height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden', marginTop: 4 },
   modalProgressFill: { height: '100%', backgroundColor: '#22c55e', borderRadius: 3 },
   modalMessage: { fontSize: 13, color: '#888', fontStyle: 'italic', textAlign: 'center', lineHeight: 18, marginTop: 8 },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  modalShareBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20,
+    backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#0F6E6E',
+  },
+  modalShareTxt: { color: '#0F6E6E', fontWeight: '700', fontSize: 15 },
   modalClose: {
-    marginTop: 16, backgroundColor: '#0F6E6E', borderRadius: 14,
+    backgroundColor: '#0F6E6E', borderRadius: 14,
     paddingVertical: 14, alignItems: 'center',
   },
   modalCloseTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },

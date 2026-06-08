@@ -14,6 +14,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -368,6 +369,15 @@ export default function TrackerIndex() {
     await fetchAll();
   };
 
+  const shareGoal = async () => {
+    if (!savingsGoal) return;
+    const goalDesc = savingsGoalFor ? `towards ${savingsGoalFor}` : 'and hit my savings goal';
+    await Share.share({
+      message: `I just saved ${fmt(totalManualSavings, currency)} ${goalDesc}! ${savingsGoalIcon}\n\n#CornerDay #Recovery`,
+      title: 'Savings Goal Reached',
+    });
+  };
+
   // Savings goal
   const openGoalModal = () => {
     setGoalInput(savingsGoal ? String(savingsGoal) : '');
@@ -590,6 +600,15 @@ export default function TrackerIndex() {
                 <Ionicons name="chevron-forward" size={16} color="#ccc" />
               )}
             </Pressable>
+            {!!savingsGoal && savingsGoal > 0 && totalManualSavings >= savingsGoal && (
+              <>
+                <View style={s.savingsSep} />
+                <Pressable style={s.goalShareRow} onPress={shareGoal}>
+                  <Text style={s.goalShareTxt}>🎉 Goal reached! Share your win</Text>
+                  <Ionicons name="share-outline" size={15} color="#0F6E6E" />
+                </Pressable>
+              </>
+            )}
           </View>
 
           <View style={s.sectionDivider} />
@@ -1116,6 +1135,12 @@ const s = StyleSheet.create({
   progressTrack: { height: 6, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
   progressLbl: { fontSize: 12, color: '#0F6E6E', fontWeight: '600', textAlign: 'center' },
+
+  goalShareRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 10, paddingHorizontal: 4,
+  },
+  goalShareTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
 
   savingsCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 0 },
   savingsCardTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
