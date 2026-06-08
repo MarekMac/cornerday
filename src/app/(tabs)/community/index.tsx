@@ -206,9 +206,6 @@ export default function CommunityFeed() {
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Text style={s.headerTitle}>Community</Text>
-            <Pressable onPress={() => router.push('/(tabs)/community/new-post' as any)} style={s.writeBtn}>
-              <Ionicons name="create-outline" size={22} color="#fff" />
-            </Pressable>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -259,7 +256,7 @@ export default function CommunityFeed() {
                 style={s.promptBtn}
               >
                 <Ionicons name="create-outline" size={18} color="#fff" />
-                <Text style={s.promptBtnTxt}>Share Your Story</Text>
+                <Text style={s.promptBtnTxt}>Write a Post</Text>
               </LinearGradient>
             </Pressable>
           }
@@ -292,15 +289,14 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 12,
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
-  writeBtn: { padding: 4 },
 
-  tagRow: { paddingHorizontal: 16, paddingVertical: 7, gap: 8, alignItems: 'center' },
+  tagRow: { paddingHorizontal: 16, paddingVertical: 9, gap: 8, alignItems: 'center' },
   tagChip: {
-    paddingHorizontal: 12, paddingVertical: 4,
+    paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
   },
   tagChipActive: { backgroundColor: '#0F6E6E', borderColor: '#0F6E6E' },
-  tagChipTxt: { fontSize: 12, fontWeight: '600', color: '#555' },
+  tagChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
   tagChipTxtActive: { color: '#fff' },
 
   skeletonList: { padding: 16, gap: 12 },
