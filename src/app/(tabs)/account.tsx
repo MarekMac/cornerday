@@ -28,7 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -620,34 +620,47 @@ export default function AccountScreen() {
 
   const executeDeleteAccount = async () => {
     setSigningOut(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await Promise.all([
-        supabase.from('losses').delete().eq('user_id', user.id),
-        supabase.from('streaks').delete().eq('user_id', user.id),
-        supabase.from('badges').delete().eq('user_id', user.id),
-        supabase.from('mood_checkins').delete().eq('user_id', user.id),
-        supabase.from('urge_journal').delete().eq('user_id', user.id),
-        supabase.from('debt_payments').delete().eq('user_id', user.id),
-        supabase.from('debts').delete().eq('user_id', user.id),
-      ]);
-      if (profile?.avatarUrl) {
-        const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
-        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await Promise.all([
+          supabase.from('losses').delete().eq('user_id', user.id),
+          supabase.from('streaks').delete().eq('user_id', user.id),
+          supabase.from('badges').delete().eq('user_id', user.id),
+          supabase.from('mood_checkins').delete().eq('user_id', user.id),
+          supabase.from('urge_journal').delete().eq('user_id', user.id),
+          supabase.from('debt_payments').delete().eq('user_id', user.id),
+          supabase.from('debts').delete().eq('user_id', user.id),
+        ]);
+        if (profile?.avatarUrl) {
+          const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
+          if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+        }
+        await supabase.from('users').delete().eq('id', user.id);
+        try { await supabase.functions.invoke('delete-account'); } catch {}
+        await AsyncStorage.multiRemove([
+          ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
+          MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY,
+          SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY,
+          TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY,
+        ]);
       }
-      await supabase.from('users').delete().eq('id', user.id);
-      await supabase.functions.invoke('delete-account');
-      await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+    } finally {
       await supabase.auth.signOut();
+      setSigningOut(false);
     }
-    setSigningOut(false);
   };
 
   const confirmSignOut = () => setSignOutVisible(true);
 
   const executeSignOut = async () => {
     setSigningOut(true);
-    await AsyncStorage.multiRemove([ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
+    await AsyncStorage.multiRemove([
+      ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
+      MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY,
+      SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY,
+      TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY,
+    ]);
     await supabase.auth.signOut();
   };
 

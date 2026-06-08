@@ -670,10 +670,18 @@ export default function HomeScreen() {
 
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
     if (toAward.length > 0) {
-      await supabase.from('badges').insert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })));
+      // Upsert with ignoreDuplicates — returns only the rows that were actually newly inserted.
+      // This prevents silent insert failures from causing repeated journal entries / notifications.
+      const { data: insertedBadges } = await supabase
+        .from('badges')
+        .upsert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })), { onConflict: 'user_id,badge_type', ignoreDuplicates: true })
+        .select('badge_type');
+      const newlyInserted = new Set((insertedBadges ?? []).map((b: any) => b.badge_type));
+      // Fall back to toAward if the DB returned nothing (e.g., RLS restricts select after insert)
+      const awarded = newlyInserted.size > 0 ? toAward.filter(b => newlyInserted.has(b.type)) : toAward;
 
-      // Log all milestones except 'started' (days=0)
-      const toLog = toAward.filter(b => b.days > 0);
+      // Log journal entries only for badges actually inserted this run
+      const toLog = awarded.filter(b => b.days > 0);
       if (toLog.length > 0) {
         await supabase.from('losses').insert(toLog.map(b => ({
           user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
@@ -682,10 +690,11 @@ export default function HomeScreen() {
       }
 
       // Only notify for badges not yet notified (guards against repeated tab-focus runs)
-      const toNotify = toAward.filter(b => !alreadyNotified.has(b.type));
+      const toNotify = awarded.filter(b => !alreadyNotified.has(b.type));
       if (toNotify.length > 0) {
         const newNotified = [...alreadyNotified, ...toNotify.map(b => b.type)];
         await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(newNotified));
+        toNotify.forEach(b => alreadyNotified.add(b.type));
 
         const { status: notifStatus } = await Notifications.getPermissionsAsync();
         if (notifStatus === 'granted' && (profile?.notif_milestone ?? true)) {
@@ -737,7 +746,7 @@ export default function HomeScreen() {
       .filter(d => d.earned && !dedupeGuard.has(`debt_${d.id}`))
       .map(d => ({ user_id: user.id, badge_type: `debt_${d.id}` }));
     if (newDebtBadges.length > 0) {
-      await supabase.from('badges').insert(newDebtBadges);
+      await supabase.from('badges').upsert(newDebtBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       newDebtBadges.forEach(b => earnedBadges.push(b.badge_type));
     }
 
@@ -760,7 +769,7 @@ export default function HomeScreen() {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_reached' });
     }
     if (newGoalBadges.length > 0) {
-      await supabase.from('badges').insert(newGoalBadges);
+      await supabase.from('badges').upsert(newGoalBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       const logRows = newGoalBadges.map(b => ({
         user_id: user.id,
         type: 'milestone_earned' as const,
