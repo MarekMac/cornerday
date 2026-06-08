@@ -23,9 +23,13 @@ import { type GameKey, GAMES, renderGame } from '@/lib/games';
 import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
 
 const { width: SCREEN_W } = Dimensions.get('window');
+// body padding (16×2=32) + section padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 84
+const GAME_TILE_W = Math.floor((SCREEN_W - 84) / 3);
+// picker overlay has only its own padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 52
 const PICKER_TILE_W = Math.floor((SCREEN_W - 52) / 3);
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 
@@ -124,7 +128,7 @@ const DISTRACTIONS = [
     action: 'expand' as const,
   },
   {
-    emoji: '🎮', label: 'More activities', sub: 'Games, exercises and more',
+    emoji: '🎮', label: 'Play a focus game', sub: 'Engage your mind for a few minutes',
     action: 'game' as const,
   },
 ];
@@ -143,6 +147,7 @@ export default function UrgeScreen() {
   const [motivation, setMotivation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Log urge modal
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
   const [customTrigger, setCustomTrigger] = useState('');
@@ -158,8 +163,6 @@ export default function UrgeScreen() {
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
   const [showGamePicker, setShowGamePicker] = useState(false);
 
-  const scrollRef = useRef<ScrollView>(null);
-  const distractionsY = useRef(0);
   const isMounted = useRef(true);
 
   useEffect(() => { return () => { isMounted.current = false; }; }, []);
@@ -282,9 +285,9 @@ export default function UrgeScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView ref={scrollRef} style={s.body} contentContainerStyle={s.bodyContent}>
+      <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
 
-        {/* Remember your why */}
+        {/* Your why */}
         <View style={s.whyCard}>
           <View style={s.whyInner}>
             <View style={s.whyText}>
@@ -314,73 +317,78 @@ export default function UrgeScreen() {
           </View>
         </View>
 
-        {/* Hero — I'm struggling right now */}
-        <Pressable
-          style={({ pressed }) => [s.heroCard, pressed && { opacity: 0.9 }]}
-          onPress={() => scrollRef.current?.scrollTo({ y: distractionsY.current, animated: true })}>
-          <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.heroGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={s.heroIcon}>🆘</Text>
-            <View style={s.heroText}>
-              <Text style={s.heroTitle}>I'm feeling the urge right now</Text>
-              <Text style={s.heroSub}>Tap to see what can help</Text>
-            </View>
-            <Text style={s.heroArrow}>↓</Text>
-          </LinearGradient>
-        </Pressable>
+        <Text style={s.sectionHeader}>Right now</Text>
 
-        {/* Distractions */}
-        <View
-          onLayout={e => { distractionsY.current = e.nativeEvent.layout.y; }}>
-          <Text style={s.sectionHeader}>Things to try</Text>
-          <View style={s.card}>
-            {DISTRACTIONS.map((d, i) => {
-              const isLast = i === DISTRACTIONS.length - 1;
-              const isExpanded = expandedDistraction === d.label;
-              const isCall = d.action === 'call';
-              const callLabel = trustedContact?.name ? `📞 Call ${trustedContact.name}` : '📞 Call';
-              return (
-                <View key={d.label}>
-                  <Pressable
-                    style={[s.distractionRow, !isLast && !isExpanded && s.distractionBorder]}
-                    onPress={() => handleDistraction(d)}>
-                    <Text style={s.distractionEmoji}>{d.emoji}</Text>
-                    <View style={s.distractionText}>
-                      <Text style={s.distractionLabel}>{d.label}</Text>
-                      <Text style={s.distractionSub}>{d.sub}</Text>
+        {/* Distractions — actionable */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Try a distraction</Text>
+          {DISTRACTIONS.map((d, i) => {
+            const isLast = i === DISTRACTIONS.length - 1;
+            const isExpanded = expandedDistraction === d.label;
+            const isCall = d.action === 'call';
+            const callLabel = trustedContact?.name ? `📞 Call ${trustedContact.name}` : '📞 Call';
+            return (
+              <View key={d.label}>
+                <Pressable
+                  style={[s.distractionRow, !isLast && !isExpanded && s.distractionBorder]}
+                  onPress={() => handleDistraction(d)}>
+                  <Text style={s.distractionEmoji}>{d.emoji}</Text>
+                  <View style={s.distractionText}>
+                    <Text style={s.distractionLabel}>{d.label}</Text>
+                    <Text style={s.distractionSub}>{d.sub}</Text>
+                  </View>
+                  {isCall && trustedContact?.phone ? (
+                    <View style={s.callBtn}>
+                      <Text style={s.callBtnTxt}>{callLabel}</Text>
                     </View>
-                    {isCall && trustedContact?.phone ? (
-                      <View style={s.callBtn}>
-                        <Text style={s.callBtnTxt}>{callLabel}</Text>
-                      </View>
-                    ) : isCall && !trustedContact?.phone ? (
-                      <Text style={s.distractionLink}>Set up ›</Text>
-                    ) : (
-                      <Text style={s.distractionArrow}>{isExpanded ? '∨' : '›'}</Text>
-                    )}
-                  </Pressable>
-                  {isExpanded && 'tip' in d && (
-                    <Text style={[s.distractionTip, !isLast && s.distractionBorder]}>
-                      {d.tip}
-                    </Text>
+                  ) : isCall && !trustedContact?.phone ? (
+                    <Text style={s.distractionLink}>Set up ›</Text>
+                  ) : (
+                    <Text style={s.distractionArrow}>{isExpanded ? '∨' : '›'}</Text>
                   )}
-                </View>
-              );
-            })}
+                </Pressable>
+                {isExpanded && 'tip' in d && (
+                  <Text style={[s.distractionTip, !isLast && s.distractionBorder]}>
+                    {d.tip}
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Focus games grid */}
+        <View style={s.gamesSection}>
+          <Text style={s.gamesSectionTitle}>Focus Games</Text>
+          <Text style={s.gamesSectionSub}>Engage your mind, ease the urge</Text>
+          <View style={s.gamesGrid}>
+            {GAMES.map(game => (
+              <Pressable
+                key={game.key}
+                style={({ pressed }) => [s.gameTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
+                onPress={() => setActiveGame(game.key)}>
+                <Text style={s.gameTileEmoji}>{game.emoji}</Text>
+                <Text style={s.gameTileTitle}>{game.title}</Text>
+              </Pressable>
+            ))}
           </View>
         </View>
 
-        {/* Crisis resources — moved up, before log */}
-        <View style={s.crisisCard}>
-          <Text style={s.crisisTitle}>Need to talk to someone?</Text>
-          <Text style={s.crisisDesc}>
-            National Problem Gambling Helpline — free, confidential, available 24/7
-          </Text>
-          <Pressable
-            style={({ pressed }) => [s.crisisBtn, pressed && { opacity: 0.85 }]}
-            onPress={() => Linking.openURL('tel:18005224700')}>
-            <Text style={s.crisisBtnTxt}>📞  1-800-522-4700</Text>
-          </Pressable>
-          <Text style={s.crisisNote}>Text HOME to 741741 — Crisis Text Line</Text>
+        {/* Exercises grid */}
+        <View style={s.gamesSection}>
+          <Text style={s.gamesSectionTitle}>Guided Exercises</Text>
+          <Text style={s.gamesSectionSub}>Mindfulness and grounding techniques</Text>
+          <View style={s.gamesGrid}>
+            {EXERCISES.map(ex => (
+              <Pressable
+                key={ex.key}
+                style={({ pressed }) => [s.gameTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
+                onPress={() => setActiveExercise(ex.key)}>
+                <Text style={s.gameTileEmoji}>{ex.emoji}</Text>
+                <Text style={s.gameTileTitle}>{ex.title}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <Text style={s.sectionHeader}>When you're ready</Text>
@@ -405,32 +413,46 @@ export default function UrgeScreen() {
 
         {/* Prevention checklist */}
         <Pressable
-          style={({ pressed }) => [s.linkBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.85 }]}
           onPress={() => router.push('/(tabs)/urge/checklist')}>
-          <Text style={s.linkBtnIcon}>✅</Text>
-          <View style={s.linkBtnText}>
-            <Text style={s.linkBtnTitle}>Prevention checklist</Text>
-            <Text style={s.linkBtnSub}>Practical steps to protect your recovery</Text>
+          <Text style={s.checklistBtnIcon}>✅</Text>
+          <View style={s.checklistBtnText}>
+            <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
+            <Text style={s.checklistBtnSub}>Practical steps to protect your recovery</Text>
           </View>
-          <Text style={s.linkBtnChevron}>›</Text>
+          <Text style={s.checklistBtnChevron}>›</Text>
         </Pressable>
+
+        {/* Crisis resources */}
+        <View style={s.crisisCard}>
+          <Text style={s.crisisTitle}>Need more help?</Text>
+          <Text style={s.crisisDesc}>
+            National Problem Gambling Helpline — free, confidential, available 24/7
+          </Text>
+          <Pressable
+            style={({ pressed }) => [s.crisisBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => Linking.openURL('tel:18005224700')}>
+            <Text style={s.crisisBtnTxt}>📞  1-800-522-4700</Text>
+          </Pressable>
+          <Text style={s.crisisNote}>Text HOME to 741741 — Crisis Text Line</Text>
+        </View>
 
         {/* Professional help */}
         <Pressable
-          style={({ pressed }) => [s.linkBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [s.therapyBtn, pressed && { opacity: 0.85 }]}
           onPress={() => setTherapyModalVisible(true)}>
-          <Text style={s.linkBtnIcon}>🏥</Text>
-          <View style={s.linkBtnText}>
-            <Text style={s.linkBtnTitle}>Find professional help</Text>
-            <Text style={s.linkBtnSub}>Official therapy &amp; treatment resources by region</Text>
+          <Text style={s.therapyBtnIcon}>🏥</Text>
+          <View style={s.therapyBtnText}>
+            <Text style={s.therapyBtnTitle}>Find professional help</Text>
+            <Text style={s.therapyBtnSub}>Official therapy &amp; treatment resources by region</Text>
           </View>
-          <Text style={s.linkBtnChevron}>›</Text>
+          <Text style={s.therapyBtnChevron}>›</Text>
         </Pressable>
 
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* Activity picker overlay (games + exercises) */}
+      {/* Game + Exercise picker overlay */}
       {showGamePicker && (
         <View style={StyleSheet.absoluteFill}>
           <SafeAreaView style={s.gameOverlay} edges={['top', 'bottom']}>
@@ -442,28 +464,28 @@ export default function UrgeScreen() {
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.pickerContent}>
               <Text style={s.pickerSectionTitle}>Focus Games</Text>
-              <Text style={s.pickerSectionSub}>Engage your mind, ease the urge</Text>
+              <Text style={s.gamesSectionSub}>Engage your mind, ease the urge</Text>
               <View style={s.pickerGrid}>
                 {GAMES.map(game => (
                   <Pressable
                     key={game.key}
                     style={({ pressed }) => [s.pickerTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
-                    onPress={() => { setShowGamePicker(false); setActiveGame(game.key); }}>
-                    <Text style={s.pickerTileEmoji}>{game.emoji}</Text>
-                    <Text style={s.pickerTileTitle}>{game.title}</Text>
+                    onPress={() => setActiveGame(game.key)}>
+                    <Text style={s.gameTileEmoji}>{game.emoji}</Text>
+                    <Text style={s.gameTileTitle}>{game.title}</Text>
                   </Pressable>
                 ))}
               </View>
-              <Text style={[s.pickerSectionTitle, { marginTop: 16 }]}>Guided Exercises</Text>
-              <Text style={s.pickerSectionSub}>Mindfulness and grounding techniques</Text>
+              <Text style={[s.pickerSectionTitle, { marginTop: 8 }]}>Guided Exercises</Text>
+              <Text style={s.gamesSectionSub}>Mindfulness and grounding techniques</Text>
               <View style={s.pickerGrid}>
                 {EXERCISES.map(ex => (
                   <Pressable
                     key={ex.key}
                     style={({ pressed }) => [s.pickerTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
-                    onPress={() => { setShowGamePicker(false); setActiveExercise(ex.key); }}>
-                    <Text style={s.pickerTileEmoji}>{ex.emoji}</Text>
-                    <Text style={s.pickerTileTitle}>{ex.title}</Text>
+                    onPress={() => setActiveExercise(ex.key)}>
+                    <Text style={s.gameTileEmoji}>{ex.emoji}</Text>
+                    <Text style={s.gameTileTitle}>{ex.title}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -575,6 +597,7 @@ export default function UrgeScreen() {
         <View style={s.modalOverlay}>
           <Pressable style={s.modalBackdrop} onPress={closeModal} />
           <View style={s.sheet}>
+            
             {saved ? (
               <View style={s.savedWrap}>
                 <Text style={s.savedIcon}>✓</Text>
@@ -584,6 +607,7 @@ export default function UrgeScreen() {
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={s.sheetTitle}>What happened?</Text>
 
+                {/* Outcome toggle */}
                 <View style={s.outcomeRow}>
                   <Pressable
                     style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnGreen]}
@@ -676,11 +700,11 @@ const s = StyleSheet.create({
   header: { paddingBottom: 20 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12 },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  headerSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
 
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
 
-  // Why card
   whyCard: {
     backgroundColor: '#fff', borderRadius: 14, padding: 14,
     borderLeftWidth: 4, borderLeftColor: '#0F6E6E',
@@ -706,26 +730,24 @@ const s = StyleSheet.create({
   },
   whyPhotoEmptyTxt: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
 
-  // Hero button
-  heroCard: { borderRadius: 16, overflow: 'hidden' },
-  heroGradient: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingVertical: 18, paddingHorizontal: 18,
-  },
-  heroIcon: { fontSize: 28 },
-  heroText: { flex: 1, gap: 3 },
-  heroTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  heroSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
-  heroArrow: { fontSize: 22, color: 'rgba(255,255,255,0.7)', fontWeight: '300' },
+  logCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
+  logSub: { fontSize: 13, color: '#888', marginTop: -4 },
+  logBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  logBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', borderWidth: 1.5 },
+  logBtnGreen: { backgroundColor: '#e6f7f0', borderColor: '#0a7a4e' },
+  logBtnRed: { backgroundColor: '#fff5f5', borderColor: '#c0392b' },
+  logBtnTxtGreen: { fontSize: 14, fontWeight: '700', color: '#0a7a4e' },
+  logBtnTxtRed: { fontSize: 14, fontWeight: '700', color: '#c0392b' },
 
-  // Section headers
+  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 6 },
+
   sectionHeader: {
     fontSize: 11, fontWeight: '700', color: '#888', textTransform: 'uppercase',
     letterSpacing: 0.8, marginTop: 4, marginBottom: -4, paddingHorizontal: 2,
   },
 
-  // Distractions
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
   distractionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   distractionBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   distractionEmoji: { fontSize: 22 },
@@ -745,7 +767,6 @@ const s = StyleSheet.create({
   },
   callBtnTxt: { fontSize: 13, fontWeight: '700', color: '#0a7a4e' },
 
-  // Crisis card
   crisisCard: {
     backgroundColor: '#fff8f8', borderRadius: 14, padding: 16, gap: 8,
     borderLeftWidth: 4, borderLeftColor: '#c0392b',
@@ -756,30 +777,6 @@ const s = StyleSheet.create({
   crisisBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   crisisNote: { fontSize: 12, color: '#888', textAlign: 'center' },
 
-  // Log card
-  logCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
-  logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
-  logSub: { fontSize: 13, color: '#888', marginTop: -4 },
-  logBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  logBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', borderWidth: 1.5 },
-  logBtnGreen: { backgroundColor: '#e6f7f0', borderColor: '#0a7a4e' },
-  logBtnRed: { backgroundColor: '#fff5f5', borderColor: '#c0392b' },
-  logBtnTxtGreen: { fontSize: 14, fontWeight: '700', color: '#0a7a4e' },
-  logBtnTxtRed: { fontSize: 14, fontWeight: '700', color: '#c0392b' },
-
-  // Shared link-style buttons (checklist + professional help)
-  linkBtn: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1, borderColor: '#a8d8d0',
-  },
-  linkBtnIcon: { fontSize: 24 },
-  linkBtnText: { flex: 1, gap: 2 },
-  linkBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
-  linkBtnSub: { fontSize: 12, color: '#888' },
-  linkBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
-
-  // Modals / sheets
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: {
@@ -827,20 +824,72 @@ const s = StyleSheet.create({
   savedIcon: { fontSize: 40, color: '#0a7a4e' },
   savedTxt: { fontSize: 18, fontWeight: '700', color: '#0a7a4e' },
 
-  // Activity picker
+  checklistBtn: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: '#a8d8d0',
+  },
+  checklistBtnIcon: { fontSize: 24 },
+  checklistBtnText: { flex: 1, gap: 2 },
+  checklistBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
+  checklistBtnSub: { fontSize: 12, color: '#888' },
+  checklistBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
+
+  therapyBtn: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: '#a8d8d0',
+  },
+  therapyBtnIcon: { fontSize: 24 },
+  therapyBtnText: { flex: 1, gap: 2 },
+  therapyBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
+  therapyBtnSub: { fontSize: 12, color: '#888' },
+  therapyBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
+
+  therapyHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: '#ddd',
+    alignSelf: 'center', marginBottom: 16,
+  },
+  therapyModalTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center' },
+  therapyModalSub: { fontSize: 13, color: '#888', textAlign: 'center', marginTop: 4 },
+
+  therapySection: { marginBottom: 8 },
+  therapyRegion: { fontSize: 14, fontWeight: '700', color: '#0F6E6E', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 4 },
+
+  therapyItem: { paddingVertical: 12, gap: 4 },
+  therapyItemBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  therapyItemName: { fontSize: 14, fontWeight: '700', color: '#111' },
+  therapyItemDesc: { fontSize: 12, color: '#888' },
+  therapyItemBtns: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  therapyCallBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#ffcdd2' },
+  therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: '#c0392b' },
+  therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#a8d8d0' },
+  therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
+
+  // Game/exercise picker
   pickerContent: { padding: 16, paddingBottom: 32, gap: 8 },
   pickerSectionTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 2 },
-  pickerSectionSub: { fontSize: 12, color: '#888', marginBottom: 14 },
   pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pickerTile: {
     width: PICKER_TILE_W, backgroundColor: '#f4fafa', borderRadius: 12,
     paddingVertical: 14, paddingHorizontal: 4, alignItems: 'center', gap: 4,
     borderWidth: 1, borderColor: '#d4eeee',
   },
-  pickerTileEmoji: { fontSize: 28 },
-  pickerTileTitle: { fontSize: 10, fontWeight: '700', color: '#0F6E6E', textAlign: 'center', lineHeight: 13 },
 
-  // Game/exercise overlay
+  // Focus games
+  gamesSection: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
+  gamesSectionTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 2 },
+  gamesSectionSub: { fontSize: 12, color: '#888', marginBottom: 14 },
+  gamesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  gameTile: {
+    width: GAME_TILE_W, backgroundColor: '#f4fafa', borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 4, alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: '#d4eeee',
+  },
+  gameTileEmoji: { fontSize: 28 },
+  gameTileTitle: { fontSize: 10, fontWeight: '700', color: '#0F6E6E', textAlign: 'center', lineHeight: 13 },
+
+  // Game overlay
   gameOverlay: { flex: 1, backgroundColor: '#f5f5f5' },
   gameOverlayHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -853,23 +902,4 @@ const s = StyleSheet.create({
     backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center',
   },
   gameCloseBtnTxt: { fontSize: 15, color: '#555', fontWeight: '600' },
-
-  // Professional help modal
-  therapyHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#ddd',
-    alignSelf: 'center', marginBottom: 16,
-  },
-  therapyModalTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center' },
-  therapyModalSub: { fontSize: 13, color: '#888', textAlign: 'center', marginTop: 4 },
-  therapySection: { marginBottom: 8 },
-  therapyRegion: { fontSize: 14, fontWeight: '700', color: '#0F6E6E', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 4 },
-  therapyItem: { paddingVertical: 12, gap: 4 },
-  therapyItemBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
-  therapyItemName: { fontSize: 14, fontWeight: '700', color: '#111' },
-  therapyItemDesc: { fontSize: 12, color: '#888' },
-  therapyItemBtns: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  therapyCallBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#ffcdd2' },
-  therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: '#c0392b' },
-  therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#a8d8d0' },
-  therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
 });
