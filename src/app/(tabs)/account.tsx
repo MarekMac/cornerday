@@ -392,7 +392,8 @@ export default function AccountScreen() {
       mediaTypes: 'images',
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 0.5,
+      exif: false,
     });
     if (result.canceled) return;
 
