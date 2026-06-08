@@ -49,8 +49,36 @@ export default function PostDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => { loadAll(); }, [id]);
+  useEffect(() => {
+    loadAll();
+
+    const channel = supabase
+      .channel(`comments-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'community_comments', filter: `post_id=eq.${id}` },
+        async (payload) => {
+          const { data } = await supabase
+            .from('community_comments')
+            .select('id, user_id, content, created_at, users(display_name)')
+            .eq('id', payload.new.id)
+            .single();
+          if (data) {
+            setComments(prev => {
+              if (prev.some(c => c.id === (data as any).id)) return prev;
+              return [...prev, data as Comment];
+            });
+            setPost(p => p ? { ...p, comments_count: p.comments_count + 1 } : p);
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [id]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -134,8 +162,12 @@ export default function PostDetail() {
         ...(data as any),
         users: { display_name: userData?.display_name ?? user?.email ?? '?' },
       };
-      setComments(prev => [...prev, newComment]);
+      setComments(prev => {
+        if (prev.some(c => c.id === (data as any).id)) return prev;
+        return [...prev, newComment];
+      });
       setPost(p => p ? { ...p, comments_count: p.comments_count + 1 } : p);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
     }
     setSubmitting(false);
   };
@@ -304,6 +336,7 @@ export default function PostDetail() {
         keyboardVerticalOffset={0}
       >
         <FlatList
+          ref={flatListRef}
           data={comments}
           keyExtractor={c => c.id}
           ListHeaderComponent={ListHeader}

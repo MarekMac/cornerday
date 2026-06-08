@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
+  BackHandler,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,6 +24,28 @@ export default function NewPost() {
   const [content, setContent] = useState('');
   const [tag, setTag] = useState<CommunityTag | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleBack = () => {
+    if (content.trim().length > 0) {
+      Alert.alert('Discard story?', "You'll lose what you've written.", [
+        { text: 'Keep writing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+      ]);
+    } else {
+      router.back();
+    }
+  };
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (content.trim().length > 0) {
+        handleBack();
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [content]);
 
   const submit = async () => {
     if (!tag) { Alert.alert('Pick a tag', 'Select a tag that fits your story.'); return; }
@@ -48,7 +71,7 @@ export default function NewPost() {
         <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
           <SafeAreaView edges={['top']}>
             <View style={s.headerRow}>
-              <Pressable onPress={() => router.back()} style={s.backBtn}>
+              <Pressable onPress={handleBack} style={s.backBtn}>
                 <Ionicons name="arrow-back" size={22} color="#fff" />
               </Pressable>
               <Text style={s.headerTitle}>Share Your Story</Text>
@@ -79,6 +102,7 @@ export default function NewPost() {
             <TextInput
               style={s.input}
               multiline
+              autoFocus
               placeholder="Share what's on your mind — a win, a struggle, or where you are today..."
               placeholderTextColor="#aaa"
               value={content}
