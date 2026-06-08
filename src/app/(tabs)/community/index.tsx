@@ -160,7 +160,7 @@ export default function CommunityFeed() {
 
   const renderPost = ({ item }: { item: Post }) => {
     const color = avatarColor(item.user_id);
-    const name = item.users?.display_name ?? '?';
+    const name = item.users?.display_name ?? 'Anonymous';
     const reacted = !!userReactions[item.id];
     return (
       <Pressable
@@ -210,18 +210,21 @@ export default function CommunityFeed() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagRow}>
-        {ALL_TAGS.map((t, i) => (
-          <Pressable
-            key={t}
-            style={[s.tagChip, activeTag === t && s.tagChipActive, i === ALL_TAGS.length - 1 && { marginRight: 16 }]}
-            onPress={() => changeTag(t)}
-          >
-            <Text style={[s.tagChipTxt, activeTag === t && s.tagChipTxtActive]}>{t}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <View style={s.tagBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagRow}>
+          {ALL_TAGS.map((t, i) => (
+            <Pressable
+              key={t}
+              style={[s.tagChip, activeTag === t && s.tagChipActive, i === ALL_TAGS.length - 1 && { marginRight: 16 }]}
+              onPress={() => changeTag(t)}
+            >
+              <Text style={[s.tagChipTxt, activeTag === t && s.tagChipTxtActive]}>{t}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
 
+      <View style={{ flex: 1 }}>
       {loading ? (
         <View style={s.skeletonList}>
           {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
@@ -276,6 +279,7 @@ export default function CommunityFeed() {
           }
         />
       )}
+      </View>
     </View>
   );
 }
@@ -290,7 +294,8 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
 
-  tagRow: { paddingLeft: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center' },
+  tagBar: { paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd' },
+  tagRow: { paddingLeft: 16, flexDirection: 'row', alignItems: 'center' },
   tagChip: {
     paddingHorizontal: 16, paddingVertical: 8, marginRight: 8,
     borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',

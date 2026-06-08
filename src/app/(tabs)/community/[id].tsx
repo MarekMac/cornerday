@@ -159,7 +159,7 @@ export default function PostDetail() {
     if (!error && data) {
       const newComment: Comment = {
         ...(data as any),
-        users: { display_name: userData?.display_name ?? user?.email ?? '?' },
+        users: { display_name: userData?.display_name ?? user?.email ?? 'Anonymous' },
       };
       setComments(prev => {
         if (prev.some(c => c.id === (data as any).id)) return prev;
@@ -253,7 +253,7 @@ export default function PostDetail() {
     );
   }
 
-  const postAuthor = post.users?.display_name ?? '?';
+  const postAuthor = post.users?.display_name ?? 'Anonymous';
   const postColor = avatarColor(post.user_id);
 
   const ListHeader = (
@@ -342,7 +342,7 @@ export default function PostDetail() {
           contentContainerStyle={s.list}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
-            const cName = item.users?.display_name ?? '?';
+            const cName = item.users?.display_name ?? 'Anonymous';
             const cColor = avatarColor(item.user_id);
             return (
               <View style={s.commentRow}>
