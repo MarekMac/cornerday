@@ -428,9 +428,20 @@ export default function AccountScreen() {
       await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
       setProfile(prev => prev ? { ...prev, avatarUrl: publicUrl } : prev);
       setGlobalAvatarUrl(publicUrl);
-    } catch (err) {
-      console.error('Avatar upload error:', err);
-      Alert.alert('Upload failed', 'Could not upload photo. Please try again.');
+    } catch (err: any) {
+      const msg: string = err?.message ?? '';
+      if (msg.toLowerCase().includes('maximum allowed size') || msg.toLowerCase().includes('too large') || msg.toLowerCase().includes('exceeded')) {
+        Alert.alert(
+          'Photo too large',
+          'This image is too big to upload. Please choose a smaller photo or crop it more tightly.',
+          [
+            { text: 'Try another photo', onPress: pickAvatar },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
+      } else {
+        Alert.alert('Upload failed', 'Could not upload photo. Please try again.');
+      }
     }
     setUploadingAvatar(false);
   };
