@@ -345,15 +345,13 @@ export default function SignupScreen() {
             </Text>
           </Pressable>
 
-          {!isSignIn && (
-            <Text style={styles.privacy}>
-              By creating an account you agree to our{' '}
-              <Text style={styles.privacyLink} onPress={() => router.push('/privacy-policy')}>
-                Privacy Policy
-              </Text>
-              . Your data is private and never sold.
+          <Text style={styles.privacy}>
+            {isSignIn ? 'By signing in you agree to our' : 'By creating an account you agree to our'}{' '}
+            <Text style={styles.privacyLink} onPress={() => router.push('/privacy-policy')}>
+              Privacy Policy
             </Text>
-          )}
+            . Your data is private and never sold.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
