@@ -593,22 +593,20 @@ export default function TrackerIndex() {
                 )}
               </View>
               {savingsGoal ? (
-                <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 12, fontWeight: '600', textAlign: 'right', maxWidth: 150 }]}>
-                  {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
-                </Text>
+                <View style={s.goalAmtRow}>
+                  <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 12, fontWeight: '600', textAlign: 'right' }]}>
+                    {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
+                  </Text>
+                  {totalManualSavings >= savingsGoal && (
+                    <Pressable onPress={shareGoal} hitSlop={8}>
+                      <Ionicons name="share-outline" size={15} color="#0F6E6E" />
+                    </Pressable>
+                  )}
+                </View>
               ) : (
                 <Ionicons name="chevron-forward" size={16} color="#ccc" />
               )}
             </Pressable>
-            {!!savingsGoal && savingsGoal > 0 && totalManualSavings >= savingsGoal && (
-              <>
-                <View style={s.savingsSep} />
-                <Pressable style={s.goalShareRow} onPress={shareGoal}>
-                  <Text style={s.goalShareTxt}>🎉 Goal reached! Share your win</Text>
-                  <Ionicons name="share-outline" size={15} color="#0F6E6E" />
-                </Pressable>
-              </>
-            )}
           </View>
 
           <View style={s.sectionDivider} />
@@ -1136,11 +1134,7 @@ const s = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
   progressLbl: { fontSize: 12, color: '#0F6E6E', fontWeight: '600', textAlign: 'center' },
 
-  goalShareRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 10, paddingHorizontal: 4,
-  },
-  goalShareTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
+  goalAmtRow: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 150 },
 
   savingsCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 0 },
   savingsCardTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },

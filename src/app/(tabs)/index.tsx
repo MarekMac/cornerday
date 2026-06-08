@@ -1068,16 +1068,6 @@ export default function HomeScreen() {
         {/* Stats */}
         <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} nowMs={nowMs} />
 
-        {/* Savings goal progress */}
-        {data.savingsGoal !== null && data.savingsGoal > 0 && (
-          <SavingsGoalCard
-            goal={data.savingsGoal}
-            totalPaid={data.totalPaid}
-            goalFor={data.savingsGoalFor}
-            goalIcon={data.savingsGoalIcon}
-            currency={data.currency}
-          />
-        )}
 
         {/* Badges */}
         <View style={s.card}>
