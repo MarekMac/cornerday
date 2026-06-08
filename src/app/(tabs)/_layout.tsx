@@ -2,8 +2,7 @@ import { Tabs, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
-import { Image, TouchableOpacity, View } from 'react-native';
-import { useUser } from '@/context/user';
+import { TouchableOpacity } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import {
   configureNotificationHandler,
@@ -21,7 +20,6 @@ function tabIcon(name: IoniconName, focused: boolean) {
 }
 
 export default function TabsLayout() {
-  const { avatarUrl } = useUser();
 
   useEffect(() => {
     configureNotificationHandler();
@@ -121,14 +119,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="account"
-        options={{
-          title: 'Account',
-          tabBarIcon: ({ focused }) => avatarUrl ? (
-            <View style={{ width: 26, height: 26, borderRadius: 13, overflow: 'hidden', borderWidth: focused ? 2 : 0, borderColor: '#0F6E6E' }}>
-              <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} />
-            </View>
-          ) : tabIcon('person', focused),
-        }}
+        options={{ href: null }}
       />
     </Tabs>
   );

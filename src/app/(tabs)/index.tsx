@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,6 +19,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUser } from '@/context/user';
 import Svg, { Circle } from 'react-native-svg';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -581,6 +583,7 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
 }
 
 export default function HomeScreen() {
+  const { avatarUrl } = useUser();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1021,10 +1024,19 @@ export default function HomeScreen() {
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <View style={s.headerTop}>
-              <View>
+              <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={s.greeting}>{getGreeting(data.displayName)}</Text>
                 <Text style={s.quote} numberOfLines={2}>"{QUOTES[quoteIndex]}"</Text>
               </View>
+              <Pressable onPress={() => router.push('/(tabs)/account' as any)} hitSlop={10}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={s.headerAvatar} />
+                ) : (
+                  <View style={s.headerAvatarFallback}>
+                    <Ionicons name="person" size={18} color="#0F6E6E" />
+                  </View>
+                )}
+              </Pressable>
             </View>
 
             {/* Streak card inside header */}
@@ -1592,6 +1604,8 @@ const s = StyleSheet.create({
   header: { paddingBottom: 20 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12, gap: 20 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  headerAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' },
+  headerAvatarFallback: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   greeting: { fontSize: 21, fontWeight: '700', color: '#fff' },
   quote: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontStyle: 'italic', marginTop: 4 },
 
