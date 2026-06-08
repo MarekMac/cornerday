@@ -211,10 +211,10 @@ export default function CommunityFeed() {
       </LinearGradient>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagRow}>
-        {ALL_TAGS.map(t => (
+        {ALL_TAGS.map((t, i) => (
           <Pressable
             key={t}
-            style={[s.tagChip, activeTag === t && s.tagChipActive]}
+            style={[s.tagChip, activeTag === t && s.tagChipActive, i === ALL_TAGS.length - 1 && { marginRight: 16 }]}
             onPress={() => changeTag(t)}
           >
             <Text style={[s.tagChipTxt, activeTag === t && s.tagChipTxtActive]}>{t}</Text>
@@ -290,13 +290,14 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
 
-  tagRow: { paddingHorizontal: 16, paddingVertical: 9, gap: 8, alignItems: 'center' },
+  tagRow: { paddingLeft: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center' },
   tagChip: {
-    paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
+    paddingHorizontal: 16, paddingVertical: 8, marginRight: 8,
+    borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
+    flexShrink: 0,
   },
   tagChipActive: { backgroundColor: '#0F6E6E', borderColor: '#0F6E6E' },
-  tagChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
+  tagChipTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
   tagChipTxtActive: { color: '#fff' },
 
   skeletonList: { padding: 16, gap: 12 },
