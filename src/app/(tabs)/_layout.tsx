@@ -1,9 +1,9 @@
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs, router } from 'expo-router';
+import { Tabs, router, usePathname } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import {
@@ -147,7 +147,39 @@ const tbs = StyleSheet.create({
   },
 });
 
+const TAB_ROUTES = ['index', 'tracker', 'urge', 'coach', 'community'];
+
 export default function TabsLayout() {
+  const pathname = usePathname();
+  const currentIndexRef = useRef(0);
+  const navigateRef = useRef((_i: number) => {});
+
+  useEffect(() => {
+    const segment = pathname.replace('/(tabs)', '').replace(/^\//, '').split('/')[0] || 'index';
+    const idx = TAB_ROUTES.indexOf(segment);
+    if (idx !== -1) currentIndexRef.current = idx;
+  }, [pathname]);
+
+  navigateRef.current = (index: number) => {
+    const route = TAB_ROUTES[index];
+    router.navigate(route === 'index' ? '/(tabs)' : `/(tabs)/${route}` as any);
+  };
+
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 30 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderRelease: (_, g) => {
+        const idx = currentIndexRef.current;
+        if (g.vx < -0.4 && g.dx < -50 && idx < TAB_ROUTES.length - 1) {
+          navigateRef.current(idx + 1);
+        } else if (g.vx > 0.4 && g.dx > 50 && idx > 0) {
+          navigateRef.current(idx - 1);
+        }
+      },
+    })
+  ).current;
+
   useEffect(() => {
     configureNotificationHandler();
     const init = async () => {
@@ -181,6 +213,7 @@ export default function TabsLayout() {
   }, []);
 
   return (
+    <View style={{ flex: 1 }} {...swipe.panHandlers}>
     <Tabs
       tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{
@@ -213,5 +246,6 @@ export default function TabsLayout() {
       />
       <Tabs.Screen name="account" options={{ href: null }} />
     </Tabs>
+    </View>
   );
 }
