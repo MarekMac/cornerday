@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <clipPath id="iconClip">
+      <rect width="200" height="200" rx="46" ry="46"/>
+    </clipPath>
+
+    <!-- Background: warm peach bottom → light teal-green top -->
+    <linearGradient id="bgGrad" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%"   stop-color="#8ed2be"/>
+      <stop offset="100%" stop-color="#f5b896"/>
+    </linearGradient>
+
+    <!-- Left dark teal band: solid teal fading to transparent at very bottom -->
+    <linearGradient id="leftGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0c6e6e"/>
+      <stop offset="58%"  stop-color="#0c6e6e"/>
+      <stop offset="100%" stop-color="#0c6e6e" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Right lighter teal band: greenish at top → medium teal at bottom -->
+    <linearGradient id="rightGrad" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0%"   stop-color="#60c8b0"/>
+      <stop offset="100%" stop-color="#138888"/>
+    </linearGradient>
+  </defs>
+
+  <g clip-path="url(#iconClip)">
+    <!-- Background -->
+    <rect width="200" height="200" fill="url(#bgGrad)"/>
+
+    <!--
+      S-curve path anatomy (viewBox 200x200):
+        Left edge of cream strip:  starts x≈74 at top, bulges right to x≈100 at mid, pulls left to x≈54 at bottom
+        Right edge of cream strip: starts x≈106 at top, bulges right to x≈132 at mid, pulls left to x≈86 at bottom
+    -->
+
+    <!-- Left dark teal region -->
+    <path d="
+      M 0,0 L 74,0
+      C 76,60  100,90  96,120
+      C 92,150  60,168  54,200
+      L 0,200 Z"
+      fill="url(#leftGrad)"/>
+
+    <!-- Right lighter teal region -->
+    <path d="
+      M 106,0 L 200,0 L 200,200 L 86,200
+      C 80,168  110,150  116,120
+      C 122,90  106,60  106,0 Z"
+      fill="url(#rightGrad)"/>
+
+    <!-- Warm cream winding path -->
+    <path d="
+      M 74,0
+      C 76,60  100,90  96,120
+      C 92,150  60,168  54,200
+      L 86,200
+      C 80,168  110,150  116,120
+      C 122,90  106,60  106,0 Z"
+      fill="#f2e5d6"/>
+  </g>
+</svg>
