@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import Logo from '@/components/Logo';
 
 const { width: SW, height: SH } = Dimensions.get('screen');
 
@@ -37,9 +38,7 @@ export function AnimatedSplashOverlay() {
         style={StyleSheet.absoluteFill}
       />
       <Animated.View entering={logoKeyframe.duration(SPLASH_DURATION * 0.55)} style={styles.content}>
-        <View style={styles.logoBox}>
-          <Text style={styles.logoText}>CD</Text>
-        </View>
+        <Logo size={96} />
         <Text style={styles.appName}>CornerDay</Text>
         <Text style={styles.tagline}>The day you turn it around{'\n'}starts today.</Text>
       </Animated.View>
@@ -61,20 +60,6 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     gap: 12,
-  },
-  logoBox: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  logoText: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#fff',
   },
   appName: {
     fontSize: 38,

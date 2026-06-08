@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
+import Logo from '@/components/Logo';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -18,9 +19,7 @@ export default function WelcomeScreen() {
     <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']} style={styles.gradient}>
       <SafeAreaView style={styles.safe}>
         <View style={styles.hero}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoText}>CD</Text>
-          </View>
+          <Logo size={100} />
           <Text style={styles.appName}>CornerDay</Text>
           <Text style={styles.tagline}>Turn the corner.{'\n'}Build a better tomorrow.</Text>
         </View>
@@ -56,20 +55,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,
-  },
-  logoBox: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  logoText: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#fff',
   },
   appName: {
     fontSize: 42,
