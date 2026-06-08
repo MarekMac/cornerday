@@ -107,6 +107,19 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="community"
+        options={{
+          title: 'Community',
+          tabBarIcon: ({ focused }) => tabIcon('people', focused),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('community', { screen: 'index' });
+          },
+        })}
+      />
+      <Tabs.Screen
         name="account"
         options={{
           title: 'Account',
