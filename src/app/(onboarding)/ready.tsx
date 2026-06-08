@@ -76,6 +76,12 @@ export default function ReadyScreen() {
     setLoading(true);
     setError('');
 
+    if (!username.trim()) {
+      setError('Please enter a username.');
+      setLoading(false);
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setError('Session expired. Please sign in again.');

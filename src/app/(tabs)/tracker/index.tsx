@@ -170,6 +170,8 @@ export default function TrackerIndex() {
 
   // Swipe refs — one per debt card
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
+  // Prevent useFocusEffect from duplicating the initial useEffect fetch
+  const initialFetchDone = useRef(false);
 
   const fetchAll = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -198,8 +200,8 @@ export default function TrackerIndex() {
     setSavingsGoalIcon(rawIcon ?? '🎯');
   }, []);
 
-  useEffect(() => { fetchAll().finally(() => setLoading(false)); }, [fetchAll]);
-  useFocusEffect(useCallback(() => { fetchAll(); }, [fetchAll]));
+  useEffect(() => { fetchAll().finally(() => { setLoading(false); initialFetchDone.current = true; }); }, [fetchAll]);
+  useFocusEffect(useCallback(() => { if (initialFetchDone.current) fetchAll(); }, [fetchAll]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

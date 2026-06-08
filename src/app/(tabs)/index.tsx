@@ -601,6 +601,7 @@ export default function HomeScreen() {
   const badgeScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
   const fetchingRef = useRef(false);
+  const moodScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [moodCardY, setMoodCardY] = useState(0);
   const [badgeMsgIndex, setBadgeMsgIndex] = useState(0);
   const [editingMood, setEditingMood] = useState(false);
@@ -663,7 +664,8 @@ export default function HomeScreen() {
     // alreadyNotified (AsyncStorage) — blocks re-firing the notification even if the DB
     //   insert hasn't landed yet or fetchData runs again on tab focus
     const notifRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
-    const alreadyNotified = new Set<string>(notifRaw ? JSON.parse(notifRaw) : []);
+    let alreadyNotified = new Set<string>();
+    try { alreadyNotified = new Set<string>(notifRaw ? JSON.parse(notifRaw) : []); } catch { /* corrupted, start fresh */ }
     const dedupeGuard = new Set([...earnedBadges]);
 
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
@@ -792,7 +794,8 @@ export default function HomeScreen() {
     }
 
     // Prevention checklist badge — driven by AsyncStorage, no DB insert needed
-    const checklistData: Record<string, boolean> = checklistRaw ? JSON.parse(checklistRaw) : {};
+    let checklistData: Record<string, boolean> = {};
+    try { checklistData = checklistRaw ? JSON.parse(checklistRaw) : {}; } catch { /* corrupted, treat as empty */ }
     const checklistChecked = Object.values(checklistData).filter(Boolean).length;
     const checklistCompleted = checklistChecked >= CHECKLIST_TOTAL;
     if (checklistCompleted && !checklistBadgeSent) {
@@ -874,7 +877,10 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      if (moodScrollTimerRef.current) clearTimeout(moodScrollTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -886,9 +892,10 @@ export default function HomeScreen() {
     const screenWidth = Dimensions.get('window').width;
     const cardPadding = 48; // card horizontal padding both sides
     const offset = targetIdx * ITEM_WIDTH - (screenWidth - cardPadding - 57) / 2;
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       badgeScrollRef.current?.scrollTo({ x: Math.max(0, offset), animated: false });
     }, 100);
+    return () => clearTimeout(timer);
   }, [data?.earnedBadges.length]);
 
   const onRefresh = useCallback(async () => {
@@ -1217,7 +1224,10 @@ export default function HomeScreen() {
                       onChangeText={setMoodNote}
                       maxLength={200}
                       returnKeyType="done"
-                      onFocus={() => setTimeout(() => bodyScrollRef.current?.scrollTo({ y: moodCardY, animated: true }), 300)}
+                      onFocus={() => {
+                        if (moodScrollTimerRef.current) clearTimeout(moodScrollTimerRef.current);
+                        moodScrollTimerRef.current = setTimeout(() => bodyScrollRef.current?.scrollTo({ y: moodCardY, animated: true }), 300);
+                      }}
                     />
                     <Pressable
                       onPress={() => editMoodValue && handleMood(editMoodValue, moodNote)}

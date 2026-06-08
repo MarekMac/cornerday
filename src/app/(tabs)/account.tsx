@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -163,6 +163,7 @@ export default function AccountScreen() {
 
   const [exportLoading, setExportLoading] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
+  const emailCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showSpendingModal, setShowSpendingModal] = useState(false);
 
@@ -237,6 +238,7 @@ export default function AccountScreen() {
       notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
     });
     setGlobalAvatarUrl(resolvedAvatar);
+    return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
   }, []);
 
   useEffect(() => {
@@ -769,7 +771,8 @@ export default function AccountScreen() {
               if (!profile?.email) return;
               await Clipboard.setStringAsync(profile.email);
               setEmailCopied(true);
-              setTimeout(() => setEmailCopied(false), 2000);
+              if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current);
+              emailCopyTimerRef.current = setTimeout(() => setEmailCopied(false), 2000);
             }}
             style={s.emailRow}>
             <Text style={s.email}>{profile?.email}</Text>

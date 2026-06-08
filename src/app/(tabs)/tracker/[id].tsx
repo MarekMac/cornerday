@@ -126,28 +126,31 @@ export default function DebtDetailScreen() {
 
     setSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('debt_payments').insert({
-        user_id: user.id, debt_id: debt.id,
-        amount: val, note: note.trim() || null,
-      });
-      if (isPayingOff) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '🎉 Debt paid off!',
-            body: `You've fully paid off "${debt.name}". That's a huge step — well done.`,
-            data: { screen: '/(tabs)/tracker' },
-          },
-          trigger: null,
-        });
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'debt_paid_off', amount: Number(debt.total_amount),
-          category: 'Debt', note: debt.name,
-        });
-      }
-      setAmount(''); setNote('');
-      await fetchData();
+    if (!user) {
+      setSubmitting(false);
+      Alert.alert('Session expired', 'Please sign in again.');
+      return;
     }
+    await supabase.from('debt_payments').insert({
+      user_id: user.id, debt_id: debt.id,
+      amount: val, note: note.trim() || null,
+    });
+    if (isPayingOff) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🎉 Debt paid off!',
+          body: `You've fully paid off "${debt.name}". That's a huge step — well done.`,
+          data: { screen: '/(tabs)/tracker' },
+        },
+        trigger: null,
+      });
+      await supabase.from('losses').insert({
+        user_id: user.id, type: 'debt_paid_off', amount: Number(debt.total_amount),
+        category: 'Debt', note: debt.name,
+      });
+    }
+    setAmount(''); setNote('');
+    await fetchData();
     setSubmitting(false);
   };
 
