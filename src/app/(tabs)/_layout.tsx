@@ -1,8 +1,10 @@
-import { Tabs, router } from 'expo-router';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { Tabs, router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
-import { useEffect } from 'react';
-import { TouchableOpacity } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import {
   configureNotificationHandler,
@@ -15,12 +17,137 @@ import {
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
-function tabIcon(name: IoniconName, focused: boolean) {
-  return <Ionicons name={focused ? name : `${name}-outline` as IoniconName} size={24} color={focused ? '#0F6E6E' : '#666'} />;
+const TAB_ICONS: Record<string, IoniconName> = {
+  index: 'home',
+  tracker: 'wallet',
+  urge: 'heart',
+  coach: 'chatbubble',
+  community: 'people',
+};
+
+function TabButton({
+  route,
+  isFocused,
+  label,
+  onPress,
+}: {
+  route: string;
+  isFocused: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const iconName = TAB_ICONS[route] ?? 'ellipse';
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.82, duration: 80, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }),
+    ]).start();
+    onPress();
+  };
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      style={[tbs.tab, isFocused && tbs.tabActive]}
+    >
+      <Animated.View style={[tbs.tabInner, { transform: [{ scale }] }]}>
+        <Ionicons
+          name={isFocused ? iconName : `${iconName}-outline` as IoniconName}
+          size={20}
+          color={isFocused ? '#fff' : '#888'}
+        />
+        {isFocused && (
+          <Text style={tbs.label} numberOfLines={1}>{label}</Text>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
 }
 
-export default function TabsLayout() {
+function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+  const visibleRoutes = state.routes.filter(r => r.name !== 'account');
 
+  return (
+    <View style={[tbs.wrapper, { paddingBottom: Math.max(insets.bottom + (Platform.OS === 'android' ? 6 : 0), 16) }]}>
+      <View style={tbs.bar}>
+        {visibleRoutes.map((route) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.routes[state.index]?.name === route.name;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <TabButton
+              key={route.key}
+              route={route.name}
+              isFocused={isFocused}
+              label={options.title ?? route.name}
+              onPress={onPress}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const tbs = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 14,
+    paddingTop: 6,
+    backgroundColor: '#edf0f0',
+  },
+  bar: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 28,
+    padding: 5,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  tabActive: {
+    flex: 2,
+    backgroundColor: '#0F6E6E',
+  },
+  tabInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 4,
+  },
+  label: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+});
+
+export default function TabsLayout() {
   useEffect(() => {
     configureNotificationHandler();
     const init = async () => {
@@ -55,72 +182,36 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#0F6E6E',
-        tabBarInactiveTintColor: '#666',
-        tabBarStyle: { backgroundColor: '#111', borderTopColor: '#111', height: 121 },
-        tabBarItemStyle: { paddingTop: 10 },
-        tabBarButton: (props) => <TouchableOpacity {...props} activeOpacity={1} />,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ focused }) => tabIcon('home', focused),
-        }}
-      />
+        tabBarStyle: { backgroundColor: '#edf0f0', borderTopWidth: 0, elevation: 0 },
+      }}
+    >
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen
         name="tracker"
-        options={{
-          title: 'Tracker',
-          tabBarIcon: ({ focused }) => tabIcon('wallet', focused),
-        }}
+        options={{ title: 'Tracker' }}
         listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate('tracker', { screen: 'index' });
-          },
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('tracker', { screen: 'index' }); },
         })}
       />
       <Tabs.Screen
         name="urge"
-        options={{
-          title: 'Support',
-          tabBarIcon: ({ focused }) => tabIcon('heart', focused),
-        }}
+        options={{ title: 'Support' }}
         listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate('urge', { screen: 'index' });
-          },
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('urge', { screen: 'index' }); },
         })}
       />
-      <Tabs.Screen
-        name="coach"
-        options={{
-          title: 'Coach',
-          tabBarIcon: ({ focused }) => tabIcon('chatbubble', focused),
-        }}
-      />
+      <Tabs.Screen name="coach" options={{ title: 'Coach' }} />
       <Tabs.Screen
         name="community"
-        options={{
-          title: 'Community',
-          tabBarIcon: ({ focused }) => tabIcon('people', focused),
-        }}
+        options={{ title: 'Community' }}
         listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate('community', { screen: 'index' });
-          },
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('community', { screen: 'index' }); },
         })}
       />
-      <Tabs.Screen
-        name="account"
-        options={{ href: null }}
-      />
+      <Tabs.Screen name="account" options={{ href: null }} />
     </Tabs>
   );
 }
