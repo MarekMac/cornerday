@@ -26,7 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, MILESTONE_NOTIFS_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -659,13 +659,6 @@ export default function HomeScreen() {
       ? Math.max(0, Date.now() - parseQuitDate(quitStr).getTime()) / 86400000
       : 0;
 
-    // Two separate guards:
-    // dedupeGuard (DB-only)  — blocks re-inserting a badge already in the DB
-    // alreadyNotified (AsyncStorage) — blocks re-firing the notification even if the DB
-    //   insert hasn't landed yet or fetchData runs again on tab focus
-    const notifRaw = await AsyncStorage.getItem(MILESTONE_NOTIFS_KEY);
-    let alreadyNotified = new Set<string>();
-    try { alreadyNotified = new Set<string>(notifRaw ? JSON.parse(notifRaw) : []); } catch { /* corrupted, start fresh */ }
     const dedupeGuard = new Set([...earnedBadges]);
 
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
@@ -687,33 +680,6 @@ export default function HomeScreen() {
           user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
           category: 'Milestone', note: `${b.emoji} ${b.label}`,
         })));
-      }
-
-      // Only notify for badges not yet notified (guards against repeated tab-focus runs)
-      const toNotify = awarded.filter(b => !alreadyNotified.has(b.type));
-      if (toNotify.length > 0) {
-        const newNotified = [...alreadyNotified, ...toNotify.map(b => b.type)];
-        await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(newNotified));
-        toNotify.forEach(b => alreadyNotified.add(b.type));
-
-        const { status: notifStatus } = await Notifications.getPermissionsAsync();
-        if (notifStatus === 'granted' && (profile?.notif_milestone ?? true)) {
-          for (const b of toNotify) {
-            const isStart = b.type === 'started';
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: isStart ? `${b.emoji} Your journey has started!` : `${b.emoji} ${b.label} milestone!`,
-                body: isStart
-                  ? `You've made the decision to change. That's the hardest part — keep going.`
-                  : `You've been clean for ${b.label}. That's a real achievement — keep going.`,
-                data: { screen: '/(tabs)/' },
-              },
-              trigger: Platform.OS === 'android'
-                ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
-                : null,
-            });
-          }
-        }
       }
 
       toAward.forEach(b => earnedBadges.push(b.type));
@@ -762,10 +728,10 @@ export default function HomeScreen() {
     const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
     const newGoalBadges: { user_id: string; badge_type: string }[] = [];
-    if (savingsGoalAmount && !dedupeGuard.has('goal_set') && !alreadyNotified.has('goal_set')) {
+    if (savingsGoalAmount && !dedupeGuard.has('goal_set')) {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_set' });
     }
-    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !dedupeGuard.has('goal_reached') && !alreadyNotified.has('goal_reached')) {
+    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !dedupeGuard.has('goal_reached')) {
       newGoalBadges.push({ user_id: user.id, badge_type: 'goal_reached' });
     }
     if (newGoalBadges.length > 0) {
@@ -778,10 +744,6 @@ export default function HomeScreen() {
         note: b.badge_type === 'goal_set' ? '📍 Goal Setter badge earned' : '🎊 Savings goal reached',
       }));
       await supabase.from('losses').insert(logRows);
-      // Persist to alreadyNotified before sending — same dedup pattern as streak milestones
-      const newNotified = [...alreadyNotified, ...newGoalBadges.map(b => b.badge_type)];
-      await AsyncStorage.setItem(MILESTONE_NOTIFS_KEY, JSON.stringify(newNotified));
-      newGoalBadges.forEach(b => alreadyNotified.add(b.badge_type));
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       for (const b of newGoalBadges) {
         earnedBadges.push(b.badge_type);
@@ -1000,7 +962,6 @@ export default function HomeScreen() {
         supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
         supabase.from('badges').delete().eq('user_id', user.id),
-        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
         supabase.from('losses').insert({
           user_id: user.id, type: 'streak_reset', amount: 0,
           category: 'Streak Reset',

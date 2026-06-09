@@ -17,22 +17,32 @@ export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
   notif_milestone_approaching: false,
 };
 
-const MILESTONE_DAYS = [
-  1 / 24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90,
-  120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825,
+const SCHEDULED_MILESTONES = [
+  { type: '1_hour',    days: 1/24,  emoji: '⏰', label: '1 Hour' },
+  { type: '3_hours',   days: 3/24,  emoji: '🌤️', label: '3 Hours' },
+  { type: '6_hours',   days: 6/24,  emoji: '☀️', label: '6 Hours' },
+  { type: '12_hours',  days: 12/24, emoji: '🌗', label: '12 Hours' },
+  { type: '1_day',     days: 1,     emoji: '🌱', label: '1 Day' },
+  { type: '3_days',    days: 3,     emoji: '🌿', label: '3 Days' },
+  { type: '1_week',    days: 7,     emoji: '⭐', label: '1 Week' },
+  { type: '10_days',   days: 10,    emoji: '✨', label: '10 Days' },
+  { type: '2_weeks',   days: 14,    emoji: '🌙', label: '2 Weeks' },
+  { type: '3_weeks',   days: 21,    emoji: '💫', label: '3 Weeks' },
+  { type: '1_month',   days: 30,    emoji: '🔥', label: '1 Month' },
+  { type: '45_days',   days: 45,    emoji: '⚡', label: '45 Days' },
+  { type: '2_months',  days: 60,    emoji: '🏅', label: '2 Months' },
+  { type: '3_months',  days: 90,    emoji: '🎯', label: '3 Months' },
+  { type: '4_months',  days: 120,   emoji: '🌊', label: '4 Months' },
+  { type: '5_months',  days: 150,   emoji: '🦋', label: '5 Months' },
+  { type: '6_months',  days: 180,   emoji: '💎', label: '6 Months' },
+  { type: '9_months',  days: 270,   emoji: '🌸', label: '9 Months' },
+  { type: '1_year',    days: 365,   emoji: '🏆', label: '1 Year' },
+  { type: '18_months', days: 548,   emoji: '🦅', label: '18 Months' },
+  { type: '2_years',   days: 730,   emoji: '👑', label: '2 Years' },
+  { type: '3_years',   days: 1095,  emoji: '🌟', label: '3 Years' },
+  { type: '4_years',   days: 1460,  emoji: '🔱', label: '4 Years' },
+  { type: '5_years',   days: 1825,  emoji: '🦁', label: '5 Years' },
 ];
-
-function milestoneLabel(days: number): string {
-  if (days < 1) return '1 hour';
-  const labels: Record<number, string> = {
-    1: '1 day', 3: '3 days', 7: '1 week', 10: '10 days', 14: '2 weeks',
-    21: '3 weeks', 30: '1 month', 45: '45 days', 60: '2 months', 90: '3 months',
-    120: '4 months', 150: '5 months', 180: '6 months', 270: '9 months',
-    365: '1 year', 548: '18 months', 730: '2 years', 1095: '3 years',
-    1460: '4 years', 1825: '5 years',
-  };
-  return labels[days] ?? `${days} days`;
-}
 
 const CHANNEL_ID = 'cornerday';
 
@@ -72,26 +82,47 @@ function androidTrigger(trigger: object) {
 export async function scheduleAllNotifications(
   prefs: NotifPrefs,
   quitTimestamp: string | null,
+  earnedBadgeTypes: string[] = [],
 ) {
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!quitTimestamp) return;
 
   const quitMs = new Date(quitTimestamp).getTime();
   const now = Date.now();
+  const earnedSet = new Set(earnedBadgeTypes);
 
-  // Milestone reached notifications are handled in fetchData (immediate, on-demand)
-  // to avoid duplicates between pre-scheduled and in-app notifications.
+  // 1. Milestone reached — scheduled at the exact future time each milestone is hit
+  if (prefs.notif_milestone) {
+    for (const m of SCHEDULED_MILESTONES) {
+      const fireAt = quitMs + m.days * 86400000;
+      if (fireAt <= now) continue;       // already passed
+      if (earnedSet.has(m.type)) continue; // already earned
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `${m.emoji} ${m.label} milestone!`,
+          body: `You've been clean for ${m.label}. That's a real achievement — keep going.`,
+          data: { screen: '/(tabs)/' },
+        },
+        trigger: androidTrigger({
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(fireAt),
+        }) as any,
+      });
+    }
+  }
 
-  // 1. Milestone approaching — 24 h before next milestone
+  // 2. Milestone approaching — 24h before the next unearned milestone
   if (prefs.notif_milestone_approaching) {
-    const next = MILESTONE_DAYS.find(d => quitMs + d * 86400000 > now);
+    const next = SCHEDULED_MILESTONES.find(
+      m => !earnedSet.has(m.type) && quitMs + m.days * 86400000 > now,
+    );
     if (next) {
-      const approachDate = new Date(quitMs + next * 86400000 - 86400000);
+      const approachDate = new Date(quitMs + next.days * 86400000 - 86400000);
       if (approachDate.getTime() > now) {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: `⏰ Almost there!`,
-            body: `Your ${milestoneLabel(next)} milestone is just 24 hours away. Hold on.`,
+            body: `Your ${next.label} milestone is just 24 hours away. Hold on.`,
             data: { screen: '/(tabs)/' },
           },
           trigger: androidTrigger({

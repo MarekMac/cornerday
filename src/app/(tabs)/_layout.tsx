@@ -153,11 +153,14 @@ export default function TabsLayout() {
       if (!granted) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
-        .from('users')
-        .select('quit_timestamp, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
-        .eq('id', user.id)
-        .single();
+      const [{ data }, { data: badgeData }] = await Promise.all([
+        supabase
+          .from('users')
+          .select('quit_timestamp, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
+          .eq('id', user.id)
+          .single(),
+        supabase.from('badges').select('badge_type').eq('user_id', user.id),
+      ]);
       if (!data) return;
       const prefs: NotifPrefs = {
         notif_milestone: data.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
@@ -166,7 +169,8 @@ export default function TabsLayout() {
         notif_weekly_summary: data.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
         notif_milestone_approaching: data.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
       };
-      await scheduleAllNotifications(prefs, data.quit_timestamp ?? null);
+      const earnedBadgeTypes = (badgeData ?? []).map((b: any) => b.badge_type);
+      await scheduleAllNotifications(prefs, data.quit_timestamp ?? null, earnedBadgeTypes);
 
       // Save Expo push token for community comment notifications
       try {
