@@ -931,15 +931,17 @@ export default function HomeScreen() {
 
   const shareMilestone = async () => {
     if (!selectedBadge) return;
+    const label = streakDays >= 1 ? `${streakDays} day${streakDays !== 1 ? 's' : ''}` : `${streakValue} ${streakUnit}`;
     await Share.share({
-      message: `I just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji}\n\n${streakDays} days free from gambling and counting. 💪\n#CornerDay #Recovery`,
+      message: `I just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji}\n\n${label} free from gambling and counting. 💪\n#CornerDay #Recovery`,
       title: `${selectedBadge.label} Milestone`,
     });
   };
 
   const postToCommunity = () => {
     if (!selectedBadge) return;
-    const content = `Just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji} ${streakDays} day${streakDays !== 1 ? 's' : ''} free from gambling and counting. 💪`;
+    const label = streakDays >= 1 ? `${streakDays} day${streakDays !== 1 ? 's' : ''}` : `${streakValue} ${streakUnit}`;
+    const content = `Just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji} ${label} free from gambling and counting. 💪`;
     setSelectedBadge(null);
     router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: content, initialTag: '#Milestone' } } as any);
   };
@@ -1378,17 +1380,24 @@ export default function HomeScreen() {
                       <Text style={s.modalRowLabel}>Days since</Text>
                       <Text style={s.modalRowValue}>{daysSince} {daysSince === 1 ? 'day' : 'days'} ago</Text>
                     </View>
-                    {dailyRate > 0 && selectedBadge.days > 0 && (
-                      <>
-                        <View style={s.modalRow}>
-                          <Text style={s.modalRowLabel}>Saved at milestone</Text>
-                          <Text style={s.modalRowValue}>{fmt(savedAtMilestone, data.currency)}</Text>
-                        </View>
+                    {selectedBadge.days > 0 && (
+                      dailyRate > 0 ? (
+                        <>
+                          <View style={s.modalRow}>
+                            <Text style={s.modalRowLabel}>Saved at milestone</Text>
+                            <Text style={s.modalRowValue}>{fmt(savedAtMilestone, data.currency)}</Text>
+                          </View>
+                          <View style={s.modalRow}>
+                            <Text style={s.modalRowLabel}>Saved total</Text>
+                            <Text style={[s.modalRowValue, { color: '#0F6E6E' }]}>{fmt(savedTotal, data.currency)}</Text>
+                          </View>
+                        </>
+                      ) : (
                         <View style={s.modalRow}>
                           <Text style={s.modalRowLabel}>Saved total</Text>
-                          <Text style={[s.modalRowValue, { color: '#0F6E6E' }]}>{fmt(savedTotal, data.currency)}</Text>
+                          <Text style={[s.modalRowValue, { color: '#aaa' }]}>Set weekly spend in Tracker</Text>
                         </View>
-                      </>
+                      )
                     )}
                     <Text style={s.modalMessage}>{BADGE_EARNED_MSGS[badgeMsgIndex]}</Text>
                   </>
@@ -1431,18 +1440,18 @@ export default function HomeScreen() {
             })()}
             <View style={s.modalActions}>
               {selectedBadge && (data.earnedBadges.includes(selectedBadge.type) || streakMs / 86400000 >= selectedBadge.days) && (
-                <Pressable style={({ pressed }) => [s.modalShareBtn, pressed && { opacity: 0.7 }]} onPress={shareMilestone}>
-                  <Ionicons name="share-outline" size={16} color="#0F6E6E" />
-                  <Text style={s.modalShareTxt}>Share</Text>
-                </Pressable>
+                <View style={s.modalShareRow}>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={shareMilestone}>
+                    <Ionicons name="share-outline" size={16} color="#0F6E6E" />
+                    <Text style={s.modalShareTxt}>Share</Text>
+                  </Pressable>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={postToCommunity}>
+                    <Ionicons name="people-outline" size={16} color="#0F6E6E" />
+                    <Text style={s.modalShareTxt}>Community</Text>
+                  </Pressable>
+                </View>
               )}
-              {selectedBadge && (data.earnedBadges.includes(selectedBadge.type) || streakMs / 86400000 >= selectedBadge.days) && (
-                <Pressable style={({ pressed }) => [s.modalShareBtn, pressed && { opacity: 0.7 }]} onPress={postToCommunity}>
-                  <Ionicons name="people-outline" size={16} color="#0F6E6E" />
-                  <Text style={s.modalShareTxt}>Community</Text>
-                </Pressable>
-              )}
-              <Pressable style={({ pressed }) => [s.modalClose, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => setSelectedBadge(null)}>
+              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setSelectedBadge(null)}>
                 <Text style={s.modalCloseTxt}>Close</Text>
               </Pressable>
             </View>
@@ -1801,7 +1810,8 @@ const s = StyleSheet.create({
   modalProgressBar: { height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden', marginTop: 4 },
   modalProgressFill: { height: '100%', backgroundColor: '#22c55e', borderRadius: 3 },
   modalMessage: { fontSize: 13, color: '#888', fontStyle: 'italic', textAlign: 'center', lineHeight: 18, marginTop: 8 },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  modalActions: { flexDirection: 'column', gap: 10, marginTop: 16 },
+  modalShareRow: { flexDirection: 'row', gap: 10 },
   modalShareBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20,
