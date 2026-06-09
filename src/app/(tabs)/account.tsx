@@ -608,6 +608,7 @@ export default function AccountScreen() {
       AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
       AsyncStorage.removeItem(CHECKLIST_KEY),
     ]);
+    await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
     setResetting(false);
   };
 
@@ -646,6 +647,8 @@ export default function AccountScreen() {
         AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_ICON_KEY),
       ]);
+      setQuitTimestamp(nowIso);
+      await scheduleAllNotifications(notifPrefs, nowIso, []);
     }
     setSavingsGoal(null);
     setSavingsGoalFor('');
