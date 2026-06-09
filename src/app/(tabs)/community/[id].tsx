@@ -7,6 +7,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   Share,
@@ -38,6 +39,9 @@ interface Comment {
   users: { display_name: string } | null;
 }
 
+type MenuTarget = { kind: 'post' } | { kind: 'comment'; id: string };
+type ActionTarget = { kind: 'post'; id: string } | { kind: 'comment'; id: string };
+
 export default function PostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
@@ -48,6 +52,16 @@ export default function PostDetail() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
+  const [editTarget, setEditTarget] = useState<ActionTarget | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ActionTarget | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ActionTarget | null>(null);
+  const [reporting, setReporting] = useState(false);
+
   const inputRef = useRef<TextInput>(null);
   const flatListRef = useRef<FlatList>(null);
 
@@ -178,64 +192,91 @@ export default function PostDetail() {
     });
   };
 
-  const sendReport = async (type: 'post' | 'comment', targetId: string, reason: string) => {
-    if (!currentUserId) return;
-    await supabase.from('community_reports').insert({
-      target_type: type, target_id: targetId, reporter_id: currentUserId, reason,
-    });
-    Alert.alert('Reported', 'Thank you — we will review this shortly.');
-  };
-
-  const deletePost = () => {
-    Alert.alert('Delete story', 'This cannot be undone.', [
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          await supabase.from('community_posts').delete().eq('id', post!.id);
-          router.back();
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const deleteComment = (commentId: string) => {
-    Alert.alert('Delete comment', 'This cannot be undone.', [
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          await supabase.from('community_comments').delete().eq('id', commentId);
-          setComments(prev => prev.filter(c => c.id !== commentId));
-          setPost(p => p ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p);
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  // ─── Menu actions ───────────────────────────────────────────────────────────
 
   const showPostMenu = () => {
     if (!post) return;
     if (post.user_id === currentUserId) {
-      deletePost();
+      setMenuTarget({ kind: 'post' });
     } else {
-      Alert.alert('Report story', 'Why are you reporting this?', [
-        { text: 'Spam', onPress: () => sendReport('post', post.id, 'Spam') },
-        { text: 'Harmful content', onPress: () => sendReport('post', post.id, 'Harmful content') },
-        { text: 'Misinformation', onPress: () => sendReport('post', post.id, 'Misinformation') },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      setReportTarget({ kind: 'post', id: post.id });
     }
   };
 
   const showCommentMenu = (comment: Comment) => {
     if (comment.user_id === currentUserId) {
-      deleteComment(comment.id);
+      setMenuTarget({ kind: 'comment', id: comment.id });
     } else {
-      Alert.alert('Report comment', 'Why are you reporting this?', [
-        { text: 'Spam', onPress: () => sendReport('comment', comment.id, 'Spam') },
-        { text: 'Harmful content', onPress: () => sendReport('comment', comment.id, 'Harmful content') },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      setReportTarget({ kind: 'comment', id: comment.id });
     }
   };
+
+  const handleEditFromMenu = () => {
+    const target = menuTarget;
+    setMenuTarget(null);
+    if (!target) return;
+    if (target.kind === 'post' && post) {
+      setEditText(post.content);
+      setEditTarget({ kind: 'post', id: post.id });
+    } else if (target.kind === 'comment') {
+      const comment = comments.find(c => c.id === target.id);
+      if (comment) {
+        setEditText(comment.content);
+        setEditTarget({ kind: 'comment', id: comment.id });
+      }
+    }
+  };
+
+  const handleDeleteFromMenu = () => {
+    const target = menuTarget;
+    setMenuTarget(null);
+    if (!target) return;
+    const targetId = target.kind === 'post' ? post!.id : target.id;
+    setDeleteTarget({ kind: target.kind, id: targetId });
+  };
+
+  const saveEdit = async () => {
+    if (!editTarget || !editText.trim()) return;
+    setEditSaving(true);
+    if (editTarget.kind === 'post') {
+      await supabase.from('community_posts').update({ content: editText.trim() }).eq('id', editTarget.id);
+      setPost(p => p ? { ...p, content: editText.trim() } : p);
+    } else {
+      await supabase.from('community_comments').update({ content: editText.trim() }).eq('id', editTarget.id);
+      setComments(prev => prev.map(c => c.id === editTarget.id ? { ...c, content: editText.trim() } : c));
+    }
+    setEditSaving(false);
+    setEditTarget(null);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    if (deleteTarget.kind === 'post') {
+      await supabase.from('community_posts').delete().eq('id', deleteTarget.id);
+      router.back();
+    } else {
+      await supabase.from('community_comments').delete().eq('id', deleteTarget.id);
+      setComments(prev => prev.filter(c => c.id !== deleteTarget.id));
+      setPost(p => p ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p);
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  const executeReport = async (reason: string) => {
+    if (!reportTarget || !currentUserId || reporting) return;
+    setReporting(true);
+    await supabase.from('community_reports').insert({
+      target_type: reportTarget.kind, target_id: reportTarget.id,
+      reporter_id: currentUserId, reason,
+    });
+    setReporting(false);
+    setReportTarget(null);
+    Alert.alert('Reported', 'Thank you — we will review this shortly.');
+  };
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -255,6 +296,7 @@ export default function PostDetail() {
 
   const postAuthor = post.users?.display_name ?? 'Anonymous';
   const postColor = avatarColor(post.user_id);
+  const isPostOwner = post.user_id === currentUserId;
 
   const ListHeader = (
     <View style={s.postCard}>
@@ -272,7 +314,11 @@ export default function PostDetail() {
           </View>
         ) : null}
         <Pressable onPress={showPostMenu} style={s.menuBtn} hitSlop={8}>
-          <Ionicons name="ellipsis-horizontal" size={18} color="#999" />
+          <Ionicons
+            name={isPostOwner ? 'ellipsis-horizontal' : 'flag-outline'}
+            size={18}
+            color={isPostOwner ? '#999' : '#f59e0b'}
+          />
         </Pressable>
       </View>
 
@@ -330,7 +376,7 @@ export default function PostDetail() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
         <FlatList
@@ -344,6 +390,7 @@ export default function PostDetail() {
           renderItem={({ item }) => {
             const cName = item.users?.display_name ?? 'Anonymous';
             const cColor = avatarColor(item.user_id);
+            const isOwner = item.user_id === currentUserId;
             return (
               <View style={s.commentRow}>
                 <View style={[s.commentAvatar, { backgroundColor: cColor }]}>
@@ -354,7 +401,11 @@ export default function PostDetail() {
                     <Text style={s.commentAuthor}>{cName}</Text>
                     <Text style={s.commentTime}>{timeAgo(item.created_at)}</Text>
                     <Pressable onPress={() => showCommentMenu(item)} hitSlop={8}>
-                      <Ionicons name="ellipsis-horizontal" size={14} color="#bbb" />
+                      <Ionicons
+                        name={isOwner ? 'ellipsis-horizontal' : 'flag-outline'}
+                        size={14}
+                        color={isOwner ? '#bbb' : '#f59e0b'}
+                      />
                     </Pressable>
                   </View>
                   <Text style={s.commentContent}>{item.content}</Text>
@@ -371,7 +422,7 @@ export default function PostDetail() {
           <TextInput
             ref={inputRef}
             style={s.commentInput}
-            placeholder="Reply to community..."
+            placeholder="Comment..."
             placeholderTextColor="#aaa"
             value={commentText}
             onChangeText={setCommentText}
@@ -389,6 +440,161 @@ export default function PostDetail() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      {/* ── Action menu (edit / delete) ─────────────────────────────────── */}
+      <Modal visible={!!menuTarget} transparent animationType="fade" onRequestClose={() => setMenuTarget(null)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setMenuTarget(null)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.menuHeader}>
+              <Text style={s.menuTitle}>
+                {menuTarget?.kind === 'post' ? 'Your story' : 'Your comment'}
+              </Text>
+              <Pressable onPress={() => setMenuTarget(null)} hitSlop={10}>
+                <Ionicons name="close" size={22} color="#999" />
+              </Pressable>
+            </View>
+
+            <Pressable style={s.menuRow} onPress={handleEditFromMenu}>
+              <View style={[s.menuIconWrap, { backgroundColor: '#e6f7f7' }]}>
+                <Ionicons name="create-outline" size={20} color="#0F6E6E" />
+              </View>
+              <Text style={s.menuRowTxt}>Edit</Text>
+              <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            </Pressable>
+
+            <View style={s.menuDivider} />
+
+            <Pressable style={s.menuRow} onPress={handleDeleteFromMenu}>
+              <View style={[s.menuIconWrap, { backgroundColor: '#fff5f5' }]}>
+                <Ionicons name="trash-outline" size={20} color="#c0392b" />
+              </View>
+              <Text style={[s.menuRowTxt, { color: '#c0392b' }]}>Delete</Text>
+              <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            </Pressable>
+
+            <Pressable style={[s.confirmCancel, { marginTop: 16, alignSelf: 'stretch' }]} onPress={() => setMenuTarget(null)}>
+              <Text style={s.confirmCancelTxt}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Edit modal ──────────────────────────────────────────────────── */}
+      <Modal visible={!!editTarget} transparent animationType="fade" onRequestClose={() => setEditTarget(null)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={s.confirmOverlay} onPress={() => setEditTarget(null)}>
+            <Pressable style={s.confirmSheet} onPress={() => {}}>
+              <View style={s.confirmIconRow}>
+                <View style={[s.confirmIconCircle, { backgroundColor: '#e6f7f7', borderColor: '#b2dfdb' }]}>
+                  <Ionicons name="create-outline" size={26} color="#0F6E6E" />
+                </View>
+              </View>
+              <Text style={s.confirmTitle}>
+                Edit {editTarget?.kind === 'post' ? 'story' : 'comment'}
+              </Text>
+              <View style={s.confirmActions}>
+                <Pressable style={[s.confirmCancel, { flex: 1 }]} onPress={() => setEditTarget(null)}>
+                  <Text style={s.confirmCancelTxt}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[s.saveBtn, (editSaving || !editText.trim()) && { opacity: 0.5 }]}
+                  onPress={saveEdit}
+                  disabled={editSaving || !editText.trim()}
+                >
+                  {editSaving
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={s.saveBtnTxt}>Save</Text>}
+                </Pressable>
+              </View>
+              <TextInput
+                style={s.editInput}
+                multiline
+                value={editText}
+                onChangeText={t => setEditText(t.slice(0, editTarget?.kind === 'post' ? 500 : 300))}
+                placeholder="Write something..."
+                placeholderTextColor="#aaa"
+                textAlignVertical="top"
+              />
+              <Text style={s.editCharCount}>
+                {editText.length}/{editTarget?.kind === 'post' ? 500 : 300}
+              </Text>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Delete confirm modal ────────────────────────────────────────── */}
+      <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setDeleteTarget(null)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={s.confirmIconCircle}>
+                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>
+              Delete {deleteTarget?.kind === 'post' ? 'story' : 'comment'}?
+            </Text>
+            <Text style={s.confirmBody}>This cannot be undone.</Text>
+            <View style={s.confirmActions}>
+              <Pressable style={[s.confirmCancel, { flex: 1 }]} onPress={() => setDeleteTarget(null)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[s.confirmDelete, deleting && { opacity: 0.6 }]}
+                onPress={executeDelete}
+                disabled={deleting}
+              >
+                {deleting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={s.confirmDeleteTxt}>Delete</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Report modal ────────────────────────────────────────────────── */}
+      <Modal visible={!!reportTarget} transparent animationType="fade" onRequestClose={() => setReportTarget(null)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setReportTarget(null)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.menuHeader}>
+              <Text style={s.menuTitle}>
+                Report {reportTarget?.kind === 'post' ? 'story' : 'comment'}
+              </Text>
+              <Pressable onPress={() => setReportTarget(null)} hitSlop={10}>
+                <Ionicons name="close" size={22} color="#999" />
+              </Pressable>
+            </View>
+            <View style={[s.confirmIconRow, { marginTop: 4 }]}>
+              <View style={[s.confirmIconCircle, { backgroundColor: '#fff8e1', borderColor: '#ffe082' }]}>
+                <Ionicons name="flag-outline" size={26} color="#f59e0b" />
+              </View>
+            </View>
+            <Text style={s.confirmBody}>Why are you reporting this?</Text>
+            {(
+              reportTarget?.kind === 'post'
+                ? ['Spam', 'Harmful content', 'Misinformation']
+                : ['Spam', 'Harmful content']
+            ).map(reason => (
+              <Pressable
+                key={reason}
+                style={s.reportReasonRow}
+                onPress={() => executeReport(reason)}
+                disabled={reporting}
+              >
+                <Text style={s.reportReasonTxt}>{reason}</Text>
+                {reporting
+                  ? <ActivityIndicator size="small" color="#ccc" />
+                  : <Ionicons name="chevron-forward" size={16} color="#ccc" />}
+              </Pressable>
+            ))}
+            <Pressable style={[s.confirmCancel, { marginTop: 12, alignSelf: 'stretch' }]} onPress={() => setReportTarget(null)}>
+              <Text style={s.confirmCancelTxt}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -466,4 +672,52 @@ const s = StyleSheet.create({
     backgroundColor: '#0F6E6E', alignItems: 'center', justifyContent: 'center',
   },
   sendBtnDisabled: { backgroundColor: '#ccc' },
+
+  // ── Action menu (centered) ────────────────────────────────────────────────────
+  menuHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  menuTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  menuIconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  menuRowTxt: { flex: 1, fontSize: 16, fontWeight: '500', color: '#111' },
+  menuDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#f0f0f0' },
+
+  // ── Centered modals (edit / delete / report) ─────────────────────────────────
+  confirmOverlay: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)', padding: 24,
+  },
+  confirmSheet: {
+    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+  },
+  confirmIconRow: { alignItems: 'center', marginBottom: 12 },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  confirmCancel: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
+  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
+  confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  // Edit modal extras
+  editInput: {
+    backgroundColor: '#f5f5f5', borderRadius: 12, padding: 12,
+    fontSize: 14, color: '#111', lineHeight: 20,
+    minHeight: 100, maxHeight: 200, marginTop: 8,
+  },
+  editCharCount: { fontSize: 12, color: '#bbb', textAlign: 'right', marginTop: 4 },
+  saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
+  saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  // Report modal extras
+  reportReasonRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f0f0f0',
+  },
+  reportReasonTxt: { fontSize: 15, color: '#333', fontWeight: '500' },
 });

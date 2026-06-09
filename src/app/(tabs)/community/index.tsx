@@ -67,6 +67,7 @@ export default function CommunityFeed() {
   const [activeTag, setActiveTag] = useState<FilterTag>('All');
   const [displayName, setDisplayName] = useState('');
   const [userReactions, setUserReactions] = useState<Record<string, string>>({});
+  const [allEmojiCounts, setAllEmojiCounts] = useState<Record<string, Record<string, number>>>({});
 
   const currentUserIdRef = useRef<string | null>(null);
   const postsRef = useRef<Post[]>([]);
@@ -82,16 +83,24 @@ export default function CommunityFeed() {
   }, []);
 
   const fetchReactions = async (postIds: string[], replace: boolean) => {
+    if (postIds.length === 0) return;
     const uid = currentUserIdRef.current;
-    if (!uid || postIds.length === 0) return;
     const { data } = await supabase
       .from('community_reactions')
-      .select('post_id, emoji')
-      .eq('user_id', uid)
+      .select('post_id, emoji, user_id')
       .in('post_id', postIds);
-    const map: Record<string, string> = {};
-    for (const r of (data ?? []) as { post_id: string; emoji: string }[]) map[r.post_id] = r.emoji;
-    setUserReactions(replace ? map : prev => ({ ...prev, ...map }));
+
+    const userMap: Record<string, string> = {};
+    const countMap: Record<string, Record<string, number>> = {};
+
+    for (const r of (data ?? []) as { post_id: string; emoji: string; user_id: string }[]) {
+      if (uid && r.user_id === uid) userMap[r.post_id] = r.emoji;
+      if (!countMap[r.post_id]) countMap[r.post_id] = {};
+      countMap[r.post_id][r.emoji] = (countMap[r.post_id][r.emoji] ?? 0) + 1;
+    }
+
+    setUserReactions(replace ? userMap : prev => ({ ...prev, ...userMap }));
+    setAllEmojiCounts(replace ? countMap : prev => ({ ...prev, ...countMap }));
   };
 
   const load = useCallback(async (tag: FilterTag, isRefresh = false) => {
@@ -143,25 +152,51 @@ export default function CommunityFeed() {
     load(tag);
   };
 
-  const toggleFeedReaction = async (postId: string) => {
+  const toggleFeedReaction = async (postId: string, emoji: string) => {
     const uid = currentUserIdRef.current;
     if (!uid) return;
     const current = userReactions[postId];
-    if (current) {
+
+    if (current === emoji) {
+      // Remove
       setUserReactions(prev => { const next = { ...prev }; delete next[postId]; return next; });
+      setAllEmojiCounts(prev => ({
+        ...prev,
+        [postId]: { ...prev[postId], [emoji]: Math.max(0, (prev[postId]?.[emoji] ?? 1) - 1) },
+      }));
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p));
       await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
+    } else if (current) {
+      // Switch emoji
+      setUserReactions(prev => ({ ...prev, [postId]: emoji }));
+      setAllEmojiCounts(prev => ({
+        ...prev,
+        [postId]: {
+          ...prev[postId],
+          [current]: Math.max(0, (prev[postId]?.[current] ?? 1) - 1),
+          [emoji]: (prev[postId]?.[emoji] ?? 0) + 1,
+        },
+      }));
+      await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
+      await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
     } else {
-      setUserReactions(prev => ({ ...prev, [postId]: '🤝' }));
+      // Add
+      setUserReactions(prev => ({ ...prev, [postId]: emoji }));
+      setAllEmojiCounts(prev => ({
+        ...prev,
+        [postId]: { ...prev[postId], [emoji]: (prev[postId]?.[emoji] ?? 0) + 1 },
+      }));
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: p.reactions_count + 1 } : p));
-      await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji: '🤝' });
+      await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
     }
   };
 
   const renderPost = ({ item }: { item: Post }) => {
     const color = avatarColor(item.user_id);
     const name = item.users?.display_name ?? 'Anonymous';
-    const reacted = !!userReactions[item.id];
+    const emojiCounts = allEmojiCounts[item.id] ?? {};
+    const emojiEntries = Object.entries(emojiCounts).filter(([, c]) => c > 0);
+
     return (
       <Pressable
         style={({ pressed }) => [s.card, pressed && { opacity: 0.92 }]}
@@ -186,14 +221,29 @@ export default function CommunityFeed() {
         {item.content.length > 120 && <Text style={s.readMore}>Read more</Text>}
 
         <View style={s.cardFooter}>
-          <Pressable
-            style={[s.reactBtn, reacted && s.reactBtnActive]}
-            onPress={() => toggleFeedReaction(item.id)}
-          >
-            <Text style={[s.reactBtnTxt, reacted && { color: '#0F6E6E' }]}>
-              {userReactions[item.id] ?? '🤝'}{item.reactions_count > 0 ? ` ${item.reactions_count}` : ''}
-            </Text>
-          </Pressable>
+          {emojiEntries.length > 0 ? (
+            emojiEntries.map(([emoji, count]) => {
+              const isMyReaction = userReactions[item.id] === emoji;
+              return (
+                <Pressable
+                  key={emoji}
+                  style={[s.reactBtn, isMyReaction && s.reactBtnActive]}
+                  onPress={() => toggleFeedReaction(item.id, emoji)}
+                >
+                  <Text style={[s.reactBtnTxt, isMyReaction && { color: '#0F6E6E' }]}>
+                    {emoji} {count}
+                  </Text>
+                </Pressable>
+              );
+            })
+          ) : (
+            <Pressable
+              style={s.reactBtn}
+              onPress={() => toggleFeedReaction(item.id, '❤️')}
+            >
+              <Text style={s.reactBtnTxt}>🤝 React</Text>
+            </Pressable>
+          )}
           <Text style={s.stat}>💬 {item.comments_count}</Text>
         </View>
       </Pressable>
@@ -225,60 +275,60 @@ export default function CommunityFeed() {
       </View>
 
       <View style={{ flex: 1 }}>
-      {loading ? (
-        <View style={s.skeletonList}>
-          {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
-        </View>
-      ) : (
-        <FlatList
-          data={posts}
-          keyExtractor={i => i.id}
-          renderItem={renderPost}
-          contentContainerStyle={s.list}
-          refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); load(activeTag, true); }}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.3}
-          ListHeaderComponent={
-            <Pressable
-              style={({ pressed }) => [s.promptCard, pressed && { opacity: 0.93 }]}
-              onPress={() => router.push('/(tabs)/community/new-post' as any)}
-            >
-              <View style={s.promptTop}>
-                <View style={[s.avatar, { backgroundColor: currentUserIdRef.current ? avatarColor(currentUserIdRef.current) : '#0F6E6E' }]}>
-                  <Text style={s.avatarTxt}>{(displayName[0] ?? '?').toUpperCase()}</Text>
-                </View>
-                <View style={s.promptPlaceholder}>
-                  <Text style={s.promptPlaceholderTxt}>What's on your mind?</Text>
-                </View>
-              </View>
-              <LinearGradient
-                colors={['#0F6E6E', '#1a9a9a']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={s.promptBtn}
+        {loading ? (
+          <View style={s.skeletonList}>
+            {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
+          </View>
+        ) : (
+          <FlatList
+            data={posts}
+            keyExtractor={i => i.id}
+            renderItem={renderPost}
+            contentContainerStyle={s.list}
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); load(activeTag, true); }}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.3}
+            ListHeaderComponent={
+              <Pressable
+                style={({ pressed }) => [s.promptCard, pressed && { opacity: 0.93 }]}
+                onPress={() => router.push('/(tabs)/community/new-post' as any)}
               >
-                <Ionicons name="create-outline" size={18} color="#fff" />
-                <Text style={s.promptBtnTxt}>Write a Post</Text>
-              </LinearGradient>
-            </Pressable>
-          }
-          ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color="#0F6E6E" /> : null}
-          ListEmptyComponent={
-            <View style={s.empty}>
-              <Text style={s.emptyEmoji}>🌱</Text>
-              <Text style={s.emptyTitle}>
-                {activeTag === 'Mine' ? 'No stories yet' : 'Be the first to share'}
-              </Text>
-              <Text style={s.emptySubtitle}>
-                {activeTag === 'Mine'
-                  ? 'Your shared stories will appear here.'
-                  : 'This community is just getting started.\nShare your story and inspire someone today.'}
-              </Text>
-            </View>
-          }
-        />
-      )}
+                <View style={s.promptTop}>
+                  <View style={[s.avatar, { backgroundColor: currentUserIdRef.current ? avatarColor(currentUserIdRef.current) : '#0F6E6E' }]}>
+                    <Text style={s.avatarTxt}>{(displayName[0] ?? '?').toUpperCase()}</Text>
+                  </View>
+                  <View style={s.promptPlaceholder}>
+                    <Text style={s.promptPlaceholderTxt}>What's on your mind?</Text>
+                  </View>
+                </View>
+                <LinearGradient
+                  colors={['#0F6E6E', '#1a9a9a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.promptBtn}
+                >
+                  <Ionicons name="create-outline" size={18} color="#fff" />
+                  <Text style={s.promptBtnTxt}>Write a Post</Text>
+                </LinearGradient>
+              </Pressable>
+            }
+            ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color="#0F6E6E" /> : null}
+            ListEmptyComponent={
+              <View style={s.empty}>
+                <Text style={s.emptyEmoji}>🌱</Text>
+                <Text style={s.emptyTitle}>
+                  {activeTag === 'Mine' ? 'No stories yet' : 'Be the first to share'}
+                </Text>
+                <Text style={s.emptySubtitle}>
+                  {activeTag === 'Mine'
+                    ? 'Your shared stories will appear here.'
+                    : 'This community is just getting started.\nShare your story and inspire someone today.'}
+                </Text>
+              </View>
+            }
+          />
+        )}
       </View>
     </View>
   );
@@ -340,7 +390,7 @@ const s = StyleSheet.create({
   content: { fontSize: 14, color: '#333', lineHeight: 21 },
   readMore: { fontSize: 13, color: '#0F6E6E', fontWeight: '600', marginTop: -4 },
 
-  cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 2 },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 2, flexWrap: 'wrap' },
   reactBtn: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
