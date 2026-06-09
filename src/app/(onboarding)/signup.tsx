@@ -53,6 +53,7 @@ export default function SignupScreen() {
   const activeFieldRef = useRef<'email' | 'password' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -293,16 +294,21 @@ export default function SignupScreen() {
 
             <View onLayout={(e) => { passwordYRef.current = e.nativeEvent.layout.y; }}>
               <Text style={styles.fieldLabel}>Password</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder={isSignIn ? 'Your password' : 'At least 6 characters'}
-                placeholderTextColor="#aaa"
-                secureTextEntry
-                autoComplete={isSignIn ? 'current-password' : 'new-password'}
-                onFocus={() => { activeFieldRef.current = 'password'; }}
-              />
+              <View style={styles.inputWrap}>
+                <TextInput
+                  style={[styles.input, { paddingRight: 46 }]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder={isSignIn ? 'Your password' : 'At least 6 characters'}
+                  placeholderTextColor="#aaa"
+                  secureTextEntry={!showPassword}
+                  autoComplete={isSignIn ? 'current-password' : 'new-password'}
+                  onFocus={() => { activeFieldRef.current = 'password'; }}
+                />
+                <Pressable style={styles.eyeBtn} onPress={() => setShowPassword(p => !p)} hitSlop={8}>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#aaa" />
+                </Pressable>
+              </View>
             </View>
 
             {isSignIn && (
@@ -456,6 +462,8 @@ const styles = StyleSheet.create({
     color: '#111',
     backgroundColor: '#fafafa',
   },
+  inputWrap: { position: 'relative' },
+  eyeBtn: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
   forgotBtn: { alignSelf: 'flex-end', marginTop: 8 },
   forgotText: { fontSize: 13, color: '#0F6E6E', fontWeight: '500' },
   errorText: {
