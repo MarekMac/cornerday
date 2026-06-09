@@ -1363,7 +1363,7 @@ export default function HomeScreen() {
                     : null);
                 const daysSince = Math.max(0, Math.floor(streakFrac - selectedBadge.days));
                 const savedAtMilestone = selectedBadge.days * dailyRate;
-                const savedTotal = streakDays * dailyRate;
+                const savedTotal = (streakMs / 86400000) * dailyRate;
                 return (
                   <>
                     <Text style={s.modalEmoji}>{selectedBadge.emoji}</Text>
@@ -1819,10 +1819,10 @@ const s = StyleSheet.create({
   },
   modalShareTxt: { color: '#0F6E6E', fontWeight: '700', fontSize: 15 },
   modalClose: {
-    backgroundColor: '#0F6E6E', borderRadius: 14,
+    backgroundColor: '#e8e8e8', borderRadius: 14,
     paddingVertical: 14, alignItems: 'center',
   },
-  modalCloseTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  modalCloseTxt: { color: '#555', fontWeight: '700', fontSize: 15 },
 
   confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
   confirmSheet: {
