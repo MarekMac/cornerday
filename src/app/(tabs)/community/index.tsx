@@ -389,30 +389,6 @@ export default function CommunityFeed() {
             onRefresh={() => { setRefreshing(true); load(activeTag, true); }}
             onEndReached={loadMore}
             onEndReachedThreshold={0.3}
-            ListHeaderComponent={
-              <Pressable
-                style={({ pressed }) => [s.promptCard, pressed && { opacity: 0.93 }]}
-                onPress={() => router.push('/(tabs)/community/new-post' as any)}
-              >
-                <View style={s.promptTop}>
-                  <View style={[s.avatar, { backgroundColor: currentUserIdRef.current ? avatarColor(currentUserIdRef.current) : '#0F6E6E' }]}>
-                    <Text style={s.avatarTxt}>{(displayName[0] ?? '?').toUpperCase()}</Text>
-                  </View>
-                  <View style={s.promptPlaceholder}>
-                    <Text style={s.promptPlaceholderTxt}>What's on your mind?</Text>
-                  </View>
-                </View>
-                <LinearGradient
-                  colors={['#0F6E6E', '#1a9a9a']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={s.promptBtn}
-                >
-                  <Ionicons name="create-outline" size={18} color="#fff" />
-                  <Text style={s.promptBtnTxt}>Write a Post</Text>
-                </LinearGradient>
-              </Pressable>
-            }
             ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color="#0F6E6E" /> : null}
             ListEmptyComponent={
               <View style={s.empty}>
@@ -431,6 +407,15 @@ export default function CommunityFeed() {
             }
           />
         )}
+
+        <Pressable
+          style={({ pressed }) => [s.fab, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/(tabs)/community/new-post' as any)}
+        >
+          <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.fabInner}>
+            <Ionicons name="add" size={30} color="#fff" />
+          </LinearGradient>
+        </Pressable>
       </View>
     </View>
   );
@@ -463,21 +448,20 @@ const s = StyleSheet.create({
   skeletonAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#e8e8e8' },
   skeletonLine: { height: 12, backgroundColor: '#e8e8e8', borderRadius: 6, width: '75%' },
 
-  list: { padding: 16, gap: 12, paddingBottom: 40 },
+  list: { padding: 16, gap: 12, paddingBottom: 100 },
   loadingMore: { paddingVertical: 16 },
 
-  promptCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 14, marginBottom: 4 },
-  promptTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  promptPlaceholder: {
-    flex: 1, backgroundColor: '#f5f5f5', borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: '#ebebeb',
+  fab: {
+    position: 'absolute', bottom: 24, right: 20,
+    borderRadius: 28,
+    elevation: 6,
+    shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4, shadowRadius: 6,
   },
-  promptPlaceholderTxt: { fontSize: 14, color: '#aaa' },
-  promptBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, borderRadius: 12, paddingVertical: 14,
+  fabInner: {
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
   },
-  promptBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 8 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
