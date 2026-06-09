@@ -13,11 +13,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { avatarColor, COMMUNITY_TAGS, TAG_COLORS, timeAgo } from '@/constants/community';
+import { avatarColor, COMMUNITY_TAGS, streakBadge, TAG_COLORS, timeAgo } from '@/constants/community';
 import { supabase } from '@/lib/supabase';
 
 const PAGE_SIZE = 15;
-const ALL_TAGS = ['All', 'Mine', ...COMMUNITY_TAGS] as const;
+const ALL_TAGS = ['All', 'Mine', 'Saved', ...COMMUNITY_TAGS] as const;
 type FilterTag = typeof ALL_TAGS[number];
 
 interface Post {
@@ -28,7 +28,8 @@ interface Post {
   reactions_count: number;
   comments_count: number;
   created_at: string;
-  users: { display_name: string } | null;
+  is_anonymous: boolean;
+  users: { display_name: string | null; streaks: Array<{ current_streak: number }> } | null;
 }
 
 function SkeletonCard() {
@@ -58,6 +59,8 @@ function SkeletonCard() {
   );
 }
 
+const POST_SELECT = 'id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))';
+
 export default function CommunityFeed() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +71,7 @@ export default function CommunityFeed() {
   const [displayName, setDisplayName] = useState('');
   const [userReactions, setUserReactions] = useState<Record<string, string>>({});
   const [allEmojiCounts, setAllEmojiCounts] = useState<Record<string, Record<string, number>>>({});
+  const [userBookmarks, setUserBookmarks] = useState<Record<string, boolean>>({});
 
   const currentUserIdRef = useRef<string | null>(null);
   const postsRef = useRef<Post[]>([]);
@@ -79,6 +83,19 @@ export default function CommunityFeed() {
       currentUserIdRef.current = user.id;
       const { data } = await supabase.from('users').select('display_name').eq('id', user.id).single();
       setDisplayName(data?.display_name ?? '');
+
+      // Load all bookmarks for this user
+      const { data: bookmarkRows } = await supabase
+        .from('community_bookmarks')
+        .select('post_id')
+        .eq('user_id', user.id);
+      if (bookmarkRows) {
+        const bm: Record<string, boolean> = {};
+        for (const row of bookmarkRows as { post_id: string }[]) {
+          bm[row.post_id] = true;
+        }
+        setUserBookmarks(bm);
+      }
     });
   }, []);
 
@@ -105,9 +122,48 @@ export default function CommunityFeed() {
 
   const load = useCallback(async (tag: FilterTag, isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+
+    if (tag === 'Saved') {
+      const uid = currentUserIdRef.current;
+      if (!uid) {
+        setPosts([]);
+        setHasMore(false);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      const { data: bookmarkRows } = await supabase
+        .from('community_bookmarks')
+        .select('post_id')
+        .eq('user_id', uid);
+      const ids = (bookmarkRows ?? []).map((r: { post_id: string }) => r.post_id);
+      if (ids.length === 0) {
+        postsRef.current = [];
+        setPosts([]);
+        setHasMore(false);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      const { data } = await supabase
+        .from('community_posts')
+        .select(POST_SELECT)
+        .in('id', ids)
+        .order('created_at', { ascending: false })
+        .range(0, PAGE_SIZE - 1);
+      const items = (data as Post[]) ?? [];
+      postsRef.current = items;
+      setPosts(items);
+      setHasMore(items.length === PAGE_SIZE);
+      setLoading(false);
+      setRefreshing(false);
+      fetchReactions(items.map(p => p.id), true);
+      return;
+    }
+
     let q = supabase
       .from('community_posts')
-      .select('id, user_id, content, tag, reactions_count, comments_count, created_at, users(display_name)')
+      .select(POST_SELECT)
       .order('created_at', { ascending: false })
       .range(0, PAGE_SIZE - 1);
     if (tag === 'Mine' && currentUserIdRef.current) q = (q as any).eq('user_id', currentUserIdRef.current);
@@ -124,12 +180,13 @@ export default function CommunityFeed() {
 
   const loadMore = async () => {
     if (loadingMore || !hasMore || activeFetch.current) return;
+    if (activeTag === 'Saved') return; // bookmarks: no infinite scroll
     activeFetch.current = true;
     setLoadingMore(true);
     const offset = postsRef.current.length;
     let q = supabase
       .from('community_posts')
-      .select('id, user_id, content, tag, reactions_count, comments_count, created_at, users(display_name)')
+      .select(POST_SELECT)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
     if (activeTag === 'Mine' && currentUserIdRef.current) q = (q as any).eq('user_id', currentUserIdRef.current);
@@ -191,11 +248,33 @@ export default function CommunityFeed() {
     }
   };
 
+  const toggleBookmark = async (postId: string) => {
+    const uid = currentUserIdRef.current;
+    if (!uid) return;
+    const isBookmarked = userBookmarks[postId] ?? false;
+    // Optimistic update
+    setUserBookmarks(prev => ({ ...prev, [postId]: !isBookmarked }));
+    if (isBookmarked) {
+      await supabase.from('community_bookmarks').delete().eq('post_id', postId).eq('user_id', uid);
+      // Remove from list when viewing Saved tab
+      if (activeTag === 'Saved') {
+        setPosts(prev => prev.filter(p => p.id !== postId));
+        postsRef.current = postsRef.current.filter(p => p.id !== postId);
+      }
+    } else {
+      await supabase.from('community_bookmarks').insert({ post_id: postId, user_id: uid });
+    }
+  };
+
   const renderPost = ({ item }: { item: Post }) => {
-    const color = avatarColor(item.user_id);
-    const name = item.users?.display_name ?? 'Anonymous';
+    const isAnon = item.is_anonymous ?? false;
+    const color = isAnon ? '#aaa' : avatarColor(item.user_id);
+    const name = isAnon ? 'Anonymous' : (item.users?.display_name ?? 'Anonymous');
+    const currentStreak = isAnon ? 0 : (item.users?.streaks?.[0]?.current_streak ?? 0);
+    const badge = streakBadge(currentStreak);
     const emojiCounts = allEmojiCounts[item.id] ?? {};
     const emojiEntries = Object.entries(emojiCounts).filter(([, c]) => c > 0);
+    const isBookmarked = userBookmarks[item.id] ?? false;
 
     return (
       <Pressable
@@ -207,7 +286,14 @@ export default function CommunityFeed() {
             <Text style={s.avatarTxt}>{name[0].toUpperCase()}</Text>
           </View>
           <View style={s.cardMeta}>
-            <Text style={s.authorName}>{name}</Text>
+            <View style={s.authorRow}>
+              <Text style={s.authorName}>{name}</Text>
+              {badge ? (
+                <View style={s.streakPill}>
+                  <Text style={s.streakPillTxt}>{badge}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={s.timeStr}>{timeAgo(item.created_at)}</Text>
           </View>
           {item.tag ? (
@@ -221,30 +307,44 @@ export default function CommunityFeed() {
         {item.content.length > 120 && <Text style={s.readMore}>Read more</Text>}
 
         <View style={s.cardFooter}>
-          {emojiEntries.length > 0 ? (
-            emojiEntries.map(([emoji, count]) => {
-              const isMyReaction = userReactions[item.id] === emoji;
-              return (
-                <Pressable
-                  key={emoji}
-                  style={[s.reactBtn, isMyReaction && s.reactBtnActive]}
-                  onPress={() => toggleFeedReaction(item.id, emoji)}
-                >
-                  <Text style={[s.reactBtnTxt, isMyReaction && { color: '#0F6E6E' }]}>
-                    {emoji} {count}
-                  </Text>
-                </Pressable>
-              );
-            })
-          ) : (
-            <Pressable
-              style={s.reactBtn}
-              onPress={() => toggleFeedReaction(item.id, '❤️')}
-            >
-              <Text style={s.reactBtnTxt}>🤝 React</Text>
-            </Pressable>
-          )}
-          <Text style={s.stat}>💬 {item.comments_count}</Text>
+          <View style={s.footerLeft}>
+            {emojiEntries.length > 0 ? (
+              emojiEntries.map(([emoji, count]) => {
+                const isMyReaction = userReactions[item.id] === emoji;
+                return (
+                  <Pressable
+                    key={emoji}
+                    style={[s.reactBtn, isMyReaction && s.reactBtnActive]}
+                    onPress={() => toggleFeedReaction(item.id, emoji)}
+                  >
+                    <Text style={[s.reactBtnTxt, isMyReaction && { color: '#0F6E6E' }]}>
+                      {emoji} {count}
+                    </Text>
+                  </Pressable>
+                );
+              })
+            ) : (
+              <Pressable
+                style={s.reactBtn}
+                onPress={() => toggleFeedReaction(item.id, '❤️')}
+              >
+                <Text style={s.reactBtnTxt}>🤝 React</Text>
+              </Pressable>
+            )}
+            <Text style={s.stat}>💬 {item.comments_count}</Text>
+          </View>
+
+          <Pressable
+            style={s.bookmarkBtn}
+            onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id); }}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={isBookmarked ? '#0F6E6E' : '#bbb'}
+            />
+          </Pressable>
         </View>
       </Pressable>
     );
@@ -316,13 +416,15 @@ export default function CommunityFeed() {
             ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color="#0F6E6E" /> : null}
             ListEmptyComponent={
               <View style={s.empty}>
-                <Text style={s.emptyEmoji}>🌱</Text>
+                <Text style={s.emptyEmoji}>{activeTag === 'Saved' ? '🔖' : '🌱'}</Text>
                 <Text style={s.emptyTitle}>
-                  {activeTag === 'Mine' ? 'No stories yet' : 'Be the first to share'}
+                  {activeTag === 'Mine' ? 'No stories yet' : activeTag === 'Saved' ? 'No saved posts' : 'Be the first to share'}
                 </Text>
                 <Text style={s.emptySubtitle}>
                   {activeTag === 'Mine'
                     ? 'Your shared stories will appear here.'
+                    : activeTag === 'Saved'
+                    ? 'Tap the bookmark icon on any post to save it here.'
                     : 'This community is just getting started.\nShare your story and inspire someone today.'}
                 </Text>
               </View>
@@ -382,7 +484,13 @@ const s = StyleSheet.create({
   avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   avatarTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   cardMeta: { flex: 1 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   authorName: { fontSize: 14, fontWeight: '600', color: '#111' },
+  streakPill: {
+    backgroundColor: '#e6f7f7', borderRadius: 8,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  streakPillTxt: { fontSize: 11, fontWeight: '600', color: '#0F6E6E' },
   timeStr: { fontSize: 12, color: '#999', marginTop: 1 },
   tagPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
   tagTxt: { fontSize: 11, fontWeight: '700' },
@@ -390,7 +498,8 @@ const s = StyleSheet.create({
   content: { fontSize: 14, color: '#333', lineHeight: 21 },
   readMore: { fontSize: 13, color: '#0F6E6E', fontWeight: '600', marginTop: -4 },
 
-  cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 2, flexWrap: 'wrap' },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
+  footerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 },
   reactBtn: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
@@ -399,6 +508,7 @@ const s = StyleSheet.create({
   reactBtnActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
   reactBtnTxt: { fontSize: 13, color: '#666', fontWeight: '600' },
   stat: { fontSize: 13, color: '#666' },
+  bookmarkBtn: { paddingLeft: 8 },
 
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32, gap: 8 },
   emptyEmoji: { fontSize: 48, marginBottom: 4 },

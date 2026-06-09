@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -10,6 +10,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -21,9 +22,22 @@ import { supabase } from '@/lib/supabase';
 const MAX = 500;
 
 export default function NewPost() {
+  const params = useLocalSearchParams<{ initialContent?: string; initialTag?: string }>();
+
   const [content, setContent] = useState('');
   const [tag, setTag] = useState<CommunityTag | null>(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Pre-fill from params (milestone auto-post)
+  useEffect(() => {
+    if (params.initialContent) {
+      setContent(params.initialContent.slice(0, MAX));
+    }
+    if (params.initialTag && COMMUNITY_TAGS.includes(params.initialTag as CommunityTag)) {
+      setTag(params.initialTag as CommunityTag);
+    }
+  }, []);
 
   const handleBack = () => {
     if (content.trim().length > 0) {
@@ -57,6 +71,7 @@ export default function NewPost() {
       user_id: user.id,
       content: content.trim(),
       tag,
+      is_anonymous: isAnonymous,
     });
     setSubmitting(false);
     if (error) { Alert.alert('Error', 'Could not post. Please try again.'); return; }
@@ -102,7 +117,7 @@ export default function NewPost() {
             <TextInput
               style={s.input}
               multiline
-              autoFocus
+              autoFocus={!params.initialContent}
               placeholder="Share what's on your mind — a win, a struggle, or where you are today..."
               placeholderTextColor="#aaa"
               value={content}
@@ -112,6 +127,23 @@ export default function NewPost() {
             <Text style={[s.charCount, content.length > MAX * 0.9 && { color: '#ea580c' }]}>
               {content.length}/{MAX}
             </Text>
+          </View>
+
+          {/* Anonymous toggle */}
+          <View style={s.anonRow}>
+            <View style={s.anonLeft}>
+              <Ionicons name="eye-off-outline" size={20} color="#666" />
+              <View style={s.anonTextWrap}>
+                <Text style={s.anonLabel}>Post anonymously</Text>
+                <Text style={s.anonSub}>Your name won't appear on this post</Text>
+              </View>
+            </View>
+            <Switch
+              value={isAnonymous}
+              onValueChange={setIsAnonymous}
+              trackColor={{ false: '#ddd', true: '#0F6E6E' }}
+              thumbColor={isAnonymous ? '#fff' : '#fff'}
+            />
           </View>
 
           <Pressable
@@ -154,6 +186,16 @@ const s = StyleSheet.create({
     minHeight: 160, maxHeight: 300,
   },
   charCount: { fontSize: 12, color: '#bbb', textAlign: 'right', marginTop: 8 },
+
+  anonRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+    marginTop: 4,
+  },
+  anonLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  anonTextWrap: { flex: 1 },
+  anonLabel: { fontSize: 14, fontWeight: '600', color: '#222' },
+  anonSub: { fontSize: 12, color: '#aaa', marginTop: 1 },
 
   submitBtn: {
     backgroundColor: '#0F6E6E', borderRadius: 14,

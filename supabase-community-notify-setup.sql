@@ -1,0 +1,40 @@
+-- ============================================================
+-- CornerDay — Push notification setup for community comments
+-- ============================================================
+--
+-- STEP 1: Run this SQL to add the push token column to users.
+-- STEP 2: Deploy the edge function (see instructions below).
+-- STEP 3: Create a Database Webhook in the Supabase dashboard.
+--
+-- ─── Edge Function Deployment ─────────────────────────────────────────────
+--
+--   Install Supabase CLI:
+--     npm install -g supabase
+--
+--   Login and link your project:
+--     supabase login
+--     supabase link --project-ref <your-project-ref>
+--
+--   Deploy the function:
+--     supabase functions deploy notify-comment
+--
+--   Set the required secret (Expo push token endpoint needs no auth,
+--   but you may want to pass the service-role key for DB queries):
+--     supabase secrets set SUPABASE_URL=https://<ref>.supabase.co
+--     supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+--
+-- ─── Database Webhook (Supabase dashboard) ────────────────────────────────
+--
+--   Go to: Database → Webhooks → Create a new hook
+--
+--   Name:        notify-comment
+--   Table:       community_comments
+--   Events:      INSERT
+--   Type:        Supabase Edge Functions
+--   Function:    notify-comment
+--   HTTP Method: POST
+--
+-- ─── SQL ──────────────────────────────────────────────────────────────────
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS expo_push_token text;

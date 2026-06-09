@@ -17,6 +17,16 @@ export function avatarColor(userId: string) {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
+export function streakBadge(days: number): string | null {
+  if (days <= 0) return null;
+  if (days < 7)   return `🌱 ${days}d`;
+  if (days < 30)  return `⭐ ${days}d`;
+  if (days < 60)  return `🔥 ${days}d`;
+  if (days < 180) return `🏆 ${days}d`;
+  if (days < 365) return `💎 ${days}d`;
+  return `👑 ${days}d`;
+}
+
 export function timeAgo(dateStr: string) {
   const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (s < 60) return 'just now';

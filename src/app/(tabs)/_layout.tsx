@@ -167,6 +167,19 @@ export default function TabsLayout() {
         notif_milestone_approaching: data.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
       };
       await scheduleAllNotifications(prefs, data.quit_timestamp ?? null);
+
+      // Save Expo push token for community comment notifications
+      try {
+        const tokenData = await Notifications.getExpoPushTokenAsync();
+        if (tokenData?.data) {
+          await supabase
+            .from('users')
+            .update({ expo_push_token: tokenData.data })
+            .eq('id', user.id);
+        }
+      } catch (_e) {
+        // Push token unavailable (e.g. simulator) — non-fatal
+      }
     };
     init();
 

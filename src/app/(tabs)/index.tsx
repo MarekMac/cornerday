@@ -937,6 +937,13 @@ export default function HomeScreen() {
     });
   };
 
+  const postToCommunity = () => {
+    if (!selectedBadge) return;
+    const content = `Just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji} ${streakDays} day${streakDays !== 1 ? 's' : ''} free from gambling and counting. 💪`;
+    setSelectedBadge(null);
+    router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: content, initialTag: '#Milestone' } } as any);
+  };
+
   const handleMood = async (mood: number, note?: string) => {
     if (!data) return;
     setMoodSubmitting(true);
@@ -1427,6 +1434,12 @@ export default function HomeScreen() {
                 <Pressable style={({ pressed }) => [s.modalShareBtn, pressed && { opacity: 0.7 }]} onPress={shareMilestone}>
                   <Ionicons name="share-outline" size={16} color="#0F6E6E" />
                   <Text style={s.modalShareTxt}>Share</Text>
+                </Pressable>
+              )}
+              {selectedBadge && (data.earnedBadges.includes(selectedBadge.type) || streakMs / 86400000 >= selectedBadge.days) && (
+                <Pressable style={({ pressed }) => [s.modalShareBtn, pressed && { opacity: 0.7 }]} onPress={postToCommunity}>
+                  <Ionicons name="people-outline" size={16} color="#0F6E6E" />
+                  <Text style={s.modalShareTxt}>Community</Text>
                 </Pressable>
               )}
               <Pressable style={({ pressed }) => [s.modalClose, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => setSelectedBadge(null)}>

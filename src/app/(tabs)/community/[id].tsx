@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { avatarColor, REACTION_EMOJIS, TAG_COLORS, timeAgo } from '@/constants/community';
+import { avatarColor, REACTION_EMOJIS, streakBadge, TAG_COLORS, timeAgo } from '@/constants/community';
 import { supabase } from '@/lib/supabase';
 
 interface Post {
@@ -28,7 +28,8 @@ interface Post {
   reactions_count: number;
   comments_count: number;
   created_at: string;
-  users: { display_name: string } | null;
+  is_anonymous: boolean;
+  users: { display_name: string | null; streaks: Array<{ current_streak: number }> } | null;
 }
 
 interface Comment {
@@ -36,6 +37,7 @@ interface Comment {
   user_id: string;
   content: string;
   created_at: string;
+  helpful_count: number;
   users: { display_name: string } | null;
 }
 
@@ -52,6 +54,9 @@ export default function PostDetail() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // comment helpful reactions: set of comment IDs the current user has reacted to
+  const [myHelpfulReactions, setMyHelpfulReactions] = useState<Set<string>>(new Set());
 
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
   const [editTarget, setEditTarget] = useState<ActionTarget | null>(null);
@@ -76,7 +81,7 @@ export default function PostDetail() {
         async (payload) => {
           const { data } = await supabase
             .from('community_comments')
-            .select('id, user_id, content, created_at, users(display_name)')
+            .select('id, user_id, content, created_at, helpful_count, users(display_name)')
             .eq('id', payload.new.id)
             .single();
           if (data) {
@@ -99,21 +104,27 @@ export default function PostDetail() {
     const uid = user?.id ?? null;
     setCurrentUserId(uid);
 
-    const [postRes, commentsRes, reactionsRes] = await Promise.all([
+    const [postRes, commentsRes, reactionsRes, commentReactionsRes] = await Promise.all([
       supabase
         .from('community_posts')
-        .select('id, user_id, content, tag, reactions_count, comments_count, created_at, users(display_name)')
+        .select('id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))')
         .eq('id', id)
         .single(),
       supabase
         .from('community_comments')
-        .select('id, user_id, content, created_at, users(display_name)')
+        .select('id, user_id, content, created_at, helpful_count, users(display_name)')
         .eq('post_id', id)
         .order('created_at', { ascending: true }),
       supabase
         .from('community_reactions')
         .select('emoji, user_id')
         .eq('post_id', id),
+      uid
+        ? supabase
+            .from('community_comment_reactions')
+            .select('comment_id')
+            .eq('user_id', uid)
+        : Promise.resolve({ data: [] }),
     ]);
 
     setPost(postRes.data as Post ?? null);
@@ -127,6 +138,13 @@ export default function PostDetail() {
     }
     setReactionCounts(counts);
     setUserReaction(myReaction);
+
+    const myHelpful = new Set<string>();
+    for (const r of ((commentReactionsRes as any).data ?? []) as { comment_id: string }[]) {
+      myHelpful.add(r.comment_id);
+    }
+    setMyHelpfulReactions(myHelpful);
+
     setLoading(false);
   };
 
@@ -155,6 +173,36 @@ export default function PostDetail() {
     }
   };
 
+  const toggleCommentReaction = async (commentId: string) => {
+    if (!currentUserId) return;
+    const hasReacted = myHelpfulReactions.has(commentId);
+
+    // Optimistic update
+    setMyHelpfulReactions(prev => {
+      const next = new Set(prev);
+      if (hasReacted) next.delete(commentId);
+      else next.add(commentId);
+      return next;
+    });
+    setComments(prev => prev.map(c =>
+      c.id === commentId
+        ? { ...c, helpful_count: Math.max(0, c.helpful_count + (hasReacted ? -1 : 1)) }
+        : c
+    ));
+
+    if (hasReacted) {
+      await supabase
+        .from('community_comment_reactions')
+        .delete()
+        .eq('comment_id', commentId)
+        .eq('user_id', currentUserId);
+    } else {
+      await supabase
+        .from('community_comment_reactions')
+        .insert({ comment_id: commentId, user_id: currentUserId });
+    }
+  };
+
   const submitComment = async () => {
     if (!commentText.trim() || !currentUserId || !post) return;
     setSubmitting(true);
@@ -167,7 +215,7 @@ export default function PostDetail() {
     const { data, error } = await supabase
       .from('community_comments')
       .insert({ post_id: post.id, user_id: currentUserId, content: text })
-      .select('id, user_id, content, created_at')
+      .select('id, user_id, content, created_at, helpful_count')
       .single();
 
     if (!error && data) {
@@ -294,8 +342,11 @@ export default function PostDetail() {
     );
   }
 
-  const postAuthor = post.users?.display_name ?? 'Anonymous';
-  const postColor = avatarColor(post.user_id);
+  const isAnon = post.is_anonymous ?? false;
+  const postAuthor = isAnon ? 'Anonymous' : (post.users?.display_name ?? 'Anonymous');
+  const postColor = isAnon ? '#aaa' : avatarColor(post.user_id);
+  const postStreak = isAnon ? 0 : (post.users?.streaks?.[0]?.current_streak ?? 0);
+  const postStreakBadge = streakBadge(postStreak);
   const isPostOwner = post.user_id === currentUserId;
 
   const ListHeader = (
@@ -305,7 +356,14 @@ export default function PostDetail() {
           <Text style={s.avatarTxt}>{postAuthor[0].toUpperCase()}</Text>
         </View>
         <View style={s.metaCol}>
-          <Text style={s.authorName}>{postAuthor}</Text>
+          <View style={s.authorRow}>
+            <Text style={s.authorName}>{postAuthor}</Text>
+            {postStreakBadge ? (
+              <View style={s.streakPill}>
+                <Text style={s.streakPillTxt}>{postStreakBadge}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={s.timeStr}>{timeAgo(post.created_at)}</Text>
         </View>
         {post.tag ? (
@@ -384,13 +442,14 @@ export default function PostDetail() {
           data={comments}
           keyExtractor={c => c.id}
           ListHeaderComponent={ListHeader}
-          extraData={{ post, userReaction, reactionCounts }}
+          extraData={{ post, userReaction, reactionCounts, myHelpfulReactions }}
           contentContainerStyle={s.list}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const cName = item.users?.display_name ?? 'Anonymous';
             const cColor = avatarColor(item.user_id);
             const isOwner = item.user_id === currentUserId;
+            const iHelpedThis = myHelpfulReactions.has(item.id);
             return (
               <View style={s.commentRow}>
                 <View style={[s.commentAvatar, { backgroundColor: cColor }]}>
@@ -409,6 +468,15 @@ export default function PostDetail() {
                     </Pressable>
                   </View>
                   <Text style={s.commentContent}>{item.content}</Text>
+                  <Pressable
+                    style={[s.helpfulBtn, iHelpedThis && s.helpfulBtnActive]}
+                    onPress={() => toggleCommentReaction(item.id)}
+                    hitSlop={6}
+                  >
+                    <Text style={[s.helpfulBtnTxt, iHelpedThis && { color: '#0F6E6E' }]}>
+                      🤝{item.helpful_count > 0 ? ` ${item.helpful_count}` : ''} This helped me
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
             );
@@ -617,7 +685,13 @@ const s = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   avatarTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
   metaCol: { flex: 1 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   authorName: { fontSize: 14, fontWeight: '600', color: '#111' },
+  streakPill: {
+    backgroundColor: '#e6f7f7', borderRadius: 8,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  streakPillTxt: { fontSize: 11, fontWeight: '600', color: '#0F6E6E' },
   timeStr: { fontSize: 12, color: '#999', marginTop: 1 },
   tagPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
   tagTxt: { fontSize: 11, fontWeight: '700' },
@@ -654,6 +728,16 @@ const s = StyleSheet.create({
   commentAuthor: { fontSize: 13, fontWeight: '600', color: '#111' },
   commentTime: { fontSize: 11, color: '#bbb', flex: 1 },
   commentContent: { fontSize: 14, color: '#333', lineHeight: 20 },
+
+  helpfulBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
+    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ebebeb',
+    marginTop: 2,
+  },
+  helpfulBtnActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
+  helpfulBtnTxt: { fontSize: 12, color: '#888', fontWeight: '600' },
 
   noComments: { textAlign: 'center', color: '#aaa', fontSize: 14, paddingVertical: 32, paddingHorizontal: 20 },
 
