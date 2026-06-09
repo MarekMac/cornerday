@@ -39,6 +39,8 @@ import {
   scheduleAllNotifications,
 } from '@/lib/notifications';
 import { usePurchases } from '@/context/purchases';
+import Purchases from 'react-native-purchases';
+import { ENTITLEMENT_ID } from '@/constants/revenuecat';
 
 interface Profile {
   displayName: string | null;
@@ -53,6 +55,7 @@ interface Profile {
   isPremium: boolean;
   avatarUrl: string | null;
   longestStreak: number;
+  milestonesEarned: number;
 }
 
 const CURRENCIES = [
@@ -141,7 +144,7 @@ function formatQuitDate(ts: string | null) {
 export default function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isPremium: isPremiumFromRC, showPaywall } = usePurchases();
+  const { isPremium: isPremiumFromRC, showPaywall, restorePurchases } = usePurchases();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -198,17 +201,23 @@ export default function AccountScreen() {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [restoringPurchases, setRestoringPurchases] = useState(false);
+  const [isPasswordUser, setIsPasswordUser] = useState(true);
+  const [renewalDate, setRenewalDate] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const [{ data }, { data: streakData }] = await Promise.all([
+    const identities = user.identities ?? [];
+    setIsPasswordUser(identities.some(id => id.provider === 'email'));
+    const [{ data }, { data: streakData }, { count: badgeCount }] = await Promise.all([
       supabase
         .from('users')
         .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
         .eq('id', user.id)
         .single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
+      supabase.from('badges').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
     const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
     let resolvedAvatar = data?.avatar_url ?? null;
@@ -230,8 +239,20 @@ export default function AccountScreen() {
       isPremium: data?.is_premium ?? false,
       avatarUrl: resolvedAvatar,
       longestStreak: streakData?.longest_streak ?? 0,
+      milestonesEarned: badgeCount ?? 0,
     });
     setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
+
+    // Trusted contact lives in its own query so a schema-cache miss never breaks the profile fetch
+    const { data: contactData } = await supabase
+      .from('users')
+      .select('trusted_contact_name, trusted_contact_phone')
+      .eq('id', user.id)
+      .single();
+    if (contactData?.trusted_contact_name || contactData?.trusted_contact_phone) {
+      setTrustedContactName(contactData.trusted_contact_name ?? '');
+      setTrustedContactPhone(contactData.trusted_contact_phone ?? '');
+    }
     setNotifPrefs({
       notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
       notif_daily_streak: data?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
@@ -261,6 +282,17 @@ export default function AccountScreen() {
       }
     });
   }, [fetchProfile]);
+
+  useEffect(() => {
+    if (!isPremiumFromRC) { setRenewalDate(null); return; }
+    Purchases.getCustomerInfo().then(info => {
+      const entitlement = info.entitlements.active[ENTITLEMENT_ID];
+      if (entitlement?.expirationDate) {
+        const d = new Date(entitlement.expirationDate);
+        setRenewalDate(d.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }));
+      }
+    }).catch(() => {});
+  }, [isPremiumFromRC]);
 
   const openGoalModal = () => {
     setGoalInput(savingsGoal ? String(savingsGoal) : '');
@@ -319,6 +351,13 @@ export default function AccountScreen() {
       await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone }));
       setTrustedContactName(name);
       setTrustedContactPhone(phone);
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users').update({
+        trusted_contact_name: name || null,
+        trusted_contact_phone: phone || null,
+      }).eq('id', user.id);
     }
     setShowContactModal(false);
   };
@@ -678,20 +717,99 @@ export default function AccountScreen() {
         supabase.from('streaks').select('current_streak, longest_streak, streak_start_date').eq('user_id', user.id).single(),
         supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       ]);
-      const exportData = {
-        exported_at: new Date().toISOString(),
-        profile: profileRes.data,
-        streak: streakRes.data,
-        losses: lossesRes.data,
-        mood_checkins: moodRes.data,
-        badges: badgesRes.data,
+
+      const fmt = (iso: string) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+      const moodWord = (m: number) => (['', 'Struggling', 'Low', 'Okay', 'Good', 'Great'] as const)[m] ?? '';
+      const BADGE_LABELS: Record<string, string> = {
+        '1_day': '1 Day', '1_week': '1 Week', '1_month': '1 Month',
+        '60_days': '60 Days', '6_months': '6 Months', '1_year': '1 Year',
       };
-      const filename = `cornerday-export-${new Date().toISOString().slice(0, 10)}.json`;
+      const sep = '─'.repeat(42);
+      const p = profileRes.data as any;
+      const st = streakRes.data as any;
+      const losses = (lossesRes.data ?? []) as any[];
+      const moods = (moodRes.data ?? []) as any[];
+      const earned = (badgesRes.data ?? []) as any[];
+      const sym = CURRENCIES.find(c => c.code === (p?.currency ?? 'USD'))?.symbol ?? '$';
+      const totalLost = losses.filter(l => l.type === 'loss').reduce((s: number, l: any) => s + Number(l.amount ?? 0), 0);
+      const totalPaid = losses.filter(l => l.type === 'payment').reduce((s: number, l: any) => s + Number(l.amount ?? 0), 0);
+      const owed = Math.max(0, totalLost - totalPaid);
+
+      const lines: string[] = [
+        'CornerDay — Recovery Report',
+        `Generated: ${new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`,
+        `Account:   ${user.email ?? '—'}`,
+        '',
+        sep,
+        'STREAK',
+        sep,
+        `Started:        ${p?.quit_timestamp ? fmt(p.quit_timestamp) : '—'}`,
+        `Current streak: ${st?.current_streak ?? 0} days`,
+        `Longest streak: ${st?.longest_streak ?? 0} days`,
+        '',
+      ];
+
+      if (earned.length > 0) {
+        lines.push(sep, 'MILESTONES EARNED', sep);
+        const sorted = [...earned].sort((a: any, z: any) => a.earned_at < z.earned_at ? -1 : 1);
+        for (const b of sorted) {
+          lines.push(`  ✓  ${(BADGE_LABELS[b.badge_type] ?? b.badge_type).padEnd(12)}  ${fmt(b.earned_at)}`);
+        }
+        lines.push('');
+      }
+
+      const trackedLosses = losses.filter(l => l.type === 'loss' || l.type === 'payment');
+      if (trackedLosses.length > 0) {
+        lines.push(sep, 'FINANCIAL TRACKER', sep);
+        lines.push(`Total lost:      ${sym}${totalLost.toLocaleString()}`);
+        lines.push(`Total paid back: ${sym}${totalPaid.toLocaleString()}`);
+        lines.push(`Still owed:      ${sym}${owed.toLocaleString()}`);
+        if (totalLost > 0) {
+          lines.push(`Recovery:        ${Math.round((totalPaid / totalLost) * 100)}%`);
+        }
+        lines.push('', 'Transactions (oldest first):');
+        for (const l of trackedLosses) {
+          const sign = l.type === 'loss' ? '-' : '+';
+          const note = l.note ? `  (${l.note})` : '';
+          lines.push(`  ${fmt(l.created_at)}  ${sign}${sym}${Number(l.amount).toLocaleString()}  ${l.category ?? ''}${note}`);
+        }
+        lines.push('');
+      }
+
+      if (moods.length > 0) {
+        lines.push(sep, 'MOOD CHECK-INS', sep);
+        const avg = moods.reduce((s: number, m: any) => s + Number(m.mood ?? 0), 0) / moods.length;
+        lines.push(`Total logged:  ${moods.length} check-ins`);
+        lines.push(`Average mood:  ${avg.toFixed(1)} / 5`);
+        lines.push('', 'Recent entries (last 20):');
+        for (const m of moods.slice(-20)) {
+          const note = m.note ? `  — ${m.note}` : '';
+          lines.push(`  ${fmt(m.created_at)}  ${moodWord(m.mood)} (${m.mood}/5)${note}`);
+        }
+        lines.push('');
+      }
+
+      lines.push(sep);
+      lines.push('"The day you turn it around starts today."');
+      lines.push(sep);
+
+      const filename = `cornerday-report-${new Date().toISOString().slice(0, 10)}.txt`;
       const path = `${FileSystem.documentDirectory}${filename}`;
-      await FileSystem.writeAsStringAsync(path, JSON.stringify(exportData, null, 2), { encoding: FileSystem.EncodingType.UTF8 });
-      await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'Save your CornerDay data' });
+      await FileSystem.writeAsStringAsync(path, lines.join('\n'), { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(path, { mimeType: 'text/plain', dialogTitle: 'Save your CornerDay report' });
     } finally {
       setExportLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    const email = profile?.email;
+    if (!email) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) {
+      Alert.alert('Error', 'Could not send reset email. Please try again.');
+    } else {
+      Alert.alert('Check your inbox', `A password reset link has been sent to ${email}.`, [{ text: 'OK' }]);
     }
   };
 
@@ -716,10 +834,18 @@ export default function AccountScreen() {
 
   const initials = (profile?.displayName ?? profile?.email ?? '?')[0].toUpperCase();
   const quitFormatted = formatQuitDate(profile?.quitTimestamp ?? null);
-  const currentStreak = profile?.quitTimestamp
-    ? Math.floor(Math.max(0, Date.now() - new Date(profile.quitTimestamp).getTime()) / 86400000)
-    : 0;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+
+  const streakDisplay = (() => {
+    if (!profile?.quitTimestamp) return { value: '0', unit: 'days' };
+    const ms = Math.max(0, Date.now() - new Date(profile.quitTimestamp).getTime());
+    const days = Math.floor(ms / 86400000);
+    if (days >= 1) return { value: String(days), unit: 'days' };
+    const hours = Math.floor(ms / 3600000);
+    if (hours >= 1) return { value: String(hours), unit: hours === 1 ? 'hour' : 'hours' };
+    const mins = Math.floor(ms / 60000);
+    return { value: String(Math.max(1, mins)), unit: mins <= 1 ? 'min' : 'mins' };
+  })();
 
   return (
     <View style={s.root}>
@@ -804,12 +930,12 @@ export default function AccountScreen() {
           )}
         </View>
 
-        {/* Streak stats */}
+        {/* Stats */}
         <View style={s.statsCard}>
           <View style={s.statCol}>
-            <Text style={s.statValue}>{currentStreak}</Text>
+            <Text style={s.statValue}>{streakDisplay.value}</Text>
             <Text style={s.statLabel}>Current streak</Text>
-            <Text style={s.statUnit}>days</Text>
+            <Text style={s.statUnit}>{streakDisplay.unit}</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.statCol}>
@@ -817,11 +943,17 @@ export default function AccountScreen() {
             <Text style={s.statLabel}>Longest streak</Text>
             <Text style={s.statUnit}>days</Text>
           </View>
+          <View style={s.statDivider} />
+          <View style={s.statCol}>
+            <Text style={s.statValue}>{profile?.milestonesEarned ?? 0}</Text>
+            <Text style={s.statLabel}>Milestones</Text>
+            <Text style={s.statUnit}>earned</Text>
+          </View>
         </View>
 
-        {/* Journey */}
+        {/* Your recovery */}
         <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>Your journey</Text>
+          <Text style={s.infoCardTitle}>Your recovery</Text>
           {quitFormatted && (
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Started</Text>
@@ -868,7 +1000,6 @@ export default function AccountScreen() {
               </Pressable>
             </View>
           </View>
-
           <View style={s.infoRow}>
             <Text style={s.infoLabel}>Trusted contact</Text>
             <View style={s.infoValueRow}>
@@ -877,6 +1008,23 @@ export default function AccountScreen() {
                   ? `${trustedContactName}${trustedContactPhone ? ` · ${trustedContactPhone}` : ''}`
                   : 'Not set'}
               </Text>
+              {trustedContactPhone ? (
+                <Pressable
+                  onPress={async () => {
+                    const url = `tel:${trustedContactPhone}`;
+                    const can = await Linking.canOpenURL(url).catch(() => false);
+                    if (can) {
+                      Linking.openURL(url);
+                    } else {
+                      await Clipboard.setStringAsync(trustedContactPhone);
+                      Alert.alert('Copied', 'Phone number copied to clipboard.');
+                    }
+                  }}
+                  style={({ pressed }) => [s.callBtn, pressed && { opacity: 0.6 }]}
+                  hitSlop={8}>
+                  <Ionicons name="call-outline" size={16} color="#0F6E6E" />
+                </Pressable>
+              ) : null}
               <Pressable
                 onPress={openContactModal}
                 style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
@@ -884,7 +1032,11 @@ export default function AccountScreen() {
               </Pressable>
             </View>
           </View>
+        </View>
 
+        {/* Recovery profile */}
+        <View style={s.infoCard}>
+          <Text style={s.infoCardTitle}>Recovery profile</Text>
           {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map(field => {
             const config = FIELD_CONFIG[field];
             const raw = field === 'motivation' ? profile?.motivation
@@ -911,98 +1063,183 @@ export default function AccountScreen() {
         </View>
 
         {/* Subscription */}
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>Subscription</Text>
-          <Text style={s.subStatus}>
-            {isPremiumFromRC ? '✨ Premium — active' : 'Free plan'}
-          </Text>
-          {!isPremiumFromRC && (
+        {isPremiumFromRC ? (
+          <LinearGradient colors={['#0a5555', '#0F6E6E', '#1a9a9a']} style={s.premiumCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <View style={s.premiumCardInner}>
+              <View style={s.premiumCardLeft}>
+                <View style={s.premiumIconWrap}>
+                  <Text style={{ fontSize: 22 }}>✨</Text>
+                </View>
+                <View>
+                  <Text style={s.premiumCardTitle}>Premium Active</Text>
+                  <Text style={s.premiumCardSub}>{renewalDate ? `Renews ${renewalDate}` : 'All features unlocked'}</Text>
+                </View>
+              </View>
+              <Pressable
+                style={({ pressed }) => [s.manageSub, pressed && { opacity: 0.7 }]}
+                onPress={() => {
+                  const url = Platform.OS === 'ios'
+                    ? 'https://apps.apple.com/account/subscriptions'
+                    : 'https://play.google.com/store/account/subscriptions';
+                  Linking.openURL(url);
+                }}>
+                <Text style={s.manageSubTxt}>Manage</Text>
+              </Pressable>
+            </View>
+          </LinearGradient>
+        ) : (
+          <View style={s.card}>
+            <Text style={s.sectionTitle}>Subscription</Text>
+            <Text style={s.subStatus}>Free plan</Text>
             <Pressable
               style={({ pressed }) => [s.upgradeBtn, pressed && { opacity: 0.85 }]}
-              onPress={showPaywall}
-            >
+              onPress={showPaywall}>
               <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
             </Pressable>
-          )}
-        </View>
+            <Pressable
+              style={({ pressed }) => [s.restoreLink, pressed && { opacity: 0.6 }]}
+              onPress={async () => { setRestoringPurchases(true); await restorePurchases(); setRestoringPurchases(false); }}
+              disabled={restoringPurchases}>
+              {restoringPurchases
+                ? <ActivityIndicator size="small" color="#0F6E6E" />
+                : <Text style={s.restoreLinkTxt}>Already purchased? Restore</Text>}
+            </Pressable>
+          </View>
+        )}
 
         {/* Settings */}
-        <View style={s.aboutCard}>
-          <Text style={s.aboutTitle}>Settings</Text>
-          <Pressable style={({ pressed }) => [s.settingsRow, pressed && { opacity: 0.7 }]} onPress={() => setNotifModalVisible(true)}>
-            <Ionicons name="notifications-outline" size={18} color="#0F6E6E" style={{ marginRight: 12 }} />
-            <Text style={s.settingsRowTxt}>Notification settings</Text>
+        <View style={s.menuCard}>
+          <Text style={s.menuCardTitle}>Settings</Text>
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => setNotifModalVisible(true)}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="notifications-outline" size={17} color="#0F6E6E" />
+            </View>
+            <Text style={s.menuRowLabel}>Notifications</Text>
             <Ionicons name="chevron-forward" size={16} color="#ccc" />
           </Pressable>
-          <View style={s.settingsDivider} />
-          <Pressable style={({ pressed }) => [s.settingsRow, pressed && { opacity: 0.7 }]} onPress={() => setResetDataModalVisible(true)}>
-            <Ionicons name="refresh-outline" size={18} color="#c0392b" style={{ marginRight: 12 }} />
-            <Text style={[s.settingsRowTxt, { color: '#c0392b' }]}>Reset data</Text>
+          {isPasswordUser && (
+            <>
+              <View style={s.menuDivider} />
+              <Pressable
+                style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+                onPress={handleChangePassword}>
+                <View style={s.menuIconWrap}>
+                  <Ionicons name="key-outline" size={17} color="#0F6E6E" />
+                </View>
+                <Text style={s.menuRowLabel}>Change password</Text>
+                <Ionicons name="chevron-forward" size={16} color="#ccc" />
+              </Pressable>
+            </>
+          )}
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => setResetDataModalVisible(true)}>
+            <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
+              <Ionicons name="refresh-outline" size={17} color="#c0392b" />
+            </View>
+            <Text style={[s.menuRowLabel, { color: '#c0392b' }]}>Reset data</Text>
             <Ionicons name="chevron-forward" size={16} color="#ccc" />
           </Pressable>
         </View>
 
-        {/* Export data */}
-        <Pressable
-          style={({ pressed }) => [s.exportBtn, pressed && { opacity: 0.7 }]}
-          onPress={handleExport}
-          disabled={exportLoading}>
-          {exportLoading
-            ? <ActivityIndicator color="#0F6E6E" size="small" />
-            : <>
-                <Ionicons name="download-outline" size={16} color="#0F6E6E" style={{ marginRight: 8 }} />
-                <Text style={s.exportTxt}>Export my data</Text>
-              </>}
-        </Pressable>
-
-        {/* Feedback */}
-        <Pressable
-          style={({ pressed }) => [s.exportBtn, pressed && { opacity: 0.7 }]}
-          onPress={() => { setFeedbackMsg(''); setFeedbackType('general'); setFeedbackVisible(true); }}>
-          <Ionicons name="chatbubble-outline" size={16} color="#0F6E6E" style={{ marginRight: 8 }} />
-          <Text style={s.exportTxt}>Feedback &amp; feature request</Text>
-        </Pressable>
-
-        {/* Sign out */}
-        <Pressable
-          style={({ pressed }) => [s.signOutBtn, pressed && { opacity: 0.7 }]}
-          onPress={confirmSignOut}
-          disabled={signingOut}>
-          {signingOut
-            ? <ActivityIndicator color="#c0392b" size="small" />
-            : <Text style={s.signOutTxt}>Sign out</Text>}
-        </Pressable>
-
-        {/* About */}
-        <View style={s.aboutCard}>
-          <Text style={s.aboutTitle}>About</Text>
-          <Text style={s.aboutVersion}>CornerDay v{appVersion}</Text>
-          <Text style={s.aboutNote}>
-            CornerDay was built for anyone fighting to turn their life around after gambling. You are not alone — every day you hold on is a victory.
-          </Text>
-          <View style={s.aboutDivider} />
+        {/* Support & about */}
+        <View style={s.menuCard}>
+          <Text style={s.menuCardTitle}>Support & about</Text>
           <Pressable
-            style={({ pressed }) => [s.aboutBtn, pressed && { opacity: 0.7 }]}
-            onPress={() => Linking.openURL('market://details?id=com.cornerday.app')}>
-            <Ionicons name="star-outline" size={16} color="#0F6E6E" style={{ marginRight: 8 }} />
-            <Text style={s.aboutBtnTxt}>Rate the app</Text>
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={handleExport}
+            disabled={exportLoading}>
+            <View style={s.menuIconWrap}>
+              {exportLoading
+                ? <ActivityIndicator size="small" color="#0F6E6E" />
+                : <Ionicons name="download-outline" size={17} color="#0F6E6E" />}
+            </View>
+            <Text style={s.menuRowLabel}>Export my data</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
           </Pressable>
-          <View style={s.aboutDivider} />
+          <View style={s.menuDivider} />
           <Pressable
-            style={({ pressed }) => [s.aboutBtn, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => { setFeedbackMsg(''); setFeedbackType('general'); setFeedbackVisible(true); }}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="chatbubble-outline" size={17} color="#0F6E6E" />
+            </View>
+            <Text style={s.menuRowLabel}>Send feedback</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </Pressable>
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => {
+              const url = Platform.OS === 'ios'
+                ? 'https://apps.apple.com/app/id6748937702'
+                : 'market://details?id=com.cornerday.app';
+              Linking.openURL(url);
+            }}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="star-outline" size={17} color="#0F6E6E" />
+            </View>
+            <Text style={s.menuRowLabel}>Rate CornerDay</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </Pressable>
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => router.push('/terms')}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="document-text-outline" size={17} color="#0F6E6E" />
+            </View>
+            <Text style={s.menuRowLabel}>Terms of Use</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </Pressable>
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => router.push('/privacy-policy')}>
-            <Ionicons name="shield-checkmark-outline" size={16} color="#888" style={{ marginRight: 8 }} />
-            <Text style={[s.aboutBtnTxt, { color: '#888' }]}>Privacy Policy</Text>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="shield-checkmark-outline" size={17} color="#0F6E6E" />
+            </View>
+            <Text style={s.menuRowLabel}>Privacy Policy</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
           </Pressable>
         </View>
 
-        {/* Delete account */}
-        <Pressable
-          style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }]}
-          onPress={confirmDeleteAccount}
-          disabled={signingOut}>
-          <Text style={s.deleteBtnTxt}>Delete account</Text>
-        </Pressable>
+        {/* Footer */}
+        <View style={s.footerNote}>
+          <Text style={s.footerVersion}>CornerDay v{appVersion}</Text>
+          <Text style={s.footerTagline}>Every day you hold on is a victory.</Text>
+        </View>
+
+        {/* Danger zone */}
+        <View style={s.dangerCard}>
+          <Text style={s.menuCardTitle}>Account</Text>
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={confirmSignOut}
+            disabled={signingOut}>
+            <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
+              <Ionicons name="log-out-outline" size={17} color="#c0392b" />
+            </View>
+            {signingOut
+              ? <ActivityIndicator color="#c0392b" size="small" style={{ flex: 1 }} />
+              : <Text style={[s.menuRowLabel, s.dangerRowLabel]}>Sign out</Text>}
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </Pressable>
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={confirmDeleteAccount}
+            disabled={signingOut}>
+            <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
+              <Ionicons name="trash-outline" size={17} color="#c0392b" />
+            </View>
+            <Text style={[s.menuRowLabel, s.dangerRowLabel]}>Delete account</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </Pressable>
+        </View>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -1096,6 +1333,8 @@ export default function AccountScreen() {
               placeholder="+1 555 000 0000"
               placeholderTextColor="#bbb"
               keyboardType="phone-pad"
+              autoComplete="off"
+              textContentType="none"
             />
             <View style={s.modalActions}>
               <Pressable
@@ -1680,7 +1919,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
   },
   statCol: { flex: 1, alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 28, fontWeight: '800', color: '#0F6E6E' },
+  statValue: { fontSize: 22, fontWeight: '800', color: '#0F6E6E' },
   statLabel: { fontSize: 12, color: '#888', fontWeight: '600' },
   statUnit: { fontSize: 11, color: '#bbb' },
   statDivider: { width: 1, height: 48, backgroundColor: '#f0f0f0', marginHorizontal: 8 },
@@ -1692,13 +1931,6 @@ const s = StyleSheet.create({
   },
   exportTxt: { fontSize: 15, color: '#0F6E6E', fontWeight: '600' },
 
-  signOutBtn: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    alignItems: 'center', borderWidth: 1, borderColor: '#ffcdd2',
-  },
-  signOutTxt: { fontSize: 15, color: '#c0392b', fontWeight: '600' },
-  deleteBtn: { alignItems: 'center', paddingVertical: 12 },
-  deleteBtnTxt: { fontSize: 13, color: '#bbb' },
   versionTxt: { fontSize: 12, color: '#ccc', textAlign: 'center', paddingVertical: 8 },
 
   infoValueEmpty: { color: '#bbb', fontStyle: 'italic', fontWeight: '400' },
@@ -1836,4 +2068,53 @@ const s = StyleSheet.create({
   resetConfirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#555' },
   resetConfirmBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: '#c0392b', alignItems: 'center' },
   resetConfirmBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  // Premium subscription card
+  premiumCard: {
+    borderRadius: 16, padding: 18,
+    shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
+  },
+  premiumCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  premiumCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  premiumIconWrap: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  premiumCardTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  premiumCardSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  manageSub: {
+    backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 10,
+    paddingVertical: 8, paddingHorizontal: 14,
+  },
+  manageSubTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  // Settings / support menu cards
+  menuCard: { backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden' },
+  menuCardTitle: { fontSize: 12, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+  menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13 },
+  menuIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  menuIconWrapRed: { backgroundColor: '#fde8e8' },
+  menuRowLabel: { flex: 1, fontSize: 15, color: '#111', fontWeight: '500' },
+  menuDivider: { height: 1, backgroundColor: '#f5f5f5', marginLeft: 62 },
+
+  // Restore purchases link
+  restoreLink: { alignItems: 'center', paddingTop: 10 },
+  restoreLinkTxt: { fontSize: 13, color: '#0F6E6E' },
+
+  // Footer note
+  footerNote: { alignItems: 'center', paddingVertical: 6, gap: 4 },
+  footerVersion: { fontSize: 12, color: '#ccc' },
+  footerTagline: { fontSize: 12, color: '#bbb', fontStyle: 'italic', textAlign: 'center' },
+
+  // Call button next to trusted contact
+  callBtn: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Danger zone card (sign out + delete account)
+  dangerCard: { backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#fde8e8' },
+  dangerRowLabel: { color: '#c0392b' },
 });

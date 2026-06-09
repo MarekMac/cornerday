@@ -58,7 +58,7 @@ export default function TermsScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={s.backBtn}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/account')} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
         </Pressable>
         <Text style={s.title}>Terms of Use</Text>

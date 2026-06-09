@@ -23,10 +23,8 @@ import { type GameKey, GAMES, renderGame } from '@/lib/games';
 import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-// body padding (16×2=32) + section padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 84
-const GAME_TILE_W = Math.floor((SCREEN_W - 84) / 3);
-// picker overlay has only its own padding (16×2=32) + 2 gaps (8×2=16) + 4px buffer = 52
-const PICKER_TILE_W = Math.floor((SCREEN_W - 52) / 3);
+const PICKER_TILE_W = Math.floor((SCREEN_W - 88 - 10) / 2);
+const TIMER_TOTAL = 20 * 60;
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -159,9 +157,13 @@ export default function UrgeScreen() {
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
   const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
-  const [expandedDistraction, setExpandedDistraction] = useState<string | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
-  const [showGamePicker, setShowGamePicker] = useState(false);
+  const [pickerVisible, setPickerVisible] = useState<'games' | 'exercises' | null>(null);
+  const [activeDistraction, setActiveDistraction] = useState<typeof DISTRACTIONS[0] | null>(null);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerSecsLeft, setTimerSecsLeft] = useState(TIMER_TOTAL);
+  const [timerPointsEarned, setTimerPointsEarned] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isMounted = useRef(true);
 
@@ -181,6 +183,38 @@ export default function UrgeScreen() {
   }, []);
 
   useEffect(() => { fetchMotivation().finally(() => setLoading(false)); }, [fetchMotivation]);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    timerRef.current = setInterval(() => {
+      setTimerSecsLeft(prev => {
+        if (prev <= 1) {
+          setTimerRunning(false);
+          awardTimerPoint();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [timerRunning]);
+
+  const awardTimerPoint = async () => {
+    setTimerPointsEarned(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+    const key = `urge_timer_${today}`;
+    const already = await AsyncStorage.getItem(key);
+    if (already) return;
+    await AsyncStorage.setItem(key, '1');
+    await supabase.from('urge_journal').insert({
+      user_id: user.id,
+      trigger: 'timer_completed',
+      outcome: 'overcame',
+      note: 'Completed 20-minute urge timer',
+    });
+  };
 
   const openLog = (presetOutcome: 'overcame' | 'slipped') => {
     setOutcome(presetOutcome);
@@ -242,34 +276,20 @@ export default function UrgeScreen() {
   };
 
   const handleDistraction = (d: typeof DISTRACTIONS[0]) => {
-    if (d.action === 'expand') {
-      setExpandedDistraction(prev => prev === d.label ? null : d.label);
-    } else if (d.action === 'call') {
-      if (trustedContact?.phone) {
-        Linking.openURL(`tel:${trustedContact.phone}`);
-      } else {
-        Alert.alert(
-          'No contact saved',
-          'Add a trusted contact in Account settings to enable quick calling.',
-          [
-            { text: 'Go to Settings', onPress: () => router.push('/(tabs)/account') },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        );
-      }
-    } else if (d.action === 'music') {
-      Linking.openURL('music://').catch(() =>
-        Linking.openURL('spotify://').catch(() =>
-          Alert.alert('Open your music app', 'Put on something you love — music shifts your mood fast.')
-        )
-      );
-    } else if (d.action === 'game') {
-      setShowGamePicker(true);
-    }
+    setActiveDistraction(d);
   };
 
   const motivations = (motivation ?? '').split(',').filter(Boolean)
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
+
+  const timerDone = !timerRunning && timerSecsLeft === 0;
+  const timerPct = ((TIMER_TOTAL - timerSecsLeft) / TIMER_TOTAL) * 100;
+  const timerMins = Math.floor(timerSecsLeft / 60);
+  const timerSecs = timerSecsLeft % 60;
+  const timerDisplay = `${String(timerMins).padStart(2, '0')}:${String(timerSecs).padStart(2, '0')}`;
+  const startTimer = () => { setTimerSecsLeft(TIMER_TOTAL); setTimerRunning(true); setTimerPointsEarned(false); };
+  const stopTimer  = () => setTimerRunning(false);
+  const resetTimer = () => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); };
 
   if (loading) {
     return <View style={s.center}><ActivityIndicator size="large" color="#0F6E6E" /></View>;
@@ -286,6 +306,84 @@ export default function UrgeScreen() {
       </LinearGradient>
 
       <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
+
+        {/* Urge delay timer — hero card */}
+        <View style={[s.timerCard, timerDone && s.timerCardDone]}>
+          <View style={s.timerTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.timerTitle, timerDone && { color: '#27ae60' }]}>
+                {timerDone ? 'You made it! 🎉' : timerRunning ? 'Holding on...' : 'Hold on for 20 minutes'}
+              </Text>
+              <Text style={s.timerSub}>
+                {timerDone ? 'The urge has passed. That took strength.' : 'Most urges fade within 20 minutes'}
+              </Text>
+            </View>
+            <Text style={[s.timerDigits, timerDone && { color: '#27ae60' }]}>{timerDisplay}</Text>
+          </View>
+          <View style={s.timerTrack}>
+            <View style={[s.timerFill, { width: `${timerPct}%` as any }, timerDone && s.timerFillDone]} />
+          </View>
+          {timerDone && (
+            <View style={s.timerReward}>
+              <Text style={s.timerRewardEmoji}>⭐</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.timerRewardTitle}>+1 point earned</Text>
+                <Text style={s.timerRewardSub}>
+                  {timerPointsEarned ? 'Logged to your journal automatically' : 'Already earned one today — keep going!'}
+                </Text>
+              </View>
+            </View>
+          )}
+          <View style={s.timerBtns}>
+            {!timerRunning && !timerDone && (
+              <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={startTimer}>
+                <Text style={s.timerStartBtnTxt}>Start timer</Text>
+              </Pressable>
+            )}
+            {timerRunning && (
+              <>
+                <Pressable style={({ pressed }) => [s.timerPastBtn, pressed && { opacity: 0.88 }]} onPress={stopTimer}>
+                  <Text style={s.timerPastBtnTxt}>I'm past it  ✓</Text>
+                </Pressable>
+                <Pressable style={({ pressed }) => [s.timerCancelBtn, pressed && { opacity: 0.7 }]} onPress={resetTimer}>
+                  <Text style={s.timerCancelBtnTxt}>Cancel</Text>
+                </Pressable>
+              </>
+            )}
+            {timerDone && (
+              <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={resetTimer}>
+                <Text style={s.timerStartBtnTxt}>Go again</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* Quick actions */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.iconRow}>
+          <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('games')}>
+            <Text style={s.iconPillEmoji}>🎮</Text>
+            <Text style={s.iconPillLabel}>Games</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('exercises')}>
+            <Text style={s.iconPillEmoji}>🧘</Text>
+            <Text style={s.iconPillLabel}>Exercises</Text>
+          </Pressable>
+          {DISTRACTIONS.filter(d => d.action === 'call').map(d => {
+            const label = trustedContact?.name ? `Call ${trustedContact.name}` : d.label;
+            return (
+              <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
+                <Text style={s.iconPillEmoji}>{d.emoji}</Text>
+                <Text style={s.iconPillLabel}>{label}</Text>
+              </Pressable>
+            );
+          })}
+          {DISTRACTIONS.filter(d => d.action !== 'game' && d.action !== 'call').map(d => (
+            <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
+              <Text style={s.iconPillEmoji}>{d.emoji}</Text>
+              <Text style={s.iconPillLabel}>{d.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
 
         {/* Your why */}
         <View style={s.whyCard}>
@@ -314,80 +412,6 @@ export default function UrgeScreen() {
                 </View>
               )}
             </Pressable>
-          </View>
-        </View>
-
-        <Text style={s.sectionHeader}>Right now</Text>
-
-        {/* Distractions — actionable */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Try a distraction</Text>
-          {DISTRACTIONS.map((d, i) => {
-            const isLast = i === DISTRACTIONS.length - 1;
-            const isExpanded = expandedDistraction === d.label;
-            const isCall = d.action === 'call';
-            const callLabel = trustedContact?.name ? `📞 Call ${trustedContact.name}` : '📞 Call';
-            return (
-              <View key={d.label}>
-                <Pressable
-                  style={[s.distractionRow, !isLast && !isExpanded && s.distractionBorder]}
-                  onPress={() => handleDistraction(d)}>
-                  <Text style={s.distractionEmoji}>{d.emoji}</Text>
-                  <View style={s.distractionText}>
-                    <Text style={s.distractionLabel}>{d.label}</Text>
-                    <Text style={s.distractionSub}>{d.sub}</Text>
-                  </View>
-                  {isCall && trustedContact?.phone ? (
-                    <View style={s.callBtn}>
-                      <Text style={s.callBtnTxt}>{callLabel}</Text>
-                    </View>
-                  ) : isCall && !trustedContact?.phone ? (
-                    <Text style={s.distractionLink}>Set up ›</Text>
-                  ) : (
-                    <Text style={s.distractionArrow}>{isExpanded ? '∨' : '›'}</Text>
-                  )}
-                </Pressable>
-                {isExpanded && 'tip' in d && (
-                  <Text style={[s.distractionTip, !isLast && s.distractionBorder]}>
-                    {d.tip}
-                  </Text>
-                )}
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Focus games grid */}
-        <View style={s.gamesSection}>
-          <Text style={s.gamesSectionTitle}>Focus Games</Text>
-          <Text style={s.gamesSectionSub}>Engage your mind, ease the urge</Text>
-          <View style={s.gamesGrid}>
-            {GAMES.map(game => (
-              <Pressable
-                key={game.key}
-                style={({ pressed }) => [s.gameTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
-                onPress={() => setActiveGame(game.key)}>
-                <Text style={s.gameTileEmoji}>{game.emoji}</Text>
-                <Text style={s.gameTileTitle}>{game.title}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Exercises grid */}
-        <View style={s.gamesSection}>
-          <Text style={s.gamesSectionTitle}>Guided Exercises</Text>
-          <Text style={s.gamesSectionSub}>Mindfulness and grounding techniques</Text>
-          <View style={s.gamesGrid}>
-            {EXERCISES.map(ex => (
-              <Pressable
-                key={ex.key}
-                style={({ pressed }) => [s.gameTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
-                onPress={() => setActiveExercise(ex.key)}>
-                <Text style={s.gameTileEmoji}>{ex.emoji}</Text>
-                <Text style={s.gameTileTitle}>{ex.title}</Text>
-              </Pressable>
-            ))}
           </View>
         </View>
 
@@ -452,47 +476,125 @@ export default function UrgeScreen() {
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* Game + Exercise picker overlay */}
-      {showGamePicker && (
-        <View style={StyleSheet.absoluteFill}>
-          <SafeAreaView style={s.gameOverlay} edges={['top', 'bottom']}>
-            <View style={s.gameOverlayHeader}>
-              <Text style={s.gameOverlayTitle}>Pick an activity</Text>
-              <Pressable style={s.gameCloseBtn} onPress={() => setShowGamePicker(false)}>
-                <Text style={s.gameCloseBtnTxt}>✕</Text>
+      {/* Games / Exercises picker sheet */}
+      <Modal
+        visible={pickerVisible !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerVisible(null)}>
+        <View style={s.pickerOverlay}>
+          <Pressable style={s.modalBackdrop} onPress={() => setPickerVisible(null)} />
+          <View style={s.pickerSheet}>
+            <Text style={s.pickerTitle}>
+              {pickerVisible === 'games' ? '🎮  Focus games' : '🧘  Guided exercises'}
+            </Text>
+            <Text style={s.pickerSub}>
+              {pickerVisible === 'games' ? 'Engage your mind to ease the urge' : 'Breathe, ground, and reset'}
+            </Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 4 }}>
+              <View style={s.pickerGrid}>
+                {pickerVisible === 'games'
+                  ? GAMES.map(game => (
+                      <Pressable
+                        key={game.key}
+                        style={({ pressed }) => [s.pickerTile, pressed && { opacity: 0.75 }]}
+                        onPress={() => { setPickerVisible(null); setActiveGame(game.key); }}>
+                        <Text style={s.pickerTileEmoji}>{game.emoji}</Text>
+                        <Text style={s.pickerTileTitle}>{game.title}</Text>
+                      </Pressable>
+                    ))
+                  : EXERCISES.map(ex => (
+                      <Pressable
+                        key={ex.key}
+                        style={({ pressed }) => [s.pickerTile, pressed && { opacity: 0.75 }]}
+                        onPress={() => { setPickerVisible(null); setActiveExercise(ex.key); }}>
+                        <Text style={s.pickerTileEmoji}>{ex.emoji}</Text>
+                        <Text style={s.pickerTileTitle}>{ex.title}</Text>
+                      </Pressable>
+                    ))
+                }
+              </View>
+              <View style={{ height: 24 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Distraction info card */}
+      <Modal
+        visible={activeDistraction !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActiveDistraction(null)}>
+        <View style={s.pickerOverlay}>
+          <Pressable style={s.modalBackdrop} onPress={() => setActiveDistraction(null)} />
+          {activeDistraction && (
+            <View style={s.pickerSheet}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <Text style={{ fontSize: 36 }}>{activeDistraction.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.pickerTitle}>{activeDistraction.label}</Text>
+                  <Text style={s.pickerSub}>{activeDistraction.sub}</Text>
+                </View>
+              </View>
+
+              {'tip' in activeDistraction && activeDistraction.tip ? (
+                <View style={s.distractionTipBox}>
+                  <Text style={s.distractionTipTxt}>{activeDistraction.tip}</Text>
+                </View>
+              ) : null}
+
+              {activeDistraction.action === 'call' && (
+                trustedContact ? (
+                  <View style={s.distractionTipBox}>
+                    <Text style={s.distractionTipTxt}>
+                      Reach out to {trustedContact.name} — they're in your corner.
+                    </Text>
+                    <Pressable
+                      style={({ pressed }) => [s.distractionCallBtn, pressed && { opacity: 0.85 }]}
+                      onPress={() => { setActiveDistraction(null); Linking.openURL(`tel:${trustedContact.phone}`); }}>
+                      <Text style={s.distractionCallBtnTxt}>📞  Call {trustedContact.name}</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={s.distractionTipBox}>
+                    <Text style={s.distractionTipTxt}>
+                      No trusted contact saved yet. Add one in Account settings for quick access.
+                    </Text>
+                    <Pressable
+                      style={({ pressed }) => [s.distractionCallBtn, pressed && { opacity: 0.85 }]}
+                      onPress={() => { setActiveDistraction(null); router.push('/(tabs)/account'); }}>
+                      <Text style={s.distractionCallBtnTxt}>Go to Account settings</Text>
+                    </Pressable>
+                  </View>
+                )
+              )}
+
+              {activeDistraction.action === 'music' && (
+                <View style={s.distractionTipBox}>
+                  <Text style={s.distractionTipTxt}>
+                    Music shifts your mood fast. Put on something familiar — upbeat or calming, whatever feels right.
+                  </Text>
+                  <Pressable
+                    style={({ pressed }) => [s.distractionCallBtn, pressed && { opacity: 0.85 }]}
+                    onPress={() => {
+                      setActiveDistraction(null);
+                      Linking.openURL('music://').catch(() => Linking.openURL('spotify://').catch(() => {}));
+                    }}>
+                    <Text style={s.distractionCallBtnTxt}>🎵  Open music app</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              <Pressable
+                style={({ pressed }) => [s.distractionDismissBtn, pressed && { opacity: 0.7 }]}
+                onPress={() => setActiveDistraction(null)}>
+                <Text style={s.distractionDismissTxt}>Got it</Text>
               </Pressable>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.pickerContent}>
-              <Text style={s.pickerSectionTitle}>Focus Games</Text>
-              <Text style={s.gamesSectionSub}>Engage your mind, ease the urge</Text>
-              <View style={s.pickerGrid}>
-                {GAMES.map(game => (
-                  <Pressable
-                    key={game.key}
-                    style={({ pressed }) => [s.pickerTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
-                    onPress={() => setActiveGame(game.key)}>
-                    <Text style={s.gameTileEmoji}>{game.emoji}</Text>
-                    <Text style={s.gameTileTitle}>{game.title}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={[s.pickerSectionTitle, { marginTop: 8 }]}>Guided Exercises</Text>
-              <Text style={s.gamesSectionSub}>Mindfulness and grounding techniques</Text>
-              <View style={s.pickerGrid}>
-                {EXERCISES.map(ex => (
-                  <Pressable
-                    key={ex.key}
-                    style={({ pressed }) => [s.pickerTile, pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] }]}
-                    onPress={() => setActiveExercise(ex.key)}>
-                    <Text style={s.gameTileEmoji}>{ex.emoji}</Text>
-                    <Text style={s.gameTileTitle}>{ex.title}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </ScrollView>
-          </SafeAreaView>
+          )}
         </View>
-      )}
+      </Modal>
 
       {/* Game overlay */}
       {activeGame !== null && (
@@ -697,17 +799,112 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#edf0f0' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: { paddingBottom: 20 },
+  header: { paddingBottom: 22 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12 },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
-  headerSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
+  headerSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
 
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
 
+  sectionHeader: {
+    fontSize: 11, fontWeight: '700', color: '#999', textTransform: 'uppercase',
+    letterSpacing: 0.8, marginTop: 4, marginBottom: -4, paddingHorizontal: 2,
+  },
+
+  // ── Urge delay timer ─────────────────────────────────────────────────────────
+  timerCard: {
+    backgroundColor: '#fff', borderRadius: 18, padding: 20,
+    shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+    borderWidth: 1, borderColor: '#e0f0f0',
+  },
+  timerCardDone: {
+    borderColor: '#27ae60', borderWidth: 1.5,
+    shadowColor: '#27ae60', shadowOpacity: 0.15,
+  },
+  timerReward: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#f0fdf4', borderRadius: 12,
+    padding: 12, marginBottom: 14,
+    borderWidth: 1, borderColor: '#bbf7d0',
+  },
+  timerRewardEmoji: { fontSize: 26 },
+  timerRewardTitle: { fontSize: 15, fontWeight: '700', color: '#166534' },
+  timerRewardSub: { fontSize: 12, color: '#16a34a', marginTop: 1 },
+  timerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  timerTitle: { fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 3 },
+  timerSub: { fontSize: 13, color: '#888', lineHeight: 18 },
+  timerDigits: { fontSize: 34, fontWeight: '800', color: '#0F6E6E', fontVariant: ['tabular-nums'] as any },
+  timerTrack: { height: 6, backgroundColor: '#e6f0f0', borderRadius: 3, overflow: 'hidden', marginBottom: 16 },
+  timerFill: { height: 6, backgroundColor: '#0F6E6E', borderRadius: 3 },
+  timerFillDone: { backgroundColor: '#27ae60' },
+  timerBtns: { flexDirection: 'row', gap: 10 },
+  timerStartBtn: {
+    flex: 1, backgroundColor: '#0F6E6E', borderRadius: 14,
+    paddingVertical: 13, alignItems: 'center',
+  },
+  timerStartBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  timerPastBtn: {
+    flex: 2, backgroundColor: '#e6f7f0', borderRadius: 14,
+    paddingVertical: 13, alignItems: 'center',
+    borderWidth: 1.5, borderColor: '#27ae60',
+  },
+  timerPastBtnTxt: { color: '#27ae60', fontWeight: '700', fontSize: 15 },
+  timerCancelBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
+  timerCancelBtnTxt: { color: '#888', fontWeight: '600', fontSize: 14 },
+
+  // ── Icon rows (quick actions / games / exercises) ─────────────────────────────
+  iconRow: { paddingHorizontal: 2, gap: 8, paddingBottom: 2 },
+  iconPill: {
+    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14,
+    alignItems: 'center', gap: 4, minWidth: 72,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
+  },
+  iconPillEmoji: { fontSize: 22 },
+  iconPillLabel: { fontSize: 11, fontWeight: '600', color: '#333', textAlign: 'center' },
+  pickerOverlay: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  pickerSheet: {
+    backgroundColor: '#fff', borderRadius: 20, padding: 20,
+    width: '100%', maxHeight: '80%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18, shadowRadius: 24, elevation: 12,
+  },
+  pickerTitle: { fontSize: 18, fontWeight: '700', color: '#111' },
+  pickerSub: { fontSize: 13, color: '#999', marginTop: 2, marginBottom: 12 },
+  pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  pickerTile: {
+    width: PICKER_TILE_W, backgroundColor: '#f7fdfd', borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 6, alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: '#d8eeee',
+  },
+  pickerTileEmoji: { fontSize: 28 },
+  pickerTileTitle: { fontSize: 12, fontWeight: '700', color: '#111', textAlign: 'center', lineHeight: 15 },
+
+  // ── Distraction info card ─────────────────────────────────────────────────────
+  distractionTipBox: {
+    backgroundColor: '#f4fafa', borderRadius: 12, padding: 14,
+    marginBottom: 14, gap: 12,
+  },
+  distractionTipTxt: { fontSize: 14, color: '#444', lineHeight: 21 },
+  distractionCallBtn: {
+    backgroundColor: '#0F6E6E', borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+  },
+  distractionCallBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  distractionDismissBtn: {
+    backgroundColor: '#f0f0f0', borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+  },
+  distractionDismissTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
+
+  // ── Your why ──────────────────────────────────────────────────────────────────
   whyCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 14,
+    backgroundColor: '#fff', borderRadius: 18, padding: 16,
     borderLeftWidth: 4, borderLeftColor: '#0F6E6E',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
   whyInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   whyText: { flex: 1, gap: 6 },
@@ -716,7 +913,7 @@ const s = StyleSheet.create({
   whyEmoji: { fontSize: 18 },
   whyVal: { fontSize: 15, color: '#111', fontWeight: '600' },
   whyPhotoBtn: { alignItems: 'center' },
-  whyPhoto: { width: 150, height: 150, borderRadius: 14 },
+  whyPhoto: { width: 120, height: 120, borderRadius: 14 },
   whyPhotoBadge: {
     position: 'absolute', bottom: -4, right: -4,
     backgroundColor: '#fff', borderRadius: 8, padding: 2,
@@ -724,13 +921,18 @@ const s = StyleSheet.create({
   },
   whyPhotoBadgeIcon: { fontSize: 11 },
   whyPhotoEmpty: {
-    width: 150, height: 150, borderRadius: 14,
+    width: 120, height: 120, borderRadius: 14,
     backgroundColor: '#f0fafa', borderWidth: 1.5, borderColor: '#a8d8d0',
     borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 2,
   },
   whyPhotoEmptyTxt: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
 
-  logCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  // ── Log a moment ─────────────────────────────────────────────────────────────
+  logCard: {
+    backgroundColor: '#fff', borderRadius: 18, padding: 18, gap: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  },
   logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
   logSub: { fontSize: 13, color: '#888', marginTop: -4 },
   logBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
@@ -740,35 +942,36 @@ const s = StyleSheet.create({
   logBtnTxtGreen: { fontSize: 14, fontWeight: '700', color: '#0a7a4e' },
   logBtnTxtRed: { fontSize: 14, fontWeight: '700', color: '#c0392b' },
 
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 6 },
-
-  sectionHeader: {
-    fontSize: 11, fontWeight: '700', color: '#888', textTransform: 'uppercase',
-    letterSpacing: 0.8, marginTop: 4, marginBottom: -4, paddingHorizontal: 2,
+  // ── Checklist + therapy nav rows ─────────────────────────────────────────────
+  checklistBtn: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: '#d8eeee',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
+  checklistBtnIcon: { fontSize: 24 },
+  checklistBtnText: { flex: 1, gap: 2 },
+  checklistBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
+  checklistBtnSub: { fontSize: 12, color: '#888' },
+  checklistBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
 
-  distractionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  distractionBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
-  distractionEmoji: { fontSize: 22 },
-  distractionText: { flex: 1, gap: 1 },
-  distractionLabel: { fontSize: 15, color: '#333', fontWeight: '600' },
-  distractionSub: { fontSize: 12, color: '#aaa' },
-  distractionArrow: { fontSize: 20, color: '#ccc', fontWeight: '300' },
-  distractionLink: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
-  distractionTip: {
-    fontSize: 13, color: '#555', lineHeight: 19,
-    backgroundColor: '#f4fafa', borderRadius: 8, padding: 10, marginBottom: 10,
+  therapyBtn: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: '#d8eeee',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  callBtn: {
-    backgroundColor: '#e6f7f0', borderRadius: 20,
-    paddingVertical: 6, paddingHorizontal: 12,
-    borderWidth: 1, borderColor: '#a8d8c0',
-  },
-  callBtnTxt: { fontSize: 13, fontWeight: '700', color: '#0a7a4e' },
+  therapyBtnIcon: { fontSize: 24 },
+  therapyBtnText: { flex: 1, gap: 2 },
+  therapyBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
+  therapyBtnSub: { fontSize: 12, color: '#888' },
+  therapyBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
 
+  // ── Crisis ────────────────────────────────────────────────────────────────────
   crisisCard: {
-    backgroundColor: '#fff8f8', borderRadius: 14, padding: 16, gap: 8,
+    backgroundColor: '#fff8f8', borderRadius: 18, padding: 18, gap: 10,
     borderLeftWidth: 4, borderLeftColor: '#c0392b',
   },
   crisisTitle: { fontSize: 16, fontWeight: '700', color: '#c0392b' },
@@ -777,14 +980,28 @@ const s = StyleSheet.create({
   crisisBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   crisisNote: { fontSize: 12, color: '#888', textAlign: 'center' },
 
+  // ── Game overlay ─────────────────────────────────────────────────────────────
+  gameOverlay: { flex: 1, backgroundColor: '#f7f7f7' },
+  gameOverlayHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14,
+    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee',
+  },
+  gameOverlayTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
+  gameCloseBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center',
+  },
+  gameCloseBtnTxt: { fontSize: 15, color: '#555', fontWeight: '600' },
+
+  // ── Log moment modal ─────────────────────────────────────────────────────────
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, maxHeight: '85%',
   },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 16 },
-
   outcomeRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   outcomeBtn: {
     flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
@@ -794,7 +1011,6 @@ const s = StyleSheet.create({
   outcomeBtnRed: { backgroundColor: '#fff5f5', borderColor: '#c0392b' },
   outcomeBtnTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
   outcomeBtnTxtActive: { color: '#111' },
-
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 10 },
   optional: { fontWeight: '400', color: '#aaa' },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
@@ -819,43 +1035,19 @@ const s = StyleSheet.create({
   saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
   saveBtnDisabled: { backgroundColor: '#b0cece' },
   saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
   savedWrap: { alignItems: 'center', paddingVertical: 40, gap: 12 },
   savedIcon: { fontSize: 40, color: '#0a7a4e' },
   savedTxt: { fontSize: 18, fontWeight: '700', color: '#0a7a4e' },
 
-  checklistBtn: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1, borderColor: '#a8d8d0',
-  },
-  checklistBtnIcon: { fontSize: 24 },
-  checklistBtnText: { flex: 1, gap: 2 },
-  checklistBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
-  checklistBtnSub: { fontSize: 12, color: '#888' },
-  checklistBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
-
-  therapyBtn: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1, borderColor: '#a8d8d0',
-  },
-  therapyBtnIcon: { fontSize: 24 },
-  therapyBtnText: { flex: 1, gap: 2 },
-  therapyBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
-  therapyBtnSub: { fontSize: 12, color: '#888' },
-  therapyBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
-
+  // ── Professional help modal ───────────────────────────────────────────────────
   therapyHandle: {
     width: 36, height: 4, borderRadius: 2, backgroundColor: '#ddd',
     alignSelf: 'center', marginBottom: 16,
   },
   therapyModalTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center' },
   therapyModalSub: { fontSize: 13, color: '#888', textAlign: 'center', marginTop: 4 },
-
   therapySection: { marginBottom: 8 },
   therapyRegion: { fontSize: 14, fontWeight: '700', color: '#0F6E6E', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 4 },
-
   therapyItem: { paddingVertical: 12, gap: 4 },
   therapyItemBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   therapyItemName: { fontSize: 14, fontWeight: '700', color: '#111' },
@@ -865,41 +1057,4 @@ const s = StyleSheet.create({
   therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: '#c0392b' },
   therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#a8d8d0' },
   therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
-
-  // Game/exercise picker
-  pickerContent: { padding: 16, paddingBottom: 32, gap: 8 },
-  pickerSectionTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 2 },
-  pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pickerTile: {
-    width: PICKER_TILE_W, backgroundColor: '#f4fafa', borderRadius: 12,
-    paddingVertical: 14, paddingHorizontal: 4, alignItems: 'center', gap: 4,
-    borderWidth: 1, borderColor: '#d4eeee',
-  },
-
-  // Focus games
-  gamesSection: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
-  gamesSectionTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 2 },
-  gamesSectionSub: { fontSize: 12, color: '#888', marginBottom: 14 },
-  gamesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  gameTile: {
-    width: GAME_TILE_W, backgroundColor: '#f4fafa', borderRadius: 12,
-    paddingVertical: 14, paddingHorizontal: 4, alignItems: 'center', gap: 4,
-    borderWidth: 1, borderColor: '#d4eeee',
-  },
-  gameTileEmoji: { fontSize: 28 },
-  gameTileTitle: { fontSize: 10, fontWeight: '700', color: '#0F6E6E', textAlign: 'center', lineHeight: 13 },
-
-  // Game overlay
-  gameOverlay: { flex: 1, backgroundColor: '#f5f5f5' },
-  gameOverlayHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 14,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee',
-  },
-  gameOverlayTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
-  gameCloseBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center',
-  },
-  gameCloseBtnTxt: { fontSize: 15, color: '#555', fontWeight: '600' },
 });

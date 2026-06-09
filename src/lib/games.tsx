@@ -17,23 +17,21 @@ const { width: W } = Dimensions.get('window');
 const TILE_W = (W - 44) / 2;
 
 export type GameKey =
-  | 'breathing' | 'memory' | 'tap_dot' | 'reaction'
+  | 'memory' | 'tap_dot' | 'reaction'
   | 'simon' | 'word_scramble' | 'stroop' | 'quick_math'
-  | 'bubble_pop' | 'color_match' | 'number_memory' | 'grounding';
+  | 'bubble_pop' | 'color_match' | 'number_memory';
 
 export const GAMES: { key: GameKey; emoji: string; title: string; desc: string }[] = [
-  { key: 'breathing',     emoji: '🫧', title: 'Breathing Bubble',  desc: 'Follow the bubble to calm down' },
-  { key: 'memory',        emoji: '🃏', title: 'Memory Match',       desc: 'Find all the matching pairs' },
-  { key: 'tap_dot',       emoji: '🎯', title: 'Tap the Dot',        desc: 'Tap 15 dots before they vanish' },
-  { key: 'reaction',      emoji: '⚡', title: 'Reaction Test',      desc: 'Tap when the screen turns green' },
-  { key: 'simon',         emoji: '🌈', title: 'Simon Says',         desc: 'Repeat the growing sequence' },
-  { key: 'word_scramble', emoji: '📝', title: 'Word Scramble',      desc: 'Unscramble positive words' },
-  { key: 'stroop',        emoji: '🎨', title: 'Stroop Test',        desc: 'Name the ink color not the word' },
-  { key: 'quick_math',    emoji: '🔢', title: 'Quick Math',         desc: 'Solve 10 problems to win' },
-  { key: 'bubble_pop',    emoji: '💭', title: 'Bubble Pop',         desc: 'Pop all the floating bubbles' },
-  { key: 'color_match',   emoji: '🎭', title: 'Color Match',        desc: 'Match the swatch to its name' },
-  { key: 'number_memory', emoji: '🧠', title: 'Number Memory',      desc: 'Remember and repeat sequences' },
-  { key: 'grounding',     emoji: '🌿', title: '5-4-3-2-1',          desc: 'Grounding through your senses' },
+  { key: 'memory',        emoji: '🃏', title: 'Memory Match',  desc: 'Find all the matching pairs' },
+  { key: 'tap_dot',       emoji: '🎯', title: 'Tap the Dot',   desc: 'Tap 15 dots before they vanish' },
+  { key: 'reaction',      emoji: '⚡', title: 'Reaction Test', desc: 'Tap when the screen turns green' },
+  { key: 'simon',         emoji: '🌈', title: 'Simon Says',    desc: 'Repeat the growing sequence' },
+  { key: 'word_scramble', emoji: '📝', title: 'Word Scramble', desc: 'Unscramble positive words' },
+  { key: 'stroop',        emoji: '🎨', title: 'Stroop Test',   desc: 'Name the ink color not the word' },
+  { key: 'quick_math',    emoji: '🔢', title: 'Quick Math',    desc: 'Solve 10 problems to win' },
+  { key: 'bubble_pop',    emoji: '💭', title: 'Bubble Pop',    desc: 'Pop all the floating bubbles' },
+  { key: 'color_match',   emoji: '🎭', title: 'Color Match',   desc: 'Match the swatch to its name' },
+  { key: 'number_memory', emoji: '🧠', title: 'Number Memory', desc: 'Remember and repeat sequences' },
 ];
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -894,7 +892,6 @@ function GroundingGame() {
 // ── Main screen ───────────────────────────────────────────────────────────────
 export function renderGame(key: GameKey) {
   switch (key) {
-    case 'breathing':     return <BreathingGame />;
     case 'memory':        return <MemoryGame />;
     case 'tap_dot':       return <TapDotGame />;
     case 'reaction':      return <ReactionGame />;
@@ -905,7 +902,6 @@ export function renderGame(key: GameKey) {
     case 'bubble_pop':    return <BubblePopGame />;
     case 'color_match':   return <ColorMatchGame />;
     case 'number_memory': return <NumberMemoryGame />;
-    case 'grounding':     return <GroundingGame />;
   }
 }
 
