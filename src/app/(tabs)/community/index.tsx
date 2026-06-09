@@ -452,7 +452,7 @@ const s = StyleSheet.create({
   loadingMore: { paddingVertical: 16 },
 
   fab: {
-    position: 'absolute', bottom: 29, left: 20,
+    position: 'absolute', bottom: 29, right: 25,
     borderRadius: 28,
     elevation: 6,
     shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 3 },
