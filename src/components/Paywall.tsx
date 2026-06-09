@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Linking,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -23,6 +24,7 @@ const FEATURES = [
 
 export function Paywall() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { paywallVisible, hidePaywall, offerings, purchasePackage, restorePurchases } = usePurchases();
   const [selectedIndex, setSelectedIndex] = useState(1); // default to annual
   const [purchasing, setPurchasing] = useState(false);
@@ -38,7 +40,14 @@ export function Paywall() {
   const selectedPkg = sorted[selectedIndex] ?? sorted[0] ?? null;
 
   const handlePurchase = async () => {
-    if (!selectedPkg) return;
+    if (!selectedPkg) {
+      Alert.alert(
+        'Pricing unavailable',
+        'Subscription plans could not be loaded. Please check your internet connection and try again.',
+        [{ text: 'OK' }],
+      );
+      return;
+    }
     setPurchasing(true);
     await purchasePackage(selectedPkg);
     setPurchasing(false);
@@ -89,7 +98,6 @@ export function Paywall() {
             </Pressable>
           </View>
           <View style={s.headerBody}>
-            <Text style={s.headerEmoji}>✨</Text>
             <Text style={s.headerTitle}>Go Premium</Text>
             <Text style={s.headerSub}>Unlock your full recovery toolkit</Text>
           </View>
@@ -175,7 +183,7 @@ export function Paywall() {
           <Pressable
             style={({ pressed }) => [s.ctaBtn, pressed && { opacity: 0.88 }, purchasing && s.ctaBtnDisabled]}
             onPress={handlePurchase}
-            disabled={purchasing || !selectedPkg}
+            disabled={purchasing}
           >
             <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.ctaGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               {purchasing
@@ -199,11 +207,11 @@ export function Paywall() {
 
           {/* Footer links */}
           <View style={s.footer}>
-            <Pressable onPress={() => Linking.openURL('https://cornerday.app/terms')}>
+            <Pressable onPress={() => { hidePaywall(); router.push('/terms'); }}>
               <Text style={s.footerLink}>Terms of Use</Text>
             </Pressable>
             <Text style={s.footerDot}>·</Text>
-            <Pressable onPress={() => Linking.openURL('https://cornerday.app/privacy')}>
+            <Pressable onPress={() => { hidePaywall(); router.push('/privacy-policy'); }}>
               <Text style={s.footerLink}>Privacy Policy</Text>
             </Pressable>
           </View>
@@ -227,7 +235,6 @@ const s = StyleSheet.create({
   },
   closeBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '700' },
   headerBody: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 8 },
-  headerEmoji: { fontSize: 40, marginBottom: 8 },
   headerTitle: { fontSize: 30, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   headerSub: { fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 6, textAlign: 'center' },
 
