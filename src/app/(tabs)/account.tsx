@@ -32,6 +32,7 @@ import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_K
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
+import * as Notifications from 'expo-notifications';
 import {
   DEFAULT_NOTIF_PREFS,
   NotifPrefs,
@@ -647,8 +648,24 @@ export default function AccountScreen() {
         AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_ICON_KEY),
       ]);
+      // Seed journal with a fresh start entry
+      await supabase.from('losses').insert({
+        user_id: user.id, type: 'journey_started', amount: 0, note: null, created_at: nowIso,
+      });
       setQuitTimestamp(nowIso);
-      await scheduleAllNotifications(notifPrefs, nowIso, []);
+      const granted = await requestNotificationPermissions();
+      if (granted) {
+        await scheduleAllNotifications(notifPrefs, nowIso, []);
+        // Fire a confirmation notification in 5 seconds so the user knows scheduling works
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '🌱 Journey restarted',
+            body: 'Your streak is reset. Milestone notifications are set — your 1-hour milestone is on its way.',
+            data: { screen: '/(tabs)/' },
+          },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, repeats: false } as any,
+        });
+      }
     }
     setSavingsGoal(null);
     setSavingsGoalFor('');

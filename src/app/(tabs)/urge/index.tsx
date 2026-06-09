@@ -242,10 +242,15 @@ export default function UrgeScreen() {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('urge_journal').insert({
+      const { error } = await supabase.from('urge_journal').insert({
         user_id: user.id, trigger: triggerValue, outcome,
         note: note.trim() || null,
       });
+      if (error) {
+        setSaving(false);
+        Alert.alert('Could not save', error.message);
+        return;
+      }
     }
     setSaving(false);
     setSaved(true);
