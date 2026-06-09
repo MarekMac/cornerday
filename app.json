@@ -19,7 +19,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.CornerDay",
-      "permissions": ["SCHEDULE_EXACT_ALARM", "USE_EXACT_ALARM", "RECEIVE_BOOT_COMPLETED"]
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
     },
     "web": {
       "output": "static",
@@ -39,7 +43,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

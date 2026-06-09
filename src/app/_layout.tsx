@@ -23,6 +23,8 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { UserProvider } from '@/context/user';
+import { PurchasesProvider } from '@/context/purchases';
+import { Paywall } from '@/components/Paywall';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -102,10 +104,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <UserProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <AnimatedSplashOverlay />
-          <Slot />
-        </ThemeProvider>
+        <PurchasesProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <AnimatedSplashOverlay />
+            <Slot />
+            <Paywall />
+          </ThemeProvider>
+        </PurchasesProvider>
       </UserProvider>
     </GestureHandlerRootView>
   );

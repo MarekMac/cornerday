@@ -38,6 +38,7 @@ import {
   requestNotificationPermissions,
   scheduleAllNotifications,
 } from '@/lib/notifications';
+import { usePurchases } from '@/context/purchases';
 
 interface Profile {
   displayName: string | null;
@@ -140,6 +141,7 @@ function formatQuitDate(ts: string | null) {
 export default function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isPremium: isPremiumFromRC, showPaywall } = usePurchases();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -795,7 +797,7 @@ export default function AccountScreen() {
               color={emailCopied ? '#0F6E6E' : '#bbb'}
             />
           </Pressable>
-          {profile?.isPremium && (
+          {isPremiumFromRC && (
             <View style={s.premiumBadge}>
               <Text style={s.premiumBadgeTxt}>✨ Premium</Text>
             </View>
@@ -912,10 +914,13 @@ export default function AccountScreen() {
         <View style={s.card}>
           <Text style={s.sectionTitle}>Subscription</Text>
           <Text style={s.subStatus}>
-            {profile?.isPremium ? '✨ Premium — active' : 'Free plan'}
+            {isPremiumFromRC ? '✨ Premium — active' : 'Free plan'}
           </Text>
-          {!profile?.isPremium && (
-            <Pressable style={({ pressed }) => [s.upgradeBtn, pressed && { opacity: 0.85 }]}>
+          {!isPremiumFromRC && (
+            <Pressable
+              style={({ pressed }) => [s.upgradeBtn, pressed && { opacity: 0.85 }]}
+              onPress={showPaywall}
+            >
               <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
             </Pressable>
           )}

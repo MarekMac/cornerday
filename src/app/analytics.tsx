@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
+import { usePurchases } from '@/context/purchases';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
+  const { isPremium, showPaywall } = usePurchases();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -221,6 +223,34 @@ export default function AnalyticsScreen() {
   const maxSaving = data.savingsTimeline.length > 0
     ? Math.max(...data.savingsTimeline.map(r => r.cumulative))
     : 0;
+
+  if (!isPremium) {
+    return (
+      <View style={s.root}>
+        <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+          <SafeAreaView edges={['top']}>
+            <View style={s.headerRow}>
+              <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>
+                <Text style={s.backArrow}>‹</Text>
+              </Pressable>
+              <Text style={s.headerTitle}>Progress Analytics</Text>
+              <View style={s.backBtn} />
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+        <View style={s.lockContainer}>
+          <Text style={s.lockEmoji}>📊</Text>
+          <Text style={s.lockTitle}>Detailed Analytics</Text>
+          <Text style={s.lockDesc}>
+            Deep insights into your mood, urge resistance, savings trajectory and streak history. Available with Premium.
+          </Text>
+          <Pressable style={({ pressed }) => [s.lockBtn, pressed && { opacity: 0.85 }]} onPress={showPaywall}>
+            <Text style={s.lockBtnTxt}>Upgrade to Premium</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={s.root}>
@@ -405,6 +435,16 @@ export default function AnalyticsScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#edf0f0' },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  lockContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
+  lockEmoji: { fontSize: 52 },
+  lockTitle: { fontSize: 22, fontWeight: '700', color: '#111', textAlign: 'center' },
+  lockDesc: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
+  lockBtn: {
+    backgroundColor: '#0F6E6E', borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 32, marginTop: 8,
+  },
+  lockBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
 
   header: { paddingBottom: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 },
