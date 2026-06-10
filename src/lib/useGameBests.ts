@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import type { GameKey } from './games';
 
-const BESTS_KEY = 'game_personal_bests_v2';
+export const GAME_BESTS_STORAGE_KEY = 'game_personal_bests_v2';
 
 // Higher score = better for all games.
 // memory: 150 - moves*5  |  reaction: 1000 - ms  |  rest: raw count/level
@@ -27,7 +27,7 @@ export function useGameBests() {
 
   useEffect(() => {
     (async () => {
-      const raw = await AsyncStorage.getItem(BESTS_KEY).catch(() => null);
+      const raw = await AsyncStorage.getItem(GAME_BESTS_STORAGE_KEY).catch(() => null);
       if (raw) { try { setPersonalBests(JSON.parse(raw)); } catch {} }
 
       try {
@@ -49,7 +49,7 @@ export function useGameBests() {
     setPersonalBests(prev => {
       if (score <= (prev[key] ?? -1)) return prev;
       const next = { ...prev, [key]: score };
-      AsyncStorage.setItem(BESTS_KEY, JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(GAME_BESTS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
 

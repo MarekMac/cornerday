@@ -30,6 +30,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY } from '@/constants/storage-keys';
+import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -653,6 +654,14 @@ export default function AccountScreen() {
     setResetting(false);
   };
 
+  const resetGameScores = async () => {
+    setResetting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await supabase.from('game_scores').delete().eq('user_id', user.id);
+    await AsyncStorage.removeItem(GAME_BESTS_STORAGE_KEY);
+    setResetting(false);
+  };
+
   const resetEverything = async () => {
     setResetting(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -666,6 +675,7 @@ export default function AccountScreen() {
         supabase.from('losses').delete().eq('user_id', user.id),
         supabase.from('debts').delete().eq('user_id', user.id),
         supabase.from('debt_payments').delete().eq('user_id', user.id),
+        supabase.from('game_scores').delete().eq('user_id', user.id),
         supabase.from('users').update({ quit_date: today, quit_timestamp: nowIso }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: 0, longest_streak: 0, streak_start_date: today }).eq('user_id', user.id),
         AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
@@ -676,6 +686,7 @@ export default function AccountScreen() {
         AsyncStorage.removeItem(SAVINGS_GOAL_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_ICON_KEY),
+        AsyncStorage.removeItem(GAME_BESTS_STORAGE_KEY),
       ]);
       // Seed journal with a fresh start entry
       await supabase.from('losses').insert({
@@ -1855,6 +1866,16 @@ export default function AccountScreen() {
                   'Reset loss & debt tracker?',
                   'All losses, payments and debt records will be permanently deleted.',
                   resetLossTracker,
+                ),
+              },
+              {
+                icon: 'game-controller-outline' as const,
+                label: 'Game scores',
+                desc: 'Personal bests and all game history',
+                onPress: () => confirmReset(
+                  'Reset game scores?',
+                  'Your personal bests and all game score history will be permanently deleted.',
+                  resetGameScores,
                 ),
               },
             ].map(({ icon, label, desc, onPress }, i, arr) => (
