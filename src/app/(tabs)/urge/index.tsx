@@ -641,8 +641,8 @@ export default function UrgeScreen() {
 
       {/* Had a slip overlay */}
       <Modal visible={showSlip} transparent animationType="fade" onRequestClose={() => setShowSlip(false)}>
-        <View style={s.slipOverlay}>
-          <View style={s.slipContent}>
+        <Pressable style={s.slipOverlay} onPress={() => setShowSlip(false)}>
+          <Pressable style={s.slipContent} onPress={e => e.stopPropagation()}>
             <Text style={s.slipEmoji}>{SLIP_VARIANTS[slipVariant].emoji}</Text>
             <Text style={s.slipTitle}>{SLIP_VARIANTS[slipVariant].title}</Text>
             <Text style={s.slipBody}>{SLIP_VARIANTS[slipVariant].body}</Text>
@@ -670,14 +670,14 @@ export default function UrgeScreen() {
               onPress={() => setShowSlip(false)}>
               <Text style={s.slipCloseTxt}>Skip for now</Text>
             </Pressable>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Congrats overlay */}
-      <Modal visible={showCongrats} transparent animationType="fade" onRequestClose={() => { setShowCongrats(false); openLog('overcame'); }}>
-        <View style={s.slipOverlay}>
-          <View style={s.slipContent}>
+      <Modal visible={showCongrats} transparent animationType="fade" onRequestClose={() => setShowCongrats(false)}>
+        <Pressable style={s.slipOverlay} onPress={() => setShowCongrats(false)}>
+          <Pressable style={s.slipContent} onPress={e => e.stopPropagation()}>
             <Text style={s.congratsEmoji}>{CONGRATS_VARIANTS[congratsVariant].emoji}</Text>
             <Text style={s.congratsTitle}>{CONGRATS_VARIANTS[congratsVariant].title}</Text>
             <Text style={s.congratsSub}>
@@ -700,8 +700,8 @@ export default function UrgeScreen() {
               onPress={() => setShowCongrats(false)}>
               <Text style={s.slipCloseTxt}>Skip for now</Text>
             </Pressable>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Games / Exercises picker sheet */}
