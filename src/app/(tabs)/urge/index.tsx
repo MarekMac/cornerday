@@ -1090,7 +1090,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)', padding: 28,
   },
   slipContent: {
-    backgroundColor: '#fff', borderRadius: 24, padding: 28, paddingTop: 56,
+    backgroundColor: '#fff', borderRadius: 24, padding: 28,
     alignItems: 'center', gap: 14, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 24,
   },
@@ -1113,7 +1113,7 @@ const s = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 24, width: '100%', alignItems: 'center',
   },
   slipLogBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  slipClose: { marginTop: -4 },
+  slipClose: { marginTop: 16 },
   slipCloseTxt: { fontSize: 14, color: '#bbb' },
 
   // ── Legacy inline log card (kept for style refs) ──────────────────────────────
