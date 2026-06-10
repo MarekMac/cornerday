@@ -1172,6 +1172,16 @@ export default function AccountScreen() {
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => router.push('/(tabs)/urge/checklist')}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="checkmark-done-outline" size={17} color="#0F6E6E" />
+            </View>
+            <Text style={s.menuRowLabel}>Prevention checklist</Text>
+            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+          </Pressable>
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => setResetDataModalVisible(true)}>
             <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
               <Ionicons name="refresh-outline" size={17} color="#c0392b" />

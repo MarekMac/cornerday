@@ -44,6 +44,13 @@ const MOTIVATION_MAP: Record<string, { label: string; emoji: string }> = {
 
 const THERAPY_RESOURCES = [
   {
+    region: '🌍 International',
+    items: [
+      { name: 'Gambling Therapy', desc: 'Free online support in multiple languages', web: 'https://www.gamblingtherapy.org' },
+      { name: 'Gamblers Anonymous', desc: 'Worldwide peer support meetings', web: 'https://www.gamblersanonymous.org' },
+    ],
+  },
+  {
     region: '🇺🇸 United States',
     items: [
       { name: 'National Council on Problem Gambling', desc: 'Helpline, treatment locator, and resources', phone: '18005224700', web: 'https://www.ncpgambling.org' },
@@ -99,13 +106,6 @@ const THERAPY_RESOURCES = [
       { name: 'FEJAR', desc: 'Federation of Rehabilitated Gamblers', web: 'https://www.fejar.org' },
     ],
   },
-  {
-    region: '🌍 International',
-    items: [
-      { name: 'Gambling Therapy', desc: 'Free online support in multiple languages', web: 'https://www.gamblingtherapy.org' },
-      { name: 'Gamblers Anonymous', desc: 'Worldwide peer support meetings', web: 'https://www.gamblersanonymous.org' },
-    ],
-  },
 ];
 
 const DISTRACTIONS = [
@@ -155,6 +155,7 @@ export default function UrgeScreen() {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [logCardY, setLogCardY] = useState(0);
 
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
@@ -167,6 +168,7 @@ export default function UrgeScreen() {
   const [timerSecsLeft, setTimerSecsLeft] = useState(TIMER_TOTAL);
   const [timerPointsEarned, setTimerPointsEarned] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   const isMounted = useRef(true);
 
@@ -296,7 +298,7 @@ export default function UrgeScreen() {
   const timerSecs = timerSecsLeft % 60;
   const timerDisplay = `${String(timerMins).padStart(2, '0')}:${String(timerSecs).padStart(2, '0')}`;
   const startTimer = () => { setTimerSecsLeft(TIMER_TOTAL); setTimerRunning(true); setTimerPointsEarned(false); };
-  const stopTimer  = () => setTimerRunning(false);
+  const stopTimer  = () => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); openLog('overcame'); };
   const resetTimer = () => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); };
 
   if (loading) {
@@ -314,7 +316,7 @@ export default function UrgeScreen() {
       </LinearGradient>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">
 
           {/* Red urge hero button */}
           <Pressable
@@ -388,8 +390,37 @@ export default function UrgeScreen() {
             </View>
           </View>
 
+          {/* Quick actions */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.iconRow}>
+            <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('games')}>
+              <Text style={s.iconPillEmoji}>🎮</Text>
+              <Text style={s.iconPillLabel}>Games</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('exercises')}>
+              <Text style={s.iconPillEmoji}>🧘</Text>
+              <Text style={s.iconPillLabel}>Exercises</Text>
+            </Pressable>
+            {DISTRACTIONS.filter(d => d.action === 'call').map(d => {
+              const label = trustedContact?.name ? `Call ${trustedContact.name}` : d.label;
+              return (
+                <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
+                  <Text style={s.iconPillEmoji}>{d.emoji}</Text>
+                  <Text style={s.iconPillLabel}>{label}</Text>
+                </Pressable>
+              );
+            })}
+            {DISTRACTIONS.filter(d => d.action !== 'game' && d.action !== 'call').map(d => (
+              <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
+                <Text style={s.iconPillEmoji}>{d.emoji}</Text>
+                <Text style={s.iconPillLabel}>{d.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
           {/* How did it go? — inline expandable log */}
-          <View style={[s.logCard, logExpanded && s.logCardExpanded]}>
+          <View
+            style={s.logCard}
+            onLayout={e => setLogCardY(e.nativeEvent.layout.y)}>
             {saved ? (
               <View style={s.savedWrap}>
                 <Text style={s.savedIcon}>✓</Text>
@@ -456,6 +487,7 @@ export default function UrgeScreen() {
                     value={customTrigger}
                     onChangeText={setCustomTrigger}
                     maxLength={120}
+                    onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: logCardY, animated: true }), 200)}
                   />
                 )}
 
@@ -472,6 +504,7 @@ export default function UrgeScreen() {
                   numberOfLines={3}
                   maxLength={500}
                   textAlignVertical="top"
+                  onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: logCardY, animated: true }), 200)}
                 />
 
                 <View style={s.sheetActions}>
@@ -495,33 +528,6 @@ export default function UrgeScreen() {
               </>
             )}
           </View>
-
-          {/* Quick actions */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.iconRow}>
-            <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('games')}>
-              <Text style={s.iconPillEmoji}>🎮</Text>
-              <Text style={s.iconPillLabel}>Games</Text>
-            </Pressable>
-            <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('exercises')}>
-              <Text style={s.iconPillEmoji}>🧘</Text>
-              <Text style={s.iconPillLabel}>Exercises</Text>
-            </Pressable>
-            {DISTRACTIONS.filter(d => d.action === 'call').map(d => {
-              const label = trustedContact?.name ? `Call ${trustedContact.name}` : d.label;
-              return (
-                <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
-                  <Text style={s.iconPillEmoji}>{d.emoji}</Text>
-                  <Text style={s.iconPillLabel}>{label}</Text>
-                </Pressable>
-              );
-            })}
-            {DISTRACTIONS.filter(d => d.action !== 'game' && d.action !== 'call').map(d => (
-              <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
-                <Text style={s.iconPillEmoji}>{d.emoji}</Text>
-                <Text style={s.iconPillLabel}>{d.label}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
 
           {/* Your why */}
           <View style={s.whyCard}>
@@ -553,17 +559,6 @@ export default function UrgeScreen() {
             </View>
           </View>
 
-          {/* Prevention checklist */}
-          <Pressable
-            style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.85 }]}
-            onPress={() => router.push('/(tabs)/urge/checklist')}>
-            <Text style={s.checklistBtnIcon}>✅</Text>
-            <View style={s.checklistBtnText}>
-              <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
-              <Text style={s.checklistBtnSub}>Practical steps to protect your recovery</Text>
-            </View>
-            <Text style={s.checklistBtnChevron}>›</Text>
-          </Pressable>
 
           {/* Crisis resources */}
           <View style={s.crisisCard}>
@@ -961,13 +956,8 @@ const s = StyleSheet.create({
   // ── How did it go? (inline log) ───────────────────────────────────────────────
   logCard: {
     backgroundColor: '#fff', borderRadius: 18, padding: 18, gap: 10,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  logCardExpanded: {
-    borderWidth: 1.5, borderColor: '#d8eeee',
-    shadowColor: '#0F6E6E', shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
-  },
+  logCardExpanded: {},
   logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
   logExpandedTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 4 },
   logSub: { fontSize: 13, color: '#888', marginTop: -4 },
