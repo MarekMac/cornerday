@@ -355,7 +355,14 @@ export default function AccountScreen() {
   const pickFromContacts = async () => {
     const { status } = await Contacts.requestPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow CornerDay to access your contacts in Settings to use this feature.');
+      Alert.alert(
+        'Permission needed',
+        'Allow CornerDay to access your contacts in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
+      );
       return;
     }
     const contact = await Contacts.presentContactPickerAsync();
