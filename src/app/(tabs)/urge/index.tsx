@@ -31,8 +31,9 @@ const TIMER_TOTAL = 20 * 60;
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY } from '@/constants/storage-keys';
+import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
 
 const MOTIVATION_MAP: Record<string, { label: string; emoji: string }> = {
   family:        { label: 'My family',              emoji: '👨‍👩‍👧' },
@@ -159,6 +160,9 @@ export default function UrgeScreen() {
   const [logCardY, setLogCardY] = useState(0);
   const [showCongrats, setShowCongrats] = useState(false);
   const [congratsElapsed, setCongratsElapsed] = useState(0);
+  const [showSlip, setShowSlip] = useState(false);
+  const [slipResetting, setSlipResetting] = useState(false);
+  const [slipReset, setSlipReset] = useState(false);
 
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
@@ -309,7 +313,42 @@ export default function UrgeScreen() {
     setCongratsElapsed(elapsed);
     setShowCongrats(true);
   };
-  const resetTimer = () => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); };
+  const hadASlip = () => {
+    setTimerRunning(false);
+    setTimerSecsLeft(TIMER_TOTAL);
+    setTimerPointsEarned(false);
+    setSlipReset(false);
+    setShowSlip(true);
+  };
+
+  const doStreakReset = async () => {
+    setSlipResetting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const today = new Date().toISOString().split('T')[0];
+      const newQuitTimestamp = new Date().toISOString();
+      await Promise.all([
+        supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
+        supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
+        supabase.from('badges').delete().eq('user_id', user.id),
+        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
+      ]);
+      const { data: prefsRow } = await supabase
+        .from('users')
+        .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
+        .eq('id', user.id).single();
+      const prefs = {
+        notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+        notif_daily_streak:          prefsRow?.notif_daily_streak          ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+        notif_daily_checkin:         prefsRow?.notif_daily_checkin         ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+        notif_weekly_summary:        prefsRow?.notif_weekly_summary        ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+        notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+      };
+      await scheduleAllNotifications(prefs, newQuitTimestamp);
+    }
+    setSlipResetting(false);
+    setSlipReset(true);
+  };
 
   if (loading) {
     return <View style={s.center}><ActivityIndicator size="large" color="#0F6E6E" /></View>;
@@ -387,13 +426,13 @@ export default function UrgeScreen() {
                   <Pressable style={({ pressed }) => [s.timerPastBtn, pressed && { opacity: 0.88 }]} onPress={stopTimer}>
                     <Text style={s.timerPastBtnTxt}>I'm past it  ✓</Text>
                   </Pressable>
-                  <Pressable style={({ pressed }) => [s.timerCancelBtn, pressed && { opacity: 0.7 }]} onPress={resetTimer}>
-                    <Text style={s.timerCancelBtnTxt}>Cancel</Text>
+                  <Pressable style={({ pressed }) => [s.timerSlipBtn, pressed && { opacity: 0.7 }]} onPress={hadASlip}>
+                    <Text style={s.timerSlipBtnTxt}>Had a slip</Text>
                   </Pressable>
                 </>
               )}
               {timerDone && (
-                <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={resetTimer}>
+                <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={() => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); }}>
                   <Text style={s.timerStartBtnTxt}>Go again</Text>
                 </Pressable>
               )}
@@ -426,118 +465,6 @@ export default function UrgeScreen() {
               </Pressable>
             ))}
           </ScrollView>
-
-          {/* How did it go? — inline expandable log */}
-          <View
-            style={s.logCard}
-            onLayout={e => setLogCardY(e.nativeEvent.layout.y)}>
-            {saved ? (
-              <View style={s.savedWrap}>
-                <Text style={s.savedIcon}>✓</Text>
-                <Text style={s.savedTxt}>Entry saved</Text>
-                <Text style={s.savedSub}>Logged to your journal</Text>
-              </View>
-            ) : !logExpanded ? (
-              <>
-                <Text style={s.logTitle}>How did it go?</Text>
-                <Text style={s.logSub}>Reflect on this moment when you're ready</Text>
-                <View style={s.logBtns}>
-                  <Pressable
-                    style={({ pressed }) => [s.logBtn, s.logBtnGreen, pressed && { opacity: 0.85 }]}
-                    onPress={() => openLog('overcame')}>
-                    <Text style={s.logBtnTxtGreen}>Overcame it ✓</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [s.logBtn, s.logBtnRed, pressed && { opacity: 0.85 }]}
-                    onPress={() => openLog('slipped')}>
-                    <Text style={s.logBtnTxtRed}>Had a slip</Text>
-                  </Pressable>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={s.logExpandedTitle}>Log this moment</Text>
-
-                <View style={s.outcomeRow}>
-                  <Pressable
-                    style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnGreen]}
-                    onPress={() => setOutcome('overcame')}>
-                    <Text style={[s.outcomeBtnTxt, outcome === 'overcame' && s.outcomeBtnTxtActive]}>
-                      Overcame it ✓
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[s.outcomeBtn, outcome === 'slipped' && s.outcomeBtnRed]}
-                    onPress={() => setOutcome('slipped')}>
-                    <Text style={[s.outcomeBtnTxt, outcome === 'slipped' && s.outcomeBtnTxtActive]}>
-                      Had a slip
-                    </Text>
-                  </Pressable>
-                </View>
-
-                <Text style={s.fieldLabel}>What triggered it?</Text>
-                <View style={s.chipsWrap}>
-                  {TRIGGERS.map(t => (
-                    <Pressable
-                      key={t.key}
-                      style={[s.chip, selectedTrigger === t.key && s.chipActive]}
-                      onPress={() => setSelectedTrigger(t.key)}>
-                      <Text style={[s.chipTxt, selectedTrigger === t.key && s.chipTxtActive]}>
-                        {t.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {selectedTrigger === 'other' && (
-                  <TextInput
-                    style={s.customInput}
-                    placeholder="Describe the trigger…"
-                    placeholderTextColor="#aaa"
-                    value={customTrigger}
-                    onChangeText={setCustomTrigger}
-                    maxLength={120}
-                    onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: logCardY + 120, animated: true }), 200)}
-                  />
-                )}
-
-                <Text style={s.fieldLabel}>
-                  How are you feeling? <Text style={s.optional}>(optional)</Text>
-                </Text>
-                <TextInput
-                  style={s.noteInput}
-                  placeholder="Add a note…"
-                  placeholderTextColor="#aaa"
-                  value={note}
-                  onChangeText={setNote}
-                  multiline
-                  numberOfLines={3}
-                  maxLength={500}
-                  textAlignVertical="top"
-                  onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: logCardY + 120, animated: true }), 200)}
-                />
-
-                <View style={s.sheetActions}>
-                  <Pressable
-                    style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]}
-                    onPress={closeLog}>
-                    <Text style={s.cancelBtnTxt}>Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      s.saveBtn, !canSave && s.saveBtnDisabled,
-                      pressed && canSave && { opacity: 0.85 },
-                    ]}
-                    onPress={saveEntry}
-                    disabled={!canSave || saving}>
-                    {saving
-                      ? <ActivityIndicator size="small" color="#fff" />
-                      : <Text style={s.saveBtnTxt}>Save entry</Text>}
-                  </Pressable>
-                </View>
-              </>
-            )}
-          </View>
 
           {/* Your why */}
           <View style={s.whyCard}>
@@ -599,6 +526,125 @@ export default function UrgeScreen() {
           <View style={{ height: 32 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Log this moment modal */}
+      <Modal visible={logExpanded} transparent animationType="slide" onRequestClose={closeLog}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={s.logModalOverlay} onPress={closeLog}>
+            <Pressable style={s.logModalSheet} onPress={() => {}}>
+              <View style={s.logModalHandle} />
+              {saved ? (
+                <View style={s.savedWrap}>
+                  <Text style={s.savedIcon}>✓</Text>
+                  <Text style={s.savedTxt}>Entry saved</Text>
+                  <Text style={s.savedSub}>Logged to your journal</Text>
+                </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  <Text style={s.logExpandedTitle}>Log this moment</Text>
+                  <View style={s.outcomeRow}>
+                    <Pressable
+                      style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnGreen]}
+                      onPress={() => setOutcome('overcame')}>
+                      <Text style={[s.outcomeBtnTxt, outcome === 'overcame' && s.outcomeBtnTxtActive]}>Overcame it ✓</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[s.outcomeBtn, outcome === 'slipped' && s.outcomeBtnRed]}
+                      onPress={() => setOutcome('slipped')}>
+                      <Text style={[s.outcomeBtnTxt, outcome === 'slipped' && s.outcomeBtnTxtActive]}>Had a slip</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={s.fieldLabel}>What triggered it?</Text>
+                  <View style={s.chipsWrap}>
+                    {TRIGGERS.map(t => (
+                      <Pressable
+                        key={t.key}
+                        style={[s.chip, selectedTrigger === t.key && s.chipActive]}
+                        onPress={() => setSelectedTrigger(t.key)}>
+                        <Text style={[s.chipTxt, selectedTrigger === t.key && s.chipTxtActive]}>{t.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {selectedTrigger === 'other' && (
+                    <TextInput
+                      style={s.customInput}
+                      placeholder="Describe the trigger…"
+                      placeholderTextColor="#aaa"
+                      value={customTrigger}
+                      onChangeText={setCustomTrigger}
+                      maxLength={120}
+                    />
+                  )}
+                  <Text style={s.fieldLabel}>
+                    How are you feeling? <Text style={s.optional}>(optional)</Text>
+                  </Text>
+                  <TextInput
+                    style={s.noteInput}
+                    placeholder="Add a note…"
+                    placeholderTextColor="#aaa"
+                    value={note}
+                    onChangeText={setNote}
+                    multiline
+                    numberOfLines={3}
+                    maxLength={500}
+                    textAlignVertical="top"
+                  />
+                  <View style={[s.sheetActions, { marginBottom: 8 }]}>
+                    <Pressable style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]} onPress={closeLog}>
+                      <Text style={s.cancelBtnTxt}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [s.saveBtn, !canSave && s.saveBtnDisabled, pressed && canSave && { opacity: 0.85 }]}
+                      onPress={saveEntry}
+                      disabled={!canSave || saving}>
+                      {saving
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Text style={s.saveBtnTxt}>Save entry</Text>}
+                    </Pressable>
+                  </View>
+                </ScrollView>
+              )}
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Had a slip overlay */}
+      <Modal visible={showSlip} transparent animationType="fade" onRequestClose={() => setShowSlip(false)}>
+        <View style={s.slipOverlay}>
+          <View style={s.slipContent}>
+            <Text style={s.slipEmoji}>💙</Text>
+            <Text style={s.slipTitle}>That's okay</Text>
+            <Text style={s.slipBody}>
+              Slips are part of recovery — not the end of it. The fact you're still here, still trying, says everything.
+            </Text>
+            {slipReset ? (
+              <View style={s.slipResetDone}>
+                <Text style={s.slipResetDoneTxt}>✓ Streak reset. A new start begins now.</Text>
+              </View>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [s.slipResetBtn, pressed && { opacity: 0.8 }]}
+                onPress={doStreakReset}
+                disabled={slipResetting}>
+                {slipResetting
+                  ? <ActivityIndicator size="small" color="#c0392b" />
+                  : <Text style={s.slipResetBtnTxt}>Reset my streak</Text>}
+              </Pressable>
+            )}
+            <Pressable
+              style={({ pressed }) => [s.slipLogBtn, pressed && { opacity: 0.85 }]}
+              onPress={() => { setShowSlip(false); openLog('slipped'); }}>
+              <Text style={s.slipLogBtnTxt}>Log this moment  →</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [s.slipClose, pressed && { opacity: 0.6 }]}
+              onPress={() => setShowSlip(false)}>
+              <Text style={s.slipCloseTxt}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* Congrats overlay */}
       <Modal visible={showCongrats} transparent animationType="fade" onRequestClose={() => { setShowCongrats(false); openLog('overcame'); }}>
@@ -921,6 +967,8 @@ const s = StyleSheet.create({
   timerPastBtnTxt: { color: '#27ae60', fontWeight: '700', fontSize: 15 },
   timerCancelBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
   timerCancelBtnTxt: { color: '#888', fontWeight: '600', fontSize: 14 },
+  timerSlipBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#e0a0a0' },
+  timerSlipBtnTxt: { color: '#c0392b', fontWeight: '600', fontSize: 14 },
 
   // ── Icon rows (quick actions / games / exercises) ─────────────────────────────
   iconRow: { paddingHorizontal: 2, gap: 8, paddingBottom: 2 },
@@ -995,14 +1043,55 @@ const s = StyleSheet.create({
   },
   whyPhotoEmptyTxt: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
 
-  // ── How did it go? (inline log) ───────────────────────────────────────────────
-  logCard: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 18, gap: 10,
+  // ── Log modal ─────────────────────────────────────────────────────────────────
+  logModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  logModalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 20, paddingBottom: 36, maxHeight: '90%',
   },
-  logCardExpanded: {},
+  logModalHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: '#ddd',
+    alignSelf: 'center', marginBottom: 16,
+  },
   logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
-  logExpandedTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 4 },
+  logExpandedTitle: { fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 12 },
   logSub: { fontSize: 13, color: '#888', marginTop: -4 },
+
+  // ── Had a slip overlay ────────────────────────────────────────────────────────
+  slipOverlay: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)', padding: 28,
+  },
+  slipContent: {
+    backgroundColor: '#fff', borderRadius: 24, padding: 28,
+    alignItems: 'center', gap: 14, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 24,
+  },
+  slipEmoji: { fontSize: 52 },
+  slipTitle: { fontSize: 28, fontWeight: '800', color: '#111', textAlign: 'center' },
+  slipBody: { fontSize: 15, color: '#555', textAlign: 'center', lineHeight: 22 },
+  slipResetBtn: {
+    borderWidth: 1.5, borderColor: '#e0a0a0', borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 24, width: '100%', alignItems: 'center',
+    backgroundColor: '#fff8f8',
+  },
+  slipResetBtnTxt: { fontSize: 14, fontWeight: '600', color: '#c0392b' },
+  slipResetDone: {
+    backgroundColor: '#f0faf5', borderRadius: 14, paddingVertical: 12,
+    paddingHorizontal: 24, width: '100%', alignItems: 'center',
+  },
+  slipResetDoneTxt: { fontSize: 14, fontWeight: '600', color: '#27ae60' },
+  slipLogBtn: {
+    backgroundColor: '#0F6E6E', borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 24, width: '100%', alignItems: 'center',
+  },
+  slipLogBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  slipClose: { marginTop: -4 },
+  slipCloseTxt: { fontSize: 14, color: '#bbb' },
+
+  // ── Legacy inline log card (kept for style refs) ──────────────────────────────
+  logCard: { backgroundColor: '#fff', borderRadius: 18, padding: 18, gap: 10 },
+  logCardExpanded: {},
   logBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
   logBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', borderWidth: 1.5 },
   logBtnGreen: { backgroundColor: '#e6f7f0', borderColor: '#0a7a4e' },
