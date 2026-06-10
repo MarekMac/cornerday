@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { supabase } from '@/lib/supabase';
 import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 import { usePurchases } from '@/context/purchases';
@@ -74,6 +75,97 @@ function fmtDuration(days: number): string {
   return mo > 0 ? `${y}y ${mo}mo` : `${y}y`;
 }
 
+// ── Streak card helpers (mirrors home screen) ──────────────────────────────────
+
+const ALL_MILESTONES = [1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
+
+const MILESTONE_LABEL_MAP: Record<number, string> = {
+  [1/24]: '1 hour', [3/24]: '3 hours', [6/24]: '6 hours', [12/24]: '12 hours',
+  1: '1 day', 3: '3 days', 7: '1 week', 10: '10 days',
+  14: '2 weeks', 21: '3 weeks', 30: '1 month', 45: '45 days',
+  60: '2 months', 90: '3 months', 120: '4 months', 150: '5 months',
+  180: '6 months', 270: '9 months', 365: '1 year', 548: '18 months',
+  730: '2 years', 1095: '3 years', 1460: '4 years', 1825: '5 years',
+  2190: '6 years', 2555: '7 years', 2920: '8 years', 3285: '9 years', 3650: '10 years',
+};
+function msLabel(days: number) { return MILESTONE_LABEL_MAP[days] ?? `${days} days`; }
+
+function getStreakProgress(ms: number) {
+  const days = ms / 86400000;
+  const next = ALL_MILESTONES.find(m => m > days) ?? 3650;
+  const prevIdx = ALL_MILESTONES.indexOf(next) - 1;
+  const prev = prevIdx >= 0 ? ALL_MILESTONES[prevIdx] : 0;
+  const progress = prev === next ? 1 : (days - prev) / (next - prev);
+  const remainingMs = Math.max(0, next * 86400000 - ms);
+  return { next, remainingMs, progress: Math.min(1, Math.max(0, progress)) };
+}
+
+function fmtCountdown(ms: number): string {
+  const totalMins = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const days = Math.floor(ms / 86400000);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
+  if (years >= 1) { const rem = Math.floor((days % 365) / 30); return rem > 0 ? `${years}y ${rem}mo` : `${years}y`; }
+  if (months >= 1) { const rem = Math.floor((days % 30) / 7); return rem > 0 ? `${months}mo ${rem}w` : `${months}mo`; }
+  if (weeks >= 1) { const rem = days % 7; return rem > 0 ? `${weeks}w ${rem}d` : `${weeks}w`; }
+  if (days >= 1) { const rem = Math.floor((ms % 86400000) / 3600000); return rem > 0 ? `${days}d ${rem}h` : `${days}d`; }
+  if (hours >= 1) { const rem = Math.floor((ms % 3600000) / 60000); return rem > 0 ? `${hours}h ${rem}m` : `${hours}h`; }
+  return totalMins > 0 ? `${totalMins}m` : '< 1m';
+}
+
+function plural(n: number, word: string) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
+
+function fmtLiveLabel(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  const years = Math.floor(days / 365);
+  const remainingDays = days % 365;
+  if (years >= 1) return `${plural(years, 'year')}, ${plural(remainingDays, 'day')}`;
+  if (days > 0) return `${plural(days, 'day')}, ${plural(hours, 'hour')}`;
+  if (hours > 0) return `${plural(hours, 'hour')}, ${plural(mins, 'minute')}`;
+  return `${plural(mins, 'minute')}, ${plural(secs, 'second')}`;
+}
+
+function fmtBest(longestStreak: number, currentMs: number): string {
+  const totalDays = Math.floor(currentMs / 86400000);
+  const isCurrentBest = totalDays === longestStreak;
+  if (isCurrentBest) {
+    const hours = Math.floor((currentMs % 86400000) / 3600000);
+    const mins = Math.floor((currentMs % 3600000) / 60000);
+    if (totalDays === 0 && hours === 0) return `${mins}m`;
+    if (totalDays === 0) return `${hours}h ${mins}m`;
+    if (totalDays < 7) return `${totalDays}d ${hours}h`;
+    const weeks = Math.floor(totalDays / 7);
+    if (totalDays < 30) return `${weeks}w ${totalDays % 7}d`;
+    const months = Math.floor(totalDays / 30);
+    if (totalDays < 365) return `${months}mo ${totalDays % 30}d`;
+    const years = Math.floor(totalDays / 365);
+    return `${years}y ${Math.floor((totalDays % 365) / 30)}mo`;
+  }
+  const d = longestStreak;
+  if (d === 0) return 'just started';
+  if (d < 7) return `${d}d`;
+  if (d < 30) return `${Math.floor(d / 7)}w ${d % 7}d`;
+  if (d < 365) return `${Math.floor(d / 30)}mo ${d % 30}d`;
+  return `${Math.floor(d / 365)}y ${Math.floor((d % 365) / 30)}mo`;
+}
+
+function fmtStartDate(quitDate: string): string {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(quitDate);
+  const d = parseQuitDate(quitDate);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(!sameYear && { year: 'numeric' }) });
+  if (isToday) return dateOnly ? 'Started today' : `Started today at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  return dateOnly ? `Started ${dateStr}` : `Started ${dateStr} @ ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
 const MOODS = ['😞', '😕', '😐', '🙂', '😄'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -123,6 +215,44 @@ interface AnalyticsData {
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
+
+function CircularProgress({ progress, next }: { progress: number; next: number }) {
+  const SIZE = 130;
+  const SW = 9;
+  const R = (SIZE - SW) / 2;
+  const C = 2 * Math.PI * R;
+  const cx = SIZE / 2;
+  const cy = SIZE / 2;
+  const pct = progress > 0 ? Math.max(1, Math.round(progress * 100)) : 0;
+  return (
+    <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={SIZE} height={SIZE} style={StyleSheet.absoluteFill}>
+        <Circle cx={cx} cy={cy} r={R} stroke="rgba(255,255,255,0.2)" strokeWidth={SW} fill="none" />
+        <Circle
+          cx={cx} cy={cy} r={R}
+          stroke="#fff" strokeWidth={SW} fill="none"
+          strokeDasharray={`${C}`}
+          strokeDashoffset={`${C * (1 - progress)}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cy})`}
+        />
+      </Svg>
+      <Text style={s.circPct}>{pct}%</Text>
+      <Text style={s.circTime}>{msLabel(next)}</Text>
+    </View>
+  );
+}
+
+function AnalyticsLiveCounter({ quitDate }: { quitDate: string | null }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  if (!quitDate) return null;
+  const ms = Math.max(0, Date.now() - parseQuitDate(quitDate).getTime());
+  return <Text style={s.heroLiveCounter}>{fmtLiveLabel(ms)}</Text>;
+}
 
 function SectionHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
@@ -344,7 +474,7 @@ export default function AnalyticsScreen() {
     data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
 
   const elapsedMs = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
-  const [heroP, heroPL, heroS, heroSL] = dualTimeFromMs(elapsedMs);
+  const { next: milestoneNext, remainingMs: milestoneRemainingMs, progress: milestoneProgress } = getStreakProgress(elapsedMs);
 
   const insights: { emoji: string; text: string; bg: string; tc: string }[] = [];
   if (data.currentStreakDays > 0 && data.currentStreakDays >= data.longestStreak)
@@ -422,23 +552,27 @@ export default function AnalyticsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" />}>
 
         {/* ── Hero ── */}
-        <LinearGradient colors={['#0b5252', '#0F6E6E', '#1a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.heroCard}>
-          <View style={s.heroDualRow}>
-            <View style={s.heroDualCol}>
-              <Text style={s.heroDualNum}>{heroP}</Text>
-              <Text style={s.heroDualLabel}>{heroPL}</Text>
-            </View>
-            <Text style={s.heroDualSep}>·</Text>
-            <View style={s.heroDualCol}>
-              <Text style={s.heroDualNum}>{heroS}</Text>
-              <Text style={s.heroDualLabel}>{heroSL}</Text>
+        <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.heroCard}>
+          <View style={s.heroStreakCard}>
+            <CircularProgress progress={milestoneProgress} next={milestoneNext} />
+            <View style={s.heroStreakRight}>
+              <View style={s.heroStreakTitleRow}>
+                <Text style={s.heroStreakTitle}>Current streak</Text>
+              </View>
+              <AnalyticsLiveCounter quitDate={data.quitDate} />
+              <View style={s.heroSep} />
+              <Text style={s.heroMilestoneTxt}>
+                {milestoneRemainingMs <= 0
+                  ? `🎉 ${msLabel(milestoneNext)} — milestone reached!`
+                  : `${fmtCountdown(milestoneRemainingMs)} to reach ${msLabel(milestoneNext)}`}
+              </Text>
+              <Text style={s.heroLongestTxt}>
+                Best: {fmtBest(data.longestStreak, elapsedMs)}
+                {data.relapseCount === 0 ? '  ·  🌟 No relapses' : `  ·  ${data.relapseCount} relapse${data.relapseCount !== 1 ? 's' : ''}`}
+              </Text>
+              {data.quitDate && <Text style={s.heroStartedTxt}>{fmtStartDate(data.quitDate)}</Text>}
             </View>
           </View>
-          <Text style={s.heroSubLabel}>without gambling</Text>
-          <Text style={s.heroDate}>
-            {data.quitDate ? `Since ${parseQuitDate(data.quitDate).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
-            {data.relapseCount === 0 ? '  ·  No relapses 🌟' : `  ·  ${data.relapseCount} relapse${data.relapseCount !== 1 ? 's' : ''}`}
-          </Text>
           <View style={s.heroDivider} />
           <View style={s.heroStatsRow}>
             <View style={s.heroStat}>
@@ -822,25 +956,29 @@ const s = StyleSheet.create({
   teaserTitle: { fontSize: 14, fontWeight: '700', color: '#111' },
   teaserDesc: { fontSize: 13, color: '#777', lineHeight: 19 },
 
-  // Hero
+  // Hero — mirrors home screen streak card
   heroCard: {
-    borderRadius: 20, padding: 20, alignItems: 'center', gap: 8,
+    borderRadius: 16, padding: 16, gap: 0,
     shadowColor: '#0F6E6E', shadowOpacity: 0.3, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 6,
   },
-  heroDualRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
-  heroDualCol: { alignItems: 'center', gap: 2 },
-  heroDualNum: { fontSize: 60, fontWeight: '800', color: '#fff', lineHeight: 66 },
-  heroDualLabel: { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
-  heroDualSep: { fontSize: 28, color: 'rgba(255,255,255,0.4)', marginBottom: 10 },
-  heroSubLabel: { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
-  heroDate: { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
-  heroDivider: { width: '80%', height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
-  heroStatsRow: { flexDirection: 'row', width: '100%' },
+  heroStreakCard: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  heroStreakRight: { flex: 1, gap: 6 },
+  heroStreakTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroStreakTitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  heroLiveCounter: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  heroSep: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+  heroMilestoneTxt: { fontSize: 13, color: '#fff', fontWeight: '500' },
+  heroLongestTxt: { fontSize: 12, color: 'rgba(255,255,255,0.65)' },
+  heroStartedTxt: { fontSize: 11, color: 'rgba(255,255,255,0.55)' },
+  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 12 },
+  heroStatsRow: { flexDirection: 'row' },
   heroStat: { flex: 1, alignItems: 'center', gap: 3 },
   heroStatValue: { fontSize: 16, fontWeight: '800', color: '#fff' },
   heroStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
   heroStatDivider: { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.2)' },
+  circPct: { fontSize: 32, fontWeight: '800', color: '#fff', lineHeight: 36 },
+  circTime: { fontSize: 10, color: 'rgba(255,255,255,0.8)', marginTop: 2, fontWeight: '600', textAlign: 'center', paddingHorizontal: 8 },
 
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
