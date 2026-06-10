@@ -2,13 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Line, Path, Polygon, Polyline } from 'react-native-svg';
 
 import { ONBOARDED_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
+import { AppColors } from '@/constants/theme';
 import { useOnboarding } from '@/context/onboarding';
+import { useAppTheme } from '@/context/theme';
 import { requestNotificationPermissions } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -92,6 +94,8 @@ function OvercomeIllustration() {
 
 
 export default function ReadyScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data, clearProgress } = useOnboarding();
@@ -168,32 +172,32 @@ export default function ReadyScreen() {
   };
 
   return (
-    <LinearGradient colors={['#def7e5', '#1a9a8a', '#0F6E6E']} locations={[0, 0.7, 1]} style={styles.gradient}>
+    <LinearGradient colors={['#def7e5', '#1a9a8a', '#0F6E6E']} locations={[0, 0.7, 1]} style={s.gradient}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={{ flex: 1 }}>
-      <SafeAreaView edges={['top']} style={styles.safe}>
+      <SafeAreaView edges={['top']} style={s.safe}>
         <Pressable
-          style={styles.backBtn}
+          style={s.backBtn}
           onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q5')}>
-          <Ionicons name="chevron-back" size={26} color="#fff" />
+          <Ionicons name="chevron-back" size={26} color={c.white} />
         </Pressable>
 
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={s.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
 
-        <View style={styles.hero}>
+        <View style={s.hero}>
           <OvercomeIllustration />
-          <Text style={styles.title}>You're all set!</Text>
-          <Text style={styles.subtitle}>Let's start turning things around.</Text>
+          <Text style={s.title}>You're all set!</Text>
+          <Text style={s.subtitle}>Let's start turning things around.</Text>
         </View>
 
         {/* Username picker */}
-        <View style={styles.usernameCard}>
-          <Text style={styles.usernameLabel}>Your username</Text>
-          <View style={styles.usernameRow}>
+        <View style={s.usernameCard}>
+          <Text style={s.usernameLabel}>Your username</Text>
+          <View style={s.usernameRow}>
             <TextInput
-              style={styles.usernameInput}
+              style={s.usernameInput}
               value={username}
               onChangeText={setUsername}
               placeholder="Type your username..."
@@ -204,30 +208,30 @@ export default function ReadyScreen() {
             />
             <Pressable
               onPress={() => setUsername(generateUsername())}
-              style={({ pressed }) => [styles.regenBtn, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [s.regenBtn, pressed && { opacity: 0.6 }]}
               hitSlop={8}>
               <Ionicons name="shuffle-outline" size={20} color="rgba(255,255,255,0.9)" />
             </Pressable>
           </View>
-          <Text style={styles.usernameHint}>Type your own or shuffle for a random one</Text>
+          <Text style={s.usernameHint}>Type your own or shuffle for a random one</Text>
         </View>
 
         {/* Notification opt-in */}
-        <View style={styles.notifCard}>
+        <View style={s.notifCard}>
           <Ionicons name="notifications-outline" size={18} color="rgba(255,255,255,0.9)" />
-          <Text style={styles.notifTitle}>Daily reminders</Text>
-          <View style={styles.notifChoices}>
+          <Text style={s.notifTitle}>Daily reminders</Text>
+          <View style={s.notifChoices}>
             <Pressable
-              style={[styles.notifChoice, wantsNotifs === true && styles.notifChoiceActive]}
+              style={[s.notifChoice, wantsNotifs === true && s.notifChoiceActive]}
               onPress={() => setWantsNotifs(true)}>
-              <Text style={[styles.notifChoiceTxt, wantsNotifs === true && styles.notifChoiceTxtActive]}>
+              <Text style={[s.notifChoiceTxt, wantsNotifs === true && s.notifChoiceTxtActive]}>
                 Yes
               </Text>
             </Pressable>
             <Pressable
-              style={[styles.notifChoice, wantsNotifs === false && styles.notifChoiceActive]}
+              style={[s.notifChoice, wantsNotifs === false && s.notifChoiceActive]}
               onPress={() => setWantsNotifs(false)}>
-              <Text style={[styles.notifChoiceTxt, wantsNotifs === false && styles.notifChoiceTxtActive]}>
+              <Text style={[s.notifChoiceTxt, wantsNotifs === false && s.notifChoiceTxtActive]}>
                 Not now
               </Text>
             </Pressable>
@@ -235,10 +239,10 @@ export default function ReadyScreen() {
         </View>
 
         {!!error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={s.errorBox}>
+            <Text style={s.errorText}>{error}</Text>
             <Pressable onPress={() => router.replace('/(onboarding)/signup')}>
-              <Text style={styles.errorLink}>Go to sign in →</Text>
+              <Text style={s.errorLink}>Go to sign in →</Text>
             </Pressable>
           </View>
         )}
@@ -248,15 +252,15 @@ export default function ReadyScreen() {
       </SafeAreaView>
       </KeyboardAvoidingView>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 8, 32) }]}>
+      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom + 8, 32) }]}>
         <Pressable
-          style={({ pressed }) => [styles.btn, pressed && styles.pressed]}
+          style={({ pressed }) => [s.btn, pressed && s.pressed]}
           onPress={handleGo}
           disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#0F6E6E" />
+            <ActivityIndicator color={c.primary} />
           ) : (
-            <Text style={styles.btnText}>Start my journey</Text>
+            <Text style={s.btnText}>Start my journey</Text>
           )}
         </Pressable>
       </View>
@@ -264,7 +268,7 @@ export default function ReadyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (c: AppColors) => StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1, paddingHorizontal: 28 },
   backBtn: {
@@ -285,7 +289,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#fff',
+    color: c.white,
     textAlign: 'center',
   },
   subtitle: {
@@ -318,7 +322,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 22,
     fontWeight: '700',
-    color: '#fff',
+    color: c.white,
     padding: 0,
   },
   regenBtn: {
@@ -364,7 +368,7 @@ const styles = StyleSheet.create({
   },
   notifChoiceActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',
-    borderColor: '#fff',
+    borderColor: c.white,
   },
   notifChoiceTxt: {
     fontSize: 12,
@@ -372,7 +376,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
   },
   notifChoiceTxtActive: {
-    color: '#fff',
+    color: c.white,
   },
   errorBox: {
     alignItems: 'center',
@@ -385,7 +389,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   errorLink: {
-    color: '#fff',
+    color: c.white,
     fontSize: 14,
     fontWeight: '600',
     textDecorationLine: 'underline',
@@ -397,7 +401,7 @@ const styles = StyleSheet.create({
     right: 28,
   },
   btn: {
-    backgroundColor: '#fff',
+    backgroundColor: c.white,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -405,7 +409,7 @@ const styles = StyleSheet.create({
   btnText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F6E6E',
+    color: c.primary,
   },
   pressed: { opacity: 0.8 },
 });

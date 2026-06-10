@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 const TRIGGERS = [
   { key: 'betting_ads', label: 'Betting ads' },
@@ -60,7 +62,9 @@ function formatDate(iso: string) {
   });
 }
 
-function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) {
+function EntryCard({ entry, currency, c }: { entry: FeedEntry; currency: string; c: AppColors }) {
+  const s = useMemo(() => makeStyles(c), [c]);
+
   if (entry.kind === 'urge') {
     const overcame = entry.outcome === 'overcame';
     return (
@@ -90,7 +94,7 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
         </View>
         <View style={s.cardRow}>
           <Text style={s.cardTitle}>{entry.name}</Text>
-          <Text style={[s.cardAmount, { color: '#c0392b' }]}>−{fmt(Number(entry.total_amount), currency)}</Text>
+          <Text style={[s.cardAmount, { color: c.error }]}>−{fmt(Number(entry.total_amount), currency)}</Text>
         </View>
       </View>
     );
@@ -107,7 +111,7 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
         </View>
         <View style={s.cardRow}>
           <Text style={s.cardTitle}>{entry.debt_name}</Text>
-          <Text style={[s.cardAmount, { color: '#0F6E6E' }]}>+{fmt(Number(entry.amount), currency)}</Text>
+          <Text style={[s.cardAmount, { color: c.primary }]}>+{fmt(Number(entry.amount), currency)}</Text>
         </View>
         {entry.note ? <Text style={s.cardNote}>{entry.note}</Text> : null}
       </View>
@@ -125,7 +129,7 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
         </View>
         <View style={s.cardRow}>
           <Text style={s.cardTitle}>{entry.note || 'Saving'}</Text>
-          <Text style={[s.cardAmount, { color: '#0a7a4e' }]}>+{fmt(Number(entry.amount), currency)}</Text>
+          <Text style={[s.cardAmount, { color: c.success }]}>+{fmt(Number(entry.amount), currency)}</Text>
         </View>
       </View>
     );
@@ -157,7 +161,7 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
         </View>
         <View style={s.cardRow}>
           <Text style={s.cardTitle}>{entry.note || 'Debt'}</Text>
-          <Text style={[s.cardAmount, { color: '#c0392b' }]}>{fmt(Number(entry.amount), currency)}</Text>
+          <Text style={[s.cardAmount, { color: c.error }]}>{fmt(Number(entry.amount), currency)}</Text>
         </View>
       </View>
     );
@@ -174,7 +178,7 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
         </View>
         <View style={s.cardRow}>
           <Text style={s.cardTitle}>{entry.note || 'Debt'}</Text>
-          <Text style={[s.cardAmount, { color: '#c0392b' }]}>{fmt(Number(entry.amount), currency)}</Text>
+          <Text style={[s.cardAmount, { color: c.error }]}>{fmt(Number(entry.amount), currency)}</Text>
         </View>
       </View>
     );
@@ -191,7 +195,7 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
         </View>
         <View style={s.cardRow}>
           <Text style={s.cardTitle}>{entry.note || 'Saving'}</Text>
-          <Text style={[s.cardAmount, { color: '#0a7a4e' }]}>+{fmt(Number(entry.amount), currency)}</Text>
+          <Text style={[s.cardAmount, { color: c.success }]}>+{fmt(Number(entry.amount), currency)}</Text>
         </View>
       </View>
     );
@@ -208,7 +212,7 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
         </View>
         <View style={s.cardRow}>
           <Text style={s.cardTitle}>{entry.note || 'Saving'}</Text>
-          <Text style={[s.cardAmount, { color: '#0a7a4e' }]}>{fmt(Number(entry.amount), currency)}</Text>
+          <Text style={[s.cardAmount, { color: c.success }]}>{fmt(Number(entry.amount), currency)}</Text>
         </View>
       </View>
     );
@@ -239,7 +243,7 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
         </View>
         <View style={s.cardRow}>
           <Text style={s.cardTitle}>{entry.note || 'Debt'}</Text>
-          <Text style={[s.cardAmount, { color: '#0F6E6E' }]}>{fmt(Number(entry.amount), currency)}</Text>
+          <Text style={[s.cardAmount, { color: c.primary }]}>{fmt(Number(entry.amount), currency)}</Text>
         </View>
       </View>
     );
@@ -283,6 +287,9 @@ type FilterKind = 'all' | 'urge' | 'milestone' | 'reset';
 type FilterOutcome = 'all' | 'overcame' | 'slipped';
 
 export default function JournalScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
@@ -361,11 +368,11 @@ export default function JournalScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={12}>
-              <Ionicons name="chevron-back" size={26} color="#fff" />
+              <Ionicons name="chevron-back" size={26} color={c.white} />
             </Pressable>
             <View style={s.headerCenter}>
               <Text style={s.headerTitle}>My Journal</Text>
@@ -383,7 +390,7 @@ export default function JournalScreen() {
 
       {loading ? (
         <View style={s.center}>
-          <ActivityIndicator size="large" color="#0F6E6E" />
+          <ActivityIndicator size="large" color={c.primary} />
         </View>
       ) : feed.length === 0 ? (
         <View style={s.empty}>
@@ -433,17 +440,16 @@ export default function JournalScreen() {
               )}
             </View>
           }
-          renderItem={({ item }) => <EntryCard entry={item} currency={currency} />}
+          renderItem={({ item }) => <EntryCard entry={item} currency={currency} c={c} />}
         />
       )}
 
       <Modal visible={clearAllVisible} transparent animationType="fade" onRequestClose={() => setClearAllVisible(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setClearAllVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            
             <View style={s.confirmIconRow}>
               <View style={s.confirmIconCircle}>
-                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+                <Ionicons name="trash-outline" size={26} color={c.error} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Clear all journal entries?</Text>
@@ -456,7 +462,7 @@ export default function JournalScreen() {
               </Pressable>
               <Pressable style={[s.confirmDelete, clearingAll && { opacity: 0.6 }]} onPress={executeClearAll} disabled={clearingAll}>
                 {clearingAll
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.confirmDeleteTxt}>Clear all</Text>}
               </Pressable>
             </View>
@@ -467,8 +473,8 @@ export default function JournalScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: { paddingBottom: 16 },
@@ -479,41 +485,39 @@ const s = StyleSheet.create({
   backBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
   clearBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: c.white },
 
   list: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
   filterWrap: { paddingTop: 12, paddingBottom: 4, gap: 8 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  filterChip: { borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: '#e8ecec' },
-  filterChipSub: { backgroundColor: '#f0f0f0' },
-  filterChipActive: { backgroundColor: '#0F6E6E' },
-  filterChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
-  filterChipTxtActive: { color: '#fff' },
+  filterChip: { borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: c.bgElement },
+  filterChipSub: { backgroundColor: c.bgElement },
+  filterChipActive: { backgroundColor: c.primary },
+  filterChipTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  filterChipTxtActive: { color: c.white },
   filterEmpty: { paddingVertical: 24, alignItems: 'center' },
-  filterEmptyTxt: { fontSize: 14, color: '#aaa' },
+  filterEmptyTxt: { fontSize: 14, color: c.textFaint },
 
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 6 },
+  card: { backgroundColor: c.bgCard, borderRadius: 14, padding: 14, gap: 6 },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#111', flex: 1 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: c.textPrimary, flex: 1 },
   cardAmount: { fontSize: 15, fontWeight: '700', marginLeft: 8 },
-  cardNote: { fontSize: 13, color: '#666', lineHeight: 18 },
-  cardDate: { fontSize: 12, color: '#aaa' },
+  cardNote: { fontSize: 13, color: c.textBody, lineHeight: 18 },
+  cardDate: { fontSize: 12, color: c.textFaint },
 
   pill: { borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10 },
   pillTxt: { fontSize: 12, fontWeight: '700' },
 
-  pillGreen: { backgroundColor: '#e6f7f0' },
-  pillTxtGreen: { color: '#0a7a4e' },
-  pillRed: { backgroundColor: '#fff0f0' },
-  pillTxtRed: { color: '#c0392b' },
-  pillBlue: { backgroundColor: '#f0f0ff' },
-  pillTxtBlue: { color: '#4455cc' },
-  pillTeal: { backgroundColor: '#e8f0ff' },
-  pillTxtTeal: { color: '#1d6fcc' },
-  pillGreenSolid: { backgroundColor: '#e6f7ed' },
-  pillTxtGreenSolid: { color: '#0a7a4e' },
-  pillOrange: { backgroundColor: '#fff4e6' },
+  pillGreen: { backgroundColor: c.bgTeal },
+  pillTxtGreen: { color: c.success },
+  pillRed: { backgroundColor: c.bgError },
+  pillTxtRed: { color: c.error },
+  pillTeal: { backgroundColor: c.bgTeal },
+  pillTxtTeal: { color: c.primary },
+  pillGreenSolid: { backgroundColor: c.bgTeal },
+  pillTxtGreenSolid: { color: c.success },
+  pillOrange: { backgroundColor: c.bgWarm },
   pillTxtOrange: { color: '#c0680a' },
 
   empty: {
@@ -521,25 +525,25 @@ const s = StyleSheet.create({
     padding: 40, gap: 12,
   },
   emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#111' },
-  emptySub: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
+  emptySub: { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 20 },
 
-  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
   confirmSheet: {
-    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
   confirmIconRow: { alignItems: 'center', marginBottom: 12 },
   confirmIconCircle: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    backgroundColor: c.bgError, borderWidth: 1.5, borderColor: c.borderError,
     alignItems: 'center', justifyContent: 'center',
   },
-  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
-  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
-  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
-  confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
+  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  confirmDeleteTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 });

@@ -2,8 +2,11 @@ import { ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMemo } from 'react';
 import { usePurchases } from '@/context/purchases';
 import { useUser } from '@/context/user';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 const FEATURES = [
   '💬 Chat any time, day or night',
@@ -15,11 +18,13 @@ const FEATURES = [
 export default function CoachScreen() {
   const { isPremium, isLoadingPurchases, showPaywall } = usePurchases();
   const { isAdmin } = useUser();
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const hasAccess = isPremium || isAdmin;
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>AI Coach</Text>
@@ -30,7 +35,7 @@ export default function CoachScreen() {
 
       {isLoadingPurchases ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#0F6E6E" />
+          <ActivityIndicator size="large" color={c.primary} />
         </View>
       ) : hasAccess ? (
         <ScrollView contentContainerStyle={s.body}>
@@ -74,42 +79,42 @@ export default function CoachScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
 
   header: { paddingBottom: 16 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: c.white },
   premiumBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  premiumBadgeTxt: { fontSize: 12, color: '#fff', fontWeight: '600' },
+  premiumBadgeTxt: { fontSize: 12, color: c.white, fontWeight: '600' },
 
   body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
 
   lockCard: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 24,
+    backgroundColor: c.bgCard, borderRadius: 20, padding: 24,
     alignItems: 'center', gap: 14, width: '100%',
   },
   lockEmoji: { fontSize: 52 },
-  lockTitle: { fontSize: 20, fontWeight: '700', color: '#111', textAlign: 'center' },
-  lockDesc: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21 },
+  lockTitle: { fontSize: 20, fontWeight: '700', color: c.textPrimary, textAlign: 'center' },
+  lockDesc: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21 },
 
   featureList: { gap: 10, alignSelf: 'stretch', marginVertical: 4 },
   featureRow: { flexDirection: 'row' },
-  featureItem: { fontSize: 15, color: '#444' },
+  featureItem: { fontSize: 15, color: c.textSecondary },
 
   upgradeBtn: {
-    backgroundColor: '#0F6E6E', borderRadius: 14,
+    backgroundColor: c.primary, borderRadius: 14,
     paddingVertical: 14, alignSelf: 'stretch', alignItems: 'center',
     marginTop: 4,
   },
-  upgradeBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  price: { fontSize: 12, color: '#aaa' },
+  upgradeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
+  price: { fontSize: 12, color: c.textFaint },
 
   comingSoonCard: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 32,
+    backgroundColor: c.bgCard, borderRadius: 20, padding: 32,
     alignItems: 'center', gap: 14, width: '100%',
   },
   comingSoonEmoji: { fontSize: 52 },
-  comingSoonTitle: { fontSize: 20, fontWeight: '700', color: '#111', textAlign: 'center' },
-  comingSoonDesc: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
+  comingSoonTitle: { fontSize: 20, fontWeight: '700', color: c.textPrimary, textAlign: 'center' },
+  comingSoonDesc: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 22 },
 });

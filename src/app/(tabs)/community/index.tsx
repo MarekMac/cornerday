@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -19,6 +19,8 @@ import { avatarColor, COMMUNITY_TAGS, streakBadge, TAG_COLORS, timeAgo } from '@
 import { COMMUNITY_GUIDELINES_SEEN_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 const PAGE_SIZE = 15;
 const ALL_TAGS = ['All', 'Mine', 'Saved', ...COMMUNITY_TAGS] as const;
@@ -38,6 +40,8 @@ interface Post {
 }
 
 function SkeletonCard() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
     Animated.loop(
@@ -67,6 +71,8 @@ function SkeletonCard() {
 const POST_SELECT = 'id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))';
 
 export default function CommunityFeed() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -346,7 +352,7 @@ export default function CommunityFeed() {
                     style={[s.reactBtn, isMyReaction && s.reactBtnActive]}
                     onPress={() => toggleFeedReaction(item.id, emoji)}
                   >
-                    <Text style={[s.reactBtnTxt, isMyReaction && { color: '#0F6E6E' }]}>
+                    <Text style={[s.reactBtnTxt, isMyReaction && { color: c.primary }]}>
                       {emoji} {count}
                     </Text>
                   </Pressable>
@@ -371,7 +377,7 @@ export default function CommunityFeed() {
             <Ionicons
               name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
               size={18}
-              color={isBookmarked ? '#0F6E6E' : '#bbb'}
+              color={isBookmarked ? c.primary : c.textFaint}
             />
           </Pressable>
         </View>
@@ -381,7 +387,7 @@ export default function CommunityFeed() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Text style={s.headerTitle}>Community</Text>
@@ -390,7 +396,7 @@ export default function CommunityFeed() {
                 onPress={() => router.push('/moderation' as any)}
                 hitSlop={10}
                 style={({ pressed }) => [s.moderateBtn, pressed && { opacity: 0.7 }]}>
-                <Ionicons name="shield-outline" size={20} color="#fff" />
+                <Ionicons name="shield-outline" size={20} color={c.white} />
               </Pressable>
             )}
           </View>
@@ -405,7 +411,7 @@ export default function CommunityFeed() {
             onPress={() => setSortOpen(v => !v)}
             hitSlop={6}
           >
-            <Ionicons name="swap-vertical-outline" size={16} color={sortOpen ? '#fff' : '#555'} />
+            <Ionicons name="swap-vertical-outline" size={16} color={sortOpen ? '#fff' : c.textBody} />
           </Pressable>
 
           {sortOpen && (
@@ -423,7 +429,7 @@ export default function CommunityFeed() {
                       {opt === 'new' ? '✨  New' : '🔥  Popular'}
                     </Text>
                     {sortBy === opt && (
-                      <Ionicons name="checkmark" size={15} color="#0F6E6E" />
+                      <Ionicons name="checkmark" size={15} color={c.primary} />
                     )}
                   </Pressable>
                 ))}
@@ -463,7 +469,7 @@ export default function CommunityFeed() {
             onRefresh={() => { setRefreshing(true); load(activeTag, sortByRef.current, true); }}
             onEndReached={loadMore}
             onEndReachedThreshold={0.3}
-            ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color="#0F6E6E" /> : null}
+            ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color={c.primary} /> : null}
             ListEmptyComponent={
               <View style={s.empty}>
                 <Text style={s.emptyEmoji}>{activeTag === 'Saved' ? '🔖' : '🌱'}</Text>
@@ -487,7 +493,7 @@ export default function CommunityFeed() {
           onPress={() => router.push('/(tabs)/community/new-post' as any)}
         >
           <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.fabInner}>
-            <Ionicons name="add" size={30} color="#fff" />
+            <Ionicons name="add" size={30} color={c.white} />
           </LinearGradient>
         </Pressable>
       </View>
@@ -536,65 +542,64 @@ export default function CommunityFeed() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
 
   header: { paddingBottom: 16 },
   headerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 12,
   },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: c.white },
   moderateBtn: { padding: 4 },
 
   tagBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, backgroundColor: '#fff',
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd',
+    paddingVertical: 10, backgroundColor: c.bgCard,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderMid,
   },
 
-  // Sort button
   sortBtnWrap: { paddingLeft: 14, zIndex: 10 },
   sortCircle: {
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd',
+    backgroundColor: c.bgElement, borderWidth: 1, borderColor: c.borderMid,
     alignItems: 'center', justifyContent: 'center',
   },
-  sortCircleActive: { backgroundColor: '#0F6E6E', borderColor: '#0F6E6E' },
+  sortCircleActive: { backgroundColor: c.primary, borderColor: c.primary },
 
   sortOverlay: { position: 'absolute', top: -200, left: -200, right: -9999, bottom: -9999 },
   sortDropdown: {
     position: 'absolute', top: 40, left: 0,
-    backgroundColor: '#fff', borderRadius: 14,
+    backgroundColor: c.bgCard, borderRadius: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12, shadowRadius: 12, elevation: 10,
     minWidth: 140, overflow: 'hidden',
-    borderWidth: 1, borderColor: '#f0f0f0',
+    borderWidth: 1, borderColor: c.borderSubtle,
   },
   sortOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 13,
   },
-  sortOptionActive: { backgroundColor: '#f0fafa' },
-  sortOptionTxt: { fontSize: 14, fontWeight: '600', color: '#333' },
-  sortOptionTxtActive: { color: '#0F6E6E' },
+  sortOptionActive: { backgroundColor: c.bgTealDeep },
+  sortOptionTxt: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
+  sortOptionTxtActive: { color: c.primary },
 
-  tagBarDivider: { width: 1, height: 22, backgroundColor: '#e0e0e0', marginHorizontal: 10 },
+  tagBarDivider: { width: 1, height: 22, backgroundColor: c.borderLight, marginHorizontal: 10 },
   tagRow: { flexDirection: 'row', alignItems: 'center' },
   tagChip: {
     paddingHorizontal: 16, paddingVertical: 8, marginRight: 8,
-    borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
+    borderRadius: 20, backgroundColor: c.bgCard, borderWidth: 1, borderColor: c.borderMid,
     flexShrink: 0,
   },
-  tagChipActive: { backgroundColor: '#0F6E6E', borderColor: '#0F6E6E' },
-  tagChipTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
-  tagChipTxtActive: { color: '#fff' },
+  tagChipActive: { backgroundColor: c.primary, borderColor: c.primary },
+  tagChipTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
+  tagChipTxtActive: { color: c.white },
 
   skeletonList: { padding: 16, gap: 12 },
-  skeletonCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 10 },
+  skeletonCard: { backgroundColor: c.bgCard, borderRadius: 16, padding: 16, gap: 10 },
   skeletonHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  skeletonAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#e8e8e8' },
-  skeletonLine: { height: 12, backgroundColor: '#e8e8e8', borderRadius: 6, width: '75%' },
+  skeletonAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: c.bgElement },
+  skeletonLine: { height: 12, backgroundColor: c.bgElement, borderRadius: 6, width: '75%' },
 
   list: { padding: 16, gap: 12, paddingBottom: 100 },
   loadingMore: { paddingVertical: 16 },
@@ -611,67 +616,66 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
 
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 8 },
+  card: { backgroundColor: c.bgCard, borderRadius: 16, padding: 16, gap: 8 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  avatarTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  avatarTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   cardMeta: { flex: 1 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  authorName: { fontSize: 14, fontWeight: '600', color: '#111' },
+  authorName: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
   streakPill: {
-    backgroundColor: '#e6f7f7', borderRadius: 8,
+    backgroundColor: c.bgTeal, borderRadius: 8,
     paddingHorizontal: 6, paddingVertical: 2,
   },
-  streakPillTxt: { fontSize: 11, fontWeight: '600', color: '#0F6E6E' },
-  timeStr: { fontSize: 12, color: '#999', marginTop: 1 },
+  streakPillTxt: { fontSize: 11, fontWeight: '600', color: c.primary },
+  timeStr: { fontSize: 12, color: c.textMuted, marginTop: 1 },
   tagPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
   tagTxt: { fontSize: 11, fontWeight: '700' },
 
-  content: { fontSize: 14, color: '#333', lineHeight: 21 },
-  readMore: { fontSize: 13, color: '#0F6E6E', fontWeight: '600', marginTop: -4 },
+  content: { fontSize: 14, color: c.textSecondary, lineHeight: 21 },
+  readMore: { fontSize: 13, color: c.primary, fontWeight: '600', marginTop: -4 },
 
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
   footerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 },
   reactBtn: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
-    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ebebeb',
+    backgroundColor: c.bgElement, borderWidth: 1, borderColor: c.borderSubtle,
   },
-  reactBtnActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
-  reactBtnTxt: { fontSize: 13, color: '#666', fontWeight: '600' },
-  stat: { fontSize: 13, color: '#666' },
+  reactBtnActive: { backgroundColor: c.bgTeal, borderColor: c.primary },
+  reactBtnTxt: { fontSize: 13, color: c.textBody, fontWeight: '600' },
+  stat: { fontSize: 13, color: c.textBody },
   bookmarkBtn: { paddingLeft: 8 },
 
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32, gap: 8 },
   emptyEmoji: { fontSize: 48, marginBottom: 4 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#444', textAlign: 'center' },
-  emptySubtitle: { fontSize: 14, color: '#999', textAlign: 'center', lineHeight: 21 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: c.textSecondary, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 },
 
-  // Guidelines modal
   glOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    flex: 1, backgroundColor: c.overlay,
     justifyContent: 'center', alignItems: 'center', padding: 24,
   },
   glSheet: {
-    backgroundColor: '#fff', borderRadius: 24, padding: 24, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 24, padding: 24, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2, shadowRadius: 24, elevation: 24,
   },
   glIconRow: { alignItems: 'center', marginBottom: 14 },
   glIconCircle: {
     width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center',
   },
   glIconEmoji: { fontSize: 30 },
-  glTitle: { fontSize: 20, fontWeight: '800', color: '#111', textAlign: 'center', marginBottom: 6 },
-  glSubtitle: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  glTitle: { fontSize: 20, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 6 },
+  glSubtitle: { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
   glRules: { gap: 14, marginBottom: 24 },
   glRuleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   glRuleEmoji: { fontSize: 18, width: 24 },
-  glRuleTxt: { flex: 1, fontSize: 14, color: '#333', lineHeight: 20 },
+  glRuleTxt: { flex: 1, fontSize: 14, color: c.textSecondary, lineHeight: 20 },
   glBtn: {
-    backgroundColor: '#0F6E6E', borderRadius: 14,
+    backgroundColor: c.primary, borderRadius: 14,
     paddingVertical: 15, alignItems: 'center',
   },
-  glBtnTxt: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  glBtnTxt: { color: c.white, fontSize: 16, fontWeight: '700' },
 });

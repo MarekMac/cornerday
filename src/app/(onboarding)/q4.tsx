@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -11,6 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/onboarding/ProgressBar';
+import { AppColors } from '@/constants/theme';
+import { useAppTheme } from '@/context/theme';
 import { useOnboarding } from '@/context/onboarding';
 
 const OPTIONS = [
@@ -23,6 +25,8 @@ const OPTIONS = [
 ];
 
 export default function Q4Screen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
   const { data, isLoaded, setField, saveStep } = useOnboarding();
   const [selected, setSelected] = useState<string[]>([]);
@@ -52,23 +56,23 @@ export default function Q4Screen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q3')} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
+    <SafeAreaView style={s.safe}>
+      <View style={s.topBar}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q3')} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={c.primary} />
         </Pressable>
-        <View style={styles.progressWrapper}>
+        <View style={s.progressWrapper}>
           <ProgressBar current={4} total={5} />
         </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>What is your main goal?</Text>
-        <Text style={styles.subtitle}>Choose as many as apply to you.</Text>
+        <Text style={s.title}>What is your main goal?</Text>
+        <Text style={s.subtitle}>Choose as many as apply to you.</Text>
 
-        <View style={styles.options}>
+        <View style={s.options}>
           {OPTIONS.map(opt => {
             const isSelected = selected.includes(opt.value);
             return (
@@ -76,16 +80,16 @@ export default function Q4Screen() {
                 key={opt.value}
                 onPress={() => toggle(opt.value)}
                 style={({ pressed }) => [
-                  styles.card,
-                  isSelected && styles.cardSelected,
-                  pressed && styles.cardPressed,
+                  s.card,
+                  isSelected && s.cardSelected,
+                  pressed && s.cardPressed,
                 ]}>
-                <Text style={styles.emoji}>{opt.emoji}</Text>
-                <Text style={[styles.label, isSelected && styles.labelSelected]}>
+                <Text style={s.emoji}>{opt.emoji}</Text>
+                <Text style={[s.label, isSelected && s.labelSelected]}>
                   {opt.label}
                 </Text>
-                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                <View style={[s.checkbox, isSelected && s.checkboxSelected]}>
+                  {isSelected && <Text style={s.checkmark}>✓</Text>}
                 </View>
               </Pressable>
             );
@@ -93,27 +97,27 @@ export default function Q4Screen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip for now</Text>
+      <View style={s.footer}>
+        <Pressable style={s.skipBtn} onPress={handleSkip}>
+          <Text style={s.skipText}>Skip for now</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [
-            styles.continueBtn,
-            selected.length === 0 && styles.continueBtnDisabled,
-            pressed && styles.pressed,
+            s.continueBtn,
+            selected.length === 0 && s.continueBtnDisabled,
+            pressed && s.pressed,
           ]}
           onPress={handleContinue}
           disabled={selected.length === 0}>
-          <Text style={styles.continueBtnText}>Continue</Text>
+          <Text style={s.continueBtnText}>Continue</Text>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bgCard },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -132,13 +136,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111',
+    color: c.textPrimary,
     marginBottom: 8,
     lineHeight: 32,
   },
   subtitle: {
     fontSize: 14,
-    color: '#888',
+    color: c.textMuted,
     marginBottom: 24,
   },
   options: { gap: 10 },
@@ -150,23 +154,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#d0e8e8',
-    backgroundColor: '#f8fdfd',
+    borderColor: c.bgTealMid,
+    backgroundColor: c.bgElement,
   },
   cardSelected: {
-    borderColor: '#0F6E6E',
-    backgroundColor: '#e6f7f7',
+    borderColor: c.primary,
+    backgroundColor: c.bgTeal,
   },
   cardPressed: { opacity: 0.8 },
   emoji: { fontSize: 22 },
   label: {
     flex: 1,
     fontSize: 15,
-    color: '#333',
+    color: c.textSecondary,
     fontWeight: '500',
   },
   labelSelected: {
-    color: '#0F6E6E',
+    color: c.primary,
     fontWeight: '600',
   },
   checkbox: {
@@ -174,17 +178,17 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: '#ccc',
+    borderColor: c.borderMid,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#0F6E6E',
-    borderColor: '#0F6E6E',
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   checkmark: {
     fontSize: 13,
-    color: '#fff',
+    color: c.white,
     fontWeight: '700',
   },
   footer: {
@@ -192,18 +196,18 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: c.borderSubtle,
     gap: 8,
   },
   skipBtn: { alignItems: 'center', paddingVertical: 8 },
-  skipText: { fontSize: 14, color: '#888' },
+  skipText: { fontSize: 14, color: c.textMuted },
   continueBtn: {
-    backgroundColor: '#0F6E6E',
+    backgroundColor: c.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  continueBtnDisabled: { backgroundColor: '#b0d4d4' },
-  continueBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  continueBtnDisabled: { backgroundColor: c.primaryLight },
+  continueBtnText: { color: c.white, fontSize: 16, fontWeight: '700' },
   pressed: { opacity: 0.8 },
 });

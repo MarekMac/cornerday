@@ -1,4 +1,8 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { AppColors } from '@/constants/theme';
+import { useAppTheme } from '@/context/theme';
 
 interface Props {
   current: number;
@@ -6,19 +10,21 @@ interface Props {
 }
 
 export function ProgressBar({ current, total }: Props) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const progress = current / total;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${progress * 100}%` }]} />
+    <View style={s.container}>
+      <View style={s.track}>
+        <View style={[s.fill, { width: `${progress * 100}%` }]} />
       </View>
-      <Text style={styles.label}>{current} of {total}</Text>
+      <Text style={s.label}>{current} of {total}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (c: AppColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -27,18 +33,18 @@ const styles = StyleSheet.create({
   track: {
     flex: 1,
     height: 4,
-    backgroundColor: '#d0e8e8',
+    backgroundColor: c.bgTealMid,
     borderRadius: 2,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    backgroundColor: '#0F6E6E',
+    backgroundColor: c.primary,
     borderRadius: 2,
   },
   label: {
     fontSize: 12,
-    color: '#888',
+    color: c.textMuted,
     minWidth: 36,
     textAlign: 'right',
   },

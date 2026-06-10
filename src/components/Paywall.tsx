@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PACKAGE_TYPE } from 'react-native-purchases';
+import { AppColors } from '@/constants/theme';
+import { useAppTheme } from '@/context/theme';
 import { usePurchases } from '@/context/purchases';
 
 const FEATURES = [
@@ -23,6 +25,8 @@ const FEATURES = [
 ];
 
 export function Paywall() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { paywallVisible, hidePaywall, offerings, purchasePackage, restorePurchases } = usePurchases();
@@ -187,7 +191,7 @@ export function Paywall() {
           >
             <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.ctaGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               {purchasing
-                ? <ActivityIndicator color="#fff" />
+                ? <ActivityIndicator color={c.white} />
                 : <Text style={s.ctaTxt}>Start Premium</Text>}
             </LinearGradient>
           </Pressable>
@@ -201,7 +205,7 @@ export function Paywall() {
             style={({ pressed }) => [s.restoreBtn, pressed && { opacity: 0.6 }]}
           >
             {restoring
-              ? <ActivityIndicator size="small" color="#0F6E6E" />
+              ? <ActivityIndicator size="small" color={c.primary} />
               : <Text style={s.restoreTxt}>Restore purchases</Text>}
           </Pressable>
 
@@ -223,8 +227,8 @@ export function Paywall() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f5f5f5' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgElement },
 
   header: { paddingBottom: 28 },
   headerTop: { paddingHorizontal: 20, alignItems: 'flex-end' },
@@ -233,16 +237,16 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  closeBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  closeBtnTxt: { color: c.white, fontSize: 14, fontWeight: '700' },
   headerBody: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 8 },
-  headerTitle: { fontSize: 30, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+  headerTitle: { fontSize: 30, fontWeight: '800', color: c.white, letterSpacing: -0.5 },
   headerSub: { fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 6, textAlign: 'center' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
 
   featuresCard: {
-    backgroundColor: '#fff',
+    backgroundColor: c.bgCard,
     borderRadius: 18,
     padding: 4,
     marginBottom: 24,
@@ -253,58 +257,57 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   featureRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 14 },
-  featureRowBorder: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  featureRowBorder: { borderBottomWidth: 1, borderBottomColor: c.borderSubtle },
   featureIcon: {
     width: 44, height: 44, borderRadius: 12,
-    backgroundColor: '#e6f7f7',
+    backgroundColor: c.bgTeal,
     alignItems: 'center', justifyContent: 'center',
   },
   featureEmoji: { fontSize: 22 },
   featureText: { flex: 1 },
-  featureTitle: { fontSize: 15, fontWeight: '700', color: '#1a1a1a', marginBottom: 2 },
-  featureDesc: { fontSize: 13, color: '#888', lineHeight: 18 },
+  featureTitle: { fontSize: 15, fontWeight: '700', color: c.textPrimary, marginBottom: 2 },
+  featureDesc: { fontSize: 13, color: c.textMuted, lineHeight: 18 },
 
-  planLabel: { fontSize: 13, fontWeight: '600', color: '#888', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  planLabel: { fontSize: 13, fontWeight: '600', color: c.textMuted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   planRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   planCard: {
     flex: 1, borderRadius: 16, padding: 16,
-    backgroundColor: '#fff',
-    borderWidth: 2, borderColor: '#e0e0e0',
+    backgroundColor: c.bgCard,
+    borderWidth: 2, borderColor: c.borderLight,
     alignItems: 'center', position: 'relative',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
-  planCardSelected: { borderColor: '#0F6E6E', backgroundColor: '#f0fafa' },
-  planType: { fontSize: 13, fontWeight: '600', color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.3 },
-  planTypeSelected: { color: '#0F6E6E' },
-  planPrice: { fontSize: 24, fontWeight: '800', color: '#1a1a1a' },
-  planPriceSelected: { color: '#0F6E6E' },
-  planPeriod: { fontSize: 12, color: '#aaa', marginTop: 2 },
-  planPeriodSelected: { color: '#0F6E6E' },
+  planCardSelected: { borderColor: c.primary, backgroundColor: c.bgTealDeep },
+  planType: { fontSize: 13, fontWeight: '600', color: c.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.3 },
+  planTypeSelected: { color: c.primary },
+  planPrice: { fontSize: 24, fontWeight: '800', color: c.textPrimary },
+  planPriceSelected: { color: c.primary },
+  planPeriod: { fontSize: 12, color: c.textFaint, marginTop: 2 },
+  planPeriodSelected: { color: c.primary },
   planSelectedDot: {
     position: 'absolute', top: 10, right: 10,
     width: 18, height: 18, borderRadius: 9,
-    backgroundColor: '#0F6E6E',
-    // checkmark via emoji won't render consistently, use a filled circle
+    backgroundColor: c.primary,
   },
   savingsBadge: {
     position: 'absolute', top: -10,
     backgroundColor: '#e67e22',
     borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2,
   },
-  savingsBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  savingsBadgeTxt: { fontSize: 11, fontWeight: '700', color: c.white },
 
   ctaBtn: { borderRadius: 16, overflow: 'hidden', marginBottom: 10 },
   ctaBtnDisabled: { opacity: 0.5 },
   ctaGradient: { paddingVertical: 17, alignItems: 'center', justifyContent: 'center' },
-  ctaTxt: { fontSize: 17, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
+  ctaTxt: { fontSize: 17, fontWeight: '800', color: c.white, letterSpacing: 0.2 },
 
-  trialNote: { textAlign: 'center', fontSize: 12, color: '#aaa', marginBottom: 20 },
+  trialNote: { textAlign: 'center', fontSize: 12, color: c.textFaint, marginBottom: 20 },
 
   restoreBtn: { alignItems: 'center', paddingVertical: 12 },
-  restoreTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
+  restoreTxt: { fontSize: 13, color: c.primary, fontWeight: '600' },
 
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 8 },
-  footerLink: { fontSize: 11, color: '#bbb' },
-  footerDot: { fontSize: 11, color: '#bbb' },
+  footerLink: { fontSize: 11, color: c.textDisabled },
+  footerDot: { fontSize: 11, color: c.textDisabled },
 });

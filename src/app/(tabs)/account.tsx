@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Contacts from 'expo-contacts/legacy';
 import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -44,6 +44,9 @@ import {
 import { usePurchases } from '@/context/purchases';
 import Purchases from 'react-native-purchases';
 import { ENTITLEMENT_ID } from '@/constants/revenuecat';
+import { useAppTheme } from '@/context/theme';
+import type { ThemePref } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 interface Profile {
   displayName: string | null;
@@ -147,6 +150,8 @@ function formatQuitDate(ts: string | null) {
 export default function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: c, themePref, setThemePref } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const { isPremium: isPremiumFromRC, showPaywall, restorePurchases } = usePurchases();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -918,7 +923,7 @@ export default function AccountScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator size="large" color="#0F6E6E" />
+        <ActivityIndicator size="large" color={c.primary} />
       </View>
     );
   }
@@ -940,7 +945,7 @@ export default function AccountScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Account</Text>
@@ -958,7 +963,7 @@ export default function AccountScreen() {
               : <Text style={s.avatarTxt}>{initials}</Text>}
             {uploadingAvatar && (
               <View style={s.avatarOverlay}>
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={c.white} />
               </View>
             )}
             <View style={s.avatarEditBadge}>
@@ -972,18 +977,18 @@ export default function AccountScreen() {
                 value={nameInput}
                 onChangeText={setNameInput}
                 placeholder="Your name"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={c.textFaint}
                 autoFocus
                 maxLength={40}
                 returnKeyType="done"
                 onSubmitEditing={saveName}
               />
               <Pressable onPress={() => setNameInput(generateUsername())} style={({ pressed }) => [s.nameShuffleBtn, pressed && { opacity: 0.6 }]} hitSlop={6}>
-                <Ionicons name="shuffle-outline" size={16} color="#0F6E6E" />
+                <Ionicons name="shuffle-outline" size={16} color={c.primary} />
               </Pressable>
               <Pressable onPress={saveName} disabled={savingName} style={({ pressed }) => [s.nameSaveBtn, pressed && { opacity: 0.7 }]}>
                 {savingName
-                  ? <ActivityIndicator size="small" color="#fff" />
+                  ? <ActivityIndicator size="small" color={c.white} />
                   : <Text style={s.nameSaveTxt}>Save</Text>}
               </Pressable>
               <Pressable onPress={() => setEditingName(false)} style={({ pressed }) => [s.nameCancelBtn, pressed && { opacity: 0.7 }]}>
@@ -1011,7 +1016,7 @@ export default function AccountScreen() {
             <Ionicons
               name={emailCopied ? 'checkmark' : 'copy-outline'}
               size={13}
-              color={emailCopied ? '#0F6E6E' : '#bbb'}
+              color={emailCopied ? c.primary : c.textFaint}
             />
           </Pressable>
           <View style={s.profileSubRow}>
@@ -1036,7 +1041,7 @@ export default function AccountScreen() {
                 <View style={s.profileSubLeft}>
                   <Text style={s.profileSubFree}>Free plan</Text>
                   {restoringPurchases
-                    ? <ActivityIndicator size="small" color="#0F6E6E" style={{ marginTop: 2 }} />
+                    ? <ActivityIndicator size="small" color={c.primary} style={{ marginTop: 2 }} />
                     : <Pressable onPress={async () => { setRestoringPurchases(true); await restorePurchases(); setRestoringPurchases(false); }}>
                         <Text style={s.profileSubRestore}>Already purchased? Restore</Text>
                       </Pressable>}
@@ -1084,10 +1089,10 @@ export default function AccountScreen() {
                 <View style={s.infoItemMain}>
                   <Text style={s.infoItemLabel}>Started</Text>
                   {saving
-                    ? <ActivityIndicator size="small" color="#0F6E6E" style={{ alignSelf: 'flex-start' }} />
+                    ? <ActivityIndicator size="small" color={c.primary} style={{ alignSelf: 'flex-start' }} />
                     : <Text style={s.infoItemValue}>{quitFormatted}</Text>}
                 </View>
-                <Ionicons name="pencil-outline" size={15} color="#aaa" />
+                <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
               </Pressable>
               <View style={s.infoDivider} />
             </>
@@ -1103,7 +1108,7 @@ export default function AccountScreen() {
                   : 'Not set'}
               </Text>
             </View>
-            <Ionicons name="pencil-outline" size={15} color="#aaa" />
+            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
           <View style={s.infoDivider} />
           <Pressable
@@ -1120,7 +1125,7 @@ export default function AccountScreen() {
                 <Text style={s.goalReachedNote}>🎉 Goal reached!</Text>
               )}
             </View>
-            <Ionicons name="pencil-outline" size={15} color="#aaa" />
+            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
           <View style={s.infoDivider} />
           <Pressable
@@ -1145,10 +1150,10 @@ export default function AccountScreen() {
                     else { await Clipboard.setStringAsync(trustedContactPhone); Alert.alert('Copied', 'Phone number copied to clipboard.'); }
                   }}
                   hitSlop={8}>
-                  <Ionicons name="call-outline" size={16} color="#0F6E6E" />
+                  <Ionicons name="call-outline" size={16} color={c.primary} />
                 </Pressable>
               ) : null}
-              <Ionicons name="pencil-outline" size={15} color="#aaa" />
+              <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
             </View>
           </Pressable>
         </View>
@@ -1175,7 +1180,7 @@ export default function AccountScreen() {
                       {display ?? 'Not set'}
                     </Text>
                   </View>
-                  <Ionicons name="pencil-outline" size={15} color="#aaa" />
+                  <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
                 </Pressable>
               </View>
             );
@@ -1190,10 +1195,10 @@ export default function AccountScreen() {
               style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
               onPress={() => router.push('/moderation')}>
               <View style={s.menuIconWrap}>
-                <Ionicons name="shield-outline" size={17} color="#0F6E6E" />
+                <Ionicons name="shield-outline" size={17} color={c.primary} />
               </View>
               <Text style={s.menuRowLabel}>Admin Panel</Text>
-              <Ionicons name="chevron-forward" size={16} color="#ccc" />
+              <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
             </Pressable>
           </View>
         )}
@@ -1205,11 +1210,30 @@ export default function AccountScreen() {
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => setNotifModalVisible(true)}>
             <View style={s.menuIconWrap}>
-              <Ionicons name="notifications-outline" size={17} color="#0F6E6E" />
+              <Ionicons name="notifications-outline" size={17} color={c.primary} />
             </View>
             <Text style={s.menuRowLabel}>Notifications</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
+          <View style={s.menuDivider} />
+          <View style={s.menuRow}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="moon-outline" size={17} color={c.primary} />
+            </View>
+            <Text style={s.menuRowLabel}>Appearance</Text>
+            <View style={s.themeSegment}>
+              {(['system', 'light', 'dark'] as ThemePref[]).map(p => (
+                <Pressable
+                  key={p}
+                  style={[s.themeSegBtn, themePref === p && s.themeSegBtnActive]}
+                  onPress={() => setThemePref(p)}>
+                  <Text style={[s.themeSegTxt, themePref === p && s.themeSegTxtActive]}>
+                    {p === 'system' ? 'Auto' : p === 'light' ? 'Light' : 'Dark'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
           {isPasswordUser && (
             <>
               <View style={s.menuDivider} />
@@ -1217,10 +1241,10 @@ export default function AccountScreen() {
                 style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
                 onPress={handleChangePassword}>
                 <View style={s.menuIconWrap}>
-                  <Ionicons name="key-outline" size={17} color="#0F6E6E" />
+                  <Ionicons name="key-outline" size={17} color={c.primary} />
                 </View>
                 <Text style={s.menuRowLabel}>Change password</Text>
-                <Ionicons name="chevron-forward" size={16} color="#ccc" />
+                <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
               </Pressable>
             </>
           )}
@@ -1229,20 +1253,20 @@ export default function AccountScreen() {
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => router.push('/(tabs)/urge/checklist')}>
             <View style={s.menuIconWrap}>
-              <Ionicons name="checkmark-done-outline" size={17} color="#0F6E6E" />
+              <Ionicons name="checkmark-done-outline" size={17} color={c.primary} />
             </View>
             <Text style={s.menuRowLabel}>Prevention checklist</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => setResetDataModalVisible(true)}>
             <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
-              <Ionicons name="refresh-outline" size={17} color="#c0392b" />
+              <Ionicons name="refresh-outline" size={17} color={c.error} />
             </View>
-            <Text style={[s.menuRowLabel, { color: '#c0392b' }]}>Reset data</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Text style={[s.menuRowLabel, { color: c.error }]}>Reset data</Text>
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
         </View>
 
@@ -1255,21 +1279,21 @@ export default function AccountScreen() {
             disabled={exportLoading}>
             <View style={s.menuIconWrap}>
               {exportLoading
-                ? <ActivityIndicator size="small" color="#0F6E6E" />
-                : <Ionicons name="download-outline" size={17} color="#0F6E6E" />}
+                ? <ActivityIndicator size="small" color={c.primary} />
+                : <Ionicons name="download-outline" size={17} color={c.primary} />}
             </View>
             <Text style={s.menuRowLabel}>Export my data</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => { setFeedbackMsg(''); setFeedbackType('general'); setFeedbackVisible(true); }}>
             <View style={s.menuIconWrap}>
-              <Ionicons name="chatbubble-outline" size={17} color="#0F6E6E" />
+              <Ionicons name="chatbubble-outline" size={17} color={c.primary} />
             </View>
             <Text style={s.menuRowLabel}>Send feedback</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />
           <Pressable
@@ -1281,30 +1305,30 @@ export default function AccountScreen() {
               Linking.openURL(url);
             }}>
             <View style={s.menuIconWrap}>
-              <Ionicons name="star-outline" size={17} color="#0F6E6E" />
+              <Ionicons name="star-outline" size={17} color={c.primary} />
             </View>
             <Text style={s.menuRowLabel}>Rate CornerDay</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => router.push('/terms')}>
             <View style={s.menuIconWrap}>
-              <Ionicons name="document-text-outline" size={17} color="#0F6E6E" />
+              <Ionicons name="document-text-outline" size={17} color={c.primary} />
             </View>
             <Text style={s.menuRowLabel}>Terms of Use</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => router.push('/privacy-policy')}>
             <View style={s.menuIconWrap}>
-              <Ionicons name="shield-checkmark-outline" size={17} color="#0F6E6E" />
+              <Ionicons name="shield-checkmark-outline" size={17} color={c.primary} />
             </View>
             <Text style={s.menuRowLabel}>Privacy Policy</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
         </View>
 
@@ -1322,12 +1346,12 @@ export default function AccountScreen() {
             onPress={confirmSignOut}
             disabled={signingOut}>
             <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
-              <Ionicons name="log-out-outline" size={17} color="#c0392b" />
+              <Ionicons name="log-out-outline" size={17} color={c.error} />
             </View>
             {signingOut
-              ? <ActivityIndicator color="#c0392b" size="small" style={{ flex: 1 }} />
+              ? <ActivityIndicator color={c.error} size="small" style={{ flex: 1 }} />
               : <Text style={[s.menuRowLabel, s.dangerRowLabel]}>Sign out</Text>}
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />
           <Pressable
@@ -1335,10 +1359,10 @@ export default function AccountScreen() {
             onPress={confirmDeleteAccount}
             disabled={signingOut}>
             <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
-              <Ionicons name="trash-outline" size={17} color="#c0392b" />
+              <Ionicons name="trash-outline" size={17} color={c.error} />
             </View>
             <Text style={[s.menuRowLabel, s.dangerRowLabel]}>Delete account</Text>
-            <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
         </View>
 
@@ -1363,11 +1387,11 @@ export default function AccountScreen() {
                   </Pressable>
                 ))}
               </View>
-              <Text style={s.spendingCustomLabel}>What are you saving for? <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+              <Text style={s.spendingCustomLabel}>What are you saving for? <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
               <TextInput
                 style={s.spendingInput}
                 placeholder="e.g. Holiday, New car, Emergency fund"
-                placeholderTextColor="#bbb"
+                placeholderTextColor={c.textFaint}
                 value={goalForInput}
                 onChangeText={setGoalForInput}
                 maxLength={40}
@@ -1378,7 +1402,7 @@ export default function AccountScreen() {
                 <TextInput
                   style={s.spendingInput}
                   placeholder="e.g. 5000"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={c.textFaint}
                   keyboardType="decimal-pad"
                   value={goalInput}
                   onChangeText={setGoalInput}
@@ -1393,7 +1417,7 @@ export default function AccountScreen() {
                     closeGoalModal();
                   }}
                   style={{ alignSelf: 'center', marginTop: 12 }}>
-                  <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove goal</Text>
+                  <Text style={{ color: c.error, fontSize: 13 }}>Remove goal</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -1418,7 +1442,7 @@ export default function AccountScreen() {
             <Pressable
               style={({ pressed }) => [s.contactPickerBtn, pressed && { opacity: 0.8 }]}
               onPress={pickFromContacts}>
-              <Ionicons name="person-add-outline" size={16} color="#0F6E6E" />
+              <Ionicons name="person-add-outline" size={16} color={c.primary} />
               <Text style={s.contactPickerBtnTxt}>Choose from contacts</Text>
             </Pressable>
             <Text style={[s.spendingCustomLabel, { marginBottom: 8, marginTop: 16 }]}>Their name</Text>
@@ -1452,7 +1476,7 @@ export default function AccountScreen() {
                   if (user) await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null }).eq('id', user.id);
                   setShowContactModal(false);
                 }}>
-                <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove contact</Text>
+                <Text style={{ color: c.error, fontSize: 13 }}>Remove contact</Text>
               </Pressable>
             ) : null}
             <View style={s.modalActions}>
@@ -1515,7 +1539,7 @@ export default function AccountScreen() {
                 value={spendingCustom}
                 onChangeText={t => { setSpendingCustom(t); if (t.trim()) setSpendingChip(''); }}
                 placeholder="0"
-                placeholderTextColor="#bbb"
+                placeholderTextColor={c.textFaint}
                 keyboardType="numeric"
               />
               <Text style={s.spendingPerWk}>/week</Text>
@@ -1532,7 +1556,7 @@ export default function AccountScreen() {
                 onPress={saveSpending}
                 disabled={savingSpending}>
                 {savingSpending
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.modalBtnSaveTxt}>Save</Text>}
               </Pressable>
             </View>
@@ -1590,7 +1614,7 @@ export default function AccountScreen() {
                 onPress={saveFieldModal}
                 disabled={savingField}>
                 {savingField
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.modalBtnSaveTxt}>Save</Text>}
               </Pressable>
             </View>
@@ -1603,15 +1627,15 @@ export default function AccountScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setShowPassModal(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: '#f0fafa', borderColor: '#c0e8e8' }]}>
-                <Ionicons name="key-outline" size={26} color="#0F6E6E" />
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
+                <Ionicons name="key-outline" size={26} color={c.primary} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Change password</Text>
             <Text style={[s.confirmBody, { textAlign: 'center', marginBottom: 4 }]}>
               We'll send a reset link to
             </Text>
-            <Text style={[s.confirmBody, { textAlign: 'center', fontWeight: '600', color: '#0F6E6E', marginBottom: 20 }]}>
+            <Text style={[s.confirmBody, { textAlign: 'center', fontWeight: '600', color: c.primary, marginBottom: 20 }]}>
               {profile?.email}
             </Text>
             <View style={s.confirmActions}>
@@ -1625,7 +1649,7 @@ export default function AccountScreen() {
                 onPress={sendPasswordReset}
                 disabled={sendingPassReset}>
                 {sendingPassReset
-                  ? <ActivityIndicator size="small" color="#fff" />
+                  ? <ActivityIndicator size="small" color={c.white} />
                   : <Text style={s.modalBtnSaveTxt}>Send reset link</Text>}
               </Pressable>
             </View>
@@ -1638,8 +1662,8 @@ export default function AccountScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setShowContactsPermModal(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: '#f0fafa', borderColor: '#c0e8e8' }]}>
-                <Ionicons name="people-outline" size={26} color="#0F6E6E" />
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
+                <Ionicons name="people-outline" size={26} color={c.primary} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Contacts access needed</Text>
@@ -1742,7 +1766,7 @@ export default function AccountScreen() {
             <Text style={s.confirmTitle}>Profile photo</Text>
             <View style={[s.confirmActions, { flexDirection: 'column', gap: 10 }]}>
               <Pressable style={[s.confirmCancel, { flex: 0 }]} onPress={() => { setAvatarMenuVisible(false); pickAvatar(); }}>
-                <Text style={[s.confirmCancelTxt, { color: '#0F6E6E' }]}>Change photo</Text>
+                <Text style={[s.confirmCancelTxt, { color: c.primary }]}>Change photo</Text>
               </Pressable>
               <Pressable style={[s.confirmDelete, { flex: 0 }]} onPress={() => { setAvatarMenuVisible(false); removeAvatar(); }}>
                 <Text style={s.confirmDeleteTxt}>Remove photo</Text>
@@ -1761,8 +1785,8 @@ export default function AccountScreen() {
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: '#f0fafa', borderColor: '#c0e8e8' }]}>
-                <Ionicons name="calendar-outline" size={26} color="#0F6E6E" />
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
+                <Ionicons name="calendar-outline" size={26} color={c.primary} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Update start date?</Text>
@@ -1792,8 +1816,8 @@ export default function AccountScreen() {
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: '#f5f5f5', borderColor: '#e0e0e0' }]}>
-                <Ionicons name="log-out-outline" size={26} color="#666" />
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgElement, borderColor: c.borderLight }]}>
+                <Ionicons name="log-out-outline" size={26} color={c.textBody} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Sign out?</Text>
@@ -1820,7 +1844,7 @@ export default function AccountScreen() {
             
             <View style={s.confirmIconRow}>
               <View style={s.confirmIconCircle}>
-                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+                <Ionicons name="trash-outline" size={26} color={c.error} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Delete account?</Text>
@@ -1836,7 +1860,7 @@ export default function AccountScreen() {
                 onPress={() => { setDeleteAccountVisible(false); executeDeleteAccount(); }}
                 disabled={signingOut}>
                 {signingOut
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.confirmDeleteTxt}>Delete permanently</Text>}
               </Pressable>
             </View>
@@ -1871,7 +1895,7 @@ export default function AccountScreen() {
             <TextInput
               style={s.feedbackInput}
               placeholder="Write your message here…"
-              placeholderTextColor="#bbb"
+              placeholderTextColor={c.textFaint}
               value={feedbackMsg}
               onChangeText={setFeedbackMsg}
               multiline
@@ -1916,7 +1940,7 @@ export default function AccountScreen() {
                   }
                 }}>
                 {sendingFeedback
-                  ? <ActivityIndicator size="small" color="#fff" />
+                  ? <ActivityIndicator size="small" color={c.white} />
                   : <Text style={s.confirmSaveTxt}>Send</Text>}
               </Pressable>
             </View>
@@ -1930,7 +1954,7 @@ export default function AccountScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setThankYouVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: '#e6f7f7', borderColor: '#a8d8d0' }]}>
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
                 <Text style={{ fontSize: 26 }}>💚</Text>
               </View>
             </View>
@@ -2001,12 +2025,12 @@ export default function AccountScreen() {
                   style={({ pressed }) => [s.resetRow, pressed && { opacity: 0.7 }]}
                   onPress={() => { setResetDataModalVisible(false); onPress(); }}
                   disabled={resetting}>
-                  <Ionicons name={icon} size={20} color="#c0392b" style={{ marginRight: 12 }} />
+                  <Ionicons name={icon} size={20} color={c.error} style={{ marginRight: 12 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={s.resetRowLabel}>{label}</Text>
                     <Text style={s.resetRowDesc}>{desc}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#ddd" />
+                  <Ionicons name="chevron-forward" size={16} color={c.borderMid} />
                 </Pressable>
                 {i < arr.length - 1 && <View style={s.resetDivider} />}
               </View>
@@ -2024,7 +2048,7 @@ export default function AccountScreen() {
                 );
               }}
               disabled={resetting}>
-              <Ionicons name="nuclear-outline" size={20} color="#c0392b" style={{ marginRight: 12 }} />
+              <Ionicons name="nuclear-outline" size={20} color={c.error} style={{ marginRight: 12 }} />
               <View style={{ flex: 1 }}>
                 <Text style={s.resetNuclearLabel}>Reset everything</Text>
                 <Text style={s.resetRowDesc}>Streak, badges, mood, journal, losses & debts</Text>
@@ -2043,7 +2067,7 @@ export default function AccountScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setPendingReset(null)}>
           <Pressable style={s.resetConfirmSheet} onPress={() => {}}>
             <View style={s.resetConfirmIconWrap}>
-              <Ionicons name="warning-outline" size={28} color="#c0392b" />
+              <Ionicons name="warning-outline" size={28} color={c.error} />
             </View>
             <Text style={s.resetConfirmTitle}>{pendingReset?.title}</Text>
             <Text style={s.resetConfirmBody}>{pendingReset?.body}</Text>
@@ -2105,24 +2129,24 @@ export default function AccountScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: { paddingBottom: 16 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12 },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: c.white },
 
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
 
   profileCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 20,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 20,
     alignItems: 'center', gap: 6, overflow: 'hidden',
   },
   avatar: {
     width: 72, height: 72, borderRadius: 36,
-    backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center',
     marginBottom: 4,
   },
   avatarImg: { width: 72, height: 72, borderRadius: 36 },
@@ -2134,271 +2158,271 @@ const s = StyleSheet.create({
   avatarEditBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#0F6E6E', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#fff',
+    backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: c.white,
   },
-  avatarEditBadgeTxt: { fontSize: 11, color: '#fff' },
-  avatarTxt: { fontSize: 32, fontWeight: '700', color: '#0F6E6E' },
+  avatarEditBadgeTxt: { fontSize: 11, color: c.white },
+  avatarTxt: { fontSize: 32, fontWeight: '700', color: c.primary },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  displayName: { fontSize: 18, fontWeight: '700', color: '#111' },
-  nameEditHint: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#e6f7f7' },
-  nameEditHintTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
+  displayName: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
+  nameEditHint: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: c.bgTeal },
+  nameEditHintTxt: { fontSize: 12, color: c.primary, fontWeight: '700' },
   nameEditRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   nameInput: {
-    borderWidth: 1, borderColor: '#ddd', borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, color: '#111', minWidth: 120,
+    borderWidth: 1, borderColor: c.borderMid, borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 6, fontSize: 14, color: c.textPrimary, minWidth: 120,
   },
-  nameShuffleBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center' },
-  nameSaveBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#0F6E6E' },
-  nameSaveTxt: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  nameShuffleBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center' },
+  nameSaveBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: c.primary },
+  nameSaveTxt: { color: c.white, fontWeight: '700', fontSize: 12 },
   nameCancelBtn: { paddingVertical: 6, paddingHorizontal: 4 },
-  nameCancelTxt: { color: '#aaa', fontSize: 12 },
+  nameCancelTxt: { color: c.textFaint, fontSize: 12 },
   emailRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  email: { fontSize: 13, color: '#888' },
+  email: { fontSize: 13, color: c.textMuted },
   premiumBadge: {
-    backgroundColor: '#e6f7f7', paddingVertical: 4, paddingHorizontal: 12,
+    backgroundColor: c.bgTeal, paddingVertical: 4, paddingHorizontal: 12,
     borderRadius: 12, marginTop: 4,
   },
-  premiumBadgeTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
+  premiumBadgeTxt: { fontSize: 13, color: c.primary, fontWeight: '600' },
 
   profileSubRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    width: '100%', borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    width: '100%', borderTopWidth: 1, borderTopColor: c.borderSubtle,
     marginTop: 8, paddingTop: 14,
   },
   profileSubLeft: { gap: 2 },
-  profileSubBadge: { fontSize: 14, fontWeight: '700', color: '#0F6E6E' },
+  profileSubBadge: { fontSize: 14, fontWeight: '700', color: c.primary },
   profileAdminBadge: { fontSize: 14, fontWeight: '700', color: '#7c5700' },
-  profileSubMeta: { fontSize: 12, color: '#aaa' },
-  profileSubFree: { fontSize: 14, fontWeight: '600', color: '#555' },
-  profileSubRestore: { fontSize: 12, color: '#0F6E6E' },
+  profileSubMeta: { fontSize: 12, color: c.textFaint },
+  profileSubFree: { fontSize: 14, fontWeight: '600', color: c.textBody },
+  profileSubRestore: { fontSize: 12, color: c.primary },
   profileSubBtn: {
     paddingVertical: 6, paddingHorizontal: 14, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#0F6E6E',
+    borderWidth: 1.5, borderColor: c.primary,
   },
-  profileSubBtnTxt: { fontSize: 13, fontWeight: '700', color: '#0F6E6E' },
+  profileSubBtnTxt: { fontSize: 13, fontWeight: '700', color: c.primary },
   profileUpgradeBtn: {
     paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10,
-    backgroundColor: '#0F6E6E',
+    backgroundColor: c.primary,
   },
-  profileUpgradeBtnTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  profileUpgradeBtnTxt: { fontSize: 13, fontWeight: '700', color: c.white },
 
-  infoCard: { backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  infoCardTitle: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  infoCard: { backgroundColor: c.bgCard, borderRadius: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  infoCardTitle: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   infoItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 8 },
   infoItemMain: { flex: 1, gap: 2 },
-  infoItemLabel: { fontSize: 12, color: '#aaa', fontWeight: '500' },
-  infoItemValue: { fontSize: 15, color: '#111', fontWeight: '600' },
+  infoItemLabel: { fontSize: 12, color: c.textFaint, fontWeight: '500' },
+  infoItemValue: { fontSize: 15, color: c.textPrimary, fontWeight: '600' },
   infoItemActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  infoDivider: { height: 1, backgroundColor: '#f2f2f2', marginLeft: 0 },
+  infoDivider: { height: 1, backgroundColor: c.borderSubtle, marginLeft: 0 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  infoLabel: { fontSize: 14, color: '#888' },
+  infoLabel: { fontSize: 14, color: c.textMuted },
   infoValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
-  infoValue: { fontSize: 14, color: '#111', fontWeight: '600', textAlign: 'right', flexShrink: 1 },
-  goalReachedNote: { fontSize: 12, color: '#0a7a4e', fontWeight: '600', marginTop: 2 },
-  editBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#e6f7f7' },
-  editBtnTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
+  infoValue: { fontSize: 14, color: c.textPrimary, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
+  goalReachedNote: { fontSize: 12, color: c.success, fontWeight: '600', marginTop: 2 },
+  editBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: c.bgTeal },
+  editBtnTxt: { fontSize: 12, color: c.primary, fontWeight: '700' },
 
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#333' },
-  subStatus: { fontSize: 15, color: '#555' },
+  card: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: c.textSecondary },
+  subStatus: { fontSize: 15, color: c.textBody },
   upgradeBtn: {
-    backgroundColor: '#0F6E6E', borderRadius: 12,
+    backgroundColor: c.primary, borderRadius: 12,
     paddingVertical: 13, alignItems: 'center',
   },
-  upgradeBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  upgradeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 
   settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
-  settingsRowTxt: { flex: 1, fontSize: 14, color: '#111', fontWeight: '500' },
+  settingsRowTxt: { flex: 1, fontSize: 14, color: c.textPrimary, fontWeight: '500' },
 
-  aboutCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
-  aboutTitle: { fontSize: 14, fontWeight: '700', color: '#333' },
-  aboutVersion: { fontSize: 13, color: '#aaa' },
-  aboutNote: { fontSize: 13, color: '#666', lineHeight: 19 },
-  aboutDivider: { height: 1, backgroundColor: '#f0f0f0' },
+  aboutCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
+  aboutTitle: { fontSize: 14, fontWeight: '700', color: c.textSecondary },
+  aboutVersion: { fontSize: 13, color: c.textFaint },
+  aboutNote: { fontSize: 13, color: c.textBody, lineHeight: 19 },
+  aboutDivider: { height: 1, backgroundColor: c.borderSubtle },
   aboutBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
-  aboutBtnTxt: { fontSize: 14, color: '#0F6E6E', fontWeight: '600' },
+  aboutBtnTxt: { fontSize: 14, color: c.primary, fontWeight: '600' },
 
   statsCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 16,
     flexDirection: 'row', alignItems: 'center',
   },
   statCol: { flex: 1, alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 22, fontWeight: '800', color: '#0F6E6E' },
-  statLabel: { fontSize: 12, color: '#888', fontWeight: '600' },
-  statUnit: { fontSize: 11, color: '#bbb' },
-  statDivider: { width: 1, height: 48, backgroundColor: '#f0f0f0', marginHorizontal: 8 },
+  statValue: { fontSize: 22, fontWeight: '800', color: c.primary },
+  statLabel: { fontSize: 12, color: c.textMuted, fontWeight: '600' },
+  statUnit: { fontSize: 11, color: c.textFaint },
+  statDivider: { width: 1, height: 48, backgroundColor: c.borderSubtle, marginHorizontal: 8 },
 
   exportBtn: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#a8d8d0',
+    borderWidth: 1, borderColor: c.borderTeal,
   },
-  exportTxt: { fontSize: 15, color: '#0F6E6E', fontWeight: '600' },
+  exportTxt: { fontSize: 15, color: c.primary, fontWeight: '600' },
 
-  versionTxt: { fontSize: 12, color: '#ccc', textAlign: 'center', paddingVertical: 8 },
+  versionTxt: { fontSize: 12, color: c.textDisabled, textAlign: 'center', paddingVertical: 8 },
 
-  infoValueEmpty: { color: '#bbb', fontStyle: 'italic', fontWeight: '400' },
+  infoValueEmpty: { color: c.textFaint, fontStyle: 'italic', fontWeight: '400' },
 
   feedbackTypeRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  feedbackTypeChip: { flex: 1, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5, borderColor: '#d0e8e8', backgroundColor: '#f8fdfd', alignItems: 'center' },
-  feedbackTypeChipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
-  feedbackTypeChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
-  feedbackTypeChipTxtActive: { color: '#0F6E6E' },
+  feedbackTypeChip: { flex: 1, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5, borderColor: c.borderTeal, backgroundColor: c.bgInputMid, alignItems: 'center' },
+  feedbackTypeChipActive: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  feedbackTypeChipTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  feedbackTypeChipTxtActive: { color: c.primary },
   feedbackInput: {
-    borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 12,
-    padding: 14, fontSize: 14, color: '#111', minHeight: 120, marginBottom: 16,
+    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 12,
+    padding: 14, fontSize: 14, color: c.textPrimary, minHeight: 120, marginBottom: 16,
   },
 
   notifSettingsBtn: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#a8d8d0',
+    borderWidth: 1, borderColor: c.borderTeal,
   },
-  notifSettingsTxt: { fontSize: 15, color: '#0F6E6E', fontWeight: '600' },
+  notifSettingsTxt: { fontSize: 15, color: c.primary, fontWeight: '600' },
 
-  notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.borderSubtle },
   notifTimeRow: { flexDirection: 'row', gap: 6, paddingBottom: 10, paddingTop: 4 },
-  notifTimeChip: { borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12, backgroundColor: '#f0f0f0' },
-  notifTimeChipActive: { backgroundColor: '#0F6E6E' },
-  notifTimeChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
-  notifTimeChipTxtActive: { color: '#fff' },
+  notifTimeChip: { borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12, backgroundColor: c.bgElement },
+  notifTimeChipActive: { backgroundColor: c.primary },
+  notifTimeChipTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  notifTimeChipTxtActive: { color: c.white },
   notifText: { flex: 1, paddingRight: 12 },
-  notifLabel: { fontSize: 14, fontWeight: '600', color: '#222' },
-  notifDesc: { fontSize: 12, color: '#999', marginTop: 2 },
+  notifLabel: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
+  notifDesc: { fontSize: 12, color: c.textMuted, marginTop: 2 },
 
   // Spending modal
-  currencyChip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, borderColor: '#d0e8e8', backgroundColor: '#f8fdfd' },
-  currencyChipSelected: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
-  currencyChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
-  currencyChipTxtSelected: { color: '#0F6E6E' },
+  currencyChip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, borderColor: c.borderTeal, backgroundColor: c.bgInputMid },
+  currencyChipSelected: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  currencyChipTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  currencyChipTxtSelected: { color: c.primary },
   spendingChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-  spendingChip: { width: '30.5%', paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#d0e8e8', backgroundColor: '#f8fdfd', alignItems: 'center' },
-  spendingChipSelected: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
-  spendingChipTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
-  spendingChipTxtSelected: { color: '#0F6E6E' },
-  spendingCustomLabel: { fontSize: 13, color: '#666', marginBottom: 10 },
+  spendingChip: { width: '30.5%', paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, borderColor: c.borderTeal, backgroundColor: c.bgInputMid, alignItems: 'center' },
+  spendingChipSelected: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  spendingChipTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
+  spendingChipTxtSelected: { color: c.primary },
+  spendingCustomLabel: { fontSize: 13, color: c.textBody, marginBottom: 10 },
   contactPickerBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderWidth: 1.5, borderColor: '#0F6E6E', borderRadius: 12,
+    borderWidth: 1.5, borderColor: c.primary, borderRadius: 12,
     paddingVertical: 10, paddingHorizontal: 14, alignSelf: 'stretch', justifyContent: 'center',
-    backgroundColor: '#f0fafa',
+    backgroundColor: c.bgTealDeep,
   },
-  contactPickerBtnTxt: { fontSize: 14, fontWeight: '600', color: '#0F6E6E' },
-  permStepBox: { gap: 10, backgroundColor: '#f8fafa', borderRadius: 14, padding: 14 },
+  contactPickerBtnTxt: { fontSize: 14, fontWeight: '600', color: c.primary },
+  permStepBox: { gap: 10, backgroundColor: c.bgInputMid, borderRadius: 14, padding: 14 },
   permStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  permStepNum: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#0F6E6E', alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  permStepNumTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  permStepTxt: { flex: 1, fontSize: 13, color: '#555', lineHeight: 20 },
-  permStepBold: { fontWeight: '700', color: '#222' },
+  permStepNum: { width: 22, height: 22, borderRadius: 11, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  permStepNumTxt: { fontSize: 12, fontWeight: '700', color: c.white },
+  permStepTxt: { flex: 1, fontSize: 13, color: c.textBody, lineHeight: 20 },
+  permStepBold: { fontWeight: '700', color: c.textPrimary },
   goalIconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  goalIconChip: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: 'transparent' },
-  goalIconChipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
+  goalIconChip: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: 'transparent' },
+  goalIconChipActive: { borderColor: c.primary, backgroundColor: c.bgTeal },
   goalIconChipEmoji: { fontSize: 22 },
-  spendingInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#ddd', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fafafa' },
-  spendingSymbol: { fontSize: 16, color: '#555', marginRight: 6 },
-  spendingInput: { flex: 1, fontSize: 15, color: '#111' },
-  spendingPerWk: { fontSize: 13, color: '#999', marginLeft: 6 },
+  spendingInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: c.bgInput },
+  spendingSymbol: { fontSize: 16, color: c.textBody, marginRight: 6 },
+  spendingInput: { flex: 1, fontSize: 15, color: c.textPrimary },
+  spendingPerWk: { fontSize: 13, color: c.textMuted, marginLeft: 6 },
 
   // Edit field modal
   editFieldSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    backgroundColor: c.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 20, paddingBottom: 36,
   },
   editCenterSheet: {
-    backgroundColor: '#fff', borderRadius: 20,
+    backgroundColor: c.bgCard, borderRadius: 20,
     padding: 20, paddingBottom: 24, width: '100%', maxHeight: '85%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 24,
   },
-  editFieldTitle: { fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 16 },
+  editFieldTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 16 },
   editFieldOption: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 13, paddingHorizontal: 4,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    borderBottomWidth: 1, borderBottomColor: c.borderSubtle,
   },
-  editFieldOptionSelected: { backgroundColor: '#f0fafa' },
+  editFieldOptionSelected: { backgroundColor: c.bgTealDeep },
   editFieldEmoji: { fontSize: 20, width: 28, textAlign: 'center' },
-  editFieldLabel: { flex: 1, fontSize: 15, color: '#333', fontWeight: '500' },
-  editFieldLabelSelected: { color: '#0F6E6E', fontWeight: '600' },
+  editFieldLabel: { flex: 1, fontSize: 15, color: c.textSecondary, fontWeight: '500' },
+  editFieldLabelSelected: { color: c.primary, fontWeight: '600' },
   checkbox: {
     width: 22, height: 22, borderRadius: 11,
-    borderWidth: 1.5, borderColor: '#ccc',
+    borderWidth: 1.5, borderColor: c.textDisabled,
     alignItems: 'center', justifyContent: 'center',
   },
-  checkboxSelected: { backgroundColor: '#0F6E6E', borderColor: '#0F6E6E' },
-  checkmark: { fontSize: 13, color: '#fff', fontWeight: '700' },
+  checkboxSelected: { backgroundColor: c.primary, borderColor: c.primary },
+  checkmark: { fontSize: 13, color: c.white, fontWeight: '700' },
   radio: {
     width: 22, height: 22, borderRadius: 11,
-    borderWidth: 1.5, borderColor: '#ccc',
+    borderWidth: 1.5, borderColor: c.textDisabled,
     alignItems: 'center', justifyContent: 'center',
   },
-  radioSelected: { borderColor: '#0F6E6E' },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#0F6E6E' },
+  radioSelected: { borderColor: c.primary },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: c.primary },
 
   // iOS modal
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay },
+  modalSheet: { backgroundColor: c.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
   modalHeader: { alignItems: 'center', marginBottom: 8 },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: c.textPrimary },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#f0f0f0' },
-  modalBtnCancel: { fontSize: 15, color: '#555', fontWeight: '600' },
-  modalBtnSave: { backgroundColor: '#0F6E6E' },
-  modalBtnSaveTxt: { fontSize: 15, color: '#fff', fontWeight: '700' },
-  thankYouDoneBtn: { backgroundColor: '#0F6E6E', borderRadius: 12, paddingVertical: 14, alignItems: 'center', alignSelf: 'stretch' },
-  thankYouDoneBtnTxt: { fontSize: 15, color: '#fff', fontWeight: '700' },
+  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: c.bgElement },
+  modalBtnCancel: { fontSize: 15, color: c.textBody, fontWeight: '600' },
+  modalBtnSave: { backgroundColor: c.primary },
+  modalBtnSaveTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
+  thankYouDoneBtn: { backgroundColor: c.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', alignSelf: 'stretch' },
+  thankYouDoneBtnTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
 
-  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
   confirmSheet: {
-    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
   confirmIconRow: { alignItems: 'center', marginBottom: 12 },
   confirmIconCircle: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    backgroundColor: c.bgError, borderWidth: 1.5, borderColor: c.borderError,
     alignItems: 'center', justifyContent: 'center',
   },
-  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
-  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
-  confirmBold: { fontWeight: '700', color: '#333' },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmBold: { fontWeight: '700', color: c.textSecondary },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
-  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
-  confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  confirmSave: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
-  confirmSaveTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
+  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  confirmDeleteTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
+  confirmSave: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.primary },
+  confirmSaveTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 
-  settingsDivider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 4 },
+  settingsDivider: { height: 1, backgroundColor: c.borderSubtle, marginVertical: 4 },
 
-  resetSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 420 },
-  resetSheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 4 },
-  resetSheetSub: { fontSize: 13, color: '#999', marginBottom: 20 },
+  resetSheet: { backgroundColor: c.bgCard, borderRadius: 20, padding: 24, width: '100%', maxWidth: 420 },
+  resetSheetTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, marginBottom: 4 },
+  resetSheetSub: { fontSize: 13, color: c.textMuted, marginBottom: 20 },
   resetRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  resetRowLabel: { fontSize: 15, fontWeight: '600', color: '#222' },
-  resetRowDesc: { fontSize: 12, color: '#999', marginTop: 1 },
-  resetDivider: { height: 1, backgroundColor: '#f5f5f5' },
-  resetNuclearSep: { height: 1, backgroundColor: '#fde8e8', marginVertical: 8 },
+  resetRowLabel: { fontSize: 15, fontWeight: '600', color: c.textPrimary },
+  resetRowDesc: { fontSize: 12, color: c.textMuted, marginTop: 1 },
+  resetDivider: { height: 1, backgroundColor: c.borderSubtle },
+  resetNuclearSep: { height: 1, backgroundColor: c.bgErrorMid, marginVertical: 8 },
   resetNuclearRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  resetNuclearLabel: { fontSize: 15, fontWeight: '700', color: '#c0392b' },
-  resetCancelBtn: { marginTop: 16, paddingVertical: 13, borderRadius: 12, backgroundColor: '#f5f5f5', alignItems: 'center' },
-  resetCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
+  resetNuclearLabel: { fontSize: 15, fontWeight: '700', color: c.error },
+  resetCancelBtn: { marginTop: 16, paddingVertical: 13, borderRadius: 12, backgroundColor: c.bgElement, alignItems: 'center' },
+  resetCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
-  resetConfirmSheet: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' },
-  resetConfirmIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fde8e8', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  resetConfirmTitle: { fontSize: 17, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
-  resetConfirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  resetConfirmSheet: { backgroundColor: c.bgCard, borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' },
+  resetConfirmIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.bgErrorMid, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  resetConfirmTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  resetConfirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   resetConfirmActions: { flexDirection: 'row', gap: 10, width: '100%' },
-  resetConfirmCancel: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: '#f5f5f5', alignItems: 'center' },
-  resetConfirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#555' },
-  resetConfirmBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: '#c0392b', alignItems: 'center' },
-  resetConfirmBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  resetConfirmCancel: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: c.bgElement, alignItems: 'center' },
+  resetConfirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
+  resetConfirmBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: c.error, alignItems: 'center' },
+  resetConfirmBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
 
   // Premium subscription card
   premiumCard: {
     borderRadius: 16, padding: 18,
-    shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 4 },
+    shadowColor: c.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
   },
   premiumCardInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -2408,39 +2432,46 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  premiumCardTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  premiumCardTitle: { fontSize: 16, fontWeight: '700', color: c.white },
   premiumCardSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   manageSub: {
     backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 10,
     paddingVertical: 8, paddingHorizontal: 14,
   },
-  manageSubTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  manageSubTxt: { fontSize: 13, fontWeight: '700', color: c.white },
 
   // Settings / support menu cards
-  menuCard: { backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden' },
-  menuCardTitle: { fontSize: 12, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+  menuCard: { backgroundColor: c.bgCard, borderRadius: 14, overflow: 'hidden' },
+  menuCardTitle: { fontSize: 12, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
   menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13 },
-  menuIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  menuIconWrapRed: { backgroundColor: '#fde8e8' },
-  menuRowLabel: { flex: 1, fontSize: 15, color: '#111', fontWeight: '500' },
-  menuDivider: { height: 1, backgroundColor: '#f5f5f5', marginLeft: 62 },
+  menuIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  menuIconWrapRed: { backgroundColor: c.bgErrorMid },
+  menuRowLabel: { flex: 1, fontSize: 15, color: c.textPrimary, fontWeight: '500' },
+  menuDivider: { height: 1, backgroundColor: c.borderSubtle, marginLeft: 62 },
+
+  // Theme segment control (appearance row)
+  themeSegment: { flexDirection: 'row', backgroundColor: c.bgElement, borderRadius: 8, padding: 2 },
+  themeSegBtn: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6 },
+  themeSegBtnActive: { backgroundColor: c.bgCard, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  themeSegTxt: { fontSize: 12, fontWeight: '600', color: c.textMuted },
+  themeSegTxtActive: { color: c.textPrimary },
 
   // Restore purchases link
   restoreLink: { alignItems: 'center', paddingTop: 10 },
-  restoreLinkTxt: { fontSize: 13, color: '#0F6E6E' },
+  restoreLinkTxt: { fontSize: 13, color: c.primary },
 
   // Footer note
   footerNote: { alignItems: 'center', paddingVertical: 6, gap: 4 },
-  footerVersion: { fontSize: 12, color: '#ccc' },
-  footerTagline: { fontSize: 12, color: '#bbb', fontStyle: 'italic', textAlign: 'center' },
+  footerVersion: { fontSize: 12, color: c.textDisabled },
+  footerTagline: { fontSize: 12, color: c.textFaint, fontStyle: 'italic', textAlign: 'center' },
 
   // Call button next to trusted contact
   callBtn: {
     width: 30, height: 30, borderRadius: 15,
-    backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center',
   },
 
   // Danger zone card (sign out + delete account)
-  dangerCard: { backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#fde8e8' },
-  dangerRowLabel: { color: '#c0392b' },
+  dangerCard: { backgroundColor: c.bgCard, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: c.bgErrorMid },
+  dangerRowLabel: { color: c.error },
 });

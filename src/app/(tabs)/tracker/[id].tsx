@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 interface Debt {
   id: string;
@@ -65,6 +67,8 @@ function fmtPayoffDate(d: Date): string {
 }
 
 export default function DebtDetailScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [debt, setDebt] = useState<Debt | null>(null);
@@ -155,13 +159,13 @@ export default function DebtDetailScreen() {
   };
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator size="large" color="#0F6E6E" /></View>;
+    return <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>;
   }
 
   if (!debt) {
     return (
       <View style={s.center}>
-        <Text style={{ color: '#888' }}>Debt not found.</Text>
+        <Text style={{ color: c.textMuted }}>Debt not found.</Text>
       </View>
     );
   }
@@ -182,11 +186,11 @@ export default function DebtDetailScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={12}>
-              <Ionicons name="chevron-back" size={26} color="#fff" />
+              <Ionicons name="chevron-back" size={26} color={c.white} />
             </Pressable>
             <View style={s.headerCenter}>
               <Text style={s.headerTitle} numberOfLines={1}>{debt.name}</Text>
@@ -203,11 +207,11 @@ export default function DebtDetailScreen() {
           <View style={s.summaryCard}>
             <View style={s.summaryRow}>
               <View style={s.summaryCol}>
-                <Text style={[s.summaryVal, { color: '#c0392b' }]}>{fmt(Number(debt.total_amount), currency)}</Text>
+                <Text style={[s.summaryVal, { color: c.error }]}>{fmt(Number(debt.total_amount), currency)}</Text>
                 <Text style={s.summaryLbl}>Total owed</Text>
               </View>
               <View style={[s.summaryCol, s.summaryMid]}>
-                <Text style={[s.summaryVal, { color: '#0F6E6E' }]}>{fmt(totalPaid, currency)}</Text>
+                <Text style={[s.summaryVal, { color: c.primary }]}>{fmt(totalPaid, currency)}</Text>
                 <Text style={s.summaryLbl}>Paid back</Text>
               </View>
               <View style={s.summaryCol}>
@@ -235,7 +239,7 @@ export default function DebtDetailScreen() {
               <TextInput
                 style={s.input}
                 placeholder={`Amount (max ${fmt(remaining, currency)})`}
-                placeholderTextColor="#bbb"
+                placeholderTextColor={c.textFaint}
                 keyboardType="decimal-pad"
                 value={amount}
                 onChangeText={setAmount}
@@ -243,7 +247,7 @@ export default function DebtDetailScreen() {
               <TextInput
                 style={[s.input, { marginTop: 10 }]}
                 placeholder="Note (optional)"
-                placeholderTextColor="#bbb"
+                placeholderTextColor={c.textFaint}
                 value={note}
                 onChangeText={setNote}
               />
@@ -252,7 +256,7 @@ export default function DebtDetailScreen() {
                 onPress={addPayment}
                 disabled={submitting}>
                 {submitting
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.actionBtnTxt}>Add Payment</Text>}
               </Pressable>
             </View>
@@ -273,7 +277,7 @@ export default function DebtDetailScreen() {
                   <View style={s.paymentRight}>
                     <Text style={s.paymentAmount}>+{fmt(Number(p.amount), currency)}</Text>
                     <Pressable onPress={() => deletePayment(p.id, Number(p.amount))} hitSlop={10}>
-                      <Ionicons name="trash-outline" size={16} color="#ddd" />
+                      <Ionicons name="trash-outline" size={16} color={c.textDisabled} />
                     </Pressable>
                   </View>
                 </View>
@@ -291,7 +295,7 @@ export default function DebtDetailScreen() {
             
             <View style={s.confirmIconRow}>
               <View style={s.confirmIconCircle}>
-                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+                <Ionicons name="trash-outline" size={26} color={c.error} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Delete payment?</Text>
@@ -307,7 +311,7 @@ export default function DebtDetailScreen() {
               </Pressable>
               <Pressable style={[s.confirmDelete, deleting && { opacity: 0.6 }]} onPress={executeDeletePayment} disabled={deleting}>
                 {deleting
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.confirmDeleteTxt}>Delete</Text>}
               </Pressable>
             </View>
@@ -318,72 +322,72 @@ export default function DebtDetailScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: { paddingBottom: 16 },
   headerContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
   backBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: c.white },
 
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
 
-  summaryCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  summaryCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
   summaryRow: { flexDirection: 'row' },
   summaryCol: { flex: 1, alignItems: 'center' },
-  summaryMid: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#f0f0f0' },
+  summaryMid: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: c.borderSubtle },
   summaryVal: { fontSize: 18, fontWeight: '700' },
-  summaryLbl: { fontSize: 11, color: '#888', marginTop: 2 },
-  progressTrack: { height: 6, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden' },
+  summaryLbl: { fontSize: 11, color: c.textMuted, marginTop: 2 },
+  progressTrack: { height: 6, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
   progressLbl: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  payoffEst: { fontSize: 12, color: '#888', textAlign: 'center', marginTop: 2 },
+  payoffEst: { fontSize: 12, color: c.textMuted, textAlign: 'center', marginTop: 2 },
 
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 14 },
+  card: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: c.textPrimary, marginBottom: 14 },
 
   input: {
-    borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
+    borderWidth: 1, borderColor: c.borderLight, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#111', backgroundColor: '#fafafa',
+    fontSize: 15, color: c.textPrimary, backgroundColor: c.bgInput,
   },
 
-  actionBtn: { marginTop: 16, borderRadius: 12, paddingVertical: 14, alignItems: 'center', backgroundColor: '#0F6E6E' },
+  actionBtn: { marginTop: 16, borderRadius: 12, paddingVertical: 14, alignItems: 'center', backgroundColor: c.primary },
   btnDisabled: { opacity: 0.6 },
-  actionBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  actionBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
 
-  emptyTxt: { fontSize: 14, color: '#aaa', textAlign: 'center', paddingVertical: 12 },
+  emptyTxt: { fontSize: 14, color: c.textFaint, textAlign: 'center', paddingVertical: 12 },
 
   paymentItem: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5',
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.bgElement,
   },
   paymentLeft: { flex: 1, gap: 2 },
-  paymentNote: { fontSize: 14, fontWeight: '500', color: '#111' },
-  paymentDate: { fontSize: 12, color: '#888' },
-  paymentAmount: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
+  paymentNote: { fontSize: 14, fontWeight: '500', color: c.textPrimary },
+  paymentDate: { fontSize: 12, color: c.textMuted },
+  paymentAmount: { fontSize: 15, fontWeight: '700', color: c.primary },
   paymentRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
-  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
   confirmSheet: {
-    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
   confirmIconRow: { alignItems: 'center', marginBottom: 12 },
   confirmIconCircle: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    backgroundColor: c.bgError, borderWidth: 1.5, borderColor: c.borderError,
     alignItems: 'center', justifyContent: 'center',
   },
-  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
-  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
-  confirmBold: { fontWeight: '700', color: '#333' },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmBold: { fontWeight: '700', color: c.textSecondary },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
-  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
-  confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
+  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  confirmDeleteTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 });

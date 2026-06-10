@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +17,8 @@ import { supabase } from '@/lib/supabase';
 import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 import { usePurchases } from '@/context/purchases';
 import { useUser } from '@/context/user';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 function fmt(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
@@ -124,6 +126,8 @@ interface AnalyticsData {
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function SectionHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={s.sectionHeaderRow}>
       <View style={s.sectionHeader}>
@@ -136,6 +140,8 @@ function SectionHeader({ title, subtitle, action }: { title: string; subtitle?: 
 }
 
 function StatBox({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={s.statBox}>
       <Text style={[s.statValue, color ? { color } : {}]}>{value}</Text>
@@ -148,6 +154,8 @@ function StatBox({ label, value, sub, color }: { label: string; value: string; s
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const { isPremium, isLoadingPurchases, showPaywall } = usePurchases();
   const { isAdmin } = useUser();
   const hasAccess = isPremium || isAdmin;
@@ -363,7 +371,7 @@ export default function AnalyticsScreen() {
     </LinearGradient>
   );
 
-  if (loading) return <View style={s.loadingWrap}><ActivityIndicator color="#0F6E6E" size="large" /></View>;
+  if (loading) return <View style={s.loadingWrap}><ActivityIndicator color={c.primary} size="large" /></View>;
   if (!data) return null;
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -446,7 +454,7 @@ export default function AnalyticsScreen() {
       <View style={s.root}>
         {renderHeader()}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#0F6E6E" />
+          <ActivityIndicator size="large" color={c.primary} />
         </View>
       </View>
     );
@@ -499,7 +507,7 @@ export default function AnalyticsScreen() {
       <ScrollView
         style={s.body}
         contentContainerStyle={s.bodyContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}>
 
         {/* ── Hero ── */}
         <LinearGradient colors={['#0b5252', '#0F6E6E', '#1a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.heroCard}>
@@ -658,11 +666,11 @@ export default function AnalyticsScreen() {
                 const barH = Math.max(6, (days / maxStreakHistory) * 64);
                 return (
                   <View key={i} style={s.streakHistItem}>
-                    <Text style={[s.streakHistDays, isCurrent && { color: '#0F6E6E' }]}>{fmtDuration(days)}</Text>
+                    <Text style={[s.streakHistDays, isCurrent && { color: c.primary }]}>{fmtDuration(days)}</Text>
                     <View style={s.streakHistBarBg}>
                       <View style={[s.streakHistBarFill, { height: barH }, isCurrent ? s.streakHistBarCurrent : s.streakHistBarPast]} />
                     </View>
-                    <Text style={[s.streakHistLabel, isCurrent && { color: '#0F6E6E', fontWeight: '700' }]}>
+                    <Text style={[s.streakHistLabel, isCurrent && { color: c.primary, fontWeight: '700' }]}>
                       {isCurrent ? 'now' : `#${i + 1}`}
                     </Text>
                   </View>
@@ -693,12 +701,12 @@ export default function AnalyticsScreen() {
           <View style={s.statsRow}>
             <StatBox label="Total logged" value={`${data.urgeCount}`} />
             <View style={s.statsDivider} />
-            <StatBox label="Overcame" value={`${data.urgesOvercome}`} color="#0a7a4e" />
+            <StatBox label="Overcame" value={`${data.urgesOvercome}`} color={c.success} />
             <View style={s.statsDivider} />
             <StatBox
               label="Success rate"
               value={urgeResistPct !== null ? `${urgeResistPct}%` : '—'}
-              color={urgeResistPct !== null && urgeResistPct >= 70 ? '#0a7a4e' : '#888'}
+              color={urgeResistPct !== null && urgeResistPct >= 70 ? c.success : c.textMuted}
             />
           </View>
           {data.urgeCount > 0 && (
@@ -776,7 +784,7 @@ export default function AnalyticsScreen() {
               <View style={s.sparklineRow}>
                 {data.moodSparkline.map((mood, i) => {
                   const h  = mood !== null ? Math.max(4, (mood / 5) * 34) : 4;
-                  const bg = mood === null ? '#f0f0f0' : mood >= 4 ? '#1a9a9a' : mood === 3 ? '#7ec8c2' : '#e0a0a0';
+                  const bg = mood === null ? c.bgElement : mood >= 4 ? c.primaryMid : mood === 3 ? c.primaryLight : '#e0a0a0';
                   return (
                     <View key={i} style={s.sparklineBar}>
                       <View style={[s.sparklineBarFill, { height: h, backgroundColor: bg }]} />
@@ -800,13 +808,13 @@ export default function AnalyticsScreen() {
         <View style={s.card}>
           <SectionHeader title="💰 Savings" />
           <View style={s.statsRow}>
-            <StatBox label="Total banked" value={fmt(data.totalSavings, data.currency)} color="#0F6E6E" />
+            <StatBox label="Total banked" value={fmt(data.totalSavings, data.currency)} color={c.primary} />
             {goalPct !== null && (
               <>
                 <View style={s.statsDivider} />
                 <StatBox label="Goal" value={fmtCompact(data.savingsGoal!, data.currency)} />
                 <View style={s.statsDivider} />
-                <StatBox label="Progress" value={`${Math.round(goalPct * 100)}%`} color={goalPct >= 1 ? '#0a7a4e' : '#0F6E6E'} />
+                <StatBox label="Progress" value={`${Math.round(goalPct * 100)}%`} color={goalPct >= 1 ? c.success : c.primary} />
               </>
             )}
           </View>
@@ -844,7 +852,7 @@ export default function AnalyticsScreen() {
                       <View style={s.monthBarBg}>
                         <View style={[s.monthBarFill, { height: barH }, isCur && s.monthBarFillCurrent]} />
                       </View>
-                      <Text style={[s.monthBarLabel, isCur && { color: '#0F6E6E', fontWeight: '700' }]}>{item.month}</Text>
+                      <Text style={[s.monthBarLabel, isCur && { color: c.primary, fontWeight: '700' }]}>{item.month}</Text>
                     </View>
                   );
                 })}
@@ -884,9 +892,9 @@ export default function AnalyticsScreen() {
             <View style={s.statsRow}>
               <StatBox label="Total owed"  value={fmt(data.totalDebts, data.currency)} />
               <View style={s.statsDivider} />
-              <StatBox label="Paid back"   value={fmt(data.totalDebtPaid, data.currency)} color="#0a7a4e" />
+              <StatBox label="Paid back"   value={fmt(data.totalDebtPaid, data.currency)} color={c.success} />
               <View style={s.statsDivider} />
-              <StatBox label="Remaining"   value={fmt(Math.max(0, data.totalDebts - data.totalDebtPaid), data.currency)} color="#c0392b" />
+              <StatBox label="Remaining"   value={fmt(Math.max(0, data.totalDebts - data.totalDebtPaid), data.currency)} color={c.error} />
             </View>
             {debtPct !== null && (
               <View style={s.progressBarWrap}>
@@ -922,180 +930,180 @@ export default function AnalyticsScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  root:        { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root:        { flex: 1, backgroundColor: c.bgScreen },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header:      { paddingBottom: 16 },
   headerRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 },
   backBtn:     { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  backArrow:   { fontSize: 30, color: '#fff', fontWeight: '300', lineHeight: 36 },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center' },
+  backArrow:   { fontSize: 30, color: c.white, fontWeight: '300', lineHeight: 36 },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: c.white, textAlign: 'center' },
 
   lockScroll: { padding: 20, gap: 12 },
   lockTop:    { alignItems: 'center', gap: 10, paddingVertical: 24, paddingHorizontal: 12 },
   lockEmoji:  { fontSize: 52 },
-  lockTitle:  { fontSize: 22, fontWeight: '700', color: '#111', textAlign: 'center' },
-  lockDesc:   { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
-  lockBtn:    { backgroundColor: '#0F6E6E', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
-  lockBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  teaserHeading: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
+  lockTitle:  { fontSize: 22, fontWeight: '700', color: c.textPrimary, textAlign: 'center' },
+  lockDesc:   { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 22 },
+  lockBtn:    { backgroundColor: c.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
+  lockBtnTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
+  teaserHeading: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
   teaserCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 14,
-    backgroundColor: '#fff', borderRadius: 14, padding: 14,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 14,
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1,
   },
   teaserEmoji: { fontSize: 26, marginTop: 2 },
   teaserText:  { flex: 1, gap: 3 },
-  teaserTitle: { fontSize: 14, fontWeight: '700', color: '#111' },
-  teaserDesc:  { fontSize: 13, color: '#777', lineHeight: 19 },
+  teaserTitle: { fontSize: 14, fontWeight: '700', color: c.textPrimary },
+  teaserDesc:  { fontSize: 13, color: c.textMuted, lineHeight: 19 },
 
   heroCard: {
     borderRadius: 20, padding: 20, alignItems: 'center', gap: 8,
-    shadowColor: '#0F6E6E', shadowOpacity: 0.3, shadowRadius: 12,
+    shadowColor: c.primary, shadowOpacity: 0.3, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 6,
   },
   heroDualCol:      { alignItems: 'center', gap: 2 },
-  heroDualNum:      { fontSize: 60, fontWeight: '800', color: '#fff', lineHeight: 66 },
+  heroDualNum:      { fontSize: 60, fontWeight: '800', color: c.white, lineHeight: 66 },
   heroDualLabel:    { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
   heroSubLabel:     { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   heroDate:         { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
   heroDivider:      { width: '80%', height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
   heroStatsRow:     { flexDirection: 'row', width: '100%' },
   heroStat:         { flex: 1, alignItems: 'center', gap: 3 },
-  heroStatValue:    { fontSize: 16, fontWeight: '800', color: '#fff' },
+  heroStatValue:    { fontSize: 16, fontWeight: '800', color: c.white },
   heroStatLabel:    { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
   heroStatDivider:  { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.2)' },
 
   body:        { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
-  card:        { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 14 },
+  card:        { backgroundColor: c.bgCard, borderRadius: 16, padding: 16, gap: 14 },
 
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   sectionHeader:    { gap: 2, flex: 1 },
-  sectionTitle:     { fontSize: 15, fontWeight: '700', color: '#111' },
-  sectionSub:       { fontSize: 12, color: '#888' },
+  sectionTitle:     { fontSize: 15, fontWeight: '700', color: c.textPrimary },
+  sectionSub:       { fontSize: 12, color: c.textMuted },
 
   statsRow:    { flexDirection: 'row', alignItems: 'center' },
-  statsDivider:{ width: 1, height: 40, backgroundColor: '#f0f0f0', marginHorizontal: 12 },
+  statsDivider:{ width: 1, height: 40, backgroundColor: c.borderSubtle, marginHorizontal: 12 },
   statBox:     { flex: 1, alignItems: 'center', gap: 2 },
-  statValue:   { fontSize: 20, fontWeight: '800', color: '#111' },
-  statLabel:   { fontSize: 11, color: '#888', textAlign: 'center' },
-  statSub:     { fontSize: 10, color: '#0a7a4e', textAlign: 'center' },
+  statValue:   { fontSize: 20, fontWeight: '800', color: c.textPrimary },
+  statLabel:   { fontSize: 11, color: c.textMuted, textAlign: 'center' },
+  statSub:     { fontSize: 10, color: c.success, textAlign: 'center' },
 
-  msDetailCard:        { backgroundColor: '#f8fffe', borderRadius: 12, padding: 14, gap: 10, borderWidth: 1, borderColor: '#e0f5f5' },
+  msDetailCard:        { backgroundColor: c.bgTealDeep, borderRadius: 12, padding: 14, gap: 10, borderWidth: 1, borderColor: c.borderTeal },
   msDetailHeader:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
   msDetailEmoji:       { fontSize: 32 },
-  msDetailTitle:       { fontSize: 15, fontWeight: '700', color: '#111' },
-  msDetailStatus:      { fontSize: 13, color: '#888', marginTop: 2 },
-  msDesc:              { fontSize: 13, color: '#555', lineHeight: 20, fontStyle: 'italic' },
+  msDetailTitle:       { fontSize: 15, fontWeight: '700', color: c.textPrimary },
+  msDetailStatus:      { fontSize: 13, color: c.textMuted, marginTop: 2 },
+  msDesc:              { fontSize: 13, color: c.textBody, lineHeight: 20, fontStyle: 'italic' },
   msAllEarned:         { alignItems: 'center', paddingVertical: 8 },
-  msAllEarnedText:     { fontSize: 14, fontWeight: '600', color: '#0a7a4e', textAlign: 'center' },
+  msAllEarnedText:     { fontSize: 14, fontWeight: '600', color: c.success, textAlign: 'center' },
 
   // 60-day calendar
   calWrap:       { gap: 2 },
   calMonthRow:   { flexDirection: 'row' },
   calGrid:       { flexDirection: 'row', gap: 3 },
   calCol:        { flex: 1, gap: 3, alignItems: 'center' },
-  calMonthLabel: { fontSize: 9, color: '#aaa', fontWeight: '600', height: 14, textAlign: 'center' },
+  calMonthLabel: { fontSize: 9, color: c.textFaint, fontWeight: '600', height: 14, textAlign: 'center' },
   calDot:        { width: 10, height: 10, borderRadius: 2 },
   calDotNull:    { backgroundColor: 'transparent' },
-  calDotClean:   { backgroundColor: '#1a9a9a' },
+  calDotClean:   { backgroundColor: c.primaryMid },
   calDotRelapse: { backgroundColor: '#e07070' },
-  calDotInactive:{ backgroundColor: '#e8e8e8' },
+  calDotInactive:{ backgroundColor: c.bgElement },
   calLegend:     { flexDirection: 'row', gap: 16, justifyContent: 'center' },
   calLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  calLegendTxt:  { fontSize: 11, color: '#888' },
+  calLegendTxt:  { fontSize: 11, color: c.textMuted },
 
   // Weekly summary
   wkRow:         { flexDirection: 'row', alignItems: 'flex-start' },
-  wkDivider:     { width: 1, backgroundColor: '#f0f0f0', alignSelf: 'stretch', marginHorizontal: 8 },
+  wkDivider:     { width: 1, backgroundColor: c.borderSubtle, alignSelf: 'stretch', marginHorizontal: 8 },
   wkBlock:       { flex: 1, alignItems: 'center', gap: 4 },
-  wkBlockLabel:  { fontSize: 11, color: '#888', fontWeight: '500', textAlign: 'center' },
-  wkBlockVal:    { fontSize: 26, fontWeight: '800', color: '#111' },
+  wkBlockLabel:  { fontSize: 11, color: c.textMuted, fontWeight: '500', textAlign: 'center' },
+  wkBlockVal:    { fontSize: 26, fontWeight: '800', color: c.textPrimary },
   wkDelta:       { fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  wkDeltaGood:   { color: '#0a7a4e' },
-  wkDeltaBad:    { color: '#c0392b' },
-  wkDeltaNeutral:{ color: '#aaa' },
+  wkDeltaGood:   { color: c.success },
+  wkDeltaBad:    { color: c.error },
+  wkDeltaNeutral:{ color: c.textFaint },
 
   // Streak history
   streakHistChart:      { flexDirection: 'row', alignItems: 'flex-end', height: 92, gap: 6 },
   streakHistItem:       { flex: 1, alignItems: 'center', gap: 4 },
-  streakHistDays:       { fontSize: 9, color: '#888', fontWeight: '600', textAlign: 'center' },
-  streakHistBarBg:      { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: '#f5f5f5', borderRadius: 6, overflow: 'hidden' },
+  streakHistDays:       { fontSize: 9, color: c.textMuted, fontWeight: '600', textAlign: 'center' },
+  streakHistBarBg:      { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: c.bgElement, borderRadius: 6, overflow: 'hidden' },
   streakHistBarFill:    { width: '100%', borderRadius: 6 },
-  streakHistBarPast:    { backgroundColor: '#a8d8d0' },
-  streakHistBarCurrent: { backgroundColor: '#0F6E6E' },
-  streakHistLabel:      { fontSize: 9, color: '#aaa', textAlign: 'center' },
-  streakHistInsight:    { fontSize: 12, color: '#0a7a4e', textAlign: 'center' },
+  streakHistBarPast:    { backgroundColor: c.primaryLight },
+  streakHistBarCurrent: { backgroundColor: c.primary },
+  streakHistLabel:      { fontSize: 9, color: c.textFaint, textAlign: 'center' },
+  streakHistInsight:    { fontSize: 12, color: c.success, textAlign: 'center' },
 
   resetLink:    { paddingLeft: 8, paddingTop: 2 },
-  resetLinkTxt: { fontSize: 12, color: '#c0392b', fontWeight: '600' },
+  resetLinkTxt: { fontSize: 12, color: c.error, fontWeight: '600' },
 
   weekRow:           { flexDirection: 'row', justifyContent: 'space-between' },
   weekDayCol:        { alignItems: 'center', gap: 4 },
-  weekDot:           { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center' },
-  weekDotToday:      { backgroundColor: '#e6f7f7', borderWidth: 1.5, borderColor: '#1a9a9a' },
-  weekDotEmpty:      { width: 8, height: 8, borderRadius: 4, backgroundColor: '#e0e0e0' },
+  weekDot:           { width: 36, height: 36, borderRadius: 18, backgroundColor: c.bgElement, alignItems: 'center', justifyContent: 'center' },
+  weekDotToday:      { backgroundColor: c.bgTeal, borderWidth: 1.5, borderColor: c.primaryMid },
+  weekDotEmpty:      { width: 8, height: 8, borderRadius: 4, backgroundColor: c.borderLight },
   weekEmoji:         { fontSize: 20 },
-  weekDayLabel:      { fontSize: 10, color: '#aaa', fontWeight: '500' },
-  weekDayLabelToday: { color: '#0F6E6E', fontWeight: '700' },
+  weekDayLabel:      { fontSize: 10, color: c.textFaint, fontWeight: '500' },
+  weekDayLabelToday: { color: c.primary, fontWeight: '700' },
   sparklineRow:      { flexDirection: 'row', alignItems: 'flex-end', height: 38, gap: 2 },
   sparklineBar:      { flex: 1, justifyContent: 'flex-end' },
   sparklineBarFill:  { width: '100%', borderRadius: 2 },
   checkInRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  checkInLabel:      { fontSize: 12, color: '#555', fontWeight: '500' },
-  checkInValue:      { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
-  chartCaption:      { fontSize: 11, color: '#bbb', textAlign: 'center' },
+  checkInLabel:      { fontSize: 12, color: c.textBody, fontWeight: '500' },
+  checkInValue:      { fontSize: 12, color: c.primary, fontWeight: '700' },
+  chartCaption:      { fontSize: 11, color: c.textDisabled, textAlign: 'center' },
 
-  urgeDayWrap:        { gap: 8, backgroundColor: '#fafafa', borderRadius: 12, padding: 12 },
-  urgeDayTitle:       { fontSize: 12, fontWeight: '600', color: '#888' },
+  urgeDayWrap:        { gap: 8, backgroundColor: c.bgInput, borderRadius: 12, padding: 12 },
+  urgeDayTitle:       { fontSize: 12, fontWeight: '600', color: c.textMuted },
   urgeDayChart:       { flexDirection: 'row', alignItems: 'flex-end', height: 68, gap: 4 },
   urgeDayItem:        { flex: 1, alignItems: 'center', gap: 4 },
-  urgeDayCount:       { fontSize: 10, color: '#888', height: 14 },
-  urgeDayBarBg:       { width: '100%', height: 44, justifyContent: 'flex-end', backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  urgeDayBarFill:     { width: '100%', backgroundColor: '#a8d8d0', borderRadius: 4 },
+  urgeDayCount:       { fontSize: 10, color: c.textMuted, height: 14 },
+  urgeDayBarBg:       { width: '100%', height: 44, justifyContent: 'flex-end', backgroundColor: c.bgElement, borderRadius: 4, overflow: 'hidden' },
+  urgeDayBarFill:     { width: '100%', backgroundColor: c.primaryLight, borderRadius: 4 },
   urgeDayBarHardest:  { backgroundColor: '#e07070' },
-  urgeDayLabel:       { fontSize: 10, color: '#aaa' },
-  urgeDayLabelHardest:{ color: '#c0392b', fontWeight: '700' },
-  urgeDayInsight:     { fontSize: 12, color: '#777', textAlign: 'center', marginTop: 2 },
+  urgeDayLabel:       { fontSize: 10, color: c.textFaint },
+  urgeDayLabelHardest:{ color: c.error, fontWeight: '700' },
+  urgeDayInsight:     { fontSize: 12, color: c.textMuted, textAlign: 'center', marginTop: 2 },
 
-  urgeTodWrap:         { gap: 8, backgroundColor: '#fafafa', borderRadius: 12, padding: 12 },
+  urgeTodWrap:         { gap: 8, backgroundColor: c.bgInput, borderRadius: 12, padding: 12 },
   urgeTodRow:          { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  urgeTodLabel:        { fontSize: 12, color: '#888', width: 74, fontWeight: '500' },
-  urgeTodLabelHardest: { color: '#c0392b', fontWeight: '700' },
-  urgeTodBarBg:        { flex: 1, height: 10, backgroundColor: '#f0f0f0', borderRadius: 5, overflow: 'hidden' },
-  urgeTodBarFill:      { height: '100%', backgroundColor: '#a8d8d0', borderRadius: 5 },
+  urgeTodLabel:        { fontSize: 12, color: c.textMuted, width: 74, fontWeight: '500' },
+  urgeTodLabelHardest: { color: c.error, fontWeight: '700' },
+  urgeTodBarBg:        { flex: 1, height: 10, backgroundColor: c.bgElement, borderRadius: 5, overflow: 'hidden' },
+  urgeTodBarFill:      { height: '100%', backgroundColor: c.primaryLight, borderRadius: 5 },
   urgeTodBarHardest:   { backgroundColor: '#e07070' },
-  urgeTodCount:        { fontSize: 12, color: '#888', width: 20, textAlign: 'right', fontWeight: '600' },
-  urgeTodCountHardest: { color: '#c0392b' },
+  urgeTodCount:        { fontSize: 12, color: c.textMuted, width: 20, textAlign: 'right', fontWeight: '600' },
+  urgeTodCountHardest: { color: c.error },
 
   progressBarWrap: { gap: 6 },
-  progressBarBg:   { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: '#1a9a9a', borderRadius: 4 },
-  progressBarDone: { backgroundColor: '#0a7a4e' },
-  progressBarPct:  { fontSize: 11, color: '#888', textAlign: 'right' },
+  progressBarBg:   { height: 8, backgroundColor: c.bgElement, borderRadius: 4, overflow: 'hidden' },
+  progressBarFill: { height: '100%', backgroundColor: c.primaryMid, borderRadius: 4 },
+  progressBarDone: { backgroundColor: c.success },
+  progressBarPct:  { fontSize: 11, color: c.textMuted, textAlign: 'right' },
   goalBarLabel:    {},
-  goalBarLabelTxt: { fontSize: 12, color: '#555', fontWeight: '600' },
+  goalBarLabelTxt: { fontSize: 12, color: c.textBody, fontWeight: '600' },
 
-  savingsRateBox:   { backgroundColor: '#f0fdf9', borderRadius: 10, padding: 12, gap: 4 },
+  savingsRateBox:   { backgroundColor: c.bgTealDeep, borderRadius: 10, padding: 12, gap: 4 },
   savingsRateRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  savingsRateLabel: { fontSize: 13, color: '#555', fontWeight: '500' },
-  savingsRateValue: { fontSize: 15, fontWeight: '800', color: '#0F6E6E' },
-  savingsRateHint:  { fontSize: 12, color: '#0a7a4e' },
+  savingsRateLabel: { fontSize: 13, color: c.textBody, fontWeight: '500' },
+  savingsRateValue: { fontSize: 15, fontWeight: '800', color: c.primary },
+  savingsRateHint:  { fontSize: 12, color: c.success },
   monthBarChart:    { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 88 },
   monthBarItem:     { flex: 1, alignItems: 'center', gap: 4 },
-  monthBarAmt:      { fontSize: 9, color: '#0F6E6E', fontWeight: '600', textAlign: 'center', height: 12 },
-  monthBarBg:       { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: '#f5f5f5', borderRadius: 6, overflow: 'hidden' },
-  monthBarFill:     { width: '100%', backgroundColor: '#a8d8d0', borderRadius: 6 },
-  monthBarFillCurrent: { backgroundColor: '#0F6E6E' },
-  monthBarLabel:    { fontSize: 10, color: '#aaa', textAlign: 'center' },
+  monthBarAmt:      { fontSize: 9, color: c.primary, fontWeight: '600', textAlign: 'center', height: 12 },
+  monthBarBg:       { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: c.bgElement, borderRadius: 6, overflow: 'hidden' },
+  monthBarFill:     { width: '100%', backgroundColor: c.primaryLight, borderRadius: 6 },
+  monthBarFillCurrent: { backgroundColor: c.primary },
+  monthBarLabel:    { fontSize: 10, color: c.textFaint, textAlign: 'center' },
 
   projGrid:    { flexDirection: 'row', gap: 8 },
-  projBox:     { flex: 1, alignItems: 'center', gap: 4, backgroundColor: '#f0fdf9', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 4 },
-  projValue:   { fontSize: 14, fontWeight: '800', color: '#0a7a4e' },
-  projLabel:   { fontSize: 10, color: '#555', fontWeight: '500', textAlign: 'center' },
-  projCaption: { fontSize: 11, color: '#bbb', textAlign: 'center' },
+  projBox:     { flex: 1, alignItems: 'center', gap: 4, backgroundColor: c.bgTealDeep, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 4 },
+  projValue:   { fontSize: 14, fontWeight: '800', color: c.success },
+  projLabel:   { fontSize: 10, color: c.textBody, fontWeight: '500', textAlign: 'center' },
+  projCaption: { fontSize: 11, color: c.textDisabled, textAlign: 'center' },
 
   insightsWrap: { gap: 8 },
   insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },

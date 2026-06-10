@@ -1,4 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
+
+import { AppColors } from '@/constants/theme';
+import { useAppTheme } from '@/context/theme';
 
 interface Props {
   emoji: string;
@@ -8,21 +12,24 @@ interface Props {
 }
 
 export function OptionCard({ emoji, label, selected, onPress }: Props) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.card,
-        selected && styles.selected,
-        pressed && styles.pressed,
+        s.card,
+        selected && s.selected,
+        pressed && s.pressed,
       ]}>
-      <Text style={styles.emoji}>{emoji}</Text>
-      <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
+      <Text style={s.emoji}>{emoji}</Text>
+      <Text style={[s.label, selected && s.labelSelected]}>{label}</Text>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (c: AppColors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -31,13 +38,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#d0e8e8',
-    backgroundColor: '#f8fdfd',
+    borderColor: c.bgTealMid,
+    backgroundColor: c.bgElement,
     marginBottom: 10,
   },
   selected: {
-    borderColor: '#0F6E6E',
-    backgroundColor: '#e6f7f7',
+    borderColor: c.primary,
+    backgroundColor: c.bgTeal,
   },
   pressed: {
     opacity: 0.8,
@@ -47,12 +54,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    color: '#333',
+    color: c.textSecondary,
     fontWeight: '500',
     flex: 1,
   },
   labelSelected: {
-    color: '#0F6E6E',
+    color: c.primary,
     fontWeight: '600',
   },
 });

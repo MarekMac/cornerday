@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 type AdminTab = 'reports' | 'feedback';
 
@@ -37,6 +39,8 @@ interface FeedbackItem {
 }
 
 export default function ModerationScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
   const [tab, setTab] = useState<AdminTab>('reports');
 
@@ -167,7 +171,7 @@ export default function ModerationScreen() {
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Pressable onPress={() => router.back()} hitSlop={10} style={s.backBtn}>
-              <Ionicons name="chevron-back" size={22} color="#fff" />
+              <Ionicons name="chevron-back" size={22} color={c.white} />
             </Pressable>
             <Text style={s.headerTitle}>Admin Panel</Text>
             <View style={{ width: 34 }} />
@@ -194,10 +198,10 @@ export default function ModerationScreen() {
       {/* ── Reports tab ── */}
       {tab === 'reports' && (
         reportsLoading ? (
-          <View style={s.center}><ActivityIndicator size="large" color="#0F6E6E" /></View>
+          <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>
         ) : reports.length === 0 ? (
           <View style={s.center}>
-            <Ionicons name="checkmark-circle-outline" size={52} color="#a8d8d0" />
+            <Ionicons name="checkmark-circle-outline" size={52} color={c.primaryLight} />
             <Text style={s.emptyTitle}>All clear</Text>
             <Text style={s.emptyBody}>No pending reports.</Text>
           </View>
@@ -224,14 +228,14 @@ export default function ModerationScreen() {
                     onPress={() => dismiss(report.id)}
                     disabled={!!actioning}>
                     {actioning === report.id
-                      ? <ActivityIndicator size="small" color="#666" />
+                      ? <ActivityIndicator size="small" color={c.textBody} />
                       : <Text style={s.dismissBtnTxt}>Dismiss</Text>}
                   </Pressable>
                   <Pressable
                     style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }, actioning === report.id && s.btnDisabled]}
                     onPress={() => deleteContent(report)}
                     disabled={!!actioning}>
-                    <Ionicons name="trash-outline" size={14} color="#fff" />
+                    <Ionicons name="trash-outline" size={14} color={c.white} />
                     <Text style={s.deleteBtnTxt}>Delete content</Text>
                   </Pressable>
                 </View>
@@ -245,10 +249,10 @@ export default function ModerationScreen() {
       {/* ── Feedback tab ── */}
       {tab === 'feedback' && (
         feedbackLoading ? (
-          <View style={s.center}><ActivityIndicator size="large" color="#0F6E6E" /></View>
+          <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>
         ) : feedbackItems.length === 0 ? (
           <View style={s.center}>
-            <Ionicons name="chatbubble-ellipses-outline" size={52} color="#a8d8d0" />
+            <Ionicons name="chatbubble-ellipses-outline" size={52} color={c.primaryLight} />
             <Text style={s.emptyTitle}>No feedback yet</Text>
             <Text style={s.emptyBody}>Submissions will appear here.</Text>
           </View>
@@ -279,9 +283,9 @@ export default function ModerationScreen() {
                     onPress={() => deleteFeedback(item)}
                     disabled={!!deletingFeedback}>
                     {deletingFeedback === item.id
-                      ? <ActivityIndicator size="small" color="#fff" />
+                      ? <ActivityIndicator size="small" color={c.white} />
                       : <>
-                          <Ionicons name="trash-outline" size={14} color="#fff" />
+                          <Ionicons name="trash-outline" size={14} color={c.white} />
                           <Text style={s.fbDeleteBtnTxt}>Delete</Text>
                         </>}
                   </Pressable>
@@ -296,59 +300,59 @@ export default function ModerationScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f5f7fa' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
   header: { paddingBottom: 0 },
   headerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12,
   },
   backBtn: { width: 34, alignItems: 'center' },
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  headerTitle: { color: c.white, fontSize: 17, fontWeight: '700' },
   tabBar: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, paddingBottom: 0 },
   tabBtn: {
     flex: 1, paddingVertical: 9, alignItems: 'center',
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  tabBtnActive: { borderBottomColor: '#fff' },
+  tabBtnActive: { borderBottomColor: c.white },
   tabBtnTxt: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
-  tabBtnTxtActive: { color: '#fff' },
+  tabBtnTxtActive: { color: c.white },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1a1a1a' },
-  emptyBody: { fontSize: 14, color: '#888' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
+  emptyBody: { fontSize: 14, color: c.textMuted },
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
-  countLabel: { fontSize: 13, color: '#888', marginBottom: 4 },
+  countLabel: { fontSize: 13, color: c.textMuted, marginBottom: 4 },
   card: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 10,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 14, gap: 10,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   typePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  typePillPost: { backgroundColor: '#e6f7f7' },
-  typePillComment: { backgroundColor: '#f0f0f0' },
-  typePillTxt: { fontSize: 11, fontWeight: '700', color: '#0F6E6E', textTransform: 'uppercase', letterSpacing: 0.5 },
+  typePillPost: { backgroundColor: c.bgTeal },
+  typePillComment: { backgroundColor: c.bgElement },
+  typePillTxt: { fontSize: 11, fontWeight: '700', color: c.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
   reasonPill: { backgroundColor: '#fff3e0', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   reasonPillTxt: { fontSize: 11, color: '#b45309', fontWeight: '600' },
-  versionPill: { backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  versionPillTxt: { fontSize: 11, color: '#666', fontWeight: '600' },
-  dateText: { marginLeft: 'auto', fontSize: 11, color: '#bbb' },
-  contentText: { fontSize: 14, color: '#333', lineHeight: 20 },
+  versionPill: { backgroundColor: c.bgElement, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  versionPillTxt: { fontSize: 11, color: c.textBody, fontWeight: '600' },
+  dateText: { marginLeft: 'auto', fontSize: 11, color: c.textFaint },
+  contentText: { fontSize: 14, color: c.textSecondary, lineHeight: 20 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  dismissBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: '#f2f2f2', alignItems: 'center' },
-  dismissBtnTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
+  dismissBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: c.bgElement, alignItems: 'center' },
+  dismissBtnTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
   deleteBtn: {
     flex: 2, flexDirection: 'row', paddingVertical: 9, borderRadius: 10,
-    backgroundColor: '#c0392b', alignItems: 'center', justifyContent: 'center', gap: 5,
+    backgroundColor: c.error, alignItems: 'center', justifyContent: 'center', gap: 5,
   },
-  deleteBtnTxt: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  deleteBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
   btnDisabled: { opacity: 0.5 },
   fbActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 },
   fbDeleteBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingVertical: 7, paddingHorizontal: 14, borderRadius: 10,
-    backgroundColor: '#c0392b',
+    backgroundColor: c.error,
   },
-  fbDeleteBtnTxt: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  fbDeleteBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
 });

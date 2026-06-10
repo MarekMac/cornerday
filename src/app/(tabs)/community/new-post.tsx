@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   BackHandler,
@@ -18,10 +18,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COMMUNITY_TAGS, CommunityTag, TAG_COLORS } from '@/constants/community';
 import { supabase } from '@/lib/supabase';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 const MAX = 500;
 
 export default function NewPost() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const params = useLocalSearchParams<{ initialContent?: string; initialTag?: string }>();
 
   const [content, setContent] = useState('');
@@ -83,11 +87,11 @@ export default function NewPost() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.root}>
-        <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+        <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
           <SafeAreaView edges={['top']}>
             <View style={s.headerRow}>
               <Pressable onPress={handleBack} style={s.backBtn}>
-                <Ionicons name="arrow-back" size={22} color="#fff" />
+                <Ionicons name="arrow-back" size={22} color={c.white} />
               </Pressable>
               <Text style={s.headerTitle}>Share Your Story</Text>
               <View style={{ width: 30 }} />
@@ -106,7 +110,7 @@ export default function NewPost() {
                   style={[s.tagChip, selected && { backgroundColor: TAG_COLORS[t], borderColor: TAG_COLORS[t] }]}
                   onPress={() => setTag(t)}
                 >
-                  <Text style={[s.tagChipTxt, selected && { color: '#fff' }]}>{t}</Text>
+                  <Text style={[s.tagChipTxt, selected && { color: c.white }]}>{t}</Text>
                 </Pressable>
               );
             })}
@@ -119,7 +123,7 @@ export default function NewPost() {
               multiline
               autoFocus={!params.initialContent}
               placeholder="Share what's on your mind — a win, a struggle, or where you are today..."
-              placeholderTextColor="#aaa"
+              placeholderTextColor={c.textFaint}
               value={content}
               onChangeText={t => setContent(t.slice(0, MAX))}
               textAlignVertical="top"
@@ -132,7 +136,7 @@ export default function NewPost() {
           {/* Anonymous toggle */}
           <View style={s.anonRow}>
             <View style={s.anonLeft}>
-              <Ionicons name="eye-off-outline" size={20} color="#666" />
+              <Ionicons name="eye-off-outline" size={20} color={c.textBody} />
               <View style={s.anonTextWrap}>
                 <Text style={s.anonLabel}>Post anonymously</Text>
                 <Text style={s.anonSub}>Your name won't appear on this post</Text>
@@ -159,48 +163,48 @@ export default function NewPost() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
 
   header: { paddingBottom: 16 },
   headerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 12,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: c.white },
   backBtn: { padding: 4 },
 
   body: { padding: 20, gap: 10, paddingBottom: 40 },
-  label: { fontSize: 14, fontWeight: '600', color: '#555' },
+  label: { fontSize: 14, fontWeight: '600', color: c.textBody },
 
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tagChip: {
     paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
+    borderRadius: 20, backgroundColor: c.bgCard, borderWidth: 1, borderColor: c.borderMid,
   },
-  tagChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
+  tagChipTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
 
-  inputWrap: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginTop: 2 },
+  inputWrap: { backgroundColor: c.bgCard, borderRadius: 16, padding: 14, marginTop: 2 },
   input: {
-    fontSize: 15, color: '#111', lineHeight: 22,
+    fontSize: 15, color: c.textPrimary, lineHeight: 22,
     minHeight: 160, maxHeight: 300,
   },
-  charCount: { fontSize: 12, color: '#bbb', textAlign: 'right', marginTop: 8 },
+  charCount: { fontSize: 12, color: c.textDisabled, textAlign: 'right', marginTop: 8 },
 
   anonRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+    backgroundColor: c.bgCard, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
     marginTop: 4,
   },
   anonLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   anonTextWrap: { flex: 1 },
-  anonLabel: { fontSize: 14, fontWeight: '600', color: '#222' },
-  anonSub: { fontSize: 12, color: '#aaa', marginTop: 1 },
+  anonLabel: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
+  anonSub: { fontSize: 12, color: c.textFaint, marginTop: 1 },
 
   submitBtn: {
-    backgroundColor: '#0F6E6E', borderRadius: 14,
+    backgroundColor: c.primary, borderRadius: 14,
     paddingVertical: 16, alignItems: 'center', marginTop: 8,
   },
-  submitBtnDisabled: { backgroundColor: '#bbb' },
-  submitTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  submitBtnDisabled: { backgroundColor: c.textFaint },
+  submitTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
 });

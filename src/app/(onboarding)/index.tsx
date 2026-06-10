@@ -1,14 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
+import { AppColors } from '@/constants/theme';
+import { useAppTheme } from '@/context/theme';
 import Logo from '@/components/Logo';
 
 export default function WelcomeScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
 
   useEffect(() => {
@@ -16,25 +20,25 @@ export default function WelcomeScreen() {
   }, []);
 
   return (
-    <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']} style={styles.gradient}>
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.hero}>
+    <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']} style={s.gradient}>
+      <SafeAreaView style={s.safe}>
+        <View style={s.hero}>
           <Logo size={100} />
-          <Text style={styles.appName}>CornerDay</Text>
-          <Text style={styles.tagline}>Turn the corner.{'\n'}Build a better tomorrow.</Text>
+          <Text style={s.appName}>CornerDay</Text>
+          <Text style={s.tagline}>Turn the corner.{'\n'}Build a better tomorrow.</Text>
         </View>
 
-        <View style={styles.actions}>
+        <View style={s.actions}>
           <Pressable
-            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
             onPress={() => router.push('/(onboarding)/signup')}>
-            <Text style={styles.primaryBtnText}>Get started</Text>
+            <Text style={s.primaryBtnText}>Get started</Text>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
             onPress={() => router.push({ pathname: '/(onboarding)/signup', params: { mode: 'signin' } })}>
-            <Text style={styles.secondaryBtnText}>I already have an account</Text>
+            <Text style={s.secondaryBtnText}>I already have an account</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -42,7 +46,7 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (c: AppColors) => StyleSheet.create({
   gradient: {
     flex: 1,
   },
@@ -59,7 +63,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 42,
     fontWeight: '800',
-    color: '#fff',
+    color: c.white,
     letterSpacing: 1,
     marginBottom: 8,
   },
@@ -75,7 +79,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: c.white,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -83,7 +87,7 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F6E6E',
+    color: c.primary,
   },
   secondaryBtn: {
     paddingVertical: 14,

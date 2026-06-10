@@ -18,3 +18,4 @@ export const MOTIVATION_CACHE_KEY = 'cornerday_motivation_cache';
 export const COMMUNITY_GUIDELINES_SEEN_KEY = 'cornerday_community_guidelines_seen';
 export const NOTIF_STREAK_HOUR_KEY = 'cornerday_notif_streak_hour';
 export const NOTIF_CHECKIN_HOUR_KEY = 'cornerday_notif_checkin_hour';
+export const THEME_PREF_KEY = 'cornerday_theme_pref';

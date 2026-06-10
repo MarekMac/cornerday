@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 const LAST_UPDATED = 'June 3, 2025';
 
@@ -49,13 +52,15 @@ const SECTIONS = [
 ];
 
 export default function PrivacyPolicyScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
 
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <Pressable onPress={() => router.replace('/(tabs)/account' as any)} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
+          <Ionicons name="chevron-back" size={24} color={c.primary} />
         </Pressable>
         <Text style={s.title}>Privacy Policy</Text>
         <Text style={s.updated}>Last updated: {LAST_UPDATED}</Text>
@@ -79,15 +84,15 @@ export default function PrivacyPolicyScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bgCard },
+  header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: c.borderSubtle },
   backBtn: { padding: 4, marginBottom: 8, alignSelf: 'flex-start' },
-  title: { fontSize: 24, fontWeight: '700', color: '#111' },
-  updated: { fontSize: 12, color: '#aaa', marginTop: 4 },
+  title: { fontSize: 24, fontWeight: '700', color: c.textPrimary },
+  updated: { fontSize: 12, color: c.textFaint, marginTop: 4 },
   content: { paddingHorizontal: 24, paddingTop: 20 },
-  intro: { fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 24 },
+  intro: { fontSize: 14, color: c.textBody, lineHeight: 22, marginBottom: 24 },
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111', marginBottom: 8 },
-  sectionBody: { fontSize: 14, color: '#555', lineHeight: 22 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: c.textPrimary, marginBottom: 8 },
+  sectionBody: { fontSize: 14, color: c.textBody, lineHeight: 22 },
 });

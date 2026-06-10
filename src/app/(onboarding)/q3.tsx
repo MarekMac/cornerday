@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import {
@@ -16,6 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/onboarding/ProgressBar';
+import { AppColors } from '@/constants/theme';
+import { useAppTheme } from '@/context/theme';
 import { useOnboarding } from '@/context/onboarding';
 
 const CURRENCIES = [
@@ -37,6 +39,8 @@ const CHIP_AMOUNTS = [
 ];
 
 export default function Q3Screen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
   const { data, isLoaded, setField, saveStep } = useOnboarding();
   const [currency, setCurrency] = useState('USD');
@@ -112,63 +116,63 @@ export default function Q3Screen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q2')} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
+    <SafeAreaView style={s.safe}>
+      <View style={s.topBar}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q2')} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={c.primary} />
         </Pressable>
-        <View style={styles.progressWrapper}>
+        <View style={s.progressWrapper}>
           <ProgressBar current={3} total={5} />
         </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Let's set up your journey</Text>
-        <Text style={styles.sectionLabel}>When did you stop betting?</Text>
-        <Pressable style={styles.dateBtn} onPress={openDatePicker}>
-          <Text style={styles.dateBtnTxt}>
+        <Text style={s.title}>Let's set up your journey</Text>
+        <Text style={s.sectionLabel}>When did you stop betting?</Text>
+        <Pressable style={s.dateBtn} onPress={openDatePicker}>
+          <Text style={s.dateBtnTxt}>
             {quitDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} @ {quitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
-          <Text style={styles.dateEditTxt}>Change</Text>
+          <Text style={s.dateEditTxt}>Change</Text>
         </Pressable>
 
-        <Text style={styles.sectionLabel}>How much did you bet per week?</Text>
-        <Text style={styles.subtitle}>
+        <Text style={s.sectionLabel}>How much did you bet per week?</Text>
+        <Text style={s.subtitle}>
           We'll use this to show how much you're saving as your streak grows.
         </Text>
 
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.currencyScroll}
-          contentContainerStyle={styles.currencyRow}>
+          style={s.currencyScroll}
+          contentContainerStyle={s.currencyRow}>
           {CURRENCIES.map(c => (
             <Pressable
               key={c.code}
-              style={[styles.currencyChip, currency === c.code && styles.currencyChipSelected]}
+              style={[s.currencyChip, currency === c.code && s.currencyChipSelected]}
               onPress={() => setCurrency(c.code)}>
-              <Text style={[styles.currencyText, currency === c.code && styles.currencyTextSelected]}>
+              <Text style={[s.currencyText, currency === c.code && s.currencyTextSelected]}>
                 {c.code}
               </Text>
             </Pressable>
           ))}
         </ScrollView>
 
-        <View style={styles.chips}>
+        <View style={s.chips}>
           {CHIP_AMOUNTS.map(chip => (
             <Pressable
               key={chip.value}
               style={({ pressed }) => [
-                styles.chip,
-                selected === chip.value && styles.chipSelected,
-                pressed && styles.chipPressed,
+                s.chip,
+                selected === chip.value && s.chipSelected,
+                pressed && s.chipPressed,
               ]}
               onPress={() => handleChipPress(chip.value)}>
               <Text style={[
-                styles.chipText,
-                selected === chip.value && styles.chipTextSelected,
+                s.chipText,
+                selected === chip.value && s.chipTextSelected,
               ]}>
                 {chip.label(symbol)}
               </Text>
@@ -176,31 +180,31 @@ export default function Q3Screen() {
           ))}
         </View>
 
-        <Text style={styles.customLabel}>Or enter your exact weekly amount:</Text>
-        <View style={styles.customInputRow}>
-          <Text style={styles.dollarSign}>{symbol}</Text>
+        <Text style={s.customLabel}>Or enter your exact weekly amount:</Text>
+        <View style={s.customInputRow}>
+          <Text style={s.dollarSign}>{symbol}</Text>
           <TextInput
-            style={styles.customInput}
+            style={s.customInput}
             value={custom}
             onChangeText={text => {
               setCustom(text);
               if (text.trim()) setSelected('');
             }}
             placeholder="0"
-            placeholderTextColor="#bbb"
+            placeholderTextColor={c.textFaint}
             keyboardType="numeric"
           />
         </View>
 
-        <Text style={styles.privacy}>
+        <Text style={s.privacy}>
           🔒 This is used only to calculate your savings. Only you can see it.
         </Text>
       </ScrollView>
 
       {Platform.OS === 'ios' && (
         <Modal visible={showIOSPicker} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalSheet}>
+          <View style={s.modalOverlay}>
+            <View style={s.modalSheet}>
               <DateTimePicker
                 value={quitDate}
                 mode="datetime"
@@ -209,35 +213,35 @@ export default function Q3Screen() {
                 onChange={(_evt, d) => d && (setQuitDate(new Date(d.getTime())), setUserChangedDate(true))}
                 style={{ height: 200 }}
               />
-              <Pressable style={styles.modalDone} onPress={() => setShowIOSPicker(false)}>
-                <Text style={styles.modalDoneTxt}>Done</Text>
+              <Pressable style={s.modalDone} onPress={() => setShowIOSPicker(false)}>
+                <Text style={s.modalDoneTxt}>Done</Text>
               </Pressable>
             </View>
           </View>
         </Modal>
       )}
 
-      <View style={styles.footer}>
-        <Pressable style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip for now</Text>
+      <View style={s.footer}>
+        <Pressable style={s.skipBtn} onPress={handleSkip}>
+          <Text style={s.skipText}>Skip for now</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [
-            styles.continueBtn,
-            !hasValue && styles.continueBtnDisabled,
-            pressed && styles.pressed,
+            s.continueBtn,
+            !hasValue && s.continueBtnDisabled,
+            pressed && s.pressed,
           ]}
           onPress={handleContinue}
           disabled={!hasValue}>
-          <Text style={styles.continueBtnText}>Continue</Text>
+          <Text style={s.continueBtnText}>Continue</Text>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bgCard },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -256,14 +260,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111',
+    color: c.textPrimary,
     marginBottom: 20,
     lineHeight: 32,
   },
   sectionLabel: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#333',
+    color: c.textSecondary,
     marginBottom: 10,
   },
   dateBtn: {
@@ -271,25 +275,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#0F6E6E',
+    borderColor: c.primary,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: '#e6f7f7',
+    backgroundColor: c.bgTeal,
     marginBottom: 28,
   },
-  dateBtnTxt: { fontSize: 15, fontWeight: '600', color: '#0F6E6E' },
-  dateEditTxt: { fontSize: 13, color: '#0F6E6E' },
+  dateBtnTxt: { fontSize: 15, fontWeight: '600', color: c.primary },
+  dateEditTxt: { fontSize: 13, color: c.primary },
   subtitle: {
     fontSize: 14,
-    color: '#888',
+    color: c.textMuted,
     marginBottom: 16,
     lineHeight: 20,
   },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
-  modalDone: { backgroundColor: '#0F6E6E', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 12 },
-  modalDoneTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay },
+  modalSheet: { backgroundColor: c.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  modalDone: { backgroundColor: c.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 12 },
+  modalDoneTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   currencyScroll: {
     marginBottom: 20,
   },
@@ -303,20 +307,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#d0e8e8',
-    backgroundColor: '#f8fdfd',
+    borderColor: c.bgTealMid,
+    backgroundColor: c.bgElement,
   },
   currencyChipSelected: {
-    borderColor: '#0F6E6E',
-    backgroundColor: '#e6f7f7',
+    borderColor: c.primary,
+    backgroundColor: c.bgTeal,
   },
   currencyText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#555',
+    color: c.textBody,
   },
   currencyTextSelected: {
-    color: '#0F6E6E',
+    color: c.primary,
   },
   chips: {
     flexDirection: 'row',
@@ -329,52 +333,52 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#d0e8e8',
-    backgroundColor: '#f8fdfd',
+    borderColor: c.bgTealMid,
+    backgroundColor: c.bgElement,
     alignItems: 'center',
   },
   chipSelected: {
-    borderColor: '#0F6E6E',
-    backgroundColor: '#e6f7f7',
+    borderColor: c.primary,
+    backgroundColor: c.bgTeal,
   },
   chipPressed: { opacity: 0.8 },
   chipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#555',
+    color: c.textBody,
   },
   chipTextSelected: {
-    color: '#0F6E6E',
+    color: c.primary,
   },
   customLabel: {
     fontSize: 13,
-    color: '#666',
+    color: c.textBody,
     marginBottom: 10,
   },
   customInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#ddd',
+    borderColor: c.borderMid,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: '#fafafa',
+    backgroundColor: c.bgInput,
     marginBottom: 20,
   },
   dollarSign: {
     fontSize: 16,
-    color: '#555',
+    color: c.textBody,
     marginRight: 6,
   },
   customInput: {
     flex: 1,
     fontSize: 15,
-    color: '#111',
+    color: c.textPrimary,
   },
   privacy: {
     fontSize: 12,
-    color: '#999',
+    color: c.textMuted,
     lineHeight: 18,
   },
   footer: {
@@ -383,17 +387,17 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: c.borderSubtle,
   },
   continueBtn: {
-    backgroundColor: '#0F6E6E',
+    backgroundColor: c.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  continueBtnDisabled: { backgroundColor: '#b0d4d4' },
-  continueBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  continueBtnDisabled: { backgroundColor: c.primaryLight },
+  continueBtnText: { color: c.white, fontSize: 16, fontWeight: '700' },
   skipBtn: { alignItems: 'center', paddingVertical: 8 },
-  skipText: { fontSize: 14, color: '#888' },
+  skipText: { fontSize: 14, color: c.textMuted },
   pressed: { opacity: 0.8 },
 });

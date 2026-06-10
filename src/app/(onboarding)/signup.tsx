@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -19,6 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { supabase } from '@/lib/supabase';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -42,6 +44,8 @@ function FacebookLogo() {
 }
 
 export default function SignupScreen() {
+  const { colors: c } = useAppTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isSignIn = mode === 'signin';
@@ -261,7 +265,7 @@ export default function SignupScreen() {
             onPress={handleGoogleSignIn}
             disabled={googleLoading}>
             {googleLoading ? (
-              <ActivityIndicator color="#444" />
+              <ActivityIndicator color={c.textBody} />
             ) : (
               <>
                 <GoogleLogo />
@@ -284,7 +288,7 @@ export default function SignupScreen() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="you@example.com"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={c.textFaint}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
@@ -300,13 +304,13 @@ export default function SignupScreen() {
                   value={password}
                   onChangeText={setPassword}
                   placeholder={isSignIn ? 'Your password' : 'At least 6 characters'}
-                  placeholderTextColor="#aaa"
+                  placeholderTextColor={c.textFaint}
                   secureTextEntry={!showPassword}
                   autoComplete={isSignIn ? 'current-password' : 'new-password'}
                   onFocus={() => { activeFieldRef.current = 'password'; }}
                 />
                 <Pressable style={styles.eyeBtn} onPress={() => setShowPassword(p => !p)} hitSlop={8}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#aaa" />
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={c.textFaint} />
                 </Pressable>
               </View>
             </View>
@@ -326,7 +330,7 @@ export default function SignupScreen() {
               onPress={handleSubmit}
               disabled={loading}>
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={c.white} />
               ) : (
                 <Text style={styles.submitBtnText}>
                   {isSignIn ? 'Sign in' : 'Continue'}
@@ -364,8 +368,8 @@ export default function SignupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bgCard },
   flex: { flex: 1 },
   scroll: {
     paddingHorizontal: 28,
@@ -384,11 +388,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111',
+    color: c.textPrimary,
   },
   subtitle: {
     fontSize: 15,
-    color: '#666',
+    color: c.textBody,
   },
   googleBtn: {
     flexDirection: 'row',
@@ -396,10 +400,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     borderWidth: 1.5,
-    borderColor: '#ddd',
+    borderColor: c.borderMid,
     borderRadius: 14,
     paddingVertical: 14,
-    backgroundColor: '#fff',
+    backgroundColor: c.bgCard,
   },
   googleIcon: {
     fontSize: 16,
@@ -409,7 +413,7 @@ const styles = StyleSheet.create({
   googleBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: c.textSecondary,
   },
   facebookBtn: {
     flexDirection: 'row',
@@ -424,7 +428,7 @@ const styles = StyleSheet.create({
   facebookBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: c.white,
   },
   divider: {
     flexDirection: 'row',
@@ -435,11 +439,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#eee',
+    backgroundColor: c.borderSubtle,
   },
   dividerText: {
     fontSize: 13,
-    color: '#aaa',
+    color: c.textFaint,
   },
   form: {
     gap: 4,
@@ -448,38 +452,38 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#444',
+    color: c.textBody,
     marginTop: 16,
     marginBottom: 6,
   },
   input: {
     borderWidth: 1.5,
-    borderColor: '#ddd',
+    borderColor: c.borderMid,
     borderRadius: 10,
     paddingVertical: 13,
     paddingHorizontal: 14,
     fontSize: 15,
-    color: '#111',
-    backgroundColor: '#fafafa',
+    color: c.textPrimary,
+    backgroundColor: c.bgInput,
   },
   inputWrap: { position: 'relative' },
   eyeBtn: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
   forgotBtn: { alignSelf: 'flex-end', marginTop: 8 },
-  forgotText: { fontSize: 13, color: '#0F6E6E', fontWeight: '500' },
+  forgotText: { fontSize: 13, color: c.primary, fontWeight: '500' },
   errorText: {
     marginTop: 10,
-    color: '#c0392b',
+    color: c.error,
     fontSize: 13,
   },
   submitBtn: {
     marginTop: 24,
-    backgroundColor: '#0F6E6E',
+    backgroundColor: c.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
   submitBtnText: {
-    color: '#fff',
+    color: c.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -490,21 +494,21 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 14,
-    color: '#666',
+    color: c.textBody,
   },
   toggleLink: {
-    color: '#0F6E6E',
+    color: c.primary,
     fontWeight: '600',
   },
   privacy: {
     fontSize: 12,
-    color: '#aaa',
+    color: c.textFaint,
     textAlign: 'center',
     marginTop: 20,
     lineHeight: 18,
   },
   privacyLink: {
-    color: '#0F6E6E',
+    color: c.primary,
     fontWeight: '600',
     textDecorationLine: 'underline',
   },

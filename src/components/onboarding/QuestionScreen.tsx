@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 
+import { AppColors } from '@/constants/theme';
+import { useAppTheme } from '@/context/theme';
 import { OptionCard } from './OptionCard';
 import { ProgressBar } from './ProgressBar';
 
@@ -37,26 +40,28 @@ export function QuestionScreen({
   skippable,
   onSkip,
 }: Props) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/signup')} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#0F6E6E" />
+    <SafeAreaView style={s.safe}>
+      <View style={s.topBar}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/signup')} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={c.primary} />
         </Pressable>
-        <View style={styles.progressWrapper}>
+        <View style={s.progressWrapper}>
           <ProgressBar current={step} total={total} />
         </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <Text style={s.title}>{title}</Text>
+        {subtitle ? <Text style={s.subtitle}>{subtitle}</Text> : null}
 
-        <View style={styles.options}>
+        <View style={s.options}>
           {options.map(opt => (
             <OptionCard
               key={opt.value}
@@ -69,29 +74,29 @@ export function QuestionScreen({
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={s.footer}>
         {skippable && (
-          <Pressable style={styles.skipBtn} onPress={onSkip}>
-            <Text style={styles.skipText}>Skip for now</Text>
+          <Pressable style={s.skipBtn} onPress={onSkip}>
+            <Text style={s.skipText}>Skip for now</Text>
           </Pressable>
         )}
         <Pressable
           style={({ pressed }) => [
-            styles.continueBtn,
-            !selected && styles.continueBtnDisabled,
-            pressed && styles.pressed,
+            s.continueBtn,
+            !selected && s.continueBtnDisabled,
+            pressed && s.pressed,
           ]}
           onPress={onContinue}
           disabled={!selected}>
-          <Text style={styles.continueBtnText}>Continue</Text>
+          <Text style={s.continueBtnText}>Continue</Text>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bgCard },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -117,13 +122,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111',
+    color: c.textPrimary,
     marginBottom: 8,
     lineHeight: 32,
   },
   subtitle: {
     fontSize: 14,
-    color: '#888',
+    color: c.textMuted,
     marginBottom: 24,
   },
   options: {
@@ -135,19 +140,19 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: c.borderSubtle,
   },
   continueBtn: {
-    backgroundColor: '#0F6E6E',
+    backgroundColor: c.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
   continueBtnDisabled: {
-    backgroundColor: '#b0d4d4',
+    backgroundColor: c.primaryLight,
   },
   continueBtnText: {
-    color: '#fff',
+    color: c.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -157,7 +162,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    color: '#888',
+    color: c.textMuted,
   },
   pressed: { opacity: 0.8 },
 });

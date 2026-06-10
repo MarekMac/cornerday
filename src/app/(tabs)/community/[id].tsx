@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +19,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { avatarColor, REACTION_EMOJIS, streakBadge, TAG_COLORS, timeAgo } from '@/constants/community';
 import { supabase } from '@/lib/supabase';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 interface Post {
   id: string;
@@ -46,6 +48,8 @@ type MenuTarget = { kind: 'post' } | { kind: 'comment'; id: string };
 type ActionTarget = { kind: 'post'; id: string } | { kind: 'comment'; id: string };
 
 export default function PostDetail() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -333,7 +337,7 @@ export default function PostDetail() {
   if (loading) {
     return (
       <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator color="#0F6E6E" />
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
@@ -341,7 +345,7 @@ export default function PostDetail() {
   if (!post) {
     return (
       <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: '#666' }}>Story not found.</Text>
+        <Text style={{ color: c.textBody }}>Story not found.</Text>
       </View>
     );
   }
@@ -398,7 +402,7 @@ export default function PostDetail() {
             >
               <Text style={s.emojiBtnEmoji}>{e}</Text>
               {count > 0 && (
-                <Text style={[s.emojiBtnCount, active && { color: '#0F6E6E' }]}>{count}</Text>
+                <Text style={[s.emojiBtnCount, active && { color: c.primary }]}>{count}</Text>
               )}
             </Pressable>
           );
@@ -412,7 +416,7 @@ export default function PostDetail() {
           </Text>
         </Pressable>
         <Pressable style={s.shareBtn} onPress={sharePost} hitSlop={6}>
-          <Ionicons name="share-outline" size={15} color="#888" />
+          <Ionicons name="share-outline" size={15} color={c.textMuted} />
           <Text style={s.shareTxt}>Share</Text>
         </Pressable>
       </View>
@@ -424,11 +428,11 @@ export default function PostDetail() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
-              <Ionicons name="arrow-back" size={22} color="#fff" />
+              <Ionicons name="arrow-back" size={22} color={c.white} />
             </Pressable>
             <Text style={s.headerTitle}>Story</Text>
             <View style={{ width: 30 }} />
@@ -468,7 +472,7 @@ export default function PostDetail() {
                       <Ionicons
                         name={isOwner ? 'ellipsis-horizontal' : 'flag-outline'}
                         size={14}
-                        color={isOwner ? '#bbb' : '#f59e0b'}
+                        color={isOwner ? c.textDisabled : '#f59e0b'}
                       />
                     </Pressable>
                   </View>
@@ -478,7 +482,7 @@ export default function PostDetail() {
                     onPress={() => toggleCommentReaction(item.id)}
                     hitSlop={6}
                   >
-                    <Text style={[s.helpfulBtnTxt, iHelpedThis && { color: '#0F6E6E' }]}>
+                    <Text style={[s.helpfulBtnTxt, iHelpedThis && { color: c.primary }]}>
                       🤝{item.helpful_count > 0 ? ` ${item.helpful_count}` : ''} This helped me
                     </Text>
                   </Pressable>
@@ -504,14 +508,14 @@ export default function PostDetail() {
               <Ionicons
                 name={isCommentAnonymous ? 'eye-off' : 'eye-outline'}
                 size={18}
-                color={isCommentAnonymous ? '#0F6E6E' : '#bbb'}
+                color={isCommentAnonymous ? c.primary : c.textFaint}
               />
             </Pressable>
           <TextInput
             ref={inputRef}
             style={s.commentInput}
             placeholder="Comment..."
-            placeholderTextColor="#aaa"
+            placeholderTextColor={c.textFaint}
             value={commentText}
             onChangeText={setCommentText}
             multiline
@@ -524,7 +528,7 @@ export default function PostDetail() {
             onPress={submitComment}
             disabled={!commentText.trim() || submitting}
           >
-            <Ionicons name="arrow-up" size={18} color="#fff" />
+            <Ionicons name="arrow-up" size={18} color={c.white} />
           </Pressable>
           </View>
         </View>
@@ -539,26 +543,26 @@ export default function PostDetail() {
                 {menuTarget?.kind === 'post' ? 'Your story' : 'Your comment'}
               </Text>
               <Pressable onPress={() => setMenuTarget(null)} hitSlop={10}>
-                <Ionicons name="close" size={22} color="#999" />
+                <Ionicons name="close" size={22} color={c.textMuted} />
               </Pressable>
             </View>
 
             <Pressable style={s.menuRow} onPress={handleEditFromMenu}>
-              <View style={[s.menuIconWrap, { backgroundColor: '#e6f7f7' }]}>
-                <Ionicons name="create-outline" size={20} color="#0F6E6E" />
+              <View style={[s.menuIconWrap, { backgroundColor: c.bgTeal }]}>
+                <Ionicons name="create-outline" size={20} color={c.primary} />
               </View>
               <Text style={s.menuRowTxt}>Edit</Text>
-              <Ionicons name="chevron-forward" size={16} color="#ccc" />
+              <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
             </Pressable>
 
             <View style={s.menuDivider} />
 
             <Pressable style={s.menuRow} onPress={handleDeleteFromMenu}>
-              <View style={[s.menuIconWrap, { backgroundColor: '#fff5f5' }]}>
-                <Ionicons name="trash-outline" size={20} color="#c0392b" />
+              <View style={[s.menuIconWrap, { backgroundColor: c.bgError }]}>
+                <Ionicons name="trash-outline" size={20} color={c.error} />
               </View>
-              <Text style={[s.menuRowTxt, { color: '#c0392b' }]}>Delete</Text>
-              <Ionicons name="chevron-forward" size={16} color="#ccc" />
+              <Text style={[s.menuRowTxt, { color: c.error }]}>Delete</Text>
+              <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
             </Pressable>
 
             <Pressable style={[s.confirmCancel, { marginTop: 16, alignSelf: 'stretch' }]} onPress={() => setMenuTarget(null)}>
@@ -574,8 +578,8 @@ export default function PostDetail() {
           <Pressable style={s.confirmOverlay} onPress={() => setEditTarget(null)}>
             <Pressable style={s.confirmSheet} onPress={() => {}}>
               <View style={s.confirmIconRow}>
-                <View style={[s.confirmIconCircle, { backgroundColor: '#e6f7f7', borderColor: '#b2dfdb' }]}>
-                  <Ionicons name="create-outline" size={26} color="#0F6E6E" />
+                <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
+                  <Ionicons name="create-outline" size={26} color={c.primary} />
                 </View>
               </View>
               <Text style={s.confirmTitle}>
@@ -591,7 +595,7 @@ export default function PostDetail() {
                   disabled={editSaving || !editText.trim()}
                 >
                   {editSaving
-                    ? <ActivityIndicator color="#fff" size="small" />
+                    ? <ActivityIndicator color={c.white} size="small" />
                     : <Text style={s.saveBtnTxt}>Save</Text>}
                 </Pressable>
               </View>
@@ -601,7 +605,7 @@ export default function PostDetail() {
                 value={editText}
                 onChangeText={t => setEditText(t.slice(0, editTarget?.kind === 'post' ? 500 : 300))}
                 placeholder="Write something..."
-                placeholderTextColor="#aaa"
+                placeholderTextColor={c.textFaint}
                 textAlignVertical="top"
               />
               <Text style={s.editCharCount}>
@@ -618,7 +622,7 @@ export default function PostDetail() {
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
               <View style={s.confirmIconCircle}>
-                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+                <Ionicons name="trash-outline" size={26} color={c.error} />
               </View>
             </View>
             <Text style={s.confirmTitle}>
@@ -635,7 +639,7 @@ export default function PostDetail() {
                 disabled={deleting}
               >
                 {deleting
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.confirmDeleteTxt}>Delete</Text>}
               </Pressable>
             </View>
@@ -652,7 +656,7 @@ export default function PostDetail() {
                 Report {reportTarget?.kind === 'post' ? 'story' : 'comment'}
               </Text>
               <Pressable onPress={() => setReportTarget(null)} hitSlop={10}>
-                <Ionicons name="close" size={22} color="#999" />
+                <Ionicons name="close" size={22} color={c.textMuted} />
               </Pressable>
             </View>
             <View style={[s.confirmIconRow, { marginTop: 4 }]}>
@@ -674,8 +678,8 @@ export default function PostDetail() {
               >
                 <Text style={s.reportReasonTxt}>{reason}</Text>
                 {reporting
-                  ? <ActivityIndicator size="small" color="#ccc" />
-                  : <Ionicons name="chevron-forward" size={16} color="#ccc" />}
+                  ? <ActivityIndicator size="small" color={c.textDisabled} />
+                  : <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />}
               </Pressable>
             ))}
             <Pressable style={[s.confirmCancel, { marginTop: 12, alignSelf: 'stretch' }]} onPress={() => setReportTarget(null)}>
@@ -688,85 +692,85 @@ export default function PostDetail() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
 
   header: { paddingBottom: 14 },
   headerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 12,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: c.white },
   backBtn: { padding: 4 },
 
   list: { paddingBottom: 24 },
 
-  postCard: { backgroundColor: '#fff', padding: 18, marginBottom: 8, gap: 12 },
+  postCard: { backgroundColor: c.bgCard, padding: 18, marginBottom: 8, gap: 12 },
   postCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  avatarTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  avatarTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
   metaCol: { flex: 1 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  authorName: { fontSize: 14, fontWeight: '600', color: '#111' },
+  authorName: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
   streakPill: {
-    backgroundColor: '#e6f7f7', borderRadius: 8,
+    backgroundColor: c.bgTeal, borderRadius: 8,
     paddingHorizontal: 6, paddingVertical: 2,
   },
-  streakPillTxt: { fontSize: 11, fontWeight: '600', color: '#0F6E6E' },
-  timeStr: { fontSize: 12, color: '#999', marginTop: 1 },
+  streakPillTxt: { fontSize: 11, fontWeight: '600', color: c.primary },
+  timeStr: { fontSize: 12, color: c.textMuted, marginTop: 1 },
   tagPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
   tagTxt: { fontSize: 11, fontWeight: '700' },
   menuBtn: { padding: 4 },
 
-  postContent: { fontSize: 15, color: '#222', lineHeight: 23 },
+  postContent: { fontSize: 15, color: c.textSecondary, lineHeight: 23 },
 
   emojiRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', paddingTop: 2 },
   emojiBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ebebeb',
+    backgroundColor: c.bgElement, borderWidth: 1, borderColor: c.borderSubtle,
   },
-  emojiBtnActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
+  emojiBtnActive: { backgroundColor: c.bgTeal, borderColor: c.primary },
   emojiBtnEmoji: { fontSize: 18 },
-  emojiBtnCount: { fontSize: 13, fontWeight: '600', color: '#666' },
+  emojiBtnCount: { fontSize: 13, fontWeight: '600', color: c.textBody },
 
   postMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  metaTxt: { fontSize: 13, color: '#888' },
+  metaTxt: { fontSize: 13, color: c.textMuted },
   shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  shareTxt: { fontSize: 13, color: '#888', fontWeight: '600' },
+  shareTxt: { fontSize: 13, color: c.textMuted, fontWeight: '600' },
 
-  divider: { height: 1, backgroundColor: '#f0f0f0' },
-  commentsLabel: { fontSize: 13, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5 },
+  divider: { height: 1, backgroundColor: c.borderSubtle },
+  commentsLabel: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
 
   commentRow: {
     flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f5f5f5',
+    backgroundColor: c.bgCard, borderBottomWidth: 1, borderBottomColor: c.borderSubtle,
   },
   commentAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  commentAvatarTxt: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  commentAvatarTxt: { color: c.white, fontWeight: '700', fontSize: 12 },
   commentBody: { flex: 1, gap: 4 },
   commentBodyHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  commentAuthor: { fontSize: 13, fontWeight: '600', color: '#111' },
-  commentTime: { fontSize: 11, color: '#bbb', flex: 1 },
-  commentContent: { fontSize: 14, color: '#333', lineHeight: 20 },
+  commentAuthor: { fontSize: 13, fontWeight: '600', color: c.textPrimary },
+  commentTime: { fontSize: 11, color: c.textDisabled, flex: 1 },
+  commentContent: { fontSize: 14, color: c.textSecondary, lineHeight: 20 },
 
   helpfulBtn: {
     alignSelf: 'flex-start',
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
-    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ebebeb',
+    backgroundColor: c.bgElement, borderWidth: 1, borderColor: c.borderSubtle,
     marginTop: 2,
   },
-  helpfulBtnActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
-  helpfulBtnTxt: { fontSize: 12, color: '#888', fontWeight: '600' },
+  helpfulBtnActive: { backgroundColor: c.bgTeal, borderColor: c.primary },
+  helpfulBtnTxt: { fontSize: 12, color: c.textMuted, fontWeight: '600' },
 
-  noComments: { textAlign: 'center', color: '#aaa', fontSize: 14, paddingVertical: 32, paddingHorizontal: 20 },
+  noComments: { textAlign: 'center', color: c.textFaint, fontSize: 14, paddingVertical: 32, paddingHorizontal: 20 },
 
   inputBarWrap: {
-    backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#eee',
+    backgroundColor: c.bgCard, borderTopWidth: 1, borderTopColor: c.borderSubtle,
   },
   anonHint: {
-    fontSize: 11, color: '#0F6E6E', fontWeight: '600',
+    fontSize: 11, color: c.primary, fontWeight: '600',
     paddingHorizontal: 20, paddingTop: 6,
   },
   inputBar: {
@@ -775,67 +779,63 @@ const s = StyleSheet.create({
   },
   anonToggleBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ebebeb',
+    backgroundColor: c.bgElement, borderWidth: 1, borderColor: c.borderSubtle,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 1,
   },
-  anonToggleBtnActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
+  anonToggleBtnActive: { backgroundColor: c.bgTeal, borderColor: c.primary },
   commentInput: {
-    flex: 1, backgroundColor: '#f5f5f5', borderRadius: 20,
+    flex: 1, backgroundColor: c.bgElement, borderRadius: 20,
     paddingHorizontal: 16, paddingVertical: 10,
-    fontSize: 14, color: '#111', maxHeight: 100,
+    fontSize: 14, color: c.textPrimary, maxHeight: 100,
   },
   sendBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#0F6E6E', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center',
   },
-  sendBtnDisabled: { backgroundColor: '#ccc' },
+  sendBtnDisabled: { backgroundColor: c.textDisabled },
 
-  // ── Action menu (centered) ────────────────────────────────────────────────────
   menuHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  menuTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
+  menuTitle: { fontSize: 16, fontWeight: '700', color: c.textPrimary },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
   menuIconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  menuRowTxt: { flex: 1, fontSize: 16, fontWeight: '500', color: '#111' },
-  menuDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#f0f0f0' },
+  menuRowTxt: { flex: 1, fontSize: 16, fontWeight: '500', color: c.textPrimary },
+  menuDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.borderSubtle },
 
-  // ── Centered modals (edit / delete / report) ─────────────────────────────────
   confirmOverlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)', padding: 24,
+    backgroundColor: c.overlay, padding: 24,
   },
   confirmSheet: {
-    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
   confirmIconRow: { alignItems: 'center', marginBottom: 12 },
   confirmIconCircle: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    backgroundColor: c.bgError, borderWidth: 1.5, borderColor: c.borderError,
     alignItems: 'center', justifyContent: 'center',
   },
-  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
-  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  confirmCancel: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
-  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
-  confirmDeleteTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  confirmCancel: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
+  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  confirmDeleteTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 
-  // Edit modal extras
   editInput: {
-    backgroundColor: '#f5f5f5', borderRadius: 12, padding: 12,
-    fontSize: 14, color: '#111', lineHeight: 20,
+    backgroundColor: c.bgElement, borderRadius: 12, padding: 12,
+    fontSize: 14, color: c.textPrimary, lineHeight: 20,
     minHeight: 100, maxHeight: 200, marginTop: 8,
   },
-  editCharCount: { fontSize: 12, color: '#bbb', textAlign: 'right', marginTop: 4 },
-  saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
-  saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  editCharCount: { fontSize: 12, color: c.textDisabled, textAlign: 'right', marginTop: 4 },
+  saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.primary },
+  saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 
-  // Report modal extras
   reportReasonRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f0f0f0',
+    paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle,
   },
-  reportReasonTxt: { fontSize: 15, color: '#333', fontWeight: '500' },
+  reportReasonTxt: { fontSize: 15, color: c.textSecondary, fontWeight: '500' },
 });

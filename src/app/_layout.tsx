@@ -16,7 +16,6 @@ if (__DEV__) {
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Slot, useRouter, useRootNavigationState } from 'expo-router';
-import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Session } from '@supabase/supabase-js';
 
@@ -25,10 +24,11 @@ import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_K
 import { supabase } from '@/lib/supabase';
 import { UserProvider } from '@/context/user';
 import { PurchasesProvider } from '@/context/purchases';
+import { AppThemeProvider, useAppTheme } from '@/context/theme';
 import { Paywall } from '@/components/Paywall';
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function InnerLayout() {
+  const { colorScheme } = useAppTheme();
   const router = useRouter();
   const navigationState = useRootNavigationState();
   const [session, setSession] = useState<Session | null>(null);
@@ -66,11 +66,9 @@ export default function RootLayout() {
           setPendingRoute('/(tabs)');
         } else if (userError?.code === 'PGRST116') {
           // Ghost session: auth JWT still cached but user row was deleted
-          // (e.g. deleted directly from Supabase dashboard). Clear everything
-          // and sign out — the SIGNED_OUT handler will route to welcome screen.
           await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
           await supabase.auth.signOut();
-          return; // SIGNED_OUT event sets authChecked + pendingRoute
+          return;
         } else {
           setPendingRoute(`/(onboarding)/${savedStep ?? 'q1'}`);
         }
@@ -95,7 +93,6 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Route to the screen embedded in a push notification when the user taps it
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
       const screen = response.notification.request.content.data?.screen as string | undefined;
@@ -104,7 +101,6 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  // Navigate only once both auth is resolved AND navigation container is ready
   useEffect(() => {
     if (!authChecked || !navigationState?.key || !pendingRoute) return;
     router.replace(pendingRoute as any);
@@ -112,16 +108,24 @@ export default function RootLayout() {
   }, [authChecked, navigationState?.key, pendingRoute]);
 
   return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <AnimatedSplashOverlay />
+      <Slot />
+      <Paywall />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <UserProvider>
-        <PurchasesProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <AnimatedSplashOverlay />
-            <Slot />
-            <Paywall />
-          </ThemeProvider>
-        </PurchasesProvider>
-      </UserProvider>
+      <AppThemeProvider>
+        <UserProvider>
+          <PurchasesProvider>
+            <InnerLayout />
+          </PurchasesProvider>
+        </UserProvider>
+      </AppThemeProvider>
     </GestureHandlerRootView>
   );
 }

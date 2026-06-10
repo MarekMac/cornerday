@@ -27,6 +27,8 @@ import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
 import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -398,6 +400,8 @@ function formatStartDate(quitDate: string | null): string {
 // ─── Circular Progress ────────────────────────────────────────────────────────
 
 function CircularProgress({ progress, next }: { progress: number; next: number }) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const SIZE = 130;
   const SW = 9;
   const R = (SIZE - SW) / 2;
@@ -464,6 +468,8 @@ function BadgeRing({ progress }: { progress: number }) {
 // ─── Live Counter ─────────────────────────────────────────────────────────────
 
 function LiveCounter({ quitDate }: { quitDate: string | null }) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -508,6 +514,8 @@ function SubDayCountdown({ quitDate, nextDays, style }: { quitDate: string; next
 function SavingsGoalCard({ goal, totalPaid, goalFor, goalIcon, currency }: {
   goal: number; totalPaid: number; goalFor: string; goalIcon: string; currency: string;
 }) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const pct = Math.min(1, goal > 0 ? totalPaid / goal : 0);
   const pctDisplay = Math.round(pct * 100);
   const remaining = Math.max(0, goal - totalPaid);
@@ -529,7 +537,7 @@ function SavingsGoalCard({ goal, totalPaid, goalFor, goalIcon, currency }: {
         <View style={[s.goalBarFill, { width: `${pctDisplay}%` as any }, done && s.goalBarDone]} />
       </View>
       <View style={s.goalFootRow}>
-        <Text style={[s.goalPct, done && { color: '#0a7a4e' }]}>{pctDisplay}% complete</Text>
+        <Text style={[s.goalPct, done && { color: c.success }]}>{pctDisplay}% complete</Text>
         {!done && <Text style={s.goalRemaining}>{fmt(remaining, currency)} to go</Text>}
       </View>
     </View>
@@ -571,6 +579,8 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
   quitDate: string | null; weeklyBet: string | null; currency: string;
   totalLost: number; totalPaid: number; nowMs: number;
 }) {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const ms = quitDate ? Math.max(0, nowMs - parseQuitDate(quitDate).getTime()) : 0;
   const moneySaved = (ms / 86400000) * weeklyToDaily(weeklyBet);
   return (
@@ -583,7 +593,7 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
             {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Set weekly spending in Tracker'}
           </Text>
         </View>
-        <Text style={[s.savedAmt, { color: '#888' }]}>{fmtLive(moneySaved, currency)}</Text>
+        <Text style={[s.savedAmt, { color: c.textMuted }]}>{fmtLive(moneySaved, currency)}</Text>
       </View>
       {totalPaid > 0 && (
         <>
@@ -594,7 +604,7 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
               <Text style={s.savedLabel}>Total banked</Text>
               <Text style={s.savedSub}>Money you've set aside</Text>
             </View>
-            <Text style={[s.savedAmt, { color: '#0a7a4e' }]}>{fmt(totalPaid, currency)}</Text>
+            <Text style={[s.savedAmt, { color: c.success }]}>{fmt(totalPaid, currency)}</Text>
           </View>
         </>
       )}
@@ -603,6 +613,8 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
 }
 
 export default function HomeScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const { avatarUrl } = useUser();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1031,7 +1043,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={s.loadingContainer}>
-        <ActivityIndicator size="large" color="#0F6E6E" />
+        <ActivityIndicator size="large" color={c.primary} />
       </View>
     );
   }
@@ -1046,7 +1058,7 @@ export default function HomeScreen() {
   return (
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {/* ── Header ── */}
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <View style={s.headerTop}>
@@ -1059,7 +1071,7 @@ export default function HomeScreen() {
                   <Image source={{ uri: avatarUrl }} style={s.headerAvatar} />
                 ) : (
                   <View style={s.headerAvatarFallback}>
-                    <Ionicons name="person" size={18} color="#0F6E6E" />
+                    <Ionicons name="person" size={18} color={c.primary} />
                   </View>
                 )}
               </Pressable>
@@ -1101,7 +1113,7 @@ export default function HomeScreen() {
         style={s.body}
         contentContainerStyle={s.bodyContent}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}>
 
         {/* Stats */}
         <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} nowMs={nowMs} />
@@ -1220,7 +1232,7 @@ export default function HomeScreen() {
             <>
               <Text style={s.moodCardTitle}>How are you feeling today?</Text>
               {moodSubmitting ? (
-                <ActivityIndicator color="#0F6E6E" style={{ marginTop: 8 }} />
+                <ActivityIndicator color={c.primary} style={{ marginTop: 8 }} />
               ) : (
                 <>
                   <View style={s.moodRow}>
@@ -1238,7 +1250,7 @@ export default function HomeScreen() {
                     <TextInput
                       style={s.moodInputInline}
                       placeholder="Add a note (optional)"
-                      placeholderTextColor="#bbb"
+                      placeholderTextColor={c.textFaint}
                       value={moodNote}
                       onChangeText={setMoodNote}
                       maxLength={200}
@@ -1332,7 +1344,7 @@ export default function HomeScreen() {
             onPress={handleRelapse}
             disabled={relapseLoading}>
             {relapseLoading
-              ? <ActivityIndicator color="#888" size="small" />
+              ? <ActivityIndicator color={c.textMuted} size="small" />
               : <Text style={s.relapseBtnTxt}>Reset my streak</Text>}
           </Pressable>
         </View>
@@ -1390,13 +1402,13 @@ export default function HomeScreen() {
                           </View>
                           <View style={s.modalRow}>
                             <Text style={s.modalRowLabel}>Saved total</Text>
-                            <Text style={[s.modalRowValue, { color: '#0F6E6E' }]}>{fmt(savedTotal, data.currency)}</Text>
+                            <Text style={[s.modalRowValue, { color: c.primary }]}>{fmt(savedTotal, data.currency)}</Text>
                           </View>
                         </>
                       ) : (
                         <View style={s.modalRow}>
                           <Text style={s.modalRowLabel}>Saved total</Text>
-                          <Text style={[s.modalRowValue, { color: '#aaa' }]}>Set weekly spend in Tracker</Text>
+                          <Text style={[s.modalRowValue, { color: c.textFaint }]}>Set weekly spend in Tracker</Text>
                         </View>
                       )
                     )}
@@ -1431,7 +1443,7 @@ export default function HomeScreen() {
                     {dailyRate > 0 && (
                       <View style={s.modalRow}>
                         <Text style={s.modalRowLabel}>You'll have saved</Text>
-                        <Text style={[s.modalRowValue, { color: '#0F6E6E' }]}>{fmt(savedAtMilestone, data.currency)}</Text>
+                        <Text style={[s.modalRowValue, { color: c.primary }]}>{fmt(savedAtMilestone, data.currency)}</Text>
                       </View>
                     )}
                     <Text style={s.modalMessage}>{BADGE_PENDING_MSGS[badgeMsgIndex]}</Text>
@@ -1443,11 +1455,11 @@ export default function HomeScreen() {
               {selectedBadge && (data.earnedBadges.includes(selectedBadge.type) || streakMs / 86400000 >= selectedBadge.days) && (
                 <View style={s.modalShareRow}>
                   <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={shareMilestone}>
-                    <Ionicons name="share-outline" size={16} color="#0F6E6E" />
+                    <Ionicons name="share-outline" size={16} color={c.primary} />
                     <Text style={s.modalShareTxt}>Share</Text>
                   </Pressable>
                   <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={postToCommunity}>
-                    <Ionicons name="people-outline" size={16} color="#0F6E6E" />
+                    <Ionicons name="people-outline" size={16} color={c.primary} />
                     <Text style={s.modalShareTxt}>Community</Text>
                   </Pressable>
                 </View>
@@ -1614,12 +1626,12 @@ export default function HomeScreen() {
                   </View>
                   <View style={s.modalRow}>
                     <Text style={s.modalRowLabel}>Paid back</Text>
-                    <Text style={[s.modalRowValue, { color: '#0F6E6E' }]}>{fmt(debt.paidAmount, data.currency)}</Text>
+                    <Text style={[s.modalRowValue, { color: c.primary }]}>{fmt(debt.paidAmount, data.currency)}</Text>
                   </View>
                   {owed > 0 && (
                     <View style={s.modalRow}>
                       <Text style={s.modalRowLabel}>Still owed</Text>
-                      <Text style={[s.modalRowValue, { color: '#c0392b' }]}>{fmt(owed, data.currency)}</Text>
+                      <Text style={[s.modalRowValue, { color: c.error }]}>{fmt(owed, data.currency)}</Text>
                     </View>
                   )}
                   {debt.earned && <Text style={s.modalMessage}>{BADGE_EARNED_MSGS[badgeMsgIndex]}</Text>}
@@ -1638,8 +1650,8 @@ export default function HomeScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   // Header
@@ -1648,7 +1660,7 @@ const s = StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   headerAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' },
   headerAvatarFallback: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
-  greeting: { fontSize: 21, fontWeight: '700', color: '#fff' },
+  greeting: { fontSize: 21, fontWeight: '700', color: c.white },
   quote: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontStyle: 'italic', marginTop: 4 },
 
   // Streak card (inside header)
@@ -1664,15 +1676,15 @@ const s = StyleSheet.create({
   streakTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   streakTitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  milestoneTxt: { fontSize: 13, color: '#fff', fontWeight: '500' },
-  liveCounter: { fontSize: 14, fontWeight: '700', color: '#fff', fontVariant: ['tabular-nums'] },
+  milestoneTxt: { fontSize: 13, color: c.white, fontWeight: '500' },
+  liveCounter: { fontSize: 14, fontWeight: '700', color: c.white, fontVariant: ['tabular-nums'] },
   longestTxt: { fontSize: 12, color: 'rgba(255,255,255,0.65)' },
   startedTxt: { fontSize: 11, color: 'rgba(255,255,255,0.55)' },
   resetLink: { marginTop: 2 },
   resetLinkTxt: { fontSize: 11, color: '#ff8a80', fontWeight: '600' },
 
   // Circular
-  circPct: { fontSize: 32, fontWeight: '800', color: '#fff', lineHeight: 36 },
+  circPct: { fontSize: 32, fontWeight: '800', color: c.white, lineHeight: 36 },
   circTime: { fontSize: 10, color: 'rgba(255,255,255,0.8)', marginTop: 2, fontWeight: '600', textAlign: 'center', paddingHorizontal: 8 },
 
   // Body
@@ -1683,151 +1695,151 @@ const s = StyleSheet.create({
   whyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: c.bgCard,
     borderRadius: 14,
     padding: 14,
     gap: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#0F6E6E',
+    borderLeftColor: c.primary,
   },
   whyEmoji: { fontSize: 18 },
   whyText: { flex: 1, gap: 6 },
-  whyLabel: { fontSize: 11, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  whyLabel: { fontSize: 11, color: c.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
   whyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  whyValue: { fontSize: 14, color: '#111', fontWeight: '600' },
+  whyValue: { fontSize: 14, color: c.textPrimary, fontWeight: '600' },
 
   // Stats
-  savedCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
-  savedTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  savedCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
+  savedTitle: { fontSize: 12, fontWeight: '700', color: c.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
   savedRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  savedSep: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 12 },
+  savedSep: { height: 1, backgroundColor: c.borderSubtle, marginVertical: 12 },
   savedEmoji: { fontSize: 22, width: 30, textAlign: 'center' },
   savedBody: { flex: 1 },
-  savedLabel: { fontSize: 14, fontWeight: '600', color: '#111' },
-  savedSub: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  savedLabel: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
+  savedSub: { fontSize: 12, color: c.textFaint, marginTop: 2 },
   savedAmt: { fontSize: 17, fontWeight: '800' },
 
   // Card
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
-  cardTitle: { fontSize: 14, fontWeight: '600', color: '#333' },
+  card: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
+  cardTitle: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
 
   // Mood
-  moodCard: { backgroundColor: '#fff', borderRadius: 14, padding: 12 },
-  moodCardTitle: { fontSize: 12, fontWeight: '600', color: '#888', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 },
+  moodCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12 },
+  moodCardTitle: { fontSize: 12, fontWeight: '600', color: c.textMuted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 },
   moodRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12 },
   moodBtn: { padding: 4 },
   moodEmoji: { fontSize: 26 },
   moodDone: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   moodDoneRow: { flexDirection: 'row', alignItems: 'center', flex: 1, flexWrap: 'nowrap' },
-  moodDoneLabel: { fontSize: 13, color: '#888', fontWeight: '600' },
+  moodDoneLabel: { fontSize: 13, color: c.textMuted, fontWeight: '600' },
   moodDoneEmoji: { fontSize: 18 },
-  moodDoneNote: { fontSize: 13, color: '#444', flex: 1 },
-  moodEditBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#e6f7f7' },
-  moodEditBtnTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
-  moodBtnSelected: { backgroundColor: '#e6f7f7', borderRadius: 8 },
+  moodDoneNote: { fontSize: 13, color: c.textBody, flex: 1 },
+  moodEditBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: c.bgTeal },
+  moodEditBtnTxt: { fontSize: 12, color: c.primary, fontWeight: '700' },
+  moodBtnSelected: { backgroundColor: c.bgTeal, borderRadius: 8 },
   moodInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   moodInputInline: {
-    flex: 1, borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: '#333',
+    flex: 1, borderWidth: 1, borderColor: c.borderLight, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: c.textSecondary,
   },
   moodCancelRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
   moodCancelBtn: { alignItems: 'center', paddingVertical: 4, paddingHorizontal: 8 },
-  moodCancelTxt: { fontSize: 12, color: '#aaa' },
-  moodClearTxt: { fontSize: 12, color: '#c0392b' },
-  moodSaveBtn: { backgroundColor: '#0F6E6E', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
-  moodSaveTxt: { fontSize: 13, color: '#fff', fontWeight: '700' },
+  moodCancelTxt: { fontSize: 12, color: c.textFaint },
+  moodClearTxt: { fontSize: 12, color: c.error },
+  moodSaveBtn: { backgroundColor: c.primary, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
+  moodSaveTxt: { fontSize: 13, color: c.white, fontWeight: '700' },
 
   // Badges
   badgesRow: { flexDirection: 'row', gap: 18, paddingVertical: 4 },
   badgeItem: { alignItems: 'center', gap: 5, width: 57 },
   badgeCircle: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
-  badgeEarned: { backgroundColor: '#e6f7f7' },
-  badgeLocked: { backgroundColor: '#f5f5f5' },
+  badgeEarned: { backgroundColor: c.bgTeal },
+  badgeLocked: { backgroundColor: c.bgElement },
   badgeEmoji: { fontSize: 20 },
   milestonesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  milestonesHint: { fontSize: 11, color: '#aaa', fontStyle: 'italic' },
-  badgeLabel: { fontSize: 10, color: '#555', fontWeight: '600', textAlign: 'center' },
-  badgeLabelLocked: { color: '#bbb' },
+  milestonesHint: { fontSize: 11, color: c.textFaint, fontStyle: 'italic' },
+  badgeLabel: { fontSize: 10, color: c.textBody, fontWeight: '600', textAlign: 'center' },
+  badgeLabelLocked: { color: c.textFaint },
 
   urgeLogCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 12,
   },
   urgeLogIcon: { fontSize: 26 },
   urgeLogText: { flex: 1 },
-  urgeLogTitle: { fontSize: 15, fontWeight: '700', color: '#111' },
-  urgeLogSub: { fontSize: 13, color: '#888', marginTop: 2 },
-  urgeLogArrow: { fontSize: 22, color: '#aaa', fontWeight: '300' },
+  urgeLogTitle: { fontSize: 15, fontWeight: '700', color: c.textPrimary },
+  urgeLogSub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
+  urgeLogArrow: { fontSize: 22, color: c.textFaint, fontWeight: '300' },
 
   // Relapse
   relapseCard: {
-    backgroundColor: '#fff',
+    backgroundColor: c.bgCard,
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
     gap: 6,
   },
-  relapseTitle: { fontSize: 15, fontWeight: '600', color: '#333' },
-  relapseSubtitle: { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 18 },
+  relapseTitle: { fontSize: 15, fontWeight: '600', color: c.textSecondary },
+  relapseSubtitle: { fontSize: 13, color: c.textMuted, textAlign: 'center', lineHeight: 18 },
   relapseBtn: {
     marginTop: 8,
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#ffcdd2',
-    backgroundColor: '#fff5f5',
+    borderColor: c.borderError,
+    backgroundColor: c.bgError,
   },
-  relapseBtnTxt: { fontSize: 13, color: '#c0392b', fontWeight: '600' },
+  relapseBtnTxt: { fontSize: 13, color: c.error, fontWeight: '600' },
 
   // Week mood strip
-  weekStrip: { backgroundColor: '#fff', borderRadius: 14, padding: 12, gap: 10 },
-  weekStripTitle: { fontSize: 12, fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: 0.4 },
+  weekStrip: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12, gap: 10 },
+  weekStripTitle: { fontSize: 12, fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
   weekStripRow: { flexDirection: 'row', justifyContent: 'space-between' },
   weekStripDay: { alignItems: 'center', gap: 6 },
-  weekStripLabel: { fontSize: 10, color: '#aaa', fontWeight: '600' },
-  weekStripLabelToday: { color: '#0F6E6E' },
-  weekStripDot: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center' },
-  weekStripDotToday: { backgroundColor: '#e6f7f7' },
+  weekStripLabel: { fontSize: 10, color: c.textFaint, fontWeight: '600' },
+  weekStripLabelToday: { color: c.primary },
+  weekStripDot: { width: 34, height: 34, borderRadius: 17, backgroundColor: c.bgElement, alignItems: 'center', justifyContent: 'center' },
+  weekStripDotToday: { backgroundColor: c.bgTeal },
   weekStripEmoji: { fontSize: 18 },
-  weekStripEmpty: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#e0e0e0' },
+  weekStripEmpty: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.borderLight },
 
   pressed: { opacity: 0.7 },
 
   // Badge modal
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
   modalSheet: {
-    backgroundColor: '#fff', borderRadius: 22, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 22, width: '100%',
     padding: 24, gap: 8,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
   modalEmoji: { fontSize: 48, textAlign: 'center', marginBottom: 4 },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#111', textAlign: 'center' },
-  modalSubtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 4 },
-  modalDivider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 8 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: c.textPrimary, textAlign: 'center' },
+  modalSubtitle: { fontSize: 14, color: c.textBody, textAlign: 'center', marginBottom: 4 },
+  modalDivider: { height: 1, backgroundColor: c.borderSubtle, marginVertical: 8 },
   modalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
-  modalRowLabel: { fontSize: 14, color: '#888' },
-  modalRowValue: { fontSize: 14, fontWeight: '600', color: '#111' },
-  modalProgressBar: { height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden', marginTop: 4 },
+  modalRowLabel: { fontSize: 14, color: c.textMuted },
+  modalRowValue: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
+  modalProgressBar: { height: 6, backgroundColor: c.borderSubtle, borderRadius: 3, overflow: 'hidden', marginTop: 4 },
   modalProgressFill: { height: '100%', backgroundColor: '#22c55e', borderRadius: 3 },
-  modalMessage: { fontSize: 13, color: '#888', fontStyle: 'italic', textAlign: 'center', lineHeight: 18, marginTop: 8 },
+  modalMessage: { fontSize: 13, color: c.textMuted, fontStyle: 'italic', textAlign: 'center', lineHeight: 18, marginTop: 8 },
   modalActions: { flexDirection: 'column', gap: 10, marginTop: 16 },
   modalShareRow: { flexDirection: 'row', gap: 10 },
   modalShareBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20,
-    backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#0F6E6E',
+    backgroundColor: c.bgTeal, borderWidth: 1, borderColor: c.primary,
   },
-  modalShareTxt: { color: '#0F6E6E', fontWeight: '700', fontSize: 15 },
+  modalShareTxt: { color: c.primary, fontWeight: '700', fontSize: 15 },
   modalClose: {
-    backgroundColor: '#e8e8e8', borderRadius: 14,
+    backgroundColor: c.bgElement, borderRadius: 14,
     paddingVertical: 14, alignItems: 'center',
   },
-  modalCloseTxt: { color: '#555', fontWeight: '700', fontSize: 15 },
+  modalCloseTxt: { color: c.textBody, fontWeight: '700', fontSize: 15 },
 
-  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
   confirmSheet: {
-    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
   confirmIconRow: { alignItems: 'center', marginBottom: 12 },
@@ -1836,28 +1848,28 @@ const s = StyleSheet.create({
     backgroundColor: '#fff8f0', borderWidth: 1.5, borderColor: '#f5d0a0',
     alignItems: 'center', justifyContent: 'center',
   },
-  confirmTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
-  confirmBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
-  confirmReset: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
-  confirmResetTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
+  confirmReset: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  confirmResetTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 
   // Savings goal card
-  goalCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  goalCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
   goalRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   goalEmoji: { fontSize: 26, width: 32, textAlign: 'center' },
   goalBody: { flex: 1, gap: 2 },
-  goalLabel: { fontSize: 11, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  goalName: { fontSize: 14, fontWeight: '700', color: '#111' },
+  goalLabel: { fontSize: 11, color: c.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  goalName: { fontSize: 14, fontWeight: '700', color: c.textPrimary },
   goalAmts: { alignItems: 'flex-end' },
-  goalPaid: { fontSize: 15, fontWeight: '800', color: '#0F6E6E' },
-  goalTotal: { fontSize: 11, color: '#aaa' },
-  goalBarBg: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  goalBarFill: { height: '100%', backgroundColor: '#1a9a9a', borderRadius: 4 },
-  goalBarDone: { backgroundColor: '#0a7a4e' },
+  goalPaid: { fontSize: 15, fontWeight: '800', color: c.primary },
+  goalTotal: { fontSize: 11, color: c.textFaint },
+  goalBarBg: { height: 8, backgroundColor: c.borderSubtle, borderRadius: 4, overflow: 'hidden' },
+  goalBarFill: { height: '100%', backgroundColor: c.primaryMid, borderRadius: 4 },
+  goalBarDone: { backgroundColor: c.success },
   goalFootRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  goalPct: { fontSize: 12, color: '#0F6E6E', fontWeight: '600' },
-  goalRemaining: { fontSize: 12, color: '#aaa' },
+  goalPct: { fontSize: 12, color: c.primary, fontWeight: '600' },
+  goalRemaining: { fontSize: 12, color: c.textFaint },
 });

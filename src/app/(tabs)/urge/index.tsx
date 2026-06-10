@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -36,6 +36,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 const MOTIVATION_MAP: Record<string, { label: string; emoji: string }> = {
   family:        { label: 'My family',              emoji: '👨‍👩‍👧' },
@@ -174,6 +176,8 @@ const TRIGGERS = [
 ];
 
 export default function UrgeScreen() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const [motivation, setMotivation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -381,12 +385,12 @@ export default function UrgeScreen() {
   };
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator size="large" color="#0F6E6E" /></View>;
+    return <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>;
   }
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Support</Text>
@@ -611,7 +615,7 @@ export default function UrgeScreen() {
                     <TextInput
                       style={s.customInput}
                       placeholder="Describe the trigger…"
-                      placeholderTextColor="#aaa"
+                      placeholderTextColor={c.textFaint}
                       value={customTrigger}
                       onChangeText={setCustomTrigger}
                       maxLength={120}
@@ -627,7 +631,7 @@ export default function UrgeScreen() {
                       : outcome === 'slipped'
                         ? "What could you do differently next time?"
                         : "Add a note…"}
-                    placeholderTextColor="#aaa"
+                    placeholderTextColor={c.textFaint}
                     value={note}
                     onChangeText={setNote}
                     multiline
@@ -644,7 +648,7 @@ export default function UrgeScreen() {
                       onPress={saveEntry}
                       disabled={!canSave || saving}>
                       {saving
-                        ? <ActivityIndicator size="small" color="#fff" />
+                        ? <ActivityIndicator size="small" color={c.white} />
                         : <Text style={s.saveBtnTxt}>Save entry</Text>}
                     </Pressable>
                   </View>
@@ -672,7 +676,7 @@ export default function UrgeScreen() {
                 onPress={doStreakReset}
                 disabled={slipResetting}>
                 {slipResetting
-                  ? <ActivityIndicator size="small" color="#c0392b" />
+                  ? <ActivityIndicator size="small" color={c.error} />
                   : <Text style={s.slipResetBtnTxt}>Reset my streak</Text>}
               </Pressable>
             )}
@@ -961,13 +965,13 @@ export default function UrgeScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: { paddingBottom: 22 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12 },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: c.white },
   headerSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
 
   body: { flex: 1 },
@@ -975,29 +979,29 @@ const s = StyleSheet.create({
 
   // ── Urge hero button ──────────────────────────────────────────────────────────
   urgeBtn: {
-    backgroundColor: '#c0392b', borderRadius: 18,
+    backgroundColor: c.error, borderRadius: 18,
     paddingVertical: 18, paddingHorizontal: 20, alignItems: 'center', gap: 4,
-    shadowColor: '#c0392b', shadowOffset: { width: 0, height: 4 },
+    shadowColor: c.error, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28, shadowRadius: 12, elevation: 6,
   },
   urgeBtnRunning: {
-    backgroundColor: '#0F6E6E',
-    shadowColor: '#0F6E6E',
+    backgroundColor: c.primary,
+    shadowColor: c.primary,
   },
   urgeBtnDone: {
     backgroundColor: '#27ae60',
     shadowColor: '#27ae60',
   },
-  urgeBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 16, textAlign: 'center' },
+  urgeBtnTxt: { color: c.white, fontWeight: '800', fontSize: 16, textAlign: 'center' },
   urgeBtnTxtAlt: { fontWeight: '700' },
   urgeBtnSub: { color: 'rgba(255,255,255,0.75)', fontSize: 12, textAlign: 'center' },
 
   // ── Urge delay timer ─────────────────────────────────────────────────────────
   timerCard: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 20,
-    shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 3 },
+    backgroundColor: c.bgCard, borderRadius: 18, padding: 20,
+    shadowColor: c.primary, shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
-    borderWidth: 1, borderColor: '#e0f0f0',
+    borderWidth: 1, borderColor: c.borderSubtle,
   },
   timerCardDone: {
     borderColor: '#27ae60', borderWidth: 1.5,
@@ -1013,286 +1017,286 @@ const s = StyleSheet.create({
   timerRewardTitle: { fontSize: 15, fontWeight: '700', color: '#166534' },
   timerRewardSub: { fontSize: 12, color: '#16a34a', marginTop: 1 },
   timerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  timerTitle: { fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 3 },
-  timerSub: { fontSize: 13, color: '#888', lineHeight: 18 },
-  timerDigits: { fontSize: 34, fontWeight: '800', color: '#0F6E6E', fontVariant: ['tabular-nums'] as any },
-  timerTrack: { height: 6, backgroundColor: '#e6f0f0', borderRadius: 3, overflow: 'hidden', marginBottom: 16 },
-  timerFill: { height: 6, backgroundColor: '#0F6E6E', borderRadius: 3 },
+  timerTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 3 },
+  timerSub: { fontSize: 13, color: c.textMuted, lineHeight: 18 },
+  timerDigits: { fontSize: 34, fontWeight: '800', color: c.primary, fontVariant: ['tabular-nums'] as any },
+  timerTrack: { height: 6, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden', marginBottom: 16 },
+  timerFill: { height: 6, backgroundColor: c.primary, borderRadius: 3 },
   timerFillDone: { backgroundColor: '#27ae60' },
   timerBtns: { flexDirection: 'row', gap: 10 },
   timerStartBtn: {
-    flex: 1, backgroundColor: '#0F6E6E', borderRadius: 14,
+    flex: 1, backgroundColor: c.primary, borderRadius: 14,
     paddingVertical: 13, alignItems: 'center',
   },
-  timerStartBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  timerStartBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   timerPastBtn: {
     flex: 2, backgroundColor: '#e6f7f0', borderRadius: 14,
     paddingVertical: 13, alignItems: 'center',
     borderWidth: 1.5, borderColor: '#27ae60',
   },
   timerPastBtnTxt: { color: '#27ae60', fontWeight: '700', fontSize: 15 },
-  timerCancelBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  timerCancelBtnTxt: { color: '#888', fontWeight: '600', fontSize: 14 },
+  timerCancelBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  timerCancelBtnTxt: { color: c.textMuted, fontWeight: '600', fontSize: 14 },
   timerCancelLink: { alignSelf: 'center', marginTop: 10 },
-  timerCancelLinkTxt: { fontSize: 13, color: '#bbb', textDecorationLine: 'underline' },
-  timerSlipBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#e0a0a0' },
-  timerSlipBtnTxt: { color: '#c0392b', fontWeight: '600', fontSize: 14 },
+  timerCancelLinkTxt: { fontSize: 13, color: c.textFaint, textDecorationLine: 'underline' },
+  timerSlipBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgError, borderWidth: 1.5, borderColor: '#e0a0a0' },
+  timerSlipBtnTxt: { color: c.error, fontWeight: '600', fontSize: 14 },
 
   // ── Icon rows (quick actions / games / exercises) ─────────────────────────────
   iconRowWrap: { marginHorizontal: -20 },
-  iconSeparator: { height: 1, backgroundColor: '#e8eef0', marginHorizontal: 20 },
+  iconSeparator: { height: 1, backgroundColor: c.borderSubtle, marginHorizontal: 20 },
   iconRow: { paddingHorizontal: 20, gap: 10, paddingVertical: 14 },
   iconPill: {
-    backgroundColor: '#fff', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16,
+    backgroundColor: c.bgCard, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16,
     alignItems: 'center', gap: 6, minWidth: 84,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
   },
   iconPillEmoji: { fontSize: 26 },
-  iconPillLabel: { fontSize: 12, fontWeight: '600', color: '#333', textAlign: 'center' },
+  iconPillLabel: { fontSize: 12, fontWeight: '600', color: c.textSecondary, textAlign: 'center' },
   pickerOverlay: {
     flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   pickerSheet: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 20,
+    backgroundColor: c.bgCard, borderRadius: 20, padding: 20,
     width: '100%', maxHeight: '80%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18, shadowRadius: 24, elevation: 12,
   },
-  pickerTitle: { fontSize: 18, fontWeight: '700', color: '#111' },
-  pickerSub: { fontSize: 13, color: '#999', marginTop: 2, marginBottom: 12 },
+  pickerTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
+  pickerSub: { fontSize: 13, color: c.textMuted, marginTop: 2, marginBottom: 12 },
   pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   pickerTile: {
-    width: PICKER_TILE_W, backgroundColor: '#f7fdfd', borderRadius: 14,
+    width: PICKER_TILE_W, backgroundColor: c.bgTealDeep, borderRadius: 14,
     paddingVertical: 14, paddingHorizontal: 6, alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: '#d8eeee',
+    borderWidth: 1, borderColor: c.bgTealMid,
   },
   pickerTileEmoji: { fontSize: 28 },
-  pickerTileTitle: { fontSize: 12, fontWeight: '700', color: '#111', textAlign: 'center', lineHeight: 15 },
+  pickerTileTitle: { fontSize: 12, fontWeight: '700', color: c.textPrimary, textAlign: 'center', lineHeight: 15 },
   pickerTileBests: { marginTop: 4, alignItems: 'center', gap: 1 },
-  pickerTilePB: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
-  pickerTileGB: { fontSize: 10, color: '#888' },
+  pickerTilePB: { fontSize: 10, color: c.primary, fontWeight: '600' },
+  pickerTileGB: { fontSize: 10, color: c.textMuted },
 
   // ── Distraction info card ─────────────────────────────────────────────────────
   distractionTipBox: {
-    backgroundColor: '#f4fafa', borderRadius: 12, padding: 14,
+    backgroundColor: c.bgTealDeep, borderRadius: 12, padding: 14,
     marginBottom: 14, gap: 12,
   },
-  distractionTipTxt: { fontSize: 14, color: '#444', lineHeight: 21 },
+  distractionTipTxt: { fontSize: 14, color: c.textBody, lineHeight: 21 },
   distractionCallBtn: {
-    backgroundColor: '#0F6E6E', borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+    backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center',
   },
-  distractionCallBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  distractionCallBtnTxt: { color: c.white, fontWeight: '700', fontSize: 14 },
   distractionDismissBtn: {
-    backgroundColor: '#f0f0f0', borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+    backgroundColor: c.bgElement, borderRadius: 12, paddingVertical: 12, alignItems: 'center',
   },
-  distractionDismissTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
+  distractionDismissTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
 
   // ── Your why ──────────────────────────────────────────────────────────────────
   whyCard: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 16,
+    backgroundColor: c.bgCard, borderRadius: 18, padding: 16,
   },
   whyInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   whyText: { flex: 1, gap: 6 },
   whyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  whyLbl: { fontSize: 11, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  whyLbl: { fontSize: 11, color: c.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
   whyEmoji: { fontSize: 18 },
-  whyVal: { fontSize: 15, color: '#111', fontWeight: '600' },
+  whyVal: { fontSize: 15, color: c.textPrimary, fontWeight: '600' },
   whyPhotoBtn: { alignItems: 'center' },
   whyPhoto: { width: 120, height: 120, borderRadius: 14 },
   whyPhotoBadge: {
     position: 'absolute', bottom: -4, right: -4,
-    backgroundColor: '#fff', borderRadius: 8, padding: 2,
-    borderWidth: 1, borderColor: '#e0e0e0',
+    backgroundColor: c.bgCard, borderRadius: 8, padding: 2,
+    borderWidth: 1, borderColor: c.borderLight,
   },
   whyPhotoBadgeIcon: { fontSize: 11 },
   whyPhotoEmpty: {
     width: 120, height: 120, borderRadius: 14,
-    backgroundColor: '#f0fafa', borderWidth: 1.5, borderColor: '#a8d8d0',
+    backgroundColor: c.bgTealDeep, borderWidth: 1.5, borderColor: c.primaryLight,
     borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 2,
   },
-  whyPhotoEmptyTxt: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
+  whyPhotoEmptyTxt: { fontSize: 10, color: c.primary, fontWeight: '600' },
 
   // ── Log modal ─────────────────────────────────────────────────────────────────
-  logModalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 20 },
+  logModalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 20 },
   logModalSheet: {
-    backgroundColor: '#fff', borderRadius: 24,
+    backgroundColor: c.bgCard, borderRadius: 24,
     padding: 20, paddingBottom: 24, width: '100%', maxHeight: '88%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 24,
   },
   logModalHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0',
+    width: 36, height: 4, borderRadius: 2, backgroundColor: c.borderLight,
     alignSelf: 'center', marginBottom: 16,
   },
-  logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
-  logExpandedTitle: { fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 12 },
-  logSub: { fontSize: 13, color: '#888', marginTop: -4 },
+  logTitle: { fontSize: 16, fontWeight: '700', color: c.textPrimary },
+  logExpandedTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 12 },
+  logSub: { fontSize: 13, color: c.textMuted, marginTop: -4 },
 
   // ── Had a slip overlay ────────────────────────────────────────────────────────
   slipOverlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)', padding: 28,
+    backgroundColor: c.overlayDeep, padding: 28,
   },
   slipContent: {
-    backgroundColor: '#fff', borderRadius: 24, padding: 28,
+    backgroundColor: c.bgCard, borderRadius: 24, padding: 28,
     alignItems: 'center', gap: 14, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 24,
   },
   slipEmoji: { fontSize: 52 },
-  slipTitle: { fontSize: 28, fontWeight: '800', color: '#111', textAlign: 'center' },
-  slipBody: { fontSize: 15, color: '#555', textAlign: 'center', lineHeight: 22 },
+  slipTitle: { fontSize: 28, fontWeight: '800', color: c.textPrimary, textAlign: 'center' },
+  slipBody: { fontSize: 15, color: c.textBody, textAlign: 'center', lineHeight: 22 },
   slipResetBtn: {
     borderWidth: 1.5, borderColor: '#e0a0a0', borderRadius: 14,
     paddingVertical: 12, paddingHorizontal: 24, width: '100%', alignItems: 'center',
-    backgroundColor: '#fff8f8',
+    backgroundColor: c.bgError,
   },
-  slipResetBtnTxt: { fontSize: 14, fontWeight: '600', color: '#c0392b' },
+  slipResetBtnTxt: { fontSize: 14, fontWeight: '600', color: c.error },
   slipResetDone: {
     backgroundColor: '#f0faf5', borderRadius: 14, paddingVertical: 12,
     paddingHorizontal: 24, width: '100%', alignItems: 'center',
   },
   slipResetDoneTxt: { fontSize: 14, fontWeight: '600', color: '#27ae60' },
   slipLogBtn: {
-    backgroundColor: '#0F6E6E', borderRadius: 14,
+    backgroundColor: c.primary, borderRadius: 14,
     paddingVertical: 14, paddingHorizontal: 24, width: '100%', alignItems: 'center',
   },
-  slipLogBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  slipLogBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
   slipClose: { marginTop: 16 },
-  slipCloseTxt: { fontSize: 14, color: '#bbb' },
+  slipCloseTxt: { fontSize: 14, color: c.textFaint },
 
   // ── Legacy inline log card (kept for style refs) ──────────────────────────────
-  logCard: { backgroundColor: '#fff', borderRadius: 18, padding: 18, gap: 10 },
+  logCard: { backgroundColor: c.bgCard, borderRadius: 18, padding: 18, gap: 10 },
   logCardExpanded: {},
   logBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
   logBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', borderWidth: 1.5 },
   logBtnGreen: { backgroundColor: '#e6f7f0', borderColor: '#0a7a4e' },
-  logBtnRed: { backgroundColor: '#fff5f5', borderColor: '#c0392b' },
-  logBtnTxtGreen: { fontSize: 14, fontWeight: '700', color: '#0a7a4e' },
-  logBtnTxtRed: { fontSize: 14, fontWeight: '700', color: '#c0392b' },
+  logBtnRed: { backgroundColor: c.bgError, borderColor: c.error },
+  logBtnTxtGreen: { fontSize: 14, fontWeight: '700', color: c.success },
+  logBtnTxtRed: { fontSize: 14, fontWeight: '700', color: c.error },
 
   // ── Checklist + therapy nav rows ─────────────────────────────────────────────
   checklistBtn: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1, borderColor: '#d8eeee',
+    borderWidth: 1, borderColor: c.bgTealMid,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
   checklistBtnIcon: { fontSize: 24 },
   checklistBtnText: { flex: 1, gap: 2 },
-  checklistBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
-  checklistBtnSub: { fontSize: 12, color: '#888' },
-  checklistBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
+  checklistBtnTitle: { fontSize: 15, fontWeight: '700', color: c.primary },
+  checklistBtnSub: { fontSize: 12, color: c.textMuted },
+  checklistBtnChevron: { fontSize: 22, color: c.primaryLight, fontWeight: '300' },
 
   therapyBtn: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1, borderColor: '#d8eeee',
+    borderWidth: 1, borderColor: c.bgTealMid,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
   therapyBtnIcon: { fontSize: 24 },
   therapyBtnText: { flex: 1, gap: 2 },
-  therapyBtnTitle: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
-  therapyBtnSub: { fontSize: 12, color: '#888' },
-  therapyBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
+  therapyBtnTitle: { fontSize: 15, fontWeight: '700', color: c.primary },
+  therapyBtnSub: { fontSize: 12, color: c.textMuted },
+  therapyBtnChevron: { fontSize: 22, color: c.primaryLight, fontWeight: '300' },
 
   // ── Crisis ────────────────────────────────────────────────────────────────────
   crisisCard: {
-    backgroundColor: '#fff8f8', borderRadius: 18, padding: 18, gap: 10,
+    backgroundColor: c.bgError, borderRadius: 18, padding: 18, gap: 10,
   },
-  crisisTitle: { fontSize: 16, fontWeight: '700', color: '#c0392b' },
-  crisisDesc: { fontSize: 14, color: '#555', lineHeight: 20 },
-  crisisBtn: { backgroundColor: '#c0392b', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  crisisBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  crisisNote: { fontSize: 12, color: '#888', textAlign: 'center' },
+  crisisTitle: { fontSize: 16, fontWeight: '700', color: c.error },
+  crisisDesc: { fontSize: 14, color: c.textBody, lineHeight: 20 },
+  crisisBtn: { backgroundColor: c.error, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  crisisBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
+  crisisNote: { fontSize: 12, color: c.textMuted, textAlign: 'center' },
 
   // ── Game overlay ─────────────────────────────────────────────────────────────
-  gameOverlay: { flex: 1, backgroundColor: '#f7f7f7' },
+  gameOverlay: { flex: 1, backgroundColor: c.bgElement },
   gameOverlayHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 14,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee',
+    backgroundColor: c.bgCard, borderBottomWidth: 1, borderBottomColor: c.borderSubtle,
   },
-  gameOverlayTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
-  gameOverlayBests: { fontSize: 11, color: '#888', marginTop: 1 },
+  gameOverlayTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary },
+  gameOverlayBests: { fontSize: 11, color: c.textMuted, marginTop: 1 },
   gameCloseBtn: {
     width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.bgElement, alignItems: 'center', justifyContent: 'center',
   },
-  gameCloseBtnTxt: { fontSize: 15, color: '#555', fontWeight: '600' },
+  gameCloseBtnTxt: { fontSize: 15, color: c.textBody, fontWeight: '600' },
 
   // ── Inline log form fields ────────────────────────────────────────────────────
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalBackdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: c.overlay },
   sheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: c.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, maxHeight: '85%',
   },
   outcomeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   outcomeBtn: {
     flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
-    backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: '#e8e8e8',
+    backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: c.borderLight,
   },
   outcomeBtnGreen: { backgroundColor: '#e6f7f0', borderColor: '#0a7a4e' },
-  outcomeBtnRed: { backgroundColor: '#fff5f5', borderColor: '#c0392b' },
-  outcomeBtnTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
-  outcomeBtnTxtActive: { color: '#111' },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 10 },
-  optional: { fontWeight: '400', color: '#aaa' },
+  outcomeBtnRed: { backgroundColor: c.bgError, borderColor: c.error },
+  outcomeBtnTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
+  outcomeBtnTxtActive: { color: c.textPrimary },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: c.textBody, marginBottom: 10 },
+  optional: { fontWeight: '400', color: c.textFaint },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   chip: {
     borderRadius: 20, paddingVertical: 7, paddingHorizontal: 14,
-    backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: '#e8e8e8',
+    backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: c.borderLight,
   },
-  chipActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
-  chipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
-  chipTxtActive: { color: '#0F6E6E' },
+  chipActive: { backgroundColor: c.bgTeal, borderColor: c.primary },
+  chipTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  chipTxtActive: { color: c.primary },
   customInput: {
-    borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 10,
-    padding: 12, fontSize: 14, color: '#111', marginBottom: 16,
+    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 10,
+    padding: 12, fontSize: 14, color: c.textPrimary, marginBottom: 16,
   },
   noteInput: {
-    borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 10,
-    padding: 12, fontSize: 14, color: '#111', minHeight: 80, marginBottom: 16,
+    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 10,
+    padding: 12, fontSize: 14, color: c.textPrimary, minHeight: 80, marginBottom: 16,
   },
   sheetActions: { flexDirection: 'row', gap: 10 },
-  cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
-  saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
+  cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
+  saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.primary },
   saveBtnDisabled: { backgroundColor: '#b0cece' },
-  saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   // ── Congrats overlay ─────────────────────────────────────────────────────────
   congratsEmoji: { fontSize: 52 },
-  congratsTitle: { fontSize: 28, fontWeight: '800', color: '#111', textAlign: 'center' },
-  congratsSub: { fontSize: 15, color: '#555', textAlign: 'center', lineHeight: 22 },
-  congratsTime: { fontWeight: '800', color: '#0F6E6E' },
+  congratsTitle: { fontSize: 28, fontWeight: '800', color: c.textPrimary, textAlign: 'center' },
+  congratsSub: { fontSize: 15, color: c.textBody, textAlign: 'center', lineHeight: 22 },
+  congratsTime: { fontWeight: '800', color: c.primary },
   congratsNote: {
-    fontSize: 14, color: '#555', textAlign: 'center', lineHeight: 21,
-    backgroundColor: '#f0fafa', borderRadius: 14, padding: 16, width: '100%',
+    fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21,
+    backgroundColor: c.bgTealDeep, borderRadius: 14, padding: 16, width: '100%',
   },
 
   savedWrap: { alignItems: 'center', paddingVertical: 32, gap: 8 },
-  savedIcon: { fontSize: 36, color: '#0a7a4e' },
-  savedTxt: { fontSize: 18, fontWeight: '700', color: '#0a7a4e' },
-  savedSub: { fontSize: 13, color: '#888' },
+  savedIcon: { fontSize: 36, color: c.success },
+  savedTxt: { fontSize: 18, fontWeight: '700', color: c.success },
+  savedSub: { fontSize: 13, color: c.textMuted },
 
   // ── Professional help modal ───────────────────────────────────────────────────
   therapyHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#ddd',
+    width: 36, height: 4, borderRadius: 2, backgroundColor: c.borderMid,
     alignSelf: 'center', marginBottom: 16,
   },
-  therapyModalTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center' },
-  therapyModalSub: { fontSize: 13, color: '#888', textAlign: 'center', marginTop: 4 },
+  therapyModalTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center' },
+  therapyModalSub: { fontSize: 13, color: c.textMuted, textAlign: 'center', marginTop: 4 },
   therapySection: { marginBottom: 8 },
-  therapyRegion: { fontSize: 14, fontWeight: '700', color: '#0F6E6E', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 4 },
+  therapyRegion: { fontSize: 14, fontWeight: '700', color: c.primary, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.borderSubtle, marginBottom: 4 },
   therapyItem: { paddingVertical: 12, gap: 4 },
-  therapyItemBorder: { borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
-  therapyItemName: { fontSize: 14, fontWeight: '700', color: '#111' },
-  therapyItemDesc: { fontSize: 12, color: '#888' },
+  therapyItemBorder: { borderBottomWidth: 1, borderBottomColor: c.bgElement },
+  therapyItemName: { fontSize: 14, fontWeight: '700', color: c.textPrimary },
+  therapyItemDesc: { fontSize: 12, color: c.textMuted },
   therapyItemBtns: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  therapyCallBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#ffcdd2' },
-  therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: '#c0392b' },
-  therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#e6f7f7', borderWidth: 1, borderColor: '#a8d8d0' },
-  therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
+  therapyCallBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: c.bgError, borderWidth: 1, borderColor: c.borderError },
+  therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: c.error },
+  therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: c.bgTeal, borderWidth: 1, borderColor: c.primaryLight },
+  therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: c.primary },
 });

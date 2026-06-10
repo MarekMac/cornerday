@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -26,6 +26,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import { useAppTheme } from '@/context/theme';
+import { AppColors } from '@/constants/theme';
 
 type MainTab = 'debts' | 'saving';
 
@@ -110,6 +112,8 @@ function streakDays(quitTimestamp: string | null) {
 }
 
 export default function TrackerIndex() {
+  const { colors: c } = useAppTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const insets = useSafeAreaInsets();
 
   const [tab, setTab] = useState<MainTab>('debts');
@@ -498,12 +502,12 @@ export default function TrackerIndex() {
   });
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator size="large" color="#0F6E6E" /></View>;
+    return <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>;
   }
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Financial Tracker</Text>
@@ -532,15 +536,15 @@ export default function TrackerIndex() {
               <>
                 <View style={s.summaryRow}>
                   <View style={s.summaryCol}>
-                    <Text style={[s.summaryVal, { color: '#c0392b' }]}>{fmt(totalDebt, currency)}</Text>
+                    <Text style={[s.summaryVal, { color: c.error }]}>{fmt(totalDebt, currency)}</Text>
                     <Text style={s.summaryLbl}>Total debt</Text>
                   </View>
                   <View style={[s.summaryCol, s.summaryMid]}>
-                    <Text style={[s.summaryVal, { color: '#0F6E6E' }]}>{fmt(totalPaid, currency)}</Text>
+                    <Text style={[s.summaryVal, { color: c.primary }]}>{fmt(totalPaid, currency)}</Text>
                     <Text style={s.summaryLbl}>Paid back</Text>
                   </View>
                   <View style={s.summaryCol}>
-                    <Text style={[s.summaryVal, { color: '#555' }]}>{fmt(stillOwed, currency)}</Text>
+                    <Text style={[s.summaryVal, { color: c.textBody }]}>{fmt(stillOwed, currency)}</Text>
                     <Text style={s.summaryLbl}>Still owed</Text>
                   </View>
                 </View>
@@ -563,7 +567,7 @@ export default function TrackerIndex() {
                   {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Set weekly spending in Account'}
                 </Text>
               </View>
-              <Text style={[s.savingsRowAmt, { color: '#888' }]}>{fmtLive(autoSaved, currency)}</Text>
+              <Text style={[s.savingsRowAmt, { color: c.textMuted }]}>{fmtLive(autoSaved, currency)}</Text>
             </View>
             {totalManualSavings > 0 && (
               <>
@@ -574,7 +578,7 @@ export default function TrackerIndex() {
                     <Text style={s.savingsRowLabel}>Total banked</Text>
                     <Text style={s.savingsRowSub}>Money you've set aside</Text>
                   </View>
-                  <Text style={[s.savingsRowAmt, { color: '#0a7a4e' }]}>{fmt(totalManualSavings, currency)}</Text>
+                  <Text style={[s.savingsRowAmt, { color: c.success }]}>{fmt(totalManualSavings, currency)}</Text>
                 </View>
               </>
             )}
@@ -585,7 +589,7 @@ export default function TrackerIndex() {
                 {savingsGoal ? (
                   <>
                     <Text style={s.savingsRowLabel}>{savingsGoalFor || 'Savings goal'}</Text>
-                    <Text style={[s.savingsRowSub, totalManualSavings >= savingsGoal && { color: '#0a7a4e', fontWeight: '600' }]}>
+                    <Text style={[s.savingsRowSub, totalManualSavings >= savingsGoal && { color: c.success, fontWeight: '600' }]}>
                       {totalManualSavings >= savingsGoal ? '🎉 Goal reached!' : 'Tap to edit'}
                     </Text>
                   </>
@@ -598,17 +602,17 @@ export default function TrackerIndex() {
               </View>
               {savingsGoal ? (
                 <View style={s.goalAmtRow}>
-                  <Text style={[s.savingsRowAmt, { color: '#0a7a4e', fontSize: 12, fontWeight: '600', textAlign: 'right' }]}>
+                  <Text style={[s.savingsRowAmt, { color: c.success, fontSize: 12, fontWeight: '600', textAlign: 'right' }]}>
                     {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%
                   </Text>
                   {totalManualSavings >= savingsGoal && (
                     <Pressable onPress={shareGoal} hitSlop={8}>
-                      <Ionicons name="share-outline" size={15} color="#0F6E6E" />
+                      <Ionicons name="share-outline" size={15} color={c.primary} />
                     </Pressable>
                   )}
                 </View>
               ) : (
-                <Ionicons name="chevron-forward" size={16} color="#ccc" />
+                <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
               )}
             </Pressable>
           </View>
@@ -633,8 +637,8 @@ export default function TrackerIndex() {
               <Pressable
                 style={({ pressed }) => [s.addBtn, { borderColor: '#c0392b' }, pressed && { opacity: 0.85 }]}
                 onPress={openAddDebt}>
-                <Ionicons name="add-circle-outline" size={18} color="#c0392b" />
-                <Text style={[s.addBtnTxt, { color: '#c0392b' }]}>Add a debt</Text>
+                <Ionicons name="add-circle-outline" size={18} color={c.error} />
+                <Text style={[s.addBtnTxt, { color: c.error }]}>Add a debt</Text>
               </Pressable>
 
               {debts.length === 0 ? (
@@ -663,13 +667,13 @@ export default function TrackerIndex() {
                       }}
                       renderLeftActions={() => (
                         <View style={s.swipeDeleteAction}>
-                          <Ionicons name="trash-outline" size={22} color="#fff" />
+                          <Ionicons name="trash-outline" size={22} color={c.white} />
                           <Text style={s.swipeDeleteTxt}>Delete</Text>
                         </View>
                       )}
                       renderRightActions={isPaidOff ? undefined : () => (
                         <View style={s.swipePayAction}>
-                          <Ionicons name="card-outline" size={22} color="#fff" />
+                          <Ionicons name="card-outline" size={22} color={c.white} />
                           <Text style={s.swipePayTxt}>Pay</Text>
                         </View>
                       )}>
@@ -695,7 +699,7 @@ export default function TrackerIndex() {
                               <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
                             )}
                             <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn}>
-                              <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
+                              <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
                             </Pressable>
                           </View>
                         </View>
@@ -722,7 +726,7 @@ export default function TrackerIndex() {
               <Pressable
                 style={({ pressed }) => [s.addBtn, pressed && { opacity: 0.85 }]}
                 onPress={openAddSaving}>
-                <Ionicons name="add-circle-outline" size={18} color="#0F6E6E" />
+                <Ionicons name="add-circle-outline" size={18} color={c.primary} />
                 <Text style={s.addBtnTxt}>Log a saving</Text>
               </Pressable>
 
@@ -746,7 +750,7 @@ export default function TrackerIndex() {
                         <View style={s.savingCardRight}>
                           <Text style={s.savingCardAmt}>+{fmt(Number(entry.amount), currency)}</Text>
                           <Pressable onPress={() => handleSavingMenu(entry)} hitSlop={10} style={s.menuBtn}>
-                            <Ionicons name="ellipsis-horizontal" size={18} color="#bbb" />
+                            <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
                           </Pressable>
                         </View>
                       </View>
@@ -773,7 +777,7 @@ export default function TrackerIndex() {
                 <TextInput
                   style={s.input}
                   placeholder="e.g. Bank loan, Friend — John"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={c.textFaint}
                   value={debtName}
                   onChangeText={setDebtName}
                   maxLength={60}
@@ -782,7 +786,7 @@ export default function TrackerIndex() {
                 <TextInput
                   style={s.input}
                   placeholder="e.g. 2000"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={c.textFaint}
                   keyboardType="decimal-pad"
                   value={debtAmount}
                   onChangeText={setDebtAmount}
@@ -807,7 +811,7 @@ export default function TrackerIndex() {
                 </Pressable>
                 <Pressable style={[s.saveBtn, savingDebt && s.btnDisabled]} onPress={saveDebt} disabled={savingDebt}>
                   {savingDebt
-                    ? <ActivityIndicator color="#fff" size="small" />
+                    ? <ActivityIndicator color={c.white} size="small" />
                     : <Text style={s.saveBtnTxt}>{editingDebt ? 'Save changes' : 'Add debt'}</Text>}
                 </Pressable>
               </View>
@@ -828,16 +832,16 @@ export default function TrackerIndex() {
                 <TextInput
                   style={s.input}
                   placeholder="e.g. 100"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={c.textFaint}
                   keyboardType="decimal-pad"
                   value={savingAmount}
                   onChangeText={setSavingAmount}
                 />
-                <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+                <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
                 <TextInput
                   style={s.input}
                   placeholder="e.g. Savings account, Holiday fund"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={c.textFaint}
                   value={savingNote}
                   onChangeText={setSavingNote}
                 />
@@ -848,7 +852,7 @@ export default function TrackerIndex() {
                 </Pressable>
                 <Pressable style={[s.saveBtn, submitting && s.btnDisabled]} onPress={saveSaving} disabled={submitting}>
                   {submitting
-                    ? <ActivityIndicator color="#fff" size="small" />
+                    ? <ActivityIndicator color={c.white} size="small" />
                     : <Text style={s.saveBtnTxt}>{editingSaving ? 'Save changes' : 'Add saving'}</Text>}
                 </Pressable>
               </View>
@@ -877,15 +881,15 @@ export default function TrackerIndex() {
                   </View>
                   <View style={s.menuStats}>
                     <View style={s.menuStat}>
-                      <Text style={[s.menuStatVal, { color: '#c0392b' }]}>{fmt(Number(menuDebt.total_amount), currency)}</Text>
+                      <Text style={[s.menuStatVal, { color: c.error }]}>{fmt(Number(menuDebt.total_amount), currency)}</Text>
                       <Text style={s.menuStatLbl}>Total</Text>
                     </View>
                     <View style={s.menuStat}>
-                      <Text style={[s.menuStatVal, { color: '#0F6E6E' }]}>{fmt(paid, currency)}</Text>
+                      <Text style={[s.menuStatVal, { color: c.primary }]}>{fmt(paid, currency)}</Text>
                       <Text style={s.menuStatLbl}>Paid</Text>
                     </View>
                     <View style={s.menuStat}>
-                      <Text style={[s.menuStatVal, { color: '#555' }]}>{fmt(remaining, currency)}</Text>
+                      <Text style={[s.menuStatVal, { color: c.textBody }]}>{fmt(remaining, currency)}</Text>
                       <Text style={s.menuStatLbl}>Remaining</Text>
                     </View>
                   </View>
@@ -895,13 +899,13 @@ export default function TrackerIndex() {
                   <View style={s.menuActions}>
                     <Pressable style={({ pressed }) => [s.menuActionBtn, pressed && { opacity: 0.75 }]}
                       onPress={() => { setMenuDebt(null); openEditDebt(menuDebt); }}>
-                      <Ionicons name="pencil-outline" size={18} color="#0F6E6E" />
+                      <Ionicons name="pencil-outline" size={18} color={c.primary} />
                       <Text style={s.menuActionTxt}>Edit</Text>
                     </Pressable>
                     <Pressable style={({ pressed }) => [s.menuActionBtn, s.menuActionDanger, pressed && { opacity: 0.75 }]}
                       onPress={() => { setMenuDebt(null); confirmDeleteDebt(menuDebt); }}>
-                      <Ionicons name="trash-outline" size={18} color="#c0392b" />
-                      <Text style={[s.menuActionTxt, { color: '#c0392b' }]}>Delete</Text>
+                      <Ionicons name="trash-outline" size={18} color={c.error} />
+                      <Text style={[s.menuActionTxt, { color: c.error }]}>Delete</Text>
                     </Pressable>
                   </View>
                 </>
@@ -919,7 +923,7 @@ export default function TrackerIndex() {
             
             <View style={s.deleteIconRow}>
               <View style={s.deleteIconCircle}>
-                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+                <Ionicons name="trash-outline" size={26} color={c.error} />
               </View>
             </View>
             <Text style={s.deleteTitle}>Delete debt?</Text>
@@ -934,7 +938,7 @@ export default function TrackerIndex() {
               </Pressable>
               <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteDebt} disabled={deleting}>
                 {deleting
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.deleteBtnTxt}>Delete</Text>}
               </Pressable>
             </View>
@@ -949,7 +953,7 @@ export default function TrackerIndex() {
             
             <View style={s.deleteIconRow}>
               <View style={s.deleteIconCircle}>
-                <Ionicons name="trash-outline" size={26} color="#c0392b" />
+                <Ionicons name="trash-outline" size={26} color={c.error} />
               </View>
             </View>
             <Text style={s.deleteTitle}>Delete saving?</Text>
@@ -965,7 +969,7 @@ export default function TrackerIndex() {
               </Pressable>
               <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteSaving} disabled={deleting}>
                 {deleting
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.deleteBtnTxt}>Delete</Text>}
               </Pressable>
             </View>
@@ -986,18 +990,18 @@ export default function TrackerIndex() {
                     <Text style={s.menuTitle}>{menuSaving.note || 'Saving'}</Text>
                     <Text style={s.menuSub}>{fmtDate(menuSaving.created_at)}</Text>
                   </View>
-                  <Text style={[s.menuStatVal, { color: '#0a7a4e', fontSize: 20 }]}>+{fmt(Number(menuSaving.amount), currency)}</Text>
+                  <Text style={[s.menuStatVal, { color: c.success, fontSize: 20 }]}>+{fmt(Number(menuSaving.amount), currency)}</Text>
                 </View>
                 <View style={s.menuActions}>
                   <Pressable style={({ pressed }) => [s.menuActionBtn, pressed && { opacity: 0.75 }]}
                     onPress={() => { setMenuSaving(null); openEditSaving(menuSaving); }}>
-                    <Ionicons name="pencil-outline" size={18} color="#0F6E6E" />
+                    <Ionicons name="pencil-outline" size={18} color={c.primary} />
                     <Text style={s.menuActionTxt}>Edit</Text>
                   </Pressable>
                   <Pressable style={({ pressed }) => [s.menuActionBtn, s.menuActionDanger, pressed && { opacity: 0.75 }]}
                     onPress={() => { setMenuSaving(null); confirmDeleteSaving(menuSaving); }}>
-                    <Ionicons name="trash-outline" size={18} color="#c0392b" />
-                    <Text style={[s.menuActionTxt, { color: '#c0392b' }]}>Delete</Text>
+                    <Ionicons name="trash-outline" size={18} color={c.error} />
+                    <Text style={[s.menuActionTxt, { color: c.error }]}>Delete</Text>
                   </Pressable>
                 </View>
               </>
@@ -1025,11 +1029,11 @@ export default function TrackerIndex() {
                     </Pressable>
                   ))}
                 </View>
-                <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+                <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
                 <TextInput
                   style={s.input}
                   placeholder="e.g. Holiday, New car, Emergency fund"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={c.textFaint}
                   value={goalForInput}
                   onChangeText={setGoalForInput}
                   maxLength={40}
@@ -1038,7 +1042,7 @@ export default function TrackerIndex() {
                 <TextInput
                   style={s.input}
                   placeholder="e.g. 5000"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={c.textFaint}
                   keyboardType="decimal-pad"
                   value={goalInput}
                   onChangeText={setGoalInput}
@@ -1054,7 +1058,7 @@ export default function TrackerIndex() {
                       closeGoalModal();
                     }}
                     style={{ alignSelf: 'center', marginTop: 12 }}>
-                    <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove goal</Text>
+                    <Text style={{ color: c.error, fontSize: 13 }}>Remove goal</Text>
                   </Pressable>
                 )}
               </ScrollView>
@@ -1084,17 +1088,17 @@ export default function TrackerIndex() {
               <TextInput
                 style={s.input}
                 placeholder={quickPayDebt ? `Up to ${fmt(Math.max(0, Number(quickPayDebt.total_amount) - (paidByDebt[quickPayDebt.id] ?? 0)), currency)}` : ''}
-                placeholderTextColor="#bbb"
+                placeholderTextColor={c.textFaint}
                 keyboardType="decimal-pad"
                 value={quickPayAmount}
                 onChangeText={setQuickPayAmount}
                 autoFocus
               />
-              <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: '#aaa' }}>(optional)</Text></Text>
+              <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
               <TextInput
                 style={s.input}
                 placeholder="e.g. Monthly instalment"
-                placeholderTextColor="#bbb"
+                placeholderTextColor={c.textFaint}
                 value={quickPayNote}
                 onChangeText={setQuickPayNote}
               />
@@ -1104,7 +1108,7 @@ export default function TrackerIndex() {
                 </Pressable>
                 <Pressable style={[s.saveBtn, submittingQuickPay && s.btnDisabled]} onPress={saveQuickPay} disabled={submittingQuickPay}>
                   {submittingQuickPay
-                    ? <ActivityIndicator color="#fff" size="small" />
+                    ? <ActivityIndicator color={c.white} size="small" />
                     : <Text style={s.saveBtnTxt}>Save payment</Text>}
                 </Pressable>
               </View>
@@ -1116,86 +1120,86 @@ export default function TrackerIndex() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+const makeStyles = (c: AppColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bgScreen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: { paddingBottom: 16 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12 },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: c.white },
 
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
 
-  summaryCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
-  summaryTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8 },
+  summaryCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
+  summaryTitle: { fontSize: 12, fontWeight: '700', color: c.textFaint, textTransform: 'uppercase', letterSpacing: 0.8 },
   summaryRow: { flexDirection: 'row' },
   summaryCol: { flex: 1, alignItems: 'center' },
-  summaryMid: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#f0f0f0' },
+  summaryMid: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: c.borderSubtle },
   summaryVal: { fontSize: 18, fontWeight: '700' },
-  summaryLbl: { fontSize: 11, color: '#888', marginTop: 2 },
-  progressTrack: { height: 6, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
-  progressLbl: { fontSize: 12, color: '#0F6E6E', fontWeight: '600', textAlign: 'center' },
+  summaryLbl: { fontSize: 11, color: c.textMuted, marginTop: 2 },
+  progressTrack: { height: 6, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: c.primary, borderRadius: 3 },
+  progressLbl: { fontSize: 12, color: c.primary, fontWeight: '600', textAlign: 'center' },
 
   goalAmtRow: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 150 },
 
-  savingsCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 0 },
-  savingsCardTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+  savingsCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 0 },
+  savingsCardTitle: { fontSize: 12, fontWeight: '700', color: c.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
   savingsRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   savingsRowEmoji: { fontSize: 22, width: 30, textAlign: 'center' },
   savingsRowBody: { flex: 1 },
-  savingsRowLabel: { fontSize: 14, fontWeight: '600', color: '#111' },
-  savingsRowSub: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  savingsRowLabel: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
+  savingsRowSub: { fontSize: 12, color: c.textFaint, marginTop: 2 },
   savingsRowAmt: { fontSize: 17, fontWeight: '800' },
-  savingsSep: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 12 },
+  savingsSep: { height: 1, backgroundColor: c.borderSubtle, marginVertical: 12 },
 
-  sectionDivider: { height: 1, backgroundColor: '#e8e8e8', marginTop: 6, marginBottom: 4 },
+  sectionDivider: { height: 1, backgroundColor: c.borderLight, marginTop: 6, marginBottom: 4 },
 
-  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' },
+  tabBar: { flexDirection: 'row', backgroundColor: c.bgCard, borderRadius: 12, overflow: 'hidden' },
   tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', position: 'relative' },
-  tabTxt: { fontSize: 14, fontWeight: '600', color: '#bbb' },
-  tabTxtDebt: { color: '#c0392b' },
-  tabTxtSaving: { color: '#0F6E6E' },
+  tabTxt: { fontSize: 14, fontWeight: '600', color: c.textFaint },
+  tabTxtDebt: { color: c.error },
+  tabTxtSaving: { color: c.primary },
   tabIndicator: { position: 'absolute', bottom: 0, left: 20, right: 20, height: 2.5, borderRadius: 2 },
 
   addBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 14,
-    borderWidth: 1.5, borderColor: '#0F6E6E',
+    backgroundColor: c.bgCard, borderRadius: 14, paddingVertical: 14,
+    borderWidth: 1.5, borderColor: c.primary,
   },
-  addBtnTxt: { fontSize: 15, fontWeight: '700', color: '#0F6E6E' },
+  addBtnTxt: { fontSize: 15, fontWeight: '700', color: c.primary },
 
-  emptyCard: { backgroundColor: '#fff', borderRadius: 14, padding: 24, alignItems: 'center' },
-  emptyTxt: { fontSize: 14, color: '#aaa', textAlign: 'center', lineHeight: 22 },
+  emptyCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 24, alignItems: 'center' },
+  emptyTxt: { fontSize: 14, color: c.textFaint, textAlign: 'center', lineHeight: 22 },
 
   summaryEmpty: { alignItems: 'center', paddingVertical: 12, gap: 6 },
   summaryEmptyIcon: { fontSize: 32 },
-  summaryEmptyTitle: { fontSize: 15, fontWeight: '700', color: '#555' },
-  summaryEmptyBody: { fontSize: 13, color: '#aaa', textAlign: 'center', lineHeight: 20 },
+  summaryEmptyTitle: { fontSize: 15, fontWeight: '700', color: c.textBody },
+  summaryEmptyBody: { fontSize: 13, color: c.textFaint, textAlign: 'center', lineHeight: 20 },
 
-  debtCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
-  debtCardPaidOff: { borderWidth: 1.5, borderColor: '#b2dfdb' },
+  debtCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
+  debtCardPaidOff: { borderWidth: 1.5, borderColor: c.primaryLight },
   debtTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   debtEmoji: { fontSize: 26 },
   debtInfo: { flex: 1 },
-  debtName: { fontSize: 15, fontWeight: '700', color: '#111' },
-  debtMeta: { fontSize: 12, color: '#888', marginTop: 2 },
-  debtPayoff: { fontSize: 11, color: '#aaa', marginTop: 3 },
+  debtName: { fontSize: 15, fontWeight: '700', color: c.textPrimary },
+  debtMeta: { fontSize: 12, color: c.textMuted, marginTop: 2 },
+  debtPayoff: { fontSize: 11, color: c.textFaint, marginTop: 3 },
   debtRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  debtPct: { fontSize: 13, fontWeight: '700', color: '#0F6E6E' },
-  debtProgressTrack: { height: 5, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden' },
-  debtProgressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
+  debtPct: { fontSize: 13, fontWeight: '700', color: c.primary },
+  debtProgressTrack: { height: 5, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden' },
+  debtProgressFill: { height: '100%', backgroundColor: c.primary, borderRadius: 3 },
 
   paidOffBadge: { backgroundColor: '#e8f5e9', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  paidOffBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#0a7a4e' },
+  paidOffBadgeTxt: { fontSize: 11, fontWeight: '700', color: c.success },
 
   quickPayBtn: {
-    backgroundColor: '#e6f7f7', borderRadius: 10,
+    backgroundColor: c.bgTeal, borderRadius: 10,
     paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: '#0F6E6E',
+    borderWidth: 1, borderColor: c.primary,
   },
-  quickPayTxt: { fontSize: 12, fontWeight: '700', color: '#0F6E6E' },
+  quickPayTxt: { fontSize: 12, fontWeight: '700', color: c.primary },
 
   swipeHint: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   swipeHintDelete: { fontSize: 10, color: '#e8a89e', fontWeight: '500' },
@@ -1203,22 +1207,22 @@ const s = StyleSheet.create({
 
   menuBtn: { padding: 4 },
 
-  savingCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
+  savingCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
   savingCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   savingCardEmoji: { fontSize: 26 },
   savingCardInfo: { flex: 1 },
-  savingCardLabel: { fontSize: 15, fontWeight: '700', color: '#111' },
-  savingCardDate: { fontSize: 12, color: '#888', marginTop: 2 },
+  savingCardLabel: { fontSize: 15, fontWeight: '700', color: c.textPrimary },
+  savingCardDate: { fontSize: 12, color: c.textMuted, marginTop: 2 },
   savingCardRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  savingCardAmt: { fontSize: 15, fontWeight: '700', color: '#0a7a4e' },
+  savingCardAmt: { fontSize: 15, fontWeight: '700', color: c.success },
 
   savingsTotalRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-    borderTopWidth: 2, borderTopColor: '#e6f7f7',
+    backgroundColor: c.bgCard, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+    borderTopWidth: 2, borderTopColor: c.bgTeal,
   },
-  savingsTotalLbl: { fontSize: 13, fontWeight: '700', color: '#555' },
-  savingsTotalVal: { fontSize: 18, fontWeight: '800', color: '#0a7a4e' },
+  savingsTotalLbl: { fontSize: 13, fontWeight: '700', color: c.textBody },
+  savingsTotalVal: { fontSize: 18, fontWeight: '800', color: c.success },
 
 
   goalRightSet: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -1227,84 +1231,84 @@ const s = StyleSheet.create({
   iconChip: {
     width: 44, height: 44, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: 'transparent',
+    backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: 'transparent',
   },
-  iconChipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
+  iconChipActive: { borderColor: c.primary, backgroundColor: c.bgTeal },
   iconChipEmoji: { fontSize: 22 },
 
   swipeDeleteAction: {
-    backgroundColor: '#c0392b', borderRadius: 14, marginRight: 8,
+    backgroundColor: c.error, borderRadius: 14, marginRight: 8,
     width: 72, alignItems: 'center', justifyContent: 'center', gap: 4,
   },
-  swipeDeleteTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  swipeDeleteTxt: { fontSize: 12, fontWeight: '700', color: c.white },
   swipePayAction: {
-    backgroundColor: '#0F6E6E', borderRadius: 14, marginLeft: 8,
+    backgroundColor: c.primary, borderRadius: 14, marginLeft: 8,
     width: 72, alignItems: 'center', justifyContent: 'center', gap: 4,
   },
-  swipePayTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  swipePayTxt: { fontSize: 12, fontWeight: '700', color: c.white },
 
   input: {
-    borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
+    borderWidth: 1, borderColor: c.borderLight, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#111', backgroundColor: '#fafafa',
+    fontSize: 15, color: c.textPrimary, backgroundColor: c.bgInput,
   },
-  fieldLbl: { fontSize: 13, color: '#555', fontWeight: '600', marginTop: 14, marginBottom: 8 },
+  fieldLbl: { fontSize: 13, color: c.textBody, fontWeight: '600', marginTop: 14, marginBottom: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   chip: {
     paddingVertical: 6, paddingHorizontal: 12,
-    borderRadius: 20, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fafafa',
+    borderRadius: 20, borderWidth: 1, borderColor: c.borderMid, backgroundColor: c.bgInput,
   },
-  chipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
-  chipTxt: { fontSize: 13, color: '#555' },
-  chipTxtActive: { color: '#0F6E6E', fontWeight: '600' },
+  chipActive: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  chipTxt: { fontSize: 13, color: c.textBody },
+  chipTxtActive: { color: c.primary, fontWeight: '600' },
 
-  menuOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 },
+  menuOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
   menuSheet: {
-    backgroundColor: '#fff', borderRadius: 22,
+    backgroundColor: c.bgCard, borderRadius: 22,
     padding: 20, paddingTop: 12, width: '100%',
   },
   menuHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16, marginTop: 8 },
   menuEmoji: { fontSize: 32 },
   menuHeaderText: { flex: 1 },
-  menuTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
-  menuSub: { fontSize: 13, color: '#888', marginTop: 2 },
-  menuStats: { flexDirection: 'row', backgroundColor: '#f8f8f8', borderRadius: 12, padding: 12, marginBottom: 10 },
+  menuTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary },
+  menuSub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
+  menuStats: { flexDirection: 'row', backgroundColor: c.bgElement, borderRadius: 12, padding: 12, marginBottom: 10 },
   menuStat: { flex: 1, alignItems: 'center' },
   menuStatVal: { fontSize: 15, fontWeight: '700' },
-  menuStatLbl: { fontSize: 11, color: '#aaa', marginTop: 2 },
-  menuProgressTrack: { height: 5, backgroundColor: '#e6f7f7', borderRadius: 3, overflow: 'hidden', marginBottom: 20 },
-  menuProgressFill: { height: '100%', backgroundColor: '#0F6E6E', borderRadius: 3 },
+  menuStatLbl: { fontSize: 11, color: c.textFaint, marginTop: 2 },
+  menuProgressTrack: { height: 5, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden', marginBottom: 20 },
+  menuProgressFill: { height: '100%', backgroundColor: c.primary, borderRadius: 3 },
   menuActions: { flexDirection: 'row', gap: 10 },
   menuActionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 13, borderRadius: 12, backgroundColor: '#f0fafa',
-    borderWidth: 1, borderColor: '#d0eeee',
+    paddingVertical: 13, borderRadius: 12, backgroundColor: c.bgTealDeep,
+    borderWidth: 1, borderColor: c.bgTealMid,
   },
-  menuActionDanger: { backgroundColor: '#fff5f5', borderColor: '#ffcdd2' },
-  menuActionTxt: { fontSize: 15, fontWeight: '600', color: '#0F6E6E' },
+  menuActionDanger: { backgroundColor: c.bgError, borderColor: c.borderError },
+  menuActionTxt: { fontSize: 15, fontWeight: '600', color: c.primary },
 
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 24 },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
   sheet: {
-    backgroundColor: '#fff', borderRadius: 22, padding: 20, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
   },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 4 },
+  sheetTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, marginBottom: 4 },
   sheetActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: '#666' },
-  saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
-  saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
+  saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.primary },
+  saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   btnDisabled: { opacity: 0.6 },
 
   deleteIconRow: { alignItems: 'center', marginBottom: 12 },
   deleteIconCircle: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#ffcdd2',
+    backgroundColor: c.bgError, borderWidth: 1.5, borderColor: c.borderError,
     alignItems: 'center', justifyContent: 'center',
   },
-  deleteTitle: { fontSize: 18, fontWeight: '700', color: '#111', textAlign: 'center', marginBottom: 8 },
-  deleteBody: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 4 },
-  deleteBold: { fontWeight: '700', color: '#333' },
-  deleteBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#c0392b' },
-  deleteBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  deleteTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  deleteBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  deleteBold: { fontWeight: '700', color: c.textSecondary },
+  deleteBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  deleteBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 });
