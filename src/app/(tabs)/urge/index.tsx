@@ -470,6 +470,8 @@ export default function UrgeScreen() {
           </View>
 
           {/* Quick actions */}
+          <View style={s.iconRowWrap}>
+          <View style={s.iconSeparator} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.iconRow}>
             <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('games')}>
               <Text style={s.iconPillEmoji}>🎮</Text>
@@ -495,6 +497,8 @@ export default function UrgeScreen() {
               </Pressable>
             ))}
           </ScrollView>
+          <View style={s.iconSeparator} />
+          </View>
 
           {/* Your why */}
           <View style={s.whyCard}>
@@ -997,15 +1001,17 @@ const s = StyleSheet.create({
   timerSlipBtnTxt: { color: '#c0392b', fontWeight: '600', fontSize: 14 },
 
   // ── Icon rows (quick actions / games / exercises) ─────────────────────────────
-  iconRow: { paddingHorizontal: 2, gap: 8, paddingBottom: 2 },
+  iconRowWrap: { marginHorizontal: -20 },
+  iconSeparator: { height: 1, backgroundColor: '#e8eef0', marginHorizontal: 20 },
+  iconRow: { paddingHorizontal: 20, gap: 10, paddingVertical: 14 },
   iconPill: {
-    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14,
-    alignItems: 'center', gap: 4, minWidth: 72,
+    backgroundColor: '#fff', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16,
+    alignItems: 'center', gap: 6, minWidth: 84,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
   },
-  iconPillEmoji: { fontSize: 22 },
-  iconPillLabel: { fontSize: 11, fontWeight: '600', color: '#333', textAlign: 'center' },
+  iconPillEmoji: { fontSize: 26 },
+  iconPillLabel: { fontSize: 12, fontWeight: '600', color: '#333', textAlign: 'center' },
   pickerOverlay: {
     flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
   },
