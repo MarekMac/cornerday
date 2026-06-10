@@ -25,3 +25,9 @@ DROP POLICY IF EXISTS admin_select_feedback ON feedback;
 CREATE POLICY admin_select_feedback ON feedback
   FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true));
+
+-- Users can read their own submissions (needed to avoid insert+select RLS errors)
+DROP POLICY IF EXISTS users_select_own_feedback ON feedback;
+CREATE POLICY users_select_own_feedback ON feedback
+  FOR SELECT TO authenticated
+  USING (user_id = auth.uid());

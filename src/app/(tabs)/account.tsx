@@ -1842,27 +1842,22 @@ export default function AccountScreen() {
                   setSendingFeedback(true);
                   try {
                     const { data: { user } } = await supabase.auth.getUser();
-                    const { data: inserted, error } = await supabase
-                      .from('feedback')
-                      .insert({
-                        user_id: user?.id ?? null,
-                        type: feedbackType,
-                        message: feedbackMsg.trim(),
-                        app_version: Constants.expoConfig?.version ?? null,
-                      })
-                      .select('id')
-                      .single();
+                    const payload = {
+                      user_id: user?.id ?? null,
+                      type: feedbackType,
+                      message: feedbackMsg.trim(),
+                      app_version: Constants.expoConfig?.version ?? null,
+                    };
+                    const { error } = await supabase.from('feedback').insert(payload);
                     if (error) throw error;
                     setFeedbackVisible(false);
                     setFeedbackMsg('');
                     setFeedbackType('general');
                     Alert.alert('Thank you!', 'Your feedback has been received. We read every submission and will look into it.');
-                    // Fire-and-forget email notification — don't block the user
-                    if (inserted?.id) {
-                      supabase.functions.invoke('notify-feedback', {
-                        body: { feedback_id: inserted.id },
-                      }).catch(() => {});
-                    }
+                    // Fire-and-forget — pass data directly so no SELECT permission needed
+                    supabase.functions.invoke('notify-feedback', {
+                      body: { ...payload, user_email: user?.email ?? null },
+                    }).catch(() => {});
                   } catch {
                     Alert.alert('Error', 'Could not send feedback. Please try again.');
                   } finally {
