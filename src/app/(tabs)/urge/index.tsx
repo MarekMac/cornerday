@@ -1090,7 +1090,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)', padding: 28,
   },
   slipContent: {
-    backgroundColor: '#fff', borderRadius: 24, padding: 28, paddingTop: 36,
+    backgroundColor: '#fff', borderRadius: 24, padding: 28, paddingTop: 56,
     alignItems: 'center', gap: 14, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 24,
   },
