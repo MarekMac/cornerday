@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+import { TimerProvider, useTimer } from '@/lib/TimerContext';
 import {
   configureNotificationHandler,
   DEFAULT_NOTIF_PREFS,
@@ -41,6 +42,10 @@ function TabButton({
   const iconName = TAB_ICONS[route] ?? 'ellipse';
   const scale = useRef(new Animated.Value(1)).current;
   const activeAnim = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const { timerRunning, timerDisplay } = useTimer();
+
+  const isUrge = route === 'urge';
+  const showTimer = isUrge && timerRunning;
 
   useEffect(() => {
     Animated.timing(activeAnim, {
@@ -59,17 +64,19 @@ function TabButton({
   };
 
   return (
-    <Pressable onPress={handlePress} style={[tbs.tab, isFocused && tbs.tabActive]}>
-      <Animated.View style={[StyleSheet.absoluteFill, tbs.pillBg, { opacity: activeAnim }]} />
+    <Pressable onPress={handlePress} style={[tbs.tab, (isFocused || showTimer) && tbs.tabActive]}>
+      <Animated.View style={[StyleSheet.absoluteFill, tbs.pillBg, { opacity: activeAnim }, showTimer && !isFocused && tbs.pillBgTimer]} />
       <Animated.View style={[tbs.tabInner, { transform: [{ scale }] }]}>
         <Ionicons
           name={isFocused ? iconName : `${iconName}-outline` as IoniconName}
           size={20}
-          color={isFocused ? '#fff' : '#888'}
+          color={isFocused || showTimer ? '#fff' : '#888'}
         />
-        {isFocused && (
-          <Animated.View style={{ opacity: activeAnim, transform: [{ scale: activeAnim }] }}>
-            <Text style={tbs.label} numberOfLines={1}>{label}</Text>
+        {(isFocused || showTimer) && (
+          <Animated.View style={isFocused ? { opacity: activeAnim, transform: [{ scale: activeAnim }] } : undefined}>
+            <Text style={tbs.label} numberOfLines={1}>
+              {showTimer ? `⏱ ${timerDisplay}` : label}
+            </Text>
           </Animated.View>
         )}
       </Animated.View>
@@ -138,6 +145,7 @@ const tbs = StyleSheet.create({
   },
   tabActive: { flex: 2 },
   pillBg: { borderRadius: 22, backgroundColor: '#0F6E6E' },
+  pillBgTimer: { backgroundColor: '#c0392b' },
   tabInner: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 4 },
   label: { color: '#fff', fontSize: 12, fontWeight: '700', flexShrink: 1 },
 });
@@ -195,37 +203,39 @@ export default function TabsLayout() {
   }, []);
 
   return (
-    <Tabs
-      tabBar={props => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: { backgroundColor: '#1a1a1a', borderTopWidth: 0, elevation: 0 },
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen
-        name="tracker"
-        options={{ title: 'Tracker' }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => { e.preventDefault(); navigation.navigate('tracker', { screen: 'index' }); },
-        })}
-      />
-      <Tabs.Screen
-        name="urge"
-        options={{ title: 'Support' }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => { e.preventDefault(); navigation.navigate('urge', { screen: 'index' }); },
-        })}
-      />
-      <Tabs.Screen name="coach" options={{ title: 'Coach' }} />
-      <Tabs.Screen
-        name="community"
-        options={{ title: 'Community' }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => { e.preventDefault(); navigation.navigate('community', { screen: 'index' }); },
-        })}
-      />
-      <Tabs.Screen name="account" options={{ href: null }} />
-    </Tabs>
+    <TimerProvider>
+      <Tabs
+        tabBar={props => <CustomTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: { backgroundColor: '#1a1a1a', borderTopWidth: 0, elevation: 0 },
+        }}
+      >
+        <Tabs.Screen name="index" options={{ title: 'Home' }} />
+        <Tabs.Screen
+          name="tracker"
+          options={{ title: 'Tracker' }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => { e.preventDefault(); navigation.navigate('tracker', { screen: 'index' }); },
+          })}
+        />
+        <Tabs.Screen
+          name="urge"
+          options={{ title: 'Support' }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => { e.preventDefault(); navigation.navigate('urge', { screen: 'index' }); },
+          })}
+        />
+        <Tabs.Screen name="coach" options={{ title: 'Coach' }} />
+        <Tabs.Screen
+          name="community"
+          options={{ title: 'Community' }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => { e.preventDefault(); navigation.navigate('community', { screen: 'index' }); },
+          })}
+        />
+        <Tabs.Screen name="account" options={{ href: null }} />
+      </Tabs>
+    </TimerProvider>
   );
 }

@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { type GameKey, GAMES, renderGame } from '@/lib/games';
 import { GAME_SCORE_FMT, useGameBests } from '@/lib/useGameBests';
 import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
+import { useTimer } from '@/lib/TimerContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PICKER_TILE_W = Math.floor((SCREEN_W - 88 - 10) / 2);
@@ -201,15 +202,20 @@ export default function UrgeScreen() {
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
   const [pickerVisible, setPickerVisible] = useState<'games' | 'exercises' | null>(null);
   const [activeDistraction, setActiveDistraction] = useState<typeof DISTRACTIONS[0] | null>(null);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timerSecsLeft, setTimerSecsLeft] = useState(TIMER_TOTAL);
+  const { timerRunning, timerSecsLeft, timerDone, timerDisplay, timerPct, startTimer: ctxStartTimer, resetTimer } = useTimer();
   const [timerPointsEarned, setTimerPointsEarned] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const isMounted = useRef(true);
 
   useEffect(() => { return () => { isMounted.current = false; }; }, []);
+
+  // Award a point when the timer completes
+  useEffect(() => {
+    if (timerDone && !timerPointsEarned) {
+      awardTimerPoint();
+    }
+  }, [timerDone]);
 
   const fetchMotivation = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -225,21 +231,6 @@ export default function UrgeScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { fetchMotivation().finally(() => setLoading(false)); }, [fetchMotivation]));
-
-  useEffect(() => {
-    if (!timerRunning) return;
-    timerRef.current = setInterval(() => {
-      setTimerSecsLeft(prev => {
-        if (prev <= 1) {
-          setTimerRunning(false);
-          awardTimerPoint();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [timerRunning]);
 
   const awardTimerPoint = async () => {
     setTimerPointsEarned(true);
@@ -329,24 +320,17 @@ export default function UrgeScreen() {
   const motivations = (motivation ?? '').split(',').filter(Boolean)
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
-  const timerDone = !timerRunning && timerSecsLeft === 0;
-  const timerPct = ((TIMER_TOTAL - timerSecsLeft) / TIMER_TOTAL) * 100;
-  const timerMins = Math.floor(timerSecsLeft / 60);
-  const timerSecs = timerSecsLeft % 60;
-  const timerDisplay = `${String(timerMins).padStart(2, '0')}:${String(timerSecs).padStart(2, '0')}`;
-  const startTimer = () => { setTimerSecsLeft(TIMER_TOTAL); setTimerRunning(true); setTimerPointsEarned(false); };
+  const startTimer = () => { ctxStartTimer(); setTimerPointsEarned(false); };
   const stopTimer  = () => {
     const elapsed = TIMER_TOTAL - timerSecsLeft;
-    setTimerRunning(false);
-    setTimerSecsLeft(TIMER_TOTAL);
+    resetTimer();
     setTimerPointsEarned(false);
     setCongratsElapsed(elapsed);
     setCongratsVariant(Math.floor(Math.random() * CONGRATS_VARIANTS.length));
     setShowCongrats(true);
   };
   const hadASlip = () => {
-    setTimerRunning(false);
-    setTimerSecsLeft(TIMER_TOTAL);
+    resetTimer();
     setTimerPointsEarned(false);
     setSlipReset(false);
     setSlipVariant(Math.floor(Math.random() * SLIP_VARIANTS.length));
@@ -464,7 +448,7 @@ export default function UrgeScreen() {
                 </>
               )}
               {timerDone && (
-                <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={() => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); }}>
+                <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={() => { resetTimer(); setTimerPointsEarned(false); }}>
                   <Text style={s.timerStartBtnTxt}>Go again</Text>
                 </Pressable>
               )}
