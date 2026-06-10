@@ -320,7 +320,8 @@ export default function UrgeScreen() {
   const motivations = (motivation ?? '').split(',').filter(Boolean)
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
-  const startTimer = () => { ctxStartTimer(); setTimerPointsEarned(false); };
+  const startTimer  = () => { ctxStartTimer(); setTimerPointsEarned(false); };
+  const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); };
   const stopTimer  = () => {
     const elapsed = TIMER_TOTAL - timerSecsLeft;
     resetTimer();
@@ -453,6 +454,14 @@ export default function UrgeScreen() {
                 </Pressable>
               )}
             </View>
+            {timerRunning && (
+              <Pressable
+                style={({ pressed }) => [s.timerCancelLink, pressed && { opacity: 0.5 }]}
+                onPress={cancelTimer}
+                hitSlop={8}>
+                <Text style={s.timerCancelLinkTxt}>Cancel timer</Text>
+              </Pressable>
+            )}
           </View>
 
           {/* Quick actions */}
@@ -1007,6 +1016,8 @@ const s = StyleSheet.create({
   timerPastBtnTxt: { color: '#27ae60', fontWeight: '700', fontSize: 15 },
   timerCancelBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
   timerCancelBtnTxt: { color: '#888', fontWeight: '600', fontSize: 14 },
+  timerCancelLink: { alignSelf: 'center', marginTop: 10 },
+  timerCancelLinkTxt: { fontSize: 13, color: '#bbb', textDecorationLine: 'underline' },
   timerSlipBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#e0a0a0' },
   timerSlipBtnTxt: { color: '#c0392b', fontWeight: '600', fontSize: 14 },
 
