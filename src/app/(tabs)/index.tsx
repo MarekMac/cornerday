@@ -1114,7 +1114,8 @@ export default function HomeScreen() {
           </View>
           <ScrollView ref={badgeScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.badgesRow}>
             {BADGE_DEFS.map(badge => {
-              const earned = data.earnedBadges.includes(badge.type);
+              // started badge (days: 0) is earned from day 0 — always show as earned
+              const earned = badge.days === 0 || data.earnedBadges.includes(badge.type);
               const streakFrac = streakMs / 86400000;
               const progress = earned ? 1 : badge.days > 0 ? Math.min(1, streakFrac / badge.days) : 1;
               return (

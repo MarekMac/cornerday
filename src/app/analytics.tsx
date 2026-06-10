@@ -262,7 +262,12 @@ export default function AnalyticsScreen() {
     const relapseByDate = new Set<string>(
       relapseRows.map(r => new Date(r.created_at).toLocaleDateString('en-CA'))
     );
-    const quitDateObj = quitDate ? parseQuitDate(quitDate) : null;
+    const rawQuit = quitDate ? parseQuitDate(quitDate) : null;
+    // Normalize to local midnight — quit_timestamp is a full ISO string (e.g. 14:30 UTC),
+    // so comparing local midnight directly would mark today as 'inactive' until that exact time.
+    const quitDateObj = rawQuit
+      ? new Date(rawQuit.getFullYear(), rawQuit.getMonth(), rawQuit.getDate())
+      : null;
     const calendarDays: CalDay[] = [];
     for (let i = 59; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
@@ -561,7 +566,10 @@ export default function AnalyticsScreen() {
 
         {/* ── 60-day clean calendar ── */}
         <View style={s.card}>
-          <SectionHeader title="🗓️ Clean days" subtitle={`${cleanDaysCount} of last 60 days clean`} />
+          <SectionHeader
+            title="🗓️ Clean days"
+            subtitle={`${cleanDaysCount} of last 60 days clean${data.relapseCount > 0 ? `  ·  ${data.relapseCount} relapse${data.relapseCount !== 1 ? 's' : ''}` : '  ·  No relapses 🌟'}`}
+          />
           <View style={s.calWrap}>
             <View style={s.calMonthRow}>
               {calWeeks.map((_, wi) => (
