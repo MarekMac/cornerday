@@ -811,7 +811,12 @@ export default function UrgeScreen() {
                     style={({ pressed }) => [s.distractionCallBtn, pressed && { opacity: 0.85 }]}
                     onPress={() => {
                       setActiveDistraction(null);
-                      Linking.openURL('music://').catch(() => Linking.openURL('spotify://').catch(() => {}));
+                      if (Platform.OS === 'android') {
+                        Linking.openURL('intent:#Intent;action=android.intent.action.MUSIC_PLAYER;end')
+                          .catch(() => Linking.openURL('spotify://').catch(() => {}));
+                      } else {
+                        Linking.openURL('music://').catch(() => Linking.openURL('spotify://').catch(() => {}));
+                      }
                     }}>
                     <Text style={s.distractionCallBtnTxt}>🎵  Open music app</Text>
                   </Pressable>
