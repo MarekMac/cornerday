@@ -682,14 +682,16 @@ export default function HomeScreen() {
 
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
     if (toAward.length > 0) {
-      // dedupeGuard is built from a fresh DB read above, so toAward only contains badges
-      // not yet in the database. Insert them; ignoreDuplicates handles any race conditions.
-      await supabase
-        .from('badges')
-        .upsert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })), { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
+      // Insert individually — null error = newly inserted, code 23505 = already exists.
+      // This is reliable even when the SELECT above returns stale/empty data due to RLS.
+      const newlyAwarded: typeof toAward = [];
+      for (const b of toAward) {
+        const { error } = await supabase.from('badges').insert({ user_id: user.id, badge_type: b.type });
+        if (!error) newlyAwarded.push(b);
+      }
 
-      // Log and notify for all newly awarded time-based badges
-      const toLog = toAward.filter(b => b.days > 0);
+      // Only log and notify for badges actually inserted this run
+      const toLog = newlyAwarded.filter(b => b.days > 0);
       if (toLog.length > 0) {
         await supabase.from('losses').insert(toLog.map(b => ({
           user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
@@ -715,7 +717,7 @@ export default function HomeScreen() {
         }
       }
 
-      toAward.forEach(b => earnedBadges.push(b.type));
+      newlyAwarded.forEach(b => earnedBadges.push(b.type));
     }
 
     // Update longest streak
