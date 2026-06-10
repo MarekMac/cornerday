@@ -1841,17 +1841,27 @@ export default function AccountScreen() {
                   setSendingFeedback(true);
                   try {
                     const { data: { user } } = await supabase.auth.getUser();
-                    const { error } = await supabase.from('feedback').insert({
-                      user_id: user?.id ?? null,
-                      type: feedbackType,
-                      message: feedbackMsg.trim(),
-                      app_version: Constants.expoConfig?.version ?? null,
-                    });
+                    const { data: inserted, error } = await supabase
+                      .from('feedback')
+                      .insert({
+                        user_id: user?.id ?? null,
+                        type: feedbackType,
+                        message: feedbackMsg.trim(),
+                        app_version: Constants.expoConfig?.version ?? null,
+                      })
+                      .select('id')
+                      .single();
                     if (error) throw error;
                     setFeedbackVisible(false);
                     setFeedbackMsg('');
                     setFeedbackType('general');
                     Alert.alert('Thanks!', 'Your feedback has been sent.');
+                    // Fire-and-forget email notification — don't block the user
+                    if (inserted?.id) {
+                      supabase.functions.invoke('notify-feedback', {
+                        body: { feedback_id: inserted.id },
+                      }).catch(() => {});
+                    }
                   } catch {
                     Alert.alert('Error', 'Could not send feedback. Please try again.');
                   } finally {
