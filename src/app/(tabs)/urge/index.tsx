@@ -33,7 +33,7 @@ const TIMER_TOTAL = 20 * 60;
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
+import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
 
@@ -218,19 +218,32 @@ export default function UrgeScreen() {
   }, [timerDone]);
 
   const fetchMotivation = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const [{ data }, rawContact, rawPhoto] = await Promise.all([
-      supabase.from('users').select('motivation').eq('id', user.id).single(),
+    // Load cache immediately so the screen works offline
+    const [cachedMotivation, rawContact, rawPhoto] = await Promise.all([
+      AsyncStorage.getItem(MOTIVATION_CACHE_KEY),
       AsyncStorage.getItem(TRUSTED_CONTACT_KEY),
       AsyncStorage.getItem(MOTIVATION_PHOTO_KEY),
     ]);
-    setMotivation(data?.motivation ?? null);
+    if (cachedMotivation) setMotivation(cachedMotivation);
     if (rawContact) setTrustedContact(JSON.parse(rawContact));
     if (rawPhoto) setMotivationPhoto(rawPhoto);
+    setLoading(false);
+
+    // Refresh from network in the background; update cache on success
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('users').select('motivation').eq('id', user.id).single();
+      if (data?.motivation != null) {
+        setMotivation(data.motivation);
+        AsyncStorage.setItem(MOTIVATION_CACHE_KEY, data.motivation);
+      }
+    } catch {
+      // silently keep cached data
+    }
   }, []);
 
-  useFocusEffect(useCallback(() => { fetchMotivation().finally(() => setLoading(false)); }, [fetchMotivation]));
+  useFocusEffect(useCallback(() => { fetchMotivation(); }, [fetchMotivation]));
 
   const awardTimerPoint = async () => {
     setTimerPointsEarned(true);
@@ -526,6 +539,30 @@ export default function UrgeScreen() {
           </View>
 
 
+          {/* Trusted contact */}
+          {trustedContact ? (
+            <Pressable
+              style={({ pressed }) => [s.contactCard, pressed && { opacity: 0.88 }]}
+              onPress={() => Linking.openURL(`tel:${trustedContact.phone}`)}>
+              <View style={s.contactLeft}>
+                <Text style={s.contactEmoji}>📞</Text>
+                <View>
+                  <Text style={s.contactLabel}>Talk to someone you trust</Text>
+                  <Text style={s.contactName}>{trustedContact.name}</Text>
+                </View>
+              </View>
+              <View style={s.contactCallBtn}>
+                <Text style={s.contactCallBtnTxt}>Call</Text>
+              </View>
+            </Pressable>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [s.contactCardEmpty, pressed && { opacity: 0.75 }]}
+              onPress={() => router.push('/(tabs)/account')}>
+              <Text style={s.contactCardEmptyTxt}>📞  Add a trusted contact for quick access →</Text>
+            </Pressable>
+          )}
+
           {/* Crisis resources */}
           <View style={s.crisisCard}>
             <Text style={s.crisisTitle}>Need more help?</Text>
@@ -609,7 +646,11 @@ export default function UrgeScreen() {
                   </Text>
                   <TextInput
                     style={s.noteInput}
-                    placeholder="Add a note…"
+                    placeholder={outcome === 'overcame'
+                      ? "What helped you through? How do you feel right now?"
+                      : outcome === 'slipped'
+                        ? "What could you do differently next time?"
+                        : "Add a note…"}
                     placeholderTextColor="#aaa"
                     value={note}
                     onChangeText={setNote}
@@ -1181,6 +1222,24 @@ const s = StyleSheet.create({
   therapyBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
 
   // ── Crisis ────────────────────────────────────────────────────────────────────
+  contactCard: {
+    backgroundColor: '#e8f5f0', borderRadius: 18, padding: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  contactLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  contactEmoji: { fontSize: 26 },
+  contactLabel: { fontSize: 12, color: '#555', fontWeight: '500' },
+  contactName: { fontSize: 16, fontWeight: '700', color: '#0a5a4a', marginTop: 1 },
+  contactCallBtn: {
+    backgroundColor: '#0F6E6E', borderRadius: 10,
+    paddingVertical: 8, paddingHorizontal: 16,
+  },
+  contactCallBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  contactCardEmpty: {
+    backgroundColor: '#f0f4f4', borderRadius: 14, padding: 14, alignItems: 'center',
+  },
+  contactCardEmptyTxt: { fontSize: 13, color: '#888' },
+
   crisisCard: {
     backgroundColor: '#fff8f8', borderRadius: 18, padding: 18, gap: 10,
   },

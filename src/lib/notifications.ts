@@ -83,6 +83,7 @@ export async function scheduleAllNotifications(
   prefs: NotifPrefs,
   quitTimestamp: string | null,
   earnedBadgeTypes: string[] = [],
+  timeOverrides: { streakHour?: number; checkinHour?: number } = {},
 ) {
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!quitTimestamp) return;
@@ -134,7 +135,7 @@ export async function scheduleAllNotifications(
     }
   }
 
-  // 3. Daily streak reminder — 8 pm every day
+  // 3. Daily streak reminder — user-chosen hour (default 8 pm)
   if (prefs.notif_daily_streak) {
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -144,13 +145,13 @@ export async function scheduleAllNotifications(
       },
       trigger: androidTrigger({
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: 20,
+        hour: timeOverrides.streakHour ?? 20,
         minute: 0,
       }) as any,
     });
   }
 
-  // 4. Daily check-in — 9 am every day
+  // 4. Daily check-in — user-chosen hour (default 9 am)
   if (prefs.notif_daily_checkin) {
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -160,7 +161,7 @@ export async function scheduleAllNotifications(
       },
       trigger: androidTrigger({
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: 9,
+        hour: timeOverrides.checkinHour ?? 9,
         minute: 0,
       }) as any,
     });

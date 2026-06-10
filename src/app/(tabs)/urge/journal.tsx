@@ -279,12 +279,17 @@ function EntryCard({ entry, currency }: { entry: FeedEntry; currency: string }) 
   return null;
 }
 
+type FilterKind = 'all' | 'urge' | 'milestone' | 'reset';
+type FilterOutcome = 'all' | 'overcame' | 'slipped';
+
 export default function JournalScreen() {
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
   const [clearAllVisible, setClearAllVisible] = useState(false);
   const [clearingAll, setClearingAll] = useState(false);
+  const [filterKind, setFilterKind] = useState<FilterKind>('all');
+  const [filterOutcome, setFilterOutcome] = useState<FilterOutcome>('all');
 
   const fetchFeed = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -324,6 +329,17 @@ export default function JournalScreen() {
 
   useEffect(() => { fetchFeed().finally(() => setLoading(false)); }, [fetchFeed]);
   useFocusEffect(useCallback(() => { fetchFeed(); }, [fetchFeed]));
+
+  const filteredFeed = feed.filter(e => {
+    if (filterKind === 'urge') {
+      if (e.kind !== 'urge') return false;
+      if (filterOutcome !== 'all' && e.outcome !== filterOutcome) return false;
+      return true;
+    }
+    if (filterKind === 'milestone') return e.kind === 'milestone_earned';
+    if (filterKind === 'reset') return e.kind === 'streak_reset';
+    return true;
+  });
 
   const clearAllLogs = () => setClearAllVisible(true);
 
@@ -379,9 +395,44 @@ export default function JournalScreen() {
         </View>
       ) : (
         <FlatList
-          data={feed}
+          data={filteredFeed}
           keyExtractor={item => `${item.kind}-${item.id}`}
           contentContainerStyle={s.list}
+          ListHeaderComponent={
+            <View style={s.filterWrap}>
+              <View style={s.filterRow}>
+                {(['all', 'urge', 'milestone', 'reset'] as FilterKind[]).map(k => (
+                  <Pressable
+                    key={k}
+                    style={[s.filterChip, filterKind === k && s.filterChipActive]}
+                    onPress={() => { setFilterKind(k); if (k !== 'urge') setFilterOutcome('all'); }}>
+                    <Text style={[s.filterChipTxt, filterKind === k && s.filterChipTxtActive]}>
+                      {k === 'all' ? 'All' : k === 'urge' ? 'Urges' : k === 'milestone' ? 'Milestones' : 'Resets'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {filterKind === 'urge' && (
+                <View style={s.filterRow}>
+                  {(['all', 'overcame', 'slipped'] as FilterOutcome[]).map(o => (
+                    <Pressable
+                      key={o}
+                      style={[s.filterChip, s.filterChipSub, filterOutcome === o && s.filterChipActive]}
+                      onPress={() => setFilterOutcome(o)}>
+                      <Text style={[s.filterChipTxt, filterOutcome === o && s.filterChipTxtActive]}>
+                        {o === 'all' ? 'All' : o === 'overcame' ? 'Overcame ✓' : 'Had a slip'}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              {filteredFeed.length === 0 && (
+                <View style={s.filterEmpty}>
+                  <Text style={s.filterEmptyTxt}>No entries match this filter.</Text>
+                </View>
+              )}
+            </View>
+          }
           renderItem={({ item }) => <EntryCard entry={item} currency={currency} />}
         />
       )}
@@ -430,7 +481,16 @@ const s = StyleSheet.create({
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
 
-  list: { padding: 16, gap: 10 },
+  list: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+  filterWrap: { paddingTop: 12, paddingBottom: 4, gap: 8 },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  filterChip: { borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: '#e8ecec' },
+  filterChipSub: { backgroundColor: '#f0f0f0' },
+  filterChipActive: { backgroundColor: '#0F6E6E' },
+  filterChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
+  filterChipTxtActive: { color: '#fff' },
+  filterEmpty: { paddingVertical: 24, alignItems: 'center' },
+  filterEmptyTxt: { fontSize: 14, color: '#aaa' },
 
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 6 },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

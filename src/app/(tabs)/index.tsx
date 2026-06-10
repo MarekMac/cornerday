@@ -120,6 +120,53 @@ const QUOTES = [
   "You deserve peace more than you deserve the thrill.",
 ];
 
+const TRIGGER_TIPS: Record<string, string[]> = {
+  betting_ads: [
+    'Consider using a site blocker like Gamban to cut off gambling ads completely.',
+    'You can mute or block betting accounts on social media — every friction point helps.',
+    'Try turning off notifications from sports and betting apps on your phone.',
+    'Ads lose power once you name them. "That\'s just an ad" — and move on.',
+  ],
+  live_sport: [
+    'Watch the game with a friend — shared moments don\'t need a bet to be exciting.',
+    'Try scheduling something else during match time to break the reflex.',
+    'You can enjoy sport without an account. Fans did it for decades.',
+    'The tension you feel during a game is normal — it doesn\'t have to lead anywhere.',
+  ],
+  social: [
+    'It\'s okay to skip an event that puts you at risk. Recovery always comes first.',
+    '"I need to head off early" is a complete sentence. No explanation required.',
+    'True friends will respect your boundaries — you don\'t owe anyone a reason.',
+    'You can still have fun socially. Plan what you\'ll say before you go.',
+  ],
+  stress: [
+    'When stress peaks, try 5 slow breaths before making any decision.',
+    'Name 3 things you can see right now — it breaks the mental loop.',
+    'Stress is temporary. Gambling debt isn\'t. You\'re making the right call.',
+    'A short walk often does more than any other stress relief — seriously.',
+  ],
+  boredom: [
+    'Boredom is your brain asking for stimulation — a game or walk works just as well.',
+    'Schedule something enjoyable for today. A plan beats an impulse every time.',
+    'The urge timer is 20 minutes. Boredom almost always fades within that window.',
+    'Boredom is uncomfortable, not dangerous. Sit with it — it always passes.',
+  ],
+  financial: [
+    'Financial pressure grows with gambling, not because of stopping it.',
+    'Even a small payment toward a debt today moves things forward.',
+    'Talk to a free financial counsellor if money pressure is building.',
+    'Write down one small financial win from this month — there is always one.',
+  ],
+};
+
+function getTodayTip(trigger: string | null): string | null {
+  if (!trigger) return null;
+  const tips = TRIGGER_TIPS[trigger];
+  if (!tips) return null;
+  const dayIndex = new Date().getDay(); // 0–6, deterministic per day
+  return tips[dayIndex % tips.length];
+}
+
 const BADGE_CELEBRATIONS = [
   { icon: '🎉', text: 'Congratulations!' },
   { icon: '💪', text: 'You actually did it.' },
@@ -558,6 +605,7 @@ interface HomeData {
   savingsGoal: number | null;
   savingsGoalFor: string;
   savingsGoalIcon: string;
+  trigger: string | null;
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -656,7 +704,7 @@ export default function HomeScreen() {
     const today = todayStr();
 
     const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes] = await Promise.all([
-      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone').eq('id', user.id).single(),
+      supabase.from('users').select('display_name, motivation, trigger, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone').eq('id', user.id).single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
@@ -832,6 +880,7 @@ export default function HomeScreen() {
     setData({
       displayName: profile?.display_name ?? user.email?.split('@')[0] ?? null,
       motivation: profile?.motivation ?? null,
+      trigger: profile?.trigger ?? null,
       quitDate: profile?.quit_timestamp ?? profile?.quit_date ?? null,
       weeklyBet: profile?.weekly_bet ?? null,
       currency: profile?.currency ?? 'USD',
@@ -1105,6 +1154,13 @@ export default function HomeScreen() {
         {/* Stats */}
         <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} nowMs={nowMs} />
 
+        {/* Personalised tip */}
+        {getTodayTip(data.trigger) && (
+          <View style={s.tipCard}>
+            <Text style={s.tipEmoji}>💡</Text>
+            <Text style={s.tipTxt}>{getTodayTip(data.trigger)}</Text>
+          </View>
+        )}
 
         {/* Badges */}
         <View style={s.card}>
@@ -1697,6 +1753,12 @@ const s = StyleSheet.create({
   whyValue: { fontSize: 14, color: '#111', fontWeight: '600' },
 
   // Stats
+  tipCard: {
+    backgroundColor: '#e6f7f7', borderRadius: 14, padding: 14,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+  },
+  tipEmoji: { fontSize: 18, marginTop: 1 },
+  tipTxt: { flex: 1, fontSize: 14, color: '#0a4a4a', lineHeight: 20 },
   savedCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16 },
   savedTitle: { fontSize: 12, fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
   savedRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

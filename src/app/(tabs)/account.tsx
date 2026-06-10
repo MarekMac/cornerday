@@ -29,7 +29,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
@@ -166,6 +166,8 @@ export default function AccountScreen() {
   const [savingField, setSavingField] = useState(false);
 
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
+  const [notifStreakHour, setNotifStreakHour] = useState(20);
+  const [notifCheckinHour, setNotifCheckinHour] = useState(9);
   const [quitTimestamp, setQuitTimestamp] = useState<string | null>(null);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
 
@@ -286,7 +288,9 @@ export default function AccountScreen() {
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
       AsyncStorage.getItem(TRUSTED_CONTACT_KEY),
-    ]).then(([rawGoal, rawFor, rawIcon, rawContact]) => {
+      AsyncStorage.getItem(NOTIF_STREAK_HOUR_KEY),
+      AsyncStorage.getItem(NOTIF_CHECKIN_HOUR_KEY),
+    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour]) => {
       if (rawGoal) setSavingsGoal(Number(rawGoal));
       if (rawFor) setSavingsGoalFor(rawFor);
       if (rawIcon) setSavingsGoalIcon(rawIcon);
@@ -295,6 +299,8 @@ export default function AccountScreen() {
         setTrustedContactName(c.name ?? '');
         setTrustedContactPhone(c.phone ?? '');
       }
+      if (rawStreakHour) setNotifStreakHour(Number(rawStreakHour));
+      if (rawCheckinHour) setNotifCheckinHour(Number(rawCheckinHour));
     });
   }, [fetchProfile]);
 
@@ -887,7 +893,25 @@ export default function AccountScreen() {
     if (user) {
       await supabase.from('users').update({ [key]: value }).eq('id', user.id);
       const granted = await requestNotificationPermissions();
-      if (granted) await scheduleAllNotifications(updated, quitTimestamp);
+      if (granted) await scheduleAllNotifications(updated, quitTimestamp, [], { streakHour: notifStreakHour, checkinHour: notifCheckinHour });
+    }
+  };
+
+  const handleNotifHour = async (type: 'streak' | 'checkin', hour: number) => {
+    if (type === 'streak') {
+      setNotifStreakHour(hour);
+      await AsyncStorage.setItem(NOTIF_STREAK_HOUR_KEY, String(hour));
+    } else {
+      setNotifCheckinHour(hour);
+      await AsyncStorage.setItem(NOTIF_CHECKIN_HOUR_KEY, String(hour));
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const granted = await requestNotificationPermissions();
+      const hours = type === 'streak'
+        ? { streakHour: hour, checkinHour: notifCheckinHour }
+        : { streakHour: notifStreakHour, checkinHour: hour };
+      if (granted) await scheduleAllNotifications(notifPrefs, quitTimestamp, [], hours);
     }
   };
 
@@ -1664,17 +1688,43 @@ export default function AccountScreen() {
               { key: 'notif_weekly_summary',        label: 'Weekly summary',        desc: 'Monday morning overview of your progress' },
               { key: 'notif_milestone_approaching', label: 'Milestone approaching', desc: '24 hours before your next milestone' },
             ] as { key: keyof NotifPrefs; label: string; desc: string }[]).map(({ key, label, desc }) => (
-              <View key={key} style={s.notifRow}>
-                <View style={s.notifText}>
-                  <Text style={s.notifLabel}>{label}</Text>
-                  <Text style={s.notifDesc}>{desc}</Text>
+              <View key={key}>
+                <View style={s.notifRow}>
+                  <View style={s.notifText}>
+                    <Text style={s.notifLabel}>{label}</Text>
+                    <Text style={s.notifDesc}>{desc}</Text>
+                  </View>
+                  <Switch
+                    value={notifPrefs[key]}
+                    onValueChange={v => handleNotifToggle(key, v)}
+                    trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+                    thumbColor={notifPrefs[key] ? '#0F6E6E' : '#bbb'}
+                  />
                 </View>
-                <Switch
-                  value={notifPrefs[key]}
-                  onValueChange={v => handleNotifToggle(key, v)}
-                  trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-                  thumbColor={notifPrefs[key] ? '#0F6E6E' : '#bbb'}
-                />
+                {key === 'notif_daily_streak' && notifPrefs.notif_daily_streak && (
+                  <View style={s.notifTimeRow}>
+                    {[{ h: 18, label: '6pm' }, { h: 19, label: '7pm' }, { h: 20, label: '8pm' }, { h: 21, label: '9pm' }].map(opt => (
+                      <Pressable
+                        key={opt.h}
+                        style={[s.notifTimeChip, notifStreakHour === opt.h && s.notifTimeChipActive]}
+                        onPress={() => handleNotifHour('streak', opt.h)}>
+                        <Text style={[s.notifTimeChipTxt, notifStreakHour === opt.h && s.notifTimeChipTxtActive]}>{opt.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+                {key === 'notif_daily_checkin' && notifPrefs.notif_daily_checkin && (
+                  <View style={s.notifTimeRow}>
+                    {[{ h: 7, label: '7am' }, { h: 8, label: '8am' }, { h: 9, label: '9am' }, { h: 10, label: '10am' }].map(opt => (
+                      <Pressable
+                        key={opt.h}
+                        style={[s.notifTimeChip, notifCheckinHour === opt.h && s.notifTimeChipActive]}
+                        onPress={() => handleNotifHour('checkin', opt.h)}>
+                        <Text style={[s.notifTimeChipTxt, notifCheckinHour === opt.h && s.notifTimeChipTxtActive]}>{opt.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
               </View>
             ))}
             <Pressable style={[s.confirmSave, { marginTop: 20, flex: 0 }]} onPress={() => setNotifModalVisible(false)}>
@@ -2208,6 +2258,11 @@ const s = StyleSheet.create({
   notifSettingsTxt: { fontSize: 15, color: '#0F6E6E', fontWeight: '600' },
 
   notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  notifTimeRow: { flexDirection: 'row', gap: 6, paddingBottom: 10, paddingTop: 4 },
+  notifTimeChip: { borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12, backgroundColor: '#f0f0f0' },
+  notifTimeChipActive: { backgroundColor: '#0F6E6E' },
+  notifTimeChipTxt: { fontSize: 13, fontWeight: '600', color: '#555' },
+  notifTimeChipTxtActive: { color: '#fff' },
   notifText: { flex: 1, paddingRight: 12 },
   notifLabel: { fontSize: 14, fontWeight: '600', color: '#222' },
   notifDesc: { fontSize: 12, color: '#999', marginTop: 2 },
