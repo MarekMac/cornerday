@@ -1409,6 +1409,20 @@ export default function AccountScreen() {
               autoComplete="off"
               textContentType="none"
             />
+            {trustedContactName || trustedContactPhone ? (
+              <Pressable
+                style={{ alignSelf: 'center', marginBottom: 16 }}
+                onPress={async () => {
+                  await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
+                  setTrustedContactName('');
+                  setTrustedContactPhone('');
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null }).eq('id', user.id);
+                  setShowContactModal(false);
+                }}>
+                <Text style={{ color: '#c0392b', fontSize: 13 }}>Remove contact</Text>
+              </Pressable>
+            ) : null}
             <View style={s.modalActions}>
               <Pressable
                 style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
