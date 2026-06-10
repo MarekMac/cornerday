@@ -210,6 +210,7 @@ export default function AccountScreen() {
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
   const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [thankYouVisible, setThankYouVisible] = useState(false);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
   const [isPasswordUser, setIsPasswordUser] = useState(true);
   const [renewalDate, setRenewalDate] = useState<string | null>(null);
@@ -1853,7 +1854,7 @@ export default function AccountScreen() {
                     setFeedbackVisible(false);
                     setFeedbackMsg('');
                     setFeedbackType('general');
-                    Alert.alert('Thank you!', 'Your feedback has been received. We read every submission and will look into it.');
+                    setThankYouVisible(true);
                     // Fire-and-forget — pass data directly so no SELECT permission needed
                     supabase.functions.invoke('notify-feedback', {
                       body: { ...payload, user_email: user?.email ?? null },
@@ -1872,6 +1873,28 @@ export default function AccountScreen() {
           </Pressable>
         </Pressable>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Feedback thank-you modal */}
+      <Modal visible={thankYouVisible} transparent animationType="fade" onRequestClose={() => setThankYouVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setThankYouVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: '#e6f7f7', borderColor: '#a8d8d0' }]}>
+                <Text style={{ fontSize: 26 }}>💚</Text>
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Thank you!</Text>
+            <Text style={[s.confirmBody, { marginBottom: 24 }]}>
+              Your feedback has been received. We read every submission and will look into it.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [s.modalBtn, s.modalBtnSave, pressed && { opacity: 0.85 }]}
+              onPress={() => setThankYouVisible(false)}>
+              <Text style={s.modalBtnSaveTxt}>Done</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Reset data modal */}
