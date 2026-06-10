@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -6,6 +7,7 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,11 +16,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { avatarColor, COMMUNITY_TAGS, streakBadge, TAG_COLORS, timeAgo } from '@/constants/community';
+import { COMMUNITY_GUIDELINES_SEEN_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 
 const PAGE_SIZE = 15;
 const ALL_TAGS = ['All', 'Mine', 'Saved', ...COMMUNITY_TAGS] as const;
 type FilterTag = typeof ALL_TAGS[number];
+type SortBy = 'new' | 'popular';
 
 interface Post {
   id: string;
@@ -68,14 +72,18 @@ export default function CommunityFeed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [activeTag, setActiveTag] = useState<FilterTag>('All');
+  const [sortBy, setSortBy] = useState<SortBy>('new');
   const [displayName, setDisplayName] = useState('');
   const [userReactions, setUserReactions] = useState<Record<string, string>>({});
   const [allEmojiCounts, setAllEmojiCounts] = useState<Record<string, Record<string, number>>>({});
   const [userBookmarks, setUserBookmarks] = useState<Record<string, boolean>>({});
+  const [guidelinesVisible, setGuidelinesVisible] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
 
   const currentUserIdRef = useRef<string | null>(null);
   const postsRef = useRef<Post[]>([]);
   const activeFetch = useRef(false);
+  const sortByRef = useRef<SortBy>('new');
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -84,7 +92,6 @@ export default function CommunityFeed() {
       const { data } = await supabase.from('users').select('display_name').eq('id', user.id).single();
       setDisplayName(data?.display_name ?? '');
 
-      // Load all bookmarks for this user
       const { data: bookmarkRows } = await supabase
         .from('community_bookmarks')
         .select('post_id')
@@ -97,7 +104,22 @@ export default function CommunityFeed() {
         setUserBookmarks(bm);
       }
     });
+
+    AsyncStorage.getItem(COMMUNITY_GUIDELINES_SEEN_KEY).then(val => {
+      if (val !== 'true') setGuidelinesVisible(true);
+    });
   }, []);
+
+  const dismissGuidelines = async () => {
+    await AsyncStorage.setItem(COMMUNITY_GUIDELINES_SEEN_KEY, 'true');
+    setGuidelinesVisible(false);
+  };
+
+  const changeSort = (sort: SortBy) => {
+    sortByRef.current = sort;
+    setSortBy(sort);
+    load(activeTag, sort);
+  };
 
   const fetchReactions = async (postIds: string[], replace: boolean) => {
     if (postIds.length === 0) return;
@@ -120,7 +142,7 @@ export default function CommunityFeed() {
     setAllEmojiCounts(replace ? countMap : prev => ({ ...prev, ...countMap }));
   };
 
-  const load = useCallback(async (tag: FilterTag, isRefresh = false) => {
+  const load = useCallback(async (tag: FilterTag, sort: SortBy = 'new', isRefresh = false) => {
     if (!isRefresh) setLoading(true);
 
     if (tag === 'Saved') {
@@ -145,12 +167,14 @@ export default function CommunityFeed() {
         setRefreshing(false);
         return;
       }
-      const { data } = await supabase
-        .from('community_posts')
-        .select(POST_SELECT)
-        .in('id', ids)
-        .order('created_at', { ascending: false })
-        .range(0, PAGE_SIZE - 1);
+      let q: any = supabase.from('community_posts').select(POST_SELECT).in('id', ids);
+      if (sort === 'popular') {
+        q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+      } else {
+        q = q.order('created_at', { ascending: false });
+      }
+      q = q.range(0, PAGE_SIZE - 1);
+      const { data } = await q;
       const items = (data as Post[]) ?? [];
       postsRef.current = items;
       setPosts(items);
@@ -161,13 +185,17 @@ export default function CommunityFeed() {
       return;
     }
 
-    let q = supabase
-      .from('community_posts')
-      .select(POST_SELECT)
-      .order('created_at', { ascending: false })
-      .range(0, PAGE_SIZE - 1);
-    if (tag === 'Mine' && currentUserIdRef.current) q = (q as any).eq('user_id', currentUserIdRef.current);
-    else if (tag !== 'All') q = (q as any).eq('tag', tag);
+    let q: any = supabase.from('community_posts').select(POST_SELECT);
+    if (sort === 'popular') {
+      q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+    } else {
+      q = q.order('created_at', { ascending: false });
+    }
+    q = q.range(0, PAGE_SIZE - 1);
+    if (tag === 'Mine' && currentUserIdRef.current) {
+      q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
+    } else if (tag !== 'All') q = q.eq('tag', tag);
+
     const { data } = await q;
     const items = (data as Post[]) ?? [];
     postsRef.current = items;
@@ -180,17 +208,21 @@ export default function CommunityFeed() {
 
   const loadMore = async () => {
     if (loadingMore || !hasMore || activeFetch.current) return;
-    if (activeTag === 'Saved') return; // bookmarks: no infinite scroll
+    if (activeTag === 'Saved') return;
     activeFetch.current = true;
     setLoadingMore(true);
     const offset = postsRef.current.length;
-    let q = supabase
-      .from('community_posts')
-      .select(POST_SELECT)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
-    if (activeTag === 'Mine' && currentUserIdRef.current) q = (q as any).eq('user_id', currentUserIdRef.current);
-    else if (activeTag !== 'All') q = (q as any).eq('tag', activeTag);
+    const sort = sortByRef.current;
+    let q: any = supabase.from('community_posts').select(POST_SELECT);
+    if (sort === 'popular') {
+      q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+    } else {
+      q = q.order('created_at', { ascending: false });
+    }
+    q = q.range(offset, offset + PAGE_SIZE - 1);
+    if (activeTag === 'Mine' && currentUserIdRef.current) {
+      q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
+    } else if (activeTag !== 'All') q = q.eq('tag', activeTag);
     const { data } = await q;
     const items = (data as Post[]) ?? [];
     const next = [...postsRef.current, ...items];
@@ -202,11 +234,11 @@ export default function CommunityFeed() {
     fetchReactions(items.map(p => p.id), false);
   };
 
-  useFocusEffect(useCallback(() => { load(activeTag); }, [activeTag, load]));
+  useFocusEffect(useCallback(() => { load(activeTag, sortByRef.current); }, [activeTag, load]));
 
   const changeTag = (tag: FilterTag) => {
     setActiveTag(tag);
-    load(tag);
+    load(tag, sortByRef.current);
   };
 
   const toggleFeedReaction = async (postId: string, emoji: string) => {
@@ -215,7 +247,6 @@ export default function CommunityFeed() {
     const current = userReactions[postId];
 
     if (current === emoji) {
-      // Remove
       setUserReactions(prev => { const next = { ...prev }; delete next[postId]; return next; });
       setAllEmojiCounts(prev => ({
         ...prev,
@@ -224,7 +255,6 @@ export default function CommunityFeed() {
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p));
       await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
     } else if (current) {
-      // Switch emoji
       setUserReactions(prev => ({ ...prev, [postId]: emoji }));
       setAllEmojiCounts(prev => ({
         ...prev,
@@ -237,7 +267,6 @@ export default function CommunityFeed() {
       await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
       await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
     } else {
-      // Add
       setUserReactions(prev => ({ ...prev, [postId]: emoji }));
       setAllEmojiCounts(prev => ({
         ...prev,
@@ -252,11 +281,9 @@ export default function CommunityFeed() {
     const uid = currentUserIdRef.current;
     if (!uid) return;
     const isBookmarked = userBookmarks[postId] ?? false;
-    // Optimistic update
     setUserBookmarks(prev => ({ ...prev, [postId]: !isBookmarked }));
     if (isBookmarked) {
       await supabase.from('community_bookmarks').delete().eq('post_id', postId).eq('user_id', uid);
-      // Remove from list when viewing Saved tab
       if (activeTag === 'Saved') {
         setPosts(prev => prev.filter(p => p.id !== postId));
         postsRef.current = postsRef.current.filter(p => p.id !== postId);
@@ -361,6 +388,43 @@ export default function CommunityFeed() {
       </LinearGradient>
 
       <View style={s.tagBar}>
+        {/* Sort button */}
+        <View style={s.sortBtnWrap}>
+          <Pressable
+            style={[s.sortCircle, sortOpen && s.sortCircleActive]}
+            onPress={() => setSortOpen(v => !v)}
+            hitSlop={6}
+          >
+            <Ionicons name="swap-vertical-outline" size={16} color={sortOpen ? '#fff' : '#555'} />
+          </Pressable>
+
+          {sortOpen && (
+            <>
+              {/* Tap-outside overlay */}
+              <Pressable style={s.sortOverlay} onPress={() => setSortOpen(false)} />
+              <View style={s.sortDropdown}>
+                {(['new', 'popular'] as SortBy[]).map(opt => (
+                  <Pressable
+                    key={opt}
+                    style={[s.sortOption, sortBy === opt && s.sortOptionActive]}
+                    onPress={() => { changeSort(opt); setSortOpen(false); }}
+                  >
+                    <Text style={[s.sortOptionTxt, sortBy === opt && s.sortOptionTxtActive]}>
+                      {opt === 'new' ? '✨  New' : '🔥  Popular'}
+                    </Text>
+                    {sortBy === opt && (
+                      <Ionicons name="checkmark" size={15} color="#0F6E6E" />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Vertical divider */}
+        <View style={s.tagBarDivider} />
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagRow}>
           {ALL_TAGS.map((t, i) => (
             <Pressable
@@ -386,7 +450,7 @@ export default function CommunityFeed() {
             renderItem={renderPost}
             contentContainerStyle={s.list}
             refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); load(activeTag, true); }}
+            onRefresh={() => { setRefreshing(true); load(activeTag, sortByRef.current, true); }}
             onEndReached={loadMore}
             onEndReachedThreshold={0.3}
             ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color="#0F6E6E" /> : null}
@@ -417,6 +481,47 @@ export default function CommunityFeed() {
           </LinearGradient>
         </Pressable>
       </View>
+
+      {/* Community guidelines — shown once on first visit */}
+      <Modal
+        visible={guidelinesVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={dismissGuidelines}
+      >
+        <View style={s.glOverlay}>
+          <View style={s.glSheet}>
+            <View style={s.glIconRow}>
+              <View style={s.glIconCircle}>
+                <Text style={s.glIconEmoji}>🤝</Text>
+              </View>
+            </View>
+            <Text style={s.glTitle}>Welcome to the Community</Text>
+            <Text style={s.glSubtitle}>A safe space built on respect and shared experience.</Text>
+
+            <View style={s.glRules}>
+              {[
+                { emoji: '💙', text: 'Be kind — everyone here is fighting their own battle' },
+                { emoji: '🔒', text: 'You can post or comment anonymously any time' },
+                { emoji: '🚫', text: 'No judgement, no shaming, ever' },
+                { emoji: '🆘', text: 'If you\'re in crisis, the Support tab has free helpline numbers' },
+              ].map(r => (
+                <View key={r.emoji} style={s.glRuleRow}>
+                  <Text style={s.glRuleEmoji}>{r.emoji}</Text>
+                  <Text style={s.glRuleTxt}>{r.text}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [s.glBtn, pressed && { opacity: 0.85 }]}
+              onPress={dismissGuidelines}
+            >
+              <Text style={s.glBtnTxt}>I understand</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -431,8 +536,40 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
 
-  tagBar: { paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd' },
-  tagRow: { paddingLeft: 16, flexDirection: 'row', alignItems: 'center' },
+  tagBar: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, backgroundColor: '#fff',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd',
+  },
+
+  // Sort button
+  sortBtnWrap: { paddingLeft: 14, zIndex: 10 },
+  sortCircle: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sortCircleActive: { backgroundColor: '#0F6E6E', borderColor: '#0F6E6E' },
+
+  sortOverlay: { position: 'absolute', top: -200, left: -200, right: -9999, bottom: -9999 },
+  sortDropdown: {
+    position: 'absolute', top: 40, left: 0,
+    backgroundColor: '#fff', borderRadius: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12, shadowRadius: 12, elevation: 10,
+    minWidth: 140, overflow: 'hidden',
+    borderWidth: 1, borderColor: '#f0f0f0',
+  },
+  sortOption: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 13,
+  },
+  sortOptionActive: { backgroundColor: '#f0fafa' },
+  sortOptionTxt: { fontSize: 14, fontWeight: '600', color: '#333' },
+  sortOptionTxtActive: { color: '#0F6E6E' },
+
+  tagBarDivider: { width: 1, height: 22, backgroundColor: '#e0e0e0', marginHorizontal: 10 },
+  tagRow: { flexDirection: 'row', alignItems: 'center' },
   tagChip: {
     paddingHorizontal: 16, paddingVertical: 8, marginRight: 8,
     borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
@@ -498,4 +635,32 @@ const s = StyleSheet.create({
   emptyEmoji: { fontSize: 48, marginBottom: 4 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#444', textAlign: 'center' },
   emptySubtitle: { fontSize: 14, color: '#999', textAlign: 'center', lineHeight: 21 },
+
+  // Guidelines modal
+  glOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center', alignItems: 'center', padding: 24,
+  },
+  glSheet: {
+    backgroundColor: '#fff', borderRadius: 24, padding: 24, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2, shadowRadius: 24, elevation: 24,
+  },
+  glIconRow: { alignItems: 'center', marginBottom: 14 },
+  glIconCircle: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: '#e6f7f7', alignItems: 'center', justifyContent: 'center',
+  },
+  glIconEmoji: { fontSize: 30 },
+  glTitle: { fontSize: 20, fontWeight: '800', color: '#111', textAlign: 'center', marginBottom: 6 },
+  glSubtitle: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  glRules: { gap: 14, marginBottom: 24 },
+  glRuleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  glRuleEmoji: { fontSize: 18, width: 24 },
+  glRuleTxt: { flex: 1, fontSize: 14, color: '#333', lineHeight: 20 },
+  glBtn: {
+    backgroundColor: '#0F6E6E', borderRadius: 14,
+    paddingVertical: 15, alignItems: 'center',
+  },
+  glBtnTxt: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

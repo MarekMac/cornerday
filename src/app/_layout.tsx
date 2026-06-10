@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+import * as Notifications from 'expo-notifications';
 
 // Suppress the dev-only "GO_BACK not handled" overlay — this warning is
 // emitted by React Navigation when Android restores navigation state on
@@ -92,6 +93,15 @@ export default function RootLayout() {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Route to the screen embedded in a push notification when the user taps it
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const screen = response.notification.request.content.data?.screen as string | undefined;
+      if (screen) router.push(screen as any);
+    });
+    return () => sub.remove();
   }, []);
 
   // Navigate only once both auth is resolved AND navigation container is ready

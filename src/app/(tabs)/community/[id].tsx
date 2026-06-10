@@ -38,6 +38,7 @@ interface Comment {
   content: string;
   created_at: string;
   helpful_count: number;
+  is_anonymous?: boolean;
   users: { display_name: string } | null;
 }
 
@@ -51,6 +52,7 @@ export default function PostDetail() {
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
   const [userReaction, setUserReaction] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [isCommentAnonymous, setIsCommentAnonymous] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export default function PostDetail() {
         async (payload) => {
           const { data } = await supabase
             .from('community_comments')
-            .select('id, user_id, content, created_at, helpful_count, users(display_name)')
+            .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
             .eq('id', payload.new.id)
             .single();
           if (data) {
@@ -112,7 +114,7 @@ export default function PostDetail() {
         .single(),
       supabase
         .from('community_comments')
-        .select('id, user_id, content, created_at, helpful_count, users(display_name)')
+        .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
         .eq('post_id', id)
         .order('created_at', { ascending: true }),
       supabase
@@ -210,18 +212,20 @@ export default function PostDetail() {
     setCommentText('');
 
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: userData } = await supabase.from('users').select('display_name').eq('id', currentUserId).single();
+    const { data: userData } = isCommentAnonymous
+      ? { data: null }
+      : await supabase.from('users').select('display_name').eq('id', currentUserId).single();
 
     const { data, error } = await supabase
       .from('community_comments')
-      .insert({ post_id: post.id, user_id: currentUserId, content: text })
-      .select('id, user_id, content, created_at, helpful_count')
+      .insert({ post_id: post.id, user_id: currentUserId, content: text, is_anonymous: isCommentAnonymous })
+      .select('id, user_id, content, created_at, helpful_count, is_anonymous')
       .single();
 
     if (!error && data) {
       const newComment: Comment = {
         ...(data as any),
-        users: { display_name: userData?.display_name ?? user?.email ?? 'Anonymous' },
+        users: isCommentAnonymous ? null : { display_name: userData?.display_name ?? user?.email ?? 'Anonymous' },
       };
       setComments(prev => {
         if (prev.some(c => c.id === (data as any).id)) return prev;
@@ -446,8 +450,9 @@ export default function PostDetail() {
           contentContainerStyle={s.list}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
-            const cName = item.users?.display_name ?? 'Anonymous';
-            const cColor = avatarColor(item.user_id);
+            const cIsAnon = item.is_anonymous ?? false;
+            const cName = cIsAnon ? 'Anonymous' : (item.users?.display_name ?? 'Anonymous');
+            const cColor = cIsAnon ? '#aaa' : avatarColor(item.user_id);
             const isOwner = item.user_id === currentUserId;
             const iHelpedThis = myHelpfulReactions.has(item.id);
             return (
@@ -486,7 +491,22 @@ export default function PostDetail() {
           }
         />
 
-        <View style={s.inputBar}>
+        <View style={s.inputBarWrap}>
+          {isCommentAnonymous && (
+            <Text style={s.anonHint}>Posting anonymously</Text>
+          )}
+          <View style={s.inputBar}>
+            <Pressable
+              style={[s.anonToggleBtn, isCommentAnonymous && s.anonToggleBtnActive]}
+              onPress={() => setIsCommentAnonymous(v => !v)}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={isCommentAnonymous ? 'eye-off' : 'eye-outline'}
+                size={18}
+                color={isCommentAnonymous ? '#0F6E6E' : '#bbb'}
+              />
+            </Pressable>
           <TextInput
             ref={inputRef}
             style={s.commentInput}
@@ -506,6 +526,7 @@ export default function PostDetail() {
           >
             <Ionicons name="arrow-up" size={18} color="#fff" />
           </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
 
@@ -741,11 +762,24 @@ const s = StyleSheet.create({
 
   noComments: { textAlign: 'center', color: '#aaa', fontSize: 14, paddingVertical: 32, paddingHorizontal: 20 },
 
+  inputBarWrap: {
+    backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#eee',
+  },
+  anonHint: {
+    fontSize: 11, color: '#0F6E6E', fontWeight: '600',
+    paddingHorizontal: 20, paddingTop: 6,
+  },
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 10,
     paddingHorizontal: 16, paddingVertical: 10,
-    backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#eee',
   },
+  anonToggleBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ebebeb',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 1,
+  },
+  anonToggleBtnActive: { backgroundColor: '#e6f7f7', borderColor: '#0F6E6E' },
   commentInput: {
     flex: 1, backgroundColor: '#f5f5f5', borderRadius: 20,
     paddingHorizontal: 16, paddingVertical: 10,

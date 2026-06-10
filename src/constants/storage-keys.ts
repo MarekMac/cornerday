@@ -14,3 +14,4 @@ export const SAVINGS_GOAL_ICON_KEY = 'cornerday_savings_goal_icon';
 export const GOAL_ICONS = ['🎯','🏖️','✈️','🚗','🏠','💍','📱','🎓','💪','🛡️','👶','🎮','🌟','💰','🐕'] as const;
 export const TRUSTED_CONTACT_KEY = 'cornerday_trusted_contact';
 export const MOTIVATION_PHOTO_KEY = 'cornerday_motivation_photo';
+export const COMMUNITY_GUIDELINES_SEEN_KEY = 'cornerday_community_guidelines_seen';
