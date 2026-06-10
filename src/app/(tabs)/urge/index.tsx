@@ -539,30 +539,6 @@ export default function UrgeScreen() {
           </View>
 
 
-          {/* Trusted contact */}
-          {trustedContact ? (
-            <Pressable
-              style={({ pressed }) => [s.contactCard, pressed && { opacity: 0.88 }]}
-              onPress={() => Linking.openURL(`tel:${trustedContact.phone}`)}>
-              <View style={s.contactLeft}>
-                <Text style={s.contactEmoji}>📞</Text>
-                <View>
-                  <Text style={s.contactLabel}>Talk to someone you trust</Text>
-                  <Text style={s.contactName}>{trustedContact.name}</Text>
-                </View>
-              </View>
-              <View style={s.contactCallBtn}>
-                <Text style={s.contactCallBtnTxt}>Call</Text>
-              </View>
-            </Pressable>
-          ) : (
-            <Pressable
-              style={({ pressed }) => [s.contactCardEmpty, pressed && { opacity: 0.75 }]}
-              onPress={() => router.push('/(tabs)/account')}>
-              <Text style={s.contactCardEmptyTxt}>📞  Add a trusted contact for quick access →</Text>
-            </Pressable>
-          )}
-
           {/* Crisis resources */}
           <View style={s.crisisCard}>
             <Text style={s.crisisTitle}>Need more help?</Text>
@@ -1222,24 +1198,6 @@ const s = StyleSheet.create({
   therapyBtnChevron: { fontSize: 22, color: '#a8d8d0', fontWeight: '300' },
 
   // ── Crisis ────────────────────────────────────────────────────────────────────
-  contactCard: {
-    backgroundColor: '#e8f5f0', borderRadius: 18, padding: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  contactLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  contactEmoji: { fontSize: 26 },
-  contactLabel: { fontSize: 12, color: '#555', fontWeight: '500' },
-  contactName: { fontSize: 16, fontWeight: '700', color: '#0a5a4a', marginTop: 1 },
-  contactCallBtn: {
-    backgroundColor: '#0F6E6E', borderRadius: 10,
-    paddingVertical: 8, paddingHorizontal: 16,
-  },
-  contactCallBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  contactCardEmpty: {
-    backgroundColor: '#f0f4f4', borderRadius: 14, padding: 14, alignItems: 'center',
-  },
-  contactCardEmptyTxt: { fontSize: 13, color: '#888' },
-
   crisisCard: {
     backgroundColor: '#fff8f8', borderRadius: 18, padding: 18, gap: 10,
   },
