@@ -1855,7 +1855,7 @@ export default function AccountScreen() {
                     setFeedbackVisible(false);
                     setFeedbackMsg('');
                     setFeedbackType('general');
-                    Alert.alert('Thanks!', 'Your feedback has been sent.');
+                    Alert.alert('Thank you!', 'Your feedback has been received. We read every submission and will look into it.');
                     // Fire-and-forget email notification — don't block the user
                     if (inserted?.id) {
                       supabase.functions.invoke('notify-feedback', {
