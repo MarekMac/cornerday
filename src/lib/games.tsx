@@ -120,7 +120,7 @@ const makeCards = (): MemCard[] =>
     .sort(() => Math.random() - 0.5)
     .map((emoji, id) => ({ id, emoji }));
 
-function MemoryGame() {
+function MemoryGame({ onScore }: { onScore?: (s: number) => void }) {
   const [cards, setCards] = useState<MemCard[]>(makeCards);
   const [flipped, setFlipped] = useState<number[]>([]);
   const [matched, setMatched] = useState<Set<number>>(new Set());
@@ -133,13 +133,16 @@ function MemoryGame() {
     const next = [...flipped, id];
     setFlipped(next);
     if (next.length === 2) {
-      setMoves(m => m + 1);
+      const newMoves = moves + 1;
+      setMoves(newMoves);
       checking.current = true;
       const [a, b] = next;
       if (cards[a].emoji === cards[b].emoji) {
-        setMatched(prev => new Set([...prev, a, b]));
+        const newMatched = new Set([...matched, a, b]);
+        setMatched(newMatched);
         setFlipped([]);
         checking.current = false;
+        if (newMatched.size === 16) onScore?.(Math.max(0, 150 - newMoves * 5));
       } else {
         setTimeout(() => { setFlipped([]); checking.current = false; }, 900);
       }
@@ -187,14 +190,18 @@ function MemoryGame() {
 // ── 3. TAP THE DOT ────────────────────────────────────────────────────────────
 const AREA_W = W - 80;
 
-function TapDotGame() {
+function TapDotGame({ onScore }: { onScore?: (s: number) => void }) {
   const [pos, setPos]     = useState<{ x: number; y: number } | null>(null);
   const [score, setScore] = useState(0);
   const [done, setDone]   = useState(false);
   const [started, setStarted] = useState(false);
   const timer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countRef = useRef(0);
+  const scoredRef = useRef(false);
   const TOTAL = 15;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (done && !scoredRef.current) { scoredRef.current = true; onScore?.(score); } }, [done, score]);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
@@ -210,7 +217,7 @@ function TapDotGame() {
     }, 1400);
   }, []);
 
-  const start = () => { countRef.current = 0; setScore(0); setDone(false); setStarted(true); showDot(); };
+  const start = () => { countRef.current = 0; scoredRef.current = false; setScore(0); setDone(false); setStarted(true); showDot(); };
 
   const tap = () => {
     if (!pos) return;
@@ -243,11 +250,14 @@ function TapDotGame() {
 // ── 4. REACTION TEST ──────────────────────────────────────────────────────────
 type ReactPhase = 'idle' | 'waiting' | 'ready' | 'early' | 'done';
 
-function ReactionGame() {
+function ReactionGame({ onScore }: { onScore?: (s: number) => void }) {
   const [phase, setPhase] = useState<ReactPhase>('idle');
   const [time, setTime]   = useState<number | null>(null);
   const startTime = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (phase === 'done' && time !== null) onScore?.(Math.max(0, 1000 - time)); }, [phase]);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
@@ -303,7 +313,7 @@ const SIMON_COLORS = ['#e74c3c', '#3498db', '#27ae60', '#f39c12'] as const;
 const SIMON_NAMES  = ['Red', 'Blue', 'Green', 'Yellow'];
 type SimonPhase = 'idle' | 'showing' | 'input' | 'wrong';
 
-function SimonGame() {
+function SimonGame({ onScore }: { onScore?: (s: number) => void }) {
   const [seq, setSeq]     = useState<number[]>([]);
   const [input, setInput] = useState<number[]>([]);
   const [phase, setPhase] = useState<SimonPhase>('idle');
@@ -343,6 +353,7 @@ function SimonGame() {
     const next = [...input, idx];
     if (next[next.length - 1] !== seq[next.length - 1]) {
       setPhase('wrong');
+      onScore?.(Math.max(0, seq.length - 1));
       return;
     }
     if (next.length === seq.length) {
@@ -414,8 +425,10 @@ function makeWordState(idx: number, score = 0): WordState {
   };
 }
 
-function WordScrambleGame() {
+function WordScrambleGame({ onScore }: { onScore?: (s: number) => void }) {
   const [state, setState] = useState<WordState>(() => makeWordState(0));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (state.done) onScore?.(state.score); }, [state.done]);
 
   const pick = (item: { ch: string; uid: number }) => {
     if (state.correct) return;
@@ -495,12 +508,14 @@ const STROOP_OPTS = [
   { label: 'Yellow', hex: '#f39c12' },
 ];
 
-function StroopGame() {
+function StroopGame({ onScore }: { onScore?: (s: number) => void }) {
   const [idx, setIdx]     = useState(0);
   const [score, setScore] = useState(0);
   const [done, setDone]   = useState(false);
   const [started, setStarted]   = useState(false);
   const [feedback, setFeedback] = useState<boolean | null>(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (done) onScore?.(score); }, [done]);
 
   const answer = (hex: string) => {
     if (feedback !== null) return;
@@ -577,13 +592,15 @@ function makeQ() {
   return { q: `${a} ${op} ${b}`, ans, opts: [...opts].sort(() => Math.random() - 0.5) };
 }
 
-function QuickMathGame() {
+function QuickMathGame({ onScore }: { onScore?: (s: number) => void }) {
   const [q, setQ]         = useState(makeQ);
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(1);
   const [done, setDone]   = useState(false);
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const TOTAL = 10;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (done) onScore?.(score); }, [done]);
 
   const answer = (val: number) => {
     if (feedback !== null) return;
@@ -705,13 +722,15 @@ function makeColorQ() {
   return { correct, opts };
 }
 
-function ColorMatchGame() {
+function ColorMatchGame({ onScore }: { onScore?: (s: number) => void }) {
   const [q, setQ]         = useState(makeColorQ);
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(1);
   const [done, setDone]   = useState(false);
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const TOTAL = 10;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (done) onScore?.(score); }, [done]);
 
   const answer = (name: string) => {
     if (feedback !== null) return;
@@ -760,7 +779,7 @@ function ColorMatchGame() {
 // ── 11. NUMBER MEMORY ─────────────────────────────────────────────────────────
 type NumPhase = 'idle' | 'showing' | 'input' | 'correct' | 'wrong';
 
-function NumberMemoryGame() {
+function NumberMemoryGame({ onScore }: { onScore?: (s: number) => void }) {
   const [level, setLevel] = useState(2);
   const [seq, setSeq]     = useState('');
   const [phase, setPhase] = useState<NumPhase>('idle');
@@ -784,6 +803,7 @@ function NumberMemoryGame() {
       setBest(b => Math.max(b, level));
       setPhase('correct');
     } else {
+      if (best > 0) onScore?.(best);
       setPhase('wrong');
     }
   };
@@ -890,18 +910,18 @@ function GroundingGame() {
 }
 
 // ── Main screen ───────────────────────────────────────────────────────────────
-export function renderGame(key: GameKey) {
+export function renderGame(key: GameKey, onScore?: (s: number) => void) {
   switch (key) {
-    case 'memory':        return <MemoryGame />;
-    case 'tap_dot':       return <TapDotGame />;
-    case 'reaction':      return <ReactionGame />;
-    case 'simon':         return <SimonGame />;
-    case 'word_scramble': return <WordScrambleGame />;
-    case 'stroop':        return <StroopGame />;
-    case 'quick_math':    return <QuickMathGame />;
+    case 'memory':        return <MemoryGame onScore={onScore} />;
+    case 'tap_dot':       return <TapDotGame onScore={onScore} />;
+    case 'reaction':      return <ReactionGame onScore={onScore} />;
+    case 'simon':         return <SimonGame onScore={onScore} />;
+    case 'word_scramble': return <WordScrambleGame onScore={onScore} />;
+    case 'stroop':        return <StroopGame onScore={onScore} />;
+    case 'quick_math':    return <QuickMathGame onScore={onScore} />;
     case 'bubble_pop':    return <BubblePopGame />;
-    case 'color_match':   return <ColorMatchGame />;
-    case 'number_memory': return <NumberMemoryGame />;
+    case 'color_match':   return <ColorMatchGame onScore={onScore} />;
+    case 'number_memory': return <NumberMemoryGame onScore={onScore} />;
   }
 }
 

@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type GameKey, GAMES, renderGame } from '@/lib/games';
+import { GAME_SCORE_FMT, useGameBests } from '@/lib/useGameBests';
 import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -194,6 +195,7 @@ export default function UrgeScreen() {
 
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
+  const { personalBests, globalBests, handleScore } = useGameBests();
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
   const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
@@ -733,6 +735,16 @@ export default function UrgeScreen() {
                         onPress={() => { setPickerVisible(null); setActiveGame(game.key); }}>
                         <Text style={s.pickerTileEmoji}>{game.emoji}</Text>
                         <Text style={s.pickerTileTitle}>{game.title}</Text>
+                        {GAME_SCORE_FMT[game.key] && (personalBests[game.key] !== undefined || globalBests[game.key] !== undefined) && (
+                          <View style={s.pickerTileBests}>
+                            {personalBests[game.key] !== undefined && (
+                              <Text style={s.pickerTilePB}>🏅 {GAME_SCORE_FMT[game.key]!(personalBests[game.key]!)}</Text>
+                            )}
+                            {globalBests[game.key] !== undefined && (
+                              <Text style={s.pickerTileGB}>🌍 {GAME_SCORE_FMT[game.key]!(globalBests[game.key]!)}</Text>
+                            )}
+                          </View>
+                        )}
                       </Pressable>
                     ))
                   : EXERCISES.map(ex => (
@@ -840,7 +852,16 @@ export default function UrgeScreen() {
             <View style={s.gameOverlayHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={{ fontSize: 20 }}>{GAMES.find(g => g.key === activeGame)?.emoji}</Text>
-                <Text style={s.gameOverlayTitle}>{GAMES.find(g => g.key === activeGame)?.title}</Text>
+                <View>
+                  <Text style={s.gameOverlayTitle}>{GAMES.find(g => g.key === activeGame)?.title}</Text>
+                  {GAME_SCORE_FMT[activeGame] && (
+                    <Text style={s.gameOverlayBests}>
+                      {personalBests[activeGame] !== undefined ? `🏅 ${GAME_SCORE_FMT[activeGame]!(personalBests[activeGame]!)}` : '🏅 —'}
+                      {'  '}
+                      {globalBests[activeGame] !== undefined ? `🌍 ${GAME_SCORE_FMT[activeGame]!(globalBests[activeGame]!)}` : '🌍 —'}
+                    </Text>
+                  )}
+                </View>
               </View>
               <Pressable style={s.gameCloseBtn} onPress={() => setActiveGame(null)}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
@@ -850,7 +871,7 @@ export default function UrgeScreen() {
               contentContainerStyle={{ flexGrow: 1 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
-              {renderGame(activeGame)}
+              {renderGame(activeGame, (score) => handleScore(activeGame, score))}
             </ScrollView>
           </SafeAreaView>
         </View>
@@ -1036,6 +1057,9 @@ const s = StyleSheet.create({
   },
   pickerTileEmoji: { fontSize: 28 },
   pickerTileTitle: { fontSize: 12, fontWeight: '700', color: '#111', textAlign: 'center', lineHeight: 15 },
+  pickerTileBests: { marginTop: 4, alignItems: 'center', gap: 1 },
+  pickerTilePB: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
+  pickerTileGB: { fontSize: 10, color: '#888' },
 
   // ── Distraction info card ─────────────────────────────────────────────────────
   distractionTipBox: {
@@ -1179,6 +1203,7 @@ const s = StyleSheet.create({
     backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee',
   },
   gameOverlayTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
+  gameOverlayBests: { fontSize: 11, color: '#888', marginTop: 1 },
   gameCloseBtn: {
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center',
