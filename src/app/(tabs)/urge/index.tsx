@@ -668,7 +668,7 @@ export default function UrgeScreen() {
             <Pressable
               style={({ pressed }) => [s.slipClose, pressed && { opacity: 0.6 }]}
               onPress={() => setShowSlip(false)}>
-              <Text style={s.slipCloseTxt}>Close</Text>
+              <Text style={s.slipCloseTxt}>Skip for now</Text>
             </Pressable>
           </View>
         </View>
@@ -1090,7 +1090,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)', padding: 28,
   },
   slipContent: {
-    backgroundColor: '#fff', borderRadius: 24, padding: 28,
+    backgroundColor: '#fff', borderRadius: 24, padding: 28, paddingTop: 36,
     alignItems: 'center', gap: 14, width: '100%',
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 24,
   },
