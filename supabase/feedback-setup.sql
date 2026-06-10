@@ -31,3 +31,9 @@ DROP POLICY IF EXISTS users_select_own_feedback ON feedback;
 CREATE POLICY users_select_own_feedback ON feedback
   FOR SELECT TO authenticated
   USING (user_id = auth.uid());
+
+-- Admin can delete any feedback
+DROP POLICY IF EXISTS admin_delete_feedback ON feedback;
+CREATE POLICY admin_delete_feedback ON feedback
+  FOR DELETE TO authenticated
+  USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true));

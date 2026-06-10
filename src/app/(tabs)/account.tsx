@@ -1889,9 +1889,9 @@ export default function AccountScreen() {
               Your feedback has been received. We read every submission and will look into it.
             </Text>
             <Pressable
-              style={({ pressed }) => [s.modalBtn, s.modalBtnSave, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [s.thankYouDoneBtn, pressed && { opacity: 0.85 }]}
               onPress={() => setThankYouVisible(false)}>
-              <Text style={s.modalBtnSaveTxt}>Done</Text>
+              <Text style={s.thankYouDoneBtnTxt}>Done</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -2290,6 +2290,8 @@ const s = StyleSheet.create({
   modalBtnCancel: { fontSize: 15, color: '#555', fontWeight: '600' },
   modalBtnSave: { backgroundColor: '#0F6E6E' },
   modalBtnSaveTxt: { fontSize: 15, color: '#fff', fontWeight: '700' },
+  thankYouDoneBtn: { backgroundColor: '#0F6E6E', borderRadius: 12, paddingVertical: 14, alignItems: 'center', alignSelf: 'stretch' },
+  thankYouDoneBtnTxt: { fontSize: 15, color: '#fff', fontWeight: '700' },
 
   confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 24 },
   confirmSheet: {

@@ -110,6 +110,8 @@ export default function ModerationScreen() {
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
 
+  const [deletingFeedback, setDeletingFeedback] = useState<string | null>(null);
+
   const loadFeedback = useCallback(async () => {
     setFeedbackLoading(true);
     const { data } = await supabase
@@ -120,6 +122,26 @@ export default function ModerationScreen() {
     setFeedbackItems((data ?? []) as FeedbackItem[]);
     setFeedbackLoading(false);
   }, []);
+
+  const deleteFeedback = (item: FeedbackItem) => {
+    Alert.alert(
+      'Delete feedback',
+      'Remove this submission permanently?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingFeedback(item.id);
+            await supabase.from('feedback').delete().eq('id', item.id);
+            setFeedbackItems(prev => prev.filter(f => f.id !== item.id));
+            setDeletingFeedback(null);
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => { loadReports(); loadFeedback(); }, [loadReports, loadFeedback]);
 
@@ -251,6 +273,19 @@ export default function ModerationScreen() {
                   </Text>
                 </View>
                 <Text style={s.contentText}>{item.message}</Text>
+                <View style={s.fbActions}>
+                  <Pressable
+                    style={({ pressed }) => [s.fbDeleteBtn, pressed && { opacity: 0.7 }, deletingFeedback === item.id && s.btnDisabled]}
+                    onPress={() => deleteFeedback(item)}
+                    disabled={!!deletingFeedback}>
+                    {deletingFeedback === item.id
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <>
+                          <Ionicons name="trash-outline" size={14} color="#fff" />
+                          <Text style={s.fbDeleteBtnTxt}>Delete</Text>
+                        </>}
+                  </Pressable>
+                </View>
               </View>
             ))}
             <View style={{ height: 32 }} />
@@ -309,4 +344,11 @@ const s = StyleSheet.create({
   },
   deleteBtnTxt: { fontSize: 13, fontWeight: '600', color: '#fff' },
   btnDisabled: { opacity: 0.5 },
+  fbActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 },
+  fbDeleteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingVertical: 7, paddingHorizontal: 14, borderRadius: 10,
+    backgroundColor: '#c0392b',
+  },
+  fbDeleteBtnTxt: { fontSize: 13, fontWeight: '600', color: '#fff' },
 });
