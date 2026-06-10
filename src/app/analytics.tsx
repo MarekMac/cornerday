@@ -56,6 +56,16 @@ function dualTime(days: number): [string, string, string, string] {
   return [String(y), y === 1 ? 'year' : 'years', String(mo), mo === 1 ? 'month' : 'months'];
 }
 
+// Like dualTime but computes real hours from elapsed milliseconds for sub-7-day display
+function dualTimeFromMs(ms: number): [string, string, string, string] {
+  const days = Math.floor(ms / 86400000);
+  if (days < 7) {
+    const hrs = Math.floor((ms % 86400000) / 3600000);
+    return [String(days), days === 1 ? 'day' : 'days', String(hrs), hrs === 1 ? 'hr' : 'hrs'];
+  }
+  return dualTime(days);
+}
+
 function fmtDuration(days: number): string {
   if (days < 7) return `${days}d`;
   if (days < 30) { const w = Math.floor(days / 7), d = days % 7; return d > 0 ? `${w}w ${d}d` : `${w}w`; }
@@ -333,7 +343,8 @@ export default function AnalyticsScreen() {
   const isStreakImproving = data.streakHistory.length >= 3 &&
     data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
 
-  const [heroP, heroPL, heroS, heroSL] = dualTime(data.currentStreakDays);
+  const elapsedMs = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
+  const [heroP, heroPL, heroS, heroSL] = dualTimeFromMs(elapsedMs);
 
   const insights: { emoji: string; text: string; bg: string; tc: string }[] = [];
   if (data.currentStreakDays > 0 && data.currentStreakDays >= data.longestStreak)
@@ -417,15 +428,11 @@ export default function AnalyticsScreen() {
               <Text style={s.heroDualNum}>{heroP}</Text>
               <Text style={s.heroDualLabel}>{heroPL}</Text>
             </View>
-            {heroS !== '0' && (
-              <>
-                <Text style={s.heroDualSep}>·</Text>
-                <View style={s.heroDualCol}>
-                  <Text style={s.heroDualNum}>{heroS}</Text>
-                  <Text style={s.heroDualLabel}>{heroSL}</Text>
-                </View>
-              </>
-            )}
+            <Text style={s.heroDualSep}>·</Text>
+            <View style={s.heroDualCol}>
+              <Text style={s.heroDualNum}>{heroS}</Text>
+              <Text style={s.heroDualLabel}>{heroSL}</Text>
+            </View>
           </View>
           <Text style={s.heroSubLabel}>without gambling</Text>
           <Text style={s.heroDate}>
