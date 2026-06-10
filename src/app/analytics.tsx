@@ -495,39 +495,45 @@ export default function AnalyticsScreen() {
         {/* ── Recovery Health Score ── */}
         <View style={s.card}>
           <SectionHeader title="💚 Recovery Health Score" />
-          <View style={s.healthBarRow}>
-            <View style={s.healthBarBg}>
-              <View style={[s.healthBarFill, { width: `${healthScore}%` as any, backgroundColor: healthColor }]} />
+
+          {/* Score hero */}
+          <View style={s.healthHero}>
+            <Text style={[s.healthBigNum, { color: healthColor }]}>{healthScore}</Text>
+            <View style={s.healthHeroRight}>
+              <View style={[s.healthGradeBadge, { backgroundColor: healthColor + '22' }]}>
+                <Text style={[s.healthGradeText, { color: healthColor }]}>{healthGrade}</Text>
+              </View>
+              <Text style={s.healthCaption}>out of 100</Text>
             </View>
-            <Text style={[s.healthScoreNum, { color: healthColor }]}>{healthScore}</Text>
           </View>
-          <View style={s.healthGradeRow}>
-            <View style={[s.healthGradeBadge, { backgroundColor: healthColor + '1a' }]}>
-              <Text style={[s.healthGradeText, { color: healthColor }]}>{healthGrade}</Text>
-            </View>
+          <View style={s.healthBarBg}>
+            <View style={[s.healthBarFill, { width: `${healthScore}%` as any, backgroundColor: healthColor }]} />
           </View>
 
-          {/* Breakdown */}
-          <View style={s.healthBreakdown}>
-            <Text style={s.healthBreakdownTitle}>How this is calculated</Text>
-            {([
-              { label: 'Streak length', weight: 35, score: streakComponent, desc: 'How long you\'ve been clean (30+ days = 100%)' },
-              { label: 'Urge resistance', weight: 30, score: urgeComponent, desc: 'Percentage of logged urges you overcame' },
-              { label: 'Mood average', weight: 20, score: moodComponent, desc: 'Your average mood rating over the last 30 days' },
-              { label: 'Check-in rate', weight: 15, score: checkInConsistency, desc: 'How many days this month you logged your mood' },
-            ] as const).map(f => (
-              <View key={f.label} style={s.healthFactorRow}>
-                <View style={s.healthFactorLeft}>
-                  <View style={s.healthFactorLabelRow}>
-                    <Text style={s.healthFactorLabel}>{f.label}</Text>
-                    <Text style={s.healthFactorWeight}>{f.weight}%</Text>
-                  </View>
-                  <Text style={s.healthFactorDesc}>{f.desc}</Text>
+          {/* Four factors */}
+          {([
+            { emoji: '⏱️', label: 'Streak',      score: streakComponent,    weight: 35 },
+            { emoji: '🧠', label: 'Urge resist', score: urgeComponent,      weight: 30 },
+            { emoji: '😊', label: 'Mood',         score: moodComponent,      weight: 20 },
+            { emoji: '📅', label: 'Check-ins',    score: checkInConsistency, weight: 15 },
+          ] as const).map(f => (
+            <View key={f.label} style={s.healthFactorRow}>
+              <Text style={s.healthFactorEmoji}>{f.emoji}</Text>
+              <View style={{ flex: 1, gap: 5 }}>
+                <View style={s.healthFactorTopRow}>
+                  <Text style={s.healthFactorLabel}>{f.label}</Text>
+                  <Text style={[s.healthFactorScore, { color: healthColor }]}>{f.score}<Text style={s.healthFactorScoreSub}>/100</Text></Text>
                 </View>
-                <Text style={[s.healthFactorScore, { color: healthColor }]}>{f.score}</Text>
+                <View style={s.healthFactorBarBg}>
+                  <View style={[s.healthFactorBarFill, { width: `${f.score}%` as any, backgroundColor: healthColor }]} />
+                </View>
               </View>
-            ))}
-          </View>
+              <View style={s.healthWeightPill}>
+                <Text style={s.healthWeightTxt}>{f.weight}%</Text>
+              </View>
+            </View>
+          ))}
+          <Text style={s.healthCaption}>Weight: streak 35% · urges 30% · mood 20% · check-ins 15%</Text>
         </View>
 
         {/* ── Streak history ── */}
@@ -871,22 +877,24 @@ const s = StyleSheet.create({
   msAllEarnedText: { fontSize: 14, fontWeight: '600', color: '#0a7a4e', textAlign: 'center' },
 
   // Health score
-  healthBarRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  healthBarBg: { flex: 1, height: 14, backgroundColor: '#f0f0f0', borderRadius: 7, overflow: 'hidden' },
-  healthBarFill: { height: '100%', borderRadius: 7 },
-  healthScoreNum: { fontSize: 22, fontWeight: '800', width: 40, textAlign: 'right' },
-  healthGradeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  healthGradeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  healthGradeText: { fontSize: 12, fontWeight: '700' },
-  healthBreakdown: { backgroundColor: '#fafafa', borderRadius: 12, padding: 12, gap: 10 },
-  healthBreakdownTitle: { fontSize: 11, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
-  healthFactorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  healthFactorLeft: { flex: 1, gap: 2 },
-  healthFactorLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  healthHero: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  healthBigNum: { fontSize: 52, fontWeight: '800', lineHeight: 56 },
+  healthHeroRight: { gap: 4 },
+  healthGradeBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, alignSelf: 'flex-start' },
+  healthGradeText: { fontSize: 13, fontWeight: '700' },
+  healthCaption: { fontSize: 11, color: '#bbb', textAlign: 'center' },
+  healthBarBg: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
+  healthBarFill: { height: '100%', borderRadius: 4 },
+  healthFactorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  healthFactorEmoji: { fontSize: 18, width: 26, textAlign: 'center' },
+  healthFactorTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   healthFactorLabel: { fontSize: 13, fontWeight: '600', color: '#333' },
-  healthFactorWeight: { fontSize: 11, color: '#aaa', fontWeight: '500' },
-  healthFactorDesc: { fontSize: 11, color: '#999', lineHeight: 16 },
-  healthFactorScore: { fontSize: 16, fontWeight: '800', width: 34, textAlign: 'right' },
+  healthFactorScore: { fontSize: 14, fontWeight: '800' },
+  healthFactorScoreSub: { fontSize: 10, fontWeight: '400', color: '#aaa' },
+  healthFactorBarBg: { height: 5, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden' },
+  healthFactorBarFill: { height: '100%', borderRadius: 3 },
+  healthWeightPill: { backgroundColor: '#f5f5f5', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  healthWeightTxt: { fontSize: 10, color: '#aaa', fontWeight: '600' },
 
   // Streak history
   streakHistChart: { flexDirection: 'row', alignItems: 'flex-end', height: 92, gap: 6 },
