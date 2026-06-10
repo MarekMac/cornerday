@@ -57,13 +57,19 @@ function dualTime(days: number): [string, string, string, string] {
 }
 
 // Like dualTime but computes real hours from elapsed milliseconds for sub-7-day display
-function dualTimeFromMs(ms: number): [string, string, string, string] {
-  const days = Math.floor(ms / 86400000);
-  if (days < 7) {
-    const hrs = Math.floor((ms % 86400000) / 3600000);
-    return [String(days), days === 1 ? 'day' : 'days', String(hrs), hrs === 1 ? 'hr' : 'hrs'];
-  }
-  return dualTime(days);
+function heroTime(ms: number): [string, string] {
+  const mins  = Math.floor(ms / 60000);
+  const hrs   = Math.floor(ms / 3600000);
+  const days  = Math.floor(ms / 86400000);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years  = Math.floor(days / 365);
+  if (years  >= 1) return [String(years),  years  === 1 ? 'year'  : 'years'];
+  if (months >= 1) return [String(months), months === 1 ? 'month' : 'months'];
+  if (weeks  >= 1) return [String(weeks),  weeks  === 1 ? 'week'  : 'weeks'];
+  if (days   >= 1) return [String(days),   days   === 1 ? 'day'   : 'days'];
+  if (hrs    >= 1) return [String(hrs),    hrs    === 1 ? 'hr'    : 'hrs'];
+  return [String(Math.max(0, mins)), 'min'];
 }
 
 function fmtDuration(days: number): string {
@@ -345,7 +351,7 @@ export default function AnalyticsScreen() {
     data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
 
   const elapsedMs = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
-  const [heroP, heroPL, heroS, heroSL] = dualTimeFromMs(elapsedMs);
+  const [heroNum, heroLabel] = heroTime(elapsedMs);
 
   const insights: { emoji: string; text: string; bg: string; tc: string }[] = [];
   if (data.currentStreakDays > 0 && data.currentStreakDays >= data.longestStreak)
@@ -424,16 +430,9 @@ export default function AnalyticsScreen() {
 
         {/* ── Hero ── */}
         <LinearGradient colors={['#0b5252', '#0F6E6E', '#1a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.heroCard}>
-          <View style={s.heroDualRow}>
-            <View style={s.heroDualCol}>
-              <Text style={s.heroDualNum}>{heroP}</Text>
-              <Text style={s.heroDualLabel}>{heroPL}</Text>
-            </View>
-            <Text style={s.heroDualSep}>·</Text>
-            <View style={s.heroDualCol}>
-              <Text style={s.heroDualNum}>{heroS}</Text>
-              <Text style={s.heroDualLabel}>{heroSL}</Text>
-            </View>
+          <View style={s.heroDualCol}>
+            <Text style={s.heroDualNum}>{heroNum}</Text>
+            <Text style={s.heroDualLabel}>{heroLabel}</Text>
           </View>
           <Text style={s.heroSubLabel}>without gambling</Text>
           <Text style={s.heroDate}>
