@@ -163,7 +163,6 @@ export default function AnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [resettingUrges, setResettingUrges] = useState(false);
-  const [selectedMilestone, setSelectedMilestone] = useState<typeof MILESTONES[0] | null>(null);
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -461,75 +460,37 @@ export default function AnalyticsScreen() {
         </LinearGradient>
 
         {/* ── Milestones ── */}
-        <View style={s.card}>
-          <SectionHeader title="🏅 Milestones" subtitle="Tap a badge for details" />
-
-          <View style={s.msBadgeRow}>
-            {MILESTONES.map((m, i) => {
-              const earned = currentStreakFloat >= m.days;
-              const isNext = m === nextMilestone;
-              const isSelected = selectedMilestone === m;
-              return (
-                <Pressable
-                  key={i}
-                  onPress={() => setSelectedMilestone(prev => prev === m ? null : m)}
-                  style={({ pressed }) => [
-                    s.msBadge,
-                    earned ? s.msBadgeEarned : isNext ? s.msBadgeNext : s.msBadgeLocked,
-                    isSelected && s.msBadgeSelected,
-                    pressed && { opacity: 0.75 },
-                  ]}>
-                  <Text style={[s.msBadgeEmoji, !earned && !isNext && { opacity: 0.2 }]}>
-                    {earned || isNext ? m.emoji : '🔒'}
+        {nextMilestone ? (
+          <View style={s.card}>
+            <SectionHeader title="🏅 Next milestone" />
+            <View style={s.msDetailCard}>
+              <View style={s.msDetailHeader}>
+                <Text style={s.msDetailEmoji}>{nextMilestone.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.msDetailTitle}>{nextMilestone.label}</Text>
+                  <Text style={s.msDetailStatus}>
+                    {Math.round(milestonePct * 100)}%  ·  {(() => {
+                      const daysLeft = Math.max(0, nextMilestone.days - currentStreakFloat);
+                      if (daysLeft < 1/24) return '< 1 hour to go';
+                      if (daysLeft < 1) return `${Math.round(daysLeft * 24)}h to go`;
+                      return `${Math.ceil(daysLeft)} day${Math.ceil(daysLeft) !== 1 ? 's' : ''} to go`;
+                    })()}
                   </Text>
-                  <Text style={[s.msBadgeLabel, earned ? s.msBadgeLabelEarned : isNext ? s.msBadgeLabelNext : s.msBadgeLabelLocked]}>
-                    {m.label}
-                  </Text>
-                  {earned && <Text style={s.msBadgeCheck}>✓</Text>}
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Detail panel: selected badge, or next badge by default */}
-          {(() => {
-            const target = selectedMilestone ?? nextMilestone;
-            if (!target) return (
-              <View style={s.msAllEarned}>
-                <Text style={s.msAllEarnedText}>👑 You've earned every badge. Incredible commitment.</Text>
-              </View>
-            );
-            const isEarned = currentStreakFloat >= target.days;
-            const tIdx = MILESTONES.indexOf(target);
-            const tPrevDays = tIdx > 0 ? MILESTONES[tIdx - 1].days : 0;
-            const tPct = isEarned ? 1 : Math.min(1, Math.max(0, (currentStreakFloat - tPrevDays) / (target.days - tPrevDays)));
-            const daysLeft = Math.max(0, target.days - currentStreakFloat);
-            const timeLeft = daysLeft < 1
-              ? `${Math.round(daysLeft * 24)}h to go`
-              : daysLeft < 1.5
-                ? '1 day to go'
-                : `${Math.ceil(daysLeft)} days to go`;
-            return (
-              <View style={s.msDetailCard}>
-                <View style={s.msDetailHeader}>
-                  <Text style={s.msDetailEmoji}>{isEarned ? target.emoji : target.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.msDetailTitle}>{target.label}</Text>
-                    <Text style={[s.msDetailStatus, isEarned && s.msDetailStatusEarned]}>
-                      {isEarned ? '✅ Earned' : `${Math.round(tPct * 100)}%  ·  ${timeLeft}`}
-                    </Text>
-                  </View>
                 </View>
-                {!isEarned && (
-                  <View style={s.progressBarBg}>
-                    <View style={[s.progressBarFill, { width: `${Math.round(tPct * 100)}%` as any }]} />
-                  </View>
-                )}
-                <Text style={s.msDesc}>{MILESTONE_DESC[target.label]}</Text>
               </View>
-            );
-          })()}
-        </View>
+              <View style={s.progressBarBg}>
+                <View style={[s.progressBarFill, { width: `${Math.round(milestonePct * 100)}%` as any }]} />
+              </View>
+              <Text style={s.msDesc}>{MILESTONE_DESC[nextMilestone.label]}</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={s.card}>
+            <View style={s.msAllEarned}>
+              <Text style={s.msAllEarnedText}>👑 You've earned every badge. Incredible commitment.</Text>
+            </View>
+          </View>
+        )}
 
         {/* ── Recovery Health Score ── */}
         <View style={s.card}>
