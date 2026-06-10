@@ -488,7 +488,7 @@ export default function UrgeScreen() {
                     value={customTrigger}
                     onChangeText={setCustomTrigger}
                     maxLength={120}
-                    onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: logCardY, animated: true }), 200)}
+                    onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: logCardY + 120, animated: true }), 200)}
                   />
                 )}
 
@@ -505,7 +505,7 @@ export default function UrgeScreen() {
                   numberOfLines={3}
                   maxLength={500}
                   textAlignVertical="top"
-                  onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: logCardY, animated: true }), 200)}
+                  onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: logCardY + 120, animated: true }), 200)}
                 />
 
                 <View style={s.sheetActions}>
