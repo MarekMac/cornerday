@@ -163,6 +163,7 @@ export default function AnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [resettingUrges, setResettingUrges] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState<typeof MILESTONES[0] | null>(null);
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -326,11 +327,12 @@ export default function AnalyticsScreen() {
     ? data.moodLast30.reduce((s, r) => s + r.mood, 0) / data.moodLast30.length : null;
   const urgeResistPct = data.urgeCount > 0 ? Math.round((data.urgesOvercome / data.urgeCount) * 100) : null;
 
-  const nextMilestone = MILESTONES.find(m => m.days > data.currentStreakDays) ?? null;
+  const currentStreakFloat = elapsedMs / 86400000;
+  const nextMilestone = MILESTONES.find(m => m.days > currentStreakFloat) ?? null;
   const nextMilestoneIdx = nextMilestone ? MILESTONES.indexOf(nextMilestone) : -1;
   const prevMilestoneDays = nextMilestoneIdx > 0 ? MILESTONES[nextMilestoneIdx - 1].days : 0;
   const milestonePct = nextMilestone
-    ? Math.min(1, (data.currentStreakDays - prevMilestoneDays) / (nextMilestone.days - prevMilestoneDays)) : 1;
+    ? Math.min(1, (currentStreakFloat - prevMilestoneDays) / (nextMilestone.days - prevMilestoneDays)) : 1;
 
   const maxUrgeCount = Math.max(...data.urgesByDay);
   const maxUrgeDay = data.urgesByDay.indexOf(maxUrgeCount);
@@ -460,47 +462,73 @@ export default function AnalyticsScreen() {
 
         {/* ── Milestones ── */}
         <View style={s.card}>
-          <SectionHeader title="🏅 Milestones" />
+          <SectionHeader title="🏅 Milestones" subtitle="Tap a badge for details" />
 
-          {/* Badge row */}
           <View style={s.msBadgeRow}>
             {MILESTONES.map((m, i) => {
-              const earned = data.longestStreak >= m.days;
+              const earned = currentStreakFloat >= m.days;
               const isNext = m === nextMilestone;
+              const isSelected = selectedMilestone === m;
               return (
-                <View key={i} style={[s.msBadge, earned && s.msBadgeEarned, isNext && s.msBadgeNext, !earned && !isNext && s.msBadgeLocked]}>
-                  <Text style={[s.msBadgeEmoji, !earned && !isNext && { opacity: 0.25 }]}>{m.emoji}</Text>
+                <Pressable
+                  key={i}
+                  onPress={() => setSelectedMilestone(prev => prev === m ? null : m)}
+                  style={({ pressed }) => [
+                    s.msBadge,
+                    earned ? s.msBadgeEarned : isNext ? s.msBadgeNext : s.msBadgeLocked,
+                    isSelected && s.msBadgeSelected,
+                    pressed && { opacity: 0.75 },
+                  ]}>
+                  <Text style={[s.msBadgeEmoji, !earned && !isNext && { opacity: 0.2 }]}>
+                    {earned || isNext ? m.emoji : '🔒'}
+                  </Text>
                   <Text style={[s.msBadgeLabel, earned ? s.msBadgeLabelEarned : isNext ? s.msBadgeLabelNext : s.msBadgeLabelLocked]}>
                     {m.label}
                   </Text>
-                </View>
+                  {earned && <Text style={s.msBadgeCheck}>✓</Text>}
+                </Pressable>
               );
             })}
           </View>
 
-          {/* Next badge detail */}
-          {nextMilestone ? (
-            <View style={s.msNextWrap}>
-              <View style={s.msNextHeader}>
-                <Text style={s.msNextEmoji}>{nextMilestone.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.msNextTitle}>Next badge: {nextMilestone.label}</Text>
-                  <Text style={s.msNextSub}>
-                    {nextMilestone.days - data.currentStreakDays} more day{nextMilestone.days - data.currentStreakDays !== 1 ? 's' : ''} to go
-                  </Text>
+          {/* Detail panel: selected badge, or next badge by default */}
+          {(() => {
+            const target = selectedMilestone ?? nextMilestone;
+            if (!target) return (
+              <View style={s.msAllEarned}>
+                <Text style={s.msAllEarnedText}>👑 You've earned every badge. Incredible commitment.</Text>
+              </View>
+            );
+            const isEarned = currentStreakFloat >= target.days;
+            const tIdx = MILESTONES.indexOf(target);
+            const tPrevDays = tIdx > 0 ? MILESTONES[tIdx - 1].days : 0;
+            const tPct = isEarned ? 1 : Math.min(1, Math.max(0, (currentStreakFloat - tPrevDays) / (target.days - tPrevDays)));
+            const daysLeft = Math.max(0, target.days - currentStreakFloat);
+            const timeLeft = daysLeft < 1
+              ? `${Math.round(daysLeft * 24)}h to go`
+              : daysLeft < 1.5
+                ? '1 day to go'
+                : `${Math.ceil(daysLeft)} days to go`;
+            return (
+              <View style={s.msDetailCard}>
+                <View style={s.msDetailHeader}>
+                  <Text style={s.msDetailEmoji}>{isEarned ? target.emoji : target.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.msDetailTitle}>{target.label}</Text>
+                    <Text style={[s.msDetailStatus, isEarned && s.msDetailStatusEarned]}>
+                      {isEarned ? '✅ Earned' : `${Math.round(tPct * 100)}%  ·  ${timeLeft}`}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={s.msNextPct}>{Math.round(milestonePct * 100)}%</Text>
+                {!isEarned && (
+                  <View style={s.progressBarBg}>
+                    <View style={[s.progressBarFill, { width: `${Math.round(tPct * 100)}%` as any }]} />
+                  </View>
+                )}
+                <Text style={s.msDesc}>{MILESTONE_DESC[target.label]}</Text>
               </View>
-              <View style={s.progressBarBg}>
-                <View style={[s.progressBarFill, { width: `${Math.round(milestonePct * 100)}%` as any }]} />
-              </View>
-              <Text style={s.msDesc}>{MILESTONE_DESC[nextMilestone.label]}</Text>
-            </View>
-          ) : (
-            <View style={s.msAllEarned}>
-              <Text style={s.msAllEarnedText}>👑 You've earned every badge. Incredible commitment.</Text>
-            </View>
-          )}
+            );
+          })()}
         </View>
 
         {/* ── Recovery Health Score ── */}
@@ -859,22 +887,24 @@ const s = StyleSheet.create({
   statSub: { fontSize: 10, color: '#0a7a4e', textAlign: 'center' },
 
   // Milestones
-  msBadgeRow: { flexDirection: 'row', gap: 4 },
-  msBadge: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 10, gap: 4 },
+  msBadgeRow: { flexDirection: 'row', gap: 5 },
+  msBadge: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, gap: 5 },
   msBadgeEarned: { backgroundColor: '#e6f7f7' },
-  msBadgeNext: { backgroundColor: '#f0fdf9', borderWidth: 1.5, borderColor: '#1a9a9a' },
-  msBadgeLocked: { backgroundColor: '#f8f8f8' },
-  msBadgeEmoji: { fontSize: 20 },
-  msBadgeLabel: { fontSize: 9, fontWeight: '600', textAlign: 'center' },
+  msBadgeNext: { backgroundColor: '#f0fdf9', borderWidth: 2, borderColor: '#1a9a9a' },
+  msBadgeLocked: { backgroundColor: '#f5f5f5' },
+  msBadgeSelected: { borderWidth: 2, borderColor: '#0F6E6E' },
+  msBadgeEmoji: { fontSize: 22 },
+  msBadgeCheck: { fontSize: 9, color: '#0F6E6E', fontWeight: '800' },
+  msBadgeLabel: { fontSize: 9, fontWeight: '700', textAlign: 'center' },
   msBadgeLabelEarned: { color: '#0F6E6E' },
   msBadgeLabelNext: { color: '#0a7a4e' },
   msBadgeLabelLocked: { color: '#ccc' },
-  msNextWrap: { backgroundColor: '#f8fffe', borderRadius: 12, padding: 12, gap: 10 },
-  msNextHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  msNextEmoji: { fontSize: 28 },
-  msNextTitle: { fontSize: 13, fontWeight: '700', color: '#111' },
-  msNextSub: { fontSize: 12, color: '#888', marginTop: 2 },
-  msNextPct: { fontSize: 14, fontWeight: '700', color: '#0F6E6E' },
+  msDetailCard: { backgroundColor: '#f8fffe', borderRadius: 12, padding: 14, gap: 10, borderWidth: 1, borderColor: '#e0f5f5' },
+  msDetailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  msDetailEmoji: { fontSize: 32 },
+  msDetailTitle: { fontSize: 15, fontWeight: '700', color: '#111' },
+  msDetailStatus: { fontSize: 13, color: '#888', marginTop: 2 },
+  msDetailStatusEarned: { color: '#0a7a4e', fontWeight: '600' },
   msDesc: { fontSize: 13, color: '#555', lineHeight: 20, fontStyle: 'italic' },
   msAllEarned: { alignItems: 'center', paddingVertical: 8 },
   msAllEarnedText: { fontSize: 14, fontWeight: '600', color: '#0a7a4e', textAlign: 'center' },
