@@ -157,6 +157,8 @@ export default function UrgeScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [logCardY, setLogCardY] = useState(0);
+  const [showCongrats, setShowCongrats] = useState(false);
+  const [congratsElapsed, setCongratsElapsed] = useState(0);
 
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
@@ -299,7 +301,14 @@ export default function UrgeScreen() {
   const timerSecs = timerSecsLeft % 60;
   const timerDisplay = `${String(timerMins).padStart(2, '0')}:${String(timerSecs).padStart(2, '0')}`;
   const startTimer = () => { setTimerSecsLeft(TIMER_TOTAL); setTimerRunning(true); setTimerPointsEarned(false); };
-  const stopTimer  = () => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); openLog('overcame'); };
+  const stopTimer  = () => {
+    const elapsed = TIMER_TOTAL - timerSecsLeft;
+    setTimerRunning(false);
+    setTimerSecsLeft(TIMER_TOTAL);
+    setTimerPointsEarned(false);
+    setCongratsElapsed(elapsed);
+    setShowCongrats(true);
+  };
   const resetTimer = () => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); };
 
   if (loading) {
@@ -590,6 +599,38 @@ export default function UrgeScreen() {
           <View style={{ height: 32 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Congrats overlay */}
+      <Modal visible={showCongrats} transparent animationType="fade" onRequestClose={() => { setShowCongrats(false); openLog('overcame'); }}>
+        <LinearGradient colors={['#0a4e4e', '#0F6E6E', '#1a9a9a']} style={s.congratsOverlay}>
+          <View style={s.congratsContent}>
+            <Text style={s.congratsEmoji}>🏆</Text>
+            <Text style={s.congratsTitle}>You did it!</Text>
+            <Text style={s.congratsSub}>
+              You held on for{' '}
+              <Text style={s.congratsTime}>
+                {congratsElapsed >= 60
+                  ? `${Math.floor(congratsElapsed / 60)} min${Math.floor(congratsElapsed / 60) !== 1 ? 's' : ''}`
+                  : `${congratsElapsed} sec${congratsElapsed !== 1 ? 's' : ''}`}
+              </Text>
+              {'. That takes real strength.'}
+            </Text>
+            <Text style={s.congratsNote}>
+              Every urge you resist makes the next one easier. You're proving to yourself that you're in control.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [s.congratsBtn, pressed && { opacity: 0.85 }]}
+              onPress={() => { setShowCongrats(false); openLog('overcame'); }}>
+              <Text style={s.congratsBtnTxt}>Log this moment  →</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [s.congratsSkip, pressed && { opacity: 0.6 }]}
+              onPress={() => setShowCongrats(false)}>
+              <Text style={s.congratsSkipTxt}>Skip for now</Text>
+            </Pressable>
+          </View>
+        </LinearGradient>
+      </Modal>
 
       {/* Games / Exercises picker sheet */}
       <Modal
@@ -1061,6 +1102,25 @@ const s = StyleSheet.create({
   saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
   saveBtnDisabled: { backgroundColor: '#b0cece' },
   saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  // ── Congrats overlay ─────────────────────────────────────────────────────────
+  congratsOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  congratsContent: { alignItems: 'center', gap: 16, width: '100%' },
+  congratsEmoji: { fontSize: 72 },
+  congratsTitle: { fontSize: 34, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  congratsSub: { fontSize: 17, color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 24 },
+  congratsTime: { fontWeight: '800', color: '#fff' },
+  congratsNote: {
+    fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center', lineHeight: 21,
+    backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 14, padding: 16,
+  },
+  congratsBtn: {
+    backgroundColor: '#fff', borderRadius: 16,
+    paddingVertical: 16, paddingHorizontal: 32, marginTop: 8, width: '100%', alignItems: 'center',
+  },
+  congratsBtnTxt: { fontSize: 16, fontWeight: '800', color: '#0F6E6E' },
+  congratsSkip: { marginTop: 4 },
+  congratsSkipTxt: { fontSize: 14, color: 'rgba(255,255,255,0.55)' },
+
   savedWrap: { alignItems: 'center', paddingVertical: 32, gap: 8 },
   savedIcon: { fontSize: 36, color: '#0a7a4e' },
   savedTxt: { fontSize: 18, fontWeight: '700', color: '#0a7a4e' },
