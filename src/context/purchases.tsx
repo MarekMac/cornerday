@@ -3,7 +3,7 @@ import Purchases, {
   PurchasesOffering,
   PurchasesPackage,
 } from 'react-native-purchases';
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Alert, Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { REVENUECAT_API_KEY, ENTITLEMENT_ID } from '@/constants/revenuecat';
@@ -41,11 +41,21 @@ async function syncToSupabase(premium: boolean) {
   }
 }
 
+async function fetchIsAdmin(userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('users')
+    .select('is_admin')
+    .eq('id', userId)
+    .single();
+  return data?.is_admin ?? false;
+}
+
 export function PurchasesProvider({ children }: { children: ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
   const [offerings, setOfferings] = useState<PurchasesOffering | null>(null);
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const isAdminRef = useRef(false);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -58,14 +68,17 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
         Purchases.configure({ apiKey: REVENUECAT_API_KEY });
 
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) await Purchases.logIn(user.id);
+        if (user) {
+          await Purchases.logIn(user.id);
+          isAdminRef.current = await fetchIsAdmin(user.id);
+        }
 
         const [info, offeringsResult] = await Promise.all([
           Purchases.getCustomerInfo(),
           Purchases.getOfferings(),
         ]);
 
-        const premium = checkPremium(info);
+        const premium = checkPremium(info) || isAdminRef.current;
         setIsPremium(premium);
         await syncToSupabase(premium);
 
@@ -80,25 +93,29 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     init();
 
     Purchases.addCustomerInfoUpdateListener(async (info) => {
-      const premium = checkPremium(info);
+      const premium = checkPremium(info) || isAdminRef.current;
       setIsPremium(premium);
       await syncToSupabase(premium);
     });
   }, []);
 
-  // Re-identify when Supabase auth changes (e.g. after sign-in)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (Platform.OS === 'web') return;
       try {
         if (event === 'SIGNED_IN' && session?.user) {
           await Purchases.logIn(session.user.id);
-          const info = await Purchases.getCustomerInfo();
-          const premium = checkPremium(info);
+          const [info, admin] = await Promise.all([
+            Purchases.getCustomerInfo(),
+            fetchIsAdmin(session.user.id),
+          ]);
+          isAdminRef.current = admin;
+          const premium = checkPremium(info) || admin;
           setIsPremium(premium);
           await syncToSupabase(premium);
         } else if (event === 'SIGNED_OUT') {
           await Purchases.logOut();
+          isAdminRef.current = false;
           setIsPremium(false);
         }
       } catch (e) {
@@ -111,7 +128,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   const purchasePackage = async (pkg: PurchasesPackage): Promise<boolean> => {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
-      const premium = checkPremium(customerInfo);
+      const premium = checkPremium(customerInfo) || isAdminRef.current;
       setIsPremium(premium);
       await syncToSupabase(premium);
       if (premium) setPaywallVisible(false);
@@ -127,7 +144,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   const restorePurchases = async (): Promise<boolean> => {
     try {
       const info = await Purchases.restorePurchases();
-      const premium = checkPremium(info);
+      const premium = checkPremium(info) || isAdminRef.current;
       setIsPremium(premium);
       await syncToSupabase(premium);
       if (premium) {

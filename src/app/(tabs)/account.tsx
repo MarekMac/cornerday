@@ -159,7 +159,7 @@ export default function AccountScreen() {
   const [nameInput, setNameInput] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const { setAvatarUrl: setGlobalAvatarUrl } = useUser();
+  const { setAvatarUrl: setGlobalAvatarUrl, isAdmin } = useUser();
 
   const [editField, setEditField] = useState<FieldKey | null>(null);
   const [editModalSelections, setEditModalSelections] = useState<string[]>([]);
@@ -989,7 +989,11 @@ export default function AccountScreen() {
             />
           </Pressable>
           <View style={s.profileSubRow}>
-            {isPremiumFromRC ? (
+            {isAdmin ? (
+              <View style={s.profileSubLeft}>
+                <Text style={s.profileAdminBadge}>👑 Admin</Text>
+              </View>
+            ) : isPremiumFromRC ? (
               <>
                 <View style={s.profileSubLeft}>
                   <Text style={s.profileSubBadge}>✨ Premium</Text>
@@ -1151,6 +1155,22 @@ export default function AccountScreen() {
             );
           })}
         </View>
+
+        {/* Admin section */}
+        {isAdmin && (
+          <View style={s.menuCard}>
+            <Text style={s.menuCardTitle}>Administration</Text>
+            <Pressable
+              style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+              onPress={() => router.push('/moderation')}>
+              <View style={s.menuIconWrap}>
+                <Ionicons name="shield-outline" size={17} color="#0F6E6E" />
+              </View>
+              <Text style={s.menuRowLabel}>Community Moderation</Text>
+              <Ionicons name="chevron-forward" size={16} color="#ccc" />
+            </Pressable>
+          </View>
+        )}
 
         {/* Settings */}
         <View style={s.menuCard}>
@@ -2051,6 +2071,7 @@ const s = StyleSheet.create({
   },
   profileSubLeft: { gap: 2 },
   profileSubBadge: { fontSize: 14, fontWeight: '700', color: '#0F6E6E' },
+  profileAdminBadge: { fontSize: 14, fontWeight: '700', color: '#7c5700' },
   profileSubMeta: { fontSize: 12, color: '#aaa' },
   profileSubFree: { fontSize: 14, fontWeight: '600', color: '#555' },
   profileSubRestore: { fontSize: 12, color: '#0F6E6E' },
