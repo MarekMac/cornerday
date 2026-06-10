@@ -1167,7 +1167,7 @@ export default function AccountScreen() {
               <View style={s.menuIconWrap}>
                 <Ionicons name="shield-outline" size={17} color="#0F6E6E" />
               </View>
-              <Text style={s.menuRowLabel}>Community Moderation</Text>
+              <Text style={s.menuRowLabel}>Admin Panel</Text>
               <Ionicons name="chevron-forward" size={16} color="#ccc" />
             </Pressable>
           </View>
