@@ -1795,6 +1795,7 @@ export default function AccountScreen() {
 
       {/* Feedback modal */}
       <Modal visible={feedbackVisible} transparent animationType="fade" onRequestClose={() => setFeedbackVisible(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.confirmOverlay} onPress={() => setFeedbackVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <Text style={s.confirmTitle}>Feedback &amp; Feature Request</Text>
@@ -1875,6 +1876,7 @@ export default function AccountScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Reset data modal */}
