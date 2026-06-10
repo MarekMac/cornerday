@@ -1,7 +1,9 @@
+import { ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePurchases } from '@/context/purchases';
+import { useUser } from '@/context/user';
 
 const FEATURES = [
   '💬 Chat any time, day or night',
@@ -11,7 +13,9 @@ const FEATURES = [
 ];
 
 export default function CoachScreen() {
-  const { isPremium, showPaywall } = usePurchases();
+  const { isPremium, isLoadingPurchases, showPaywall } = usePurchases();
+  const { isAdmin } = useUser();
+  const hasAccess = isPremium || isAdmin;
 
   return (
     <View style={s.root}>
@@ -19,13 +23,16 @@ export default function CoachScreen() {
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>AI Coach</Text>
-            {isPremium && <View style={s.premiumBadge}><Text style={s.premiumBadgeTxt}>✨ Premium</Text></View>}
+            {hasAccess && <View style={s.premiumBadge}><Text style={s.premiumBadgeTxt}>{isAdmin ? '👑 Admin' : '✨ Premium'}</Text></View>}
           </View>
         </SafeAreaView>
       </LinearGradient>
 
-      {isPremium ? (
-        // AI Coach chat UI — Phase 2 implementation
+      {isLoadingPurchases ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color="#0F6E6E" />
+        </View>
+      ) : hasAccess ? (
         <ScrollView contentContainerStyle={s.body}>
           <View style={s.comingSoonCard}>
             <Text style={s.comingSoonEmoji}>🤖</Text>

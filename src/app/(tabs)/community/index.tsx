@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { avatarColor, COMMUNITY_TAGS, streakBadge, TAG_COLORS, timeAgo } from '@/constants/community';
 import { COMMUNITY_GUIDELINES_SEEN_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import { useUser } from '@/context/user';
 
 const PAGE_SIZE = 15;
 const ALL_TAGS = ['All', 'Mine', 'Saved', ...COMMUNITY_TAGS] as const;
@@ -73,6 +74,7 @@ export default function CommunityFeed() {
   const [hasMore, setHasMore] = useState(true);
   const [activeTag, setActiveTag] = useState<FilterTag>('All');
   const [sortBy, setSortBy] = useState<SortBy>('new');
+  const { isAdmin } = useUser();
   const [displayName, setDisplayName] = useState('');
   const [userReactions, setUserReactions] = useState<Record<string, string>>({});
   const [allEmojiCounts, setAllEmojiCounts] = useState<Record<string, Record<string, number>>>({});
@@ -383,6 +385,14 @@ export default function CommunityFeed() {
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Text style={s.headerTitle}>Community</Text>
+            {isAdmin && (
+              <Pressable
+                onPress={() => router.push('/moderation' as any)}
+                hitSlop={10}
+                style={({ pressed }) => [s.moderateBtn, pressed && { opacity: 0.7 }]}>
+                <Ionicons name="shield-outline" size={20} color="#fff" />
+              </Pressable>
+            )}
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -535,6 +545,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 12,
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  moderateBtn: { padding: 4 },
 
   tagBar: {
     flexDirection: 'row', alignItems: 'center',

@@ -35,19 +35,25 @@ function checkPremium(info: CustomerInfo): boolean {
 }
 
 async function syncToSupabase(premium: boolean) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    await supabase.from('users').update({ is_premium: premium }).eq('id', user.id);
-  }
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users').update({ is_premium: premium }).eq('id', user.id);
+    }
+  } catch {}
 }
 
 async function fetchIsAdmin(userId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from('users')
-    .select('is_admin')
-    .eq('id', userId)
-    .single();
-  return data?.is_admin ?? false;
+  try {
+    const { data } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    return data?.is_admin ?? false;
+  } catch {
+    return false;
+  }
 }
 
 export function PurchasesProvider({ children }: { children: ReactNode }) {
@@ -64,14 +70,23 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     }
 
     const init = async () => {
+      // Admin check is independent — RC failures must not block it
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          isAdminRef.current = await fetchIsAdmin(user.id);
+          if (isAdminRef.current) setIsPremium(true);
+        }
+      } catch (e) {
+        console.warn('[Admin check] init error:', e);
+      }
+
+      // RevenueCat init (can fail without affecting admin premium)
       try {
         Purchases.configure({ apiKey: REVENUECAT_API_KEY });
 
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await Purchases.logIn(user.id);
-          isAdminRef.current = await fetchIsAdmin(user.id);
-        }
+        if (user) await Purchases.logIn(user.id);
 
         const [info, offeringsResult] = await Promise.all([
           Purchases.getCustomerInfo(),
@@ -102,24 +117,25 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (Platform.OS === 'web') return;
-      try {
-        if (event === 'SIGNED_IN' && session?.user) {
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Admin check first, independently
+        isAdminRef.current = await fetchIsAdmin(session.user.id);
+        if (isAdminRef.current) setIsPremium(true);
+
+        try {
           await Purchases.logIn(session.user.id);
-          const [info, admin] = await Promise.all([
-            Purchases.getCustomerInfo(),
-            fetchIsAdmin(session.user.id),
-          ]);
-          isAdminRef.current = admin;
-          const premium = checkPremium(info) || admin;
+          const info = await Purchases.getCustomerInfo();
+          const premium = checkPremium(info) || isAdminRef.current;
           setIsPremium(premium);
           await syncToSupabase(premium);
-        } else if (event === 'SIGNED_OUT') {
-          await Purchases.logOut();
-          isAdminRef.current = false;
-          setIsPremium(false);
+        } catch (e) {
+          console.warn('[RevenueCat] auth change error:', e);
         }
-      } catch (e) {
-        console.warn('[RevenueCat] auth change error:', e);
+      } else if (event === 'SIGNED_OUT') {
+        try { await Purchases.logOut(); } catch {}
+        isAdminRef.current = false;
+        setIsPremium(false);
       }
     });
     return () => subscription.unsubscribe();

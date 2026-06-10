@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 import { usePurchases } from '@/context/purchases';
+import { useUser } from '@/context/user';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -80,7 +81,9 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
-  const { isPremium, showPaywall } = usePurchases();
+  const { isPremium, isLoadingPurchases, showPaywall } = usePurchases();
+  const { isAdmin } = useUser();
+  const hasAccess = isPremium || isAdmin;
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -224,7 +227,28 @@ export default function AnalyticsScreen() {
     ? Math.max(...data.savingsTimeline.map(r => r.cumulative))
     : 0;
 
-  if (!isPremium) {
+  if (isLoadingPurchases) {
+    return (
+      <View style={s.root}>
+        <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+          <SafeAreaView edges={['top']}>
+            <View style={s.headerRow}>
+              <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>
+                <Text style={s.backArrow}>‹</Text>
+              </Pressable>
+              <Text style={s.headerTitle}>Progress Analytics</Text>
+              <View style={s.backBtn} />
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color="#0F6E6E" />
+        </View>
+      </View>
+    );
+  }
+
+  if (!hasAccess) {
     return (
       <View style={s.root}>
         <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
