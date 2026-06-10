@@ -202,6 +202,8 @@ export default function AccountScreen() {
   const [resetting, setResetting] = useState(false);
   const [pendingReset, setPendingReset] = useState<{ title: string; body: string; onConfirm: () => void } | null>(null);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [showPassModal, setShowPassModal] = useState(false);
+  const [sendingPassReset, setSendingPassReset] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
   const [restoringPurchases, setRestoringPurchases] = useState(false);
@@ -833,14 +835,19 @@ export default function AccountScreen() {
     }
   };
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = () => setShowPassModal(true);
+
+  const sendPasswordReset = async () => {
     const email = profile?.email;
     if (!email) return;
+    setSendingPassReset(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email);
+    setSendingPassReset(false);
+    setShowPassModal(false);
     if (error) {
       Alert.alert('Error', 'Could not send reset email. Please try again.');
     } else {
-      Alert.alert('Check your inbox', `A password reset link has been sent to ${email}.`, [{ text: 'OK' }]);
+      Alert.alert('Check your inbox', `A password reset link has been sent to ${email}.`);
     }
   };
 
@@ -1291,11 +1298,10 @@ export default function AccountScreen() {
       </ScrollView>
 
       {/* Savings goal modal */}
-      <Modal visible={showGoalModal} transparent animationType="slide" onRequestClose={closeGoalModal}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
-          <Pressable style={s.editFieldSheet} onPress={() => {}}>
-            <View style={s.editFieldHandle} />
+      <Modal visible={showGoalModal} transparent animationType="fade" onRequestClose={closeGoalModal}>
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={s.confirmOverlay} onPress={closeGoalModal}>
+          <Pressable style={s.editCenterSheet} onPress={() => {}}>
             <Text style={s.editFieldTitle}>Savings goal</Text>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Icon</Text>
@@ -1357,10 +1363,9 @@ export default function AccountScreen() {
       </Modal>
 
       {/* Trusted contact modal */}
-      <Modal visible={showContactModal} transparent animationType="slide">
-        <Pressable style={s.modalOverlay} onPress={() => setShowContactModal(false)}>
-          <Pressable style={s.editFieldSheet} onPress={() => {}}>
-            <View style={s.editFieldHandle} />
+      <Modal visible={showContactModal} transparent animationType="fade">
+        <Pressable style={s.confirmOverlay} onPress={() => setShowContactModal(false)}>
+          <Pressable style={s.editCenterSheet} onPress={() => {}}>
             <Text style={s.editFieldTitle}>Trusted contact</Text>
             <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Their name</Text>
             <TextInput
@@ -1399,10 +1404,9 @@ export default function AccountScreen() {
       </Modal>
 
       {/* Weekly spending modal */}
-      <Modal visible={showSpendingModal} transparent animationType="slide">
-        <Pressable style={s.modalOverlay} onPress={() => setShowSpendingModal(false)}>
-          <Pressable style={s.editFieldSheet} onPress={() => {}}>
-            <View style={s.editFieldHandle} />
+      <Modal visible={showSpendingModal} transparent animationType="fade">
+        <Pressable style={s.confirmOverlay} onPress={() => setShowSpendingModal(false)}>
+          <Pressable style={s.editCenterSheet} onPress={() => {}}>
             <Text style={s.editFieldTitle}>Weekly spending</Text>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingRight: 8 }}>
@@ -1469,10 +1473,9 @@ export default function AccountScreen() {
       </Modal>
 
       {/* Edit profile field modal */}
-      <Modal visible={!!editField} transparent animationType="slide">
-        <Pressable style={s.modalOverlay} onPress={() => setEditField(null)}>
-          <Pressable style={s.editFieldSheet} onPress={() => {}}>
-            <View style={s.editFieldHandle} />
+      <Modal visible={!!editField} transparent animationType="fade">
+        <Pressable style={s.confirmOverlay} onPress={() => setEditField(null)}>
+          <Pressable style={s.editCenterSheet} onPress={() => {}}>
             <Text style={s.editFieldTitle}>
               {editField ? FIELD_CONFIG[editField].title : ''}
             </Text>
@@ -1521,6 +1524,41 @@ export default function AccountScreen() {
                 {savingField
                   ? <ActivityIndicator color="#fff" size="small" />
                   : <Text style={s.modalBtnSaveTxt}>Save</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Change password modal */}
+      <Modal visible={showPassModal} transparent animationType="fade" onRequestClose={() => setShowPassModal(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setShowPassModal(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: '#f0fafa', borderColor: '#c0e8e8' }]}>
+                <Ionicons name="key-outline" size={26} color="#0F6E6E" />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Change password</Text>
+            <Text style={[s.confirmBody, { textAlign: 'center', marginBottom: 4 }]}>
+              We'll send a reset link to
+            </Text>
+            <Text style={[s.confirmBody, { textAlign: 'center', fontWeight: '600', color: '#0F6E6E', marginBottom: 20 }]}>
+              {profile?.email}
+            </Text>
+            <View style={s.confirmActions}>
+              <Pressable
+                style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                onPress={() => setShowPassModal(false)}>
+                <Text style={s.modalBtnCancel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
+                onPress={sendPasswordReset}
+                disabled={sendingPassReset}>
+                {sendingPassReset
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.modalBtnSaveTxt}>Send reset link</Text>}
               </Pressable>
             </View>
           </Pressable>
@@ -2029,9 +2067,10 @@ const s = StyleSheet.create({
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 20, paddingBottom: 36,
   },
-  editFieldHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#ddd',
-    alignSelf: 'center', marginBottom: 16,
+  editCenterSheet: {
+    backgroundColor: '#fff', borderRadius: 20,
+    padding: 20, paddingBottom: 24, width: '100%', maxHeight: '85%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 24,
   },
   editFieldTitle: { fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 16 },
   editFieldOption: {
