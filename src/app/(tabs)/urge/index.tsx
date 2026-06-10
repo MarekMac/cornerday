@@ -676,8 +676,8 @@ export default function UrgeScreen() {
 
       {/* Congrats overlay */}
       <Modal visible={showCongrats} transparent animationType="fade" onRequestClose={() => { setShowCongrats(false); openLog('overcame'); }}>
-        <LinearGradient colors={['#0a4e4e', '#0F6E6E', '#1a9a9a']} style={s.congratsOverlay}>
-          <View style={s.congratsContent}>
+        <View style={s.slipOverlay}>
+          <View style={s.slipContent}>
             <Text style={s.congratsEmoji}>{CONGRATS_VARIANTS[congratsVariant].emoji}</Text>
             <Text style={s.congratsTitle}>{CONGRATS_VARIANTS[congratsVariant].title}</Text>
             <Text style={s.congratsSub}>
@@ -691,17 +691,17 @@ export default function UrgeScreen() {
             </Text>
             <Text style={s.congratsNote}>{CONGRATS_VARIANTS[congratsVariant].note}</Text>
             <Pressable
-              style={({ pressed }) => [s.congratsBtn, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [s.slipLogBtn, pressed && { opacity: 0.85 }]}
               onPress={() => { setShowCongrats(false); openLog('overcame'); }}>
-              <Text style={s.congratsBtnTxt}>Log this moment  →</Text>
+              <Text style={s.slipLogBtnTxt}>Log this moment  →</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [s.congratsSkip, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [s.slipClose, pressed && { opacity: 0.6 }]}
               onPress={() => setShowCongrats(false)}>
-              <Text style={s.congratsSkipTxt}>Skip for now</Text>
+              <Text style={s.slipCloseTxt}>Skip for now</Text>
             </Pressable>
           </View>
-        </LinearGradient>
+        </View>
       </Modal>
 
       {/* Games / Exercises picker sheet */}
@@ -1219,23 +1219,14 @@ const s = StyleSheet.create({
   saveBtnDisabled: { backgroundColor: '#b0cece' },
   saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   // ── Congrats overlay ─────────────────────────────────────────────────────────
-  congratsOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  congratsContent: { alignItems: 'center', gap: 16, width: '100%' },
-  congratsEmoji: { fontSize: 72 },
-  congratsTitle: { fontSize: 34, fontWeight: '800', color: '#fff', textAlign: 'center' },
-  congratsSub: { fontSize: 17, color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 24 },
-  congratsTime: { fontWeight: '800', color: '#fff' },
+  congratsEmoji: { fontSize: 52 },
+  congratsTitle: { fontSize: 28, fontWeight: '800', color: '#111', textAlign: 'center' },
+  congratsSub: { fontSize: 15, color: '#555', textAlign: 'center', lineHeight: 22 },
+  congratsTime: { fontWeight: '800', color: '#0F6E6E' },
   congratsNote: {
-    fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center', lineHeight: 21,
-    backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 14, padding: 16,
+    fontSize: 14, color: '#555', textAlign: 'center', lineHeight: 21,
+    backgroundColor: '#f0fafa', borderRadius: 14, padding: 16, width: '100%',
   },
-  congratsBtn: {
-    backgroundColor: '#fff', borderRadius: 16,
-    paddingVertical: 16, paddingHorizontal: 32, marginTop: 8, width: '100%', alignItems: 'center',
-  },
-  congratsBtnTxt: { fontSize: 16, fontWeight: '800', color: '#0F6E6E' },
-  congratsSkip: { marginTop: 4 },
-  congratsSkipTxt: { fontSize: 14, color: 'rgba(255,255,255,0.55)' },
 
   savedWrap: { alignItems: 'center', paddingVertical: 32, gap: 8 },
   savedIcon: { fontSize: 36, color: '#0a7a4e' },
