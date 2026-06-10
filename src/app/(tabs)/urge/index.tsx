@@ -110,6 +110,32 @@ const THERAPY_RESOURCES = [
   },
 ];
 
+const CONGRATS_VARIANTS = [
+  { emoji: '🏆', title: 'You did it!',           note: 'Every urge you resist makes the next one easier. You\'re proving to yourself that you\'re in control.' },
+  { emoji: '💪', title: 'That\'s willpower.',     note: 'Willpower is a muscle — you just used it. It grows stronger every time.' },
+  { emoji: '⚡', title: 'You held your ground.',  note: 'The urge came, and you didn\'t move. That\'s exactly what recovery looks like.' },
+  { emoji: '🌊', title: 'You rode it out.',       note: 'Urges are waves. You didn\'t fight it — you let it pass. That\'s a skill.' },
+  { emoji: '🔥', title: 'Real strength.',         note: 'Not many people could do what you just did. Take a moment to feel proud.' },
+  { emoji: '🌱', title: 'One more win.',           note: 'Recovery is built one moment at a time. This was your moment — and you nailed it.' },
+  { emoji: '🛡️', title: 'You\'re in control.',    note: 'The urge doesn\'t own you. You just proved that again.' },
+  { emoji: '✨', title: 'You resisted.',           note: 'That choice — right there — is the thing that changes everything over time.' },
+  { emoji: '🎯', title: 'Stronger than the urge.',note: 'It tried. It failed. You win today.' },
+  { emoji: '🌟', title: 'Look at you go.',        note: 'You showed up for yourself when it was hard. That\'s the whole game.' },
+] as const;
+
+const SLIP_VARIANTS = [
+  { emoji: '💙', title: 'That\'s okay.',          body: 'Slips are part of recovery — not the end of it. The fact you\'re still here, still trying, says everything.' },
+  { emoji: '🤍', title: 'You\'re still here.',    body: 'Coming back after a slip takes more courage than never slipping at all. You came back.' },
+  { emoji: '🌿', title: 'This doesn\'t define you.', body: 'One moment doesn\'t cancel out your effort. Your recovery is still real and still yours.' },
+  { emoji: '🔄', title: 'Recovery isn\'t linear.', body: 'Every person in recovery has been exactly where you are now. What matters is what you do next.' },
+  { emoji: '💛', title: 'Be kind to yourself.',   body: 'You wouldn\'t judge a friend this harshly. Give yourself the same grace you\'d give them.' },
+  { emoji: '🌅', title: 'A new start.',           body: 'Every moment is a chance to begin again. You don\'t have to wait until tomorrow.' },
+  { emoji: '🧭', title: 'Still on the path.',     body: 'A slip is a detour, not a dead end. The path back is right here.' },
+  { emoji: '💪', title: 'You\'re still fighting.', body: 'The fact that you\'re facing this — not hiding from it — shows how serious you are about change.' },
+  { emoji: '🌊', title: 'Ride the wave.',         body: 'This feeling will pass. Shame fades. What lasts is what you choose to do right now.' },
+  { emoji: '🕊️', title: 'Forgive yourself.',     body: 'Guilt won\'t help — but a reset will. You\'ve got this. One breath, one step.' },
+] as const;
+
 const DISTRACTIONS = [
   {
     emoji: '🚶', label: 'Go for a walk', sub: 'Step outside for 5–10 minutes',
@@ -160,7 +186,9 @@ export default function UrgeScreen() {
   const [logCardY, setLogCardY] = useState(0);
   const [showCongrats, setShowCongrats] = useState(false);
   const [congratsElapsed, setCongratsElapsed] = useState(0);
+  const [congratsVariant, setCongratsVariant] = useState(0);
   const [showSlip, setShowSlip] = useState(false);
+  const [slipVariant, setSlipVariant] = useState(0);
   const [slipResetting, setSlipResetting] = useState(false);
   const [slipReset, setSlipReset] = useState(false);
 
@@ -311,6 +339,7 @@ export default function UrgeScreen() {
     setTimerSecsLeft(TIMER_TOTAL);
     setTimerPointsEarned(false);
     setCongratsElapsed(elapsed);
+    setCongratsVariant(Math.floor(Math.random() * CONGRATS_VARIANTS.length));
     setShowCongrats(true);
   };
   const hadASlip = () => {
@@ -318,6 +347,7 @@ export default function UrgeScreen() {
     setTimerSecsLeft(TIMER_TOTAL);
     setTimerPointsEarned(false);
     setSlipReset(false);
+    setSlipVariant(Math.floor(Math.random() * SLIP_VARIANTS.length));
     setShowSlip(true);
   };
 
@@ -528,7 +558,7 @@ export default function UrgeScreen() {
       </KeyboardAvoidingView>
 
       {/* Log this moment modal */}
-      <Modal visible={logExpanded} transparent animationType="slide" onRequestClose={closeLog}>
+      <Modal visible={logExpanded} transparent animationType="fade" onRequestClose={closeLog}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Pressable style={s.logModalOverlay} onPress={closeLog}>
             <Pressable style={s.logModalSheet} onPress={() => {}}>
@@ -613,11 +643,9 @@ export default function UrgeScreen() {
       <Modal visible={showSlip} transparent animationType="fade" onRequestClose={() => setShowSlip(false)}>
         <View style={s.slipOverlay}>
           <View style={s.slipContent}>
-            <Text style={s.slipEmoji}>💙</Text>
-            <Text style={s.slipTitle}>That's okay</Text>
-            <Text style={s.slipBody}>
-              Slips are part of recovery — not the end of it. The fact you're still here, still trying, says everything.
-            </Text>
+            <Text style={s.slipEmoji}>{SLIP_VARIANTS[slipVariant].emoji}</Text>
+            <Text style={s.slipTitle}>{SLIP_VARIANTS[slipVariant].title}</Text>
+            <Text style={s.slipBody}>{SLIP_VARIANTS[slipVariant].body}</Text>
             {slipReset ? (
               <View style={s.slipResetDone}>
                 <Text style={s.slipResetDoneTxt}>✓ Streak reset. A new start begins now.</Text>
@@ -650,8 +678,8 @@ export default function UrgeScreen() {
       <Modal visible={showCongrats} transparent animationType="fade" onRequestClose={() => { setShowCongrats(false); openLog('overcame'); }}>
         <LinearGradient colors={['#0a4e4e', '#0F6E6E', '#1a9a9a']} style={s.congratsOverlay}>
           <View style={s.congratsContent}>
-            <Text style={s.congratsEmoji}>🏆</Text>
-            <Text style={s.congratsTitle}>You did it!</Text>
+            <Text style={s.congratsEmoji}>{CONGRATS_VARIANTS[congratsVariant].emoji}</Text>
+            <Text style={s.congratsTitle}>{CONGRATS_VARIANTS[congratsVariant].title}</Text>
             <Text style={s.congratsSub}>
               You held on for{' '}
               <Text style={s.congratsTime}>
@@ -661,9 +689,7 @@ export default function UrgeScreen() {
               </Text>
               {'. That takes real strength.'}
             </Text>
-            <Text style={s.congratsNote}>
-              Every urge you resist makes the next one easier. You're proving to yourself that you're in control.
-            </Text>
+            <Text style={s.congratsNote}>{CONGRATS_VARIANTS[congratsVariant].note}</Text>
             <Pressable
               style={({ pressed }) => [s.congratsBtn, pressed && { opacity: 0.85 }]}
               onPress={() => { setShowCongrats(false); openLog('overcame'); }}>
@@ -1044,13 +1070,14 @@ const s = StyleSheet.create({
   whyPhotoEmptyTxt: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
 
   // ── Log modal ─────────────────────────────────────────────────────────────────
-  logModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  logModalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 20 },
   logModalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20, paddingBottom: 36, maxHeight: '90%',
+    backgroundColor: '#fff', borderRadius: 24,
+    padding: 20, paddingBottom: 24, width: '100%', maxHeight: '88%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 24,
   },
   logModalHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#ddd',
+    width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0',
     alignSelf: 'center', marginBottom: 16,
   },
   logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
