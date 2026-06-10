@@ -321,6 +321,25 @@ function formatTimeLeft(days: number): string {
   return `${d} day${d !== 1 ? 's' : ''}`;
 }
 
+function fmtTimeSince(ms: number): string {
+  if (ms < 60000) return 'just now';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(ms / 3600000);
+  if (hours < 24) {
+    const rem = mins % 60;
+    return rem > 0 ? `${hours}h ${rem}m ago` : `${hours}h ago`;
+  }
+  const days = Math.floor(ms / 86400000);
+  if (days < 7) return `${days} day${days !== 1 ? 's' : ''} ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months !== 1 ? 's' : ''} ago`;
+  const years = Math.floor(days / 365);
+  return `${years} year${years !== 1 ? 's' : ''} ago`;
+}
+
 function milestoneLabel(days: number) {
   const map: Record<number, string> = {
     [1/24]: '1 hour', [3/24]: '3 hours', [6/24]: '6 hours', [12/24]: '12 hours',
@@ -1345,7 +1364,7 @@ export default function HomeScreen() {
                   : (data.quitDate
                     ? new Date(parseQuitDate(data.quitDate).getTime() + selectedBadge.days * 86400000)
                     : null);
-                const daysSince = Math.max(0, Math.floor(streakFrac - selectedBadge.days));
+                const msSince = Math.max(0, streakMs - selectedBadge.days * 86400000);
                 const savedAtMilestone = selectedBadge.days * dailyRate;
                 const savedTotal = (streakMs / 86400000) * dailyRate;
                 return (
@@ -1361,8 +1380,8 @@ export default function HomeScreen() {
                       </View>
                     )}
                     <View style={s.modalRow}>
-                      <Text style={s.modalRowLabel}>Days since</Text>
-                      <Text style={s.modalRowValue}>{daysSince} {daysSince === 1 ? 'day' : 'days'} ago</Text>
+                      <Text style={s.modalRowLabel}>Achieved</Text>
+                      <Text style={s.modalRowValue}>{fmtTimeSince(msSince)}</Text>
                     </View>
                     {selectedBadge.days > 0 && (
                       dailyRate > 0 ? (
