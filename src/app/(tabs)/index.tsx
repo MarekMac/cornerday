@@ -682,19 +682,14 @@ export default function HomeScreen() {
 
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
     if (toAward.length > 0) {
-      // Upsert with ignoreDuplicates — returns only the rows that were actually newly inserted.
-      // This prevents silent insert failures from causing repeated journal entries / notifications.
-      const { data: insertedBadges } = await supabase
+      // dedupeGuard is built from a fresh DB read above, so toAward only contains badges
+      // not yet in the database. Insert them; ignoreDuplicates handles any race conditions.
+      await supabase
         .from('badges')
-        .upsert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })), { onConflict: 'user_id,badge_type', ignoreDuplicates: true })
-        .select('badge_type');
-      const newlyInserted = new Set((insertedBadges ?? []).map((b: any) => b.badge_type));
-      // Only act on badges that were actually newly inserted this run.
-      // Fallback is [] — if the upsert returns empty it means the row already existed (ignoreDuplicates).
-      const awarded = toAward.filter(b => newlyInserted.has(b.type));
+        .upsert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })), { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
 
-      // Log journal entries only for badges actually inserted this run
-      const toLog = awarded.filter(b => b.days > 0);
+      // Log and notify for all newly awarded time-based badges
+      const toLog = toAward.filter(b => b.days > 0);
       if (toLog.length > 0) {
         await supabase.from('losses').insert(toLog.map(b => ({
           user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
