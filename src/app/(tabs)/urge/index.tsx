@@ -1050,8 +1050,6 @@ const s = StyleSheet.create({
   // ── Your why ──────────────────────────────────────────────────────────────────
   whyCard: {
     backgroundColor: '#fff', borderRadius: 18, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   whyInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   whyText: { flex: 1, gap: 6 },
