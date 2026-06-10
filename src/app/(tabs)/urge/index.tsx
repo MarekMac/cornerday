@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
@@ -187,7 +188,7 @@ export default function UrgeScreen() {
     if (rawPhoto) setMotivationPhoto(rawPhoto);
   }, []);
 
-  useEffect(() => { fetchMotivation().finally(() => setLoading(false)); }, [fetchMotivation]);
+  useFocusEffect(useCallback(() => { fetchMotivation().finally(() => setLoading(false)); }, [fetchMotivation]));
 
   useEffect(() => {
     if (!timerRunning) return;

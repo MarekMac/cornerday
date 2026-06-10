@@ -7,6 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as Contacts from 'expo-contacts';
 import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -349,6 +350,20 @@ export default function AccountScreen() {
     setContactNameInput(trustedContactName);
     setContactPhoneInput(trustedContactPhone);
     setShowContactModal(true);
+  };
+
+  const pickFromContacts = async () => {
+    const { status } = await Contacts.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow CornerDay to access your contacts in Settings to use this feature.');
+      return;
+    }
+    const contact = await Contacts.presentContactPickerAsync();
+    if (!contact) return;
+    const name = contact.name ?? '';
+    const phone = contact.phoneNumbers?.[0]?.number ?? '';
+    setContactNameInput(name);
+    setContactPhoneInput(phone);
   };
   const saveContact = async () => {
     const name = contactNameInput.trim();
@@ -1367,7 +1382,13 @@ export default function AccountScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setShowContactModal(false)}>
           <Pressable style={s.editCenterSheet} onPress={() => {}}>
             <Text style={s.editFieldTitle}>Trusted contact</Text>
-            <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Their name</Text>
+            <Pressable
+              style={({ pressed }) => [s.contactPickerBtn, pressed && { opacity: 0.8 }]}
+              onPress={pickFromContacts}>
+              <Ionicons name="person-add-outline" size={16} color="#0F6E6E" />
+              <Text style={s.contactPickerBtnTxt}>Choose from contacts</Text>
+            </Pressable>
+            <Text style={[s.spendingCustomLabel, { marginBottom: 8, marginTop: 16 }]}>Their name</Text>
             <TextInput
               style={[s.spendingInput, { flex: 0, marginBottom: 16 }]}
               value={contactNameInput}
@@ -2053,6 +2074,13 @@ const s = StyleSheet.create({
   spendingChipTxt: { fontSize: 14, fontWeight: '600', color: '#555' },
   spendingChipTxtSelected: { color: '#0F6E6E' },
   spendingCustomLabel: { fontSize: 13, color: '#666', marginBottom: 10 },
+  contactPickerBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1.5, borderColor: '#0F6E6E', borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 14, alignSelf: 'stretch', justifyContent: 'center',
+    backgroundColor: '#f0fafa',
+  },
+  contactPickerBtnTxt: { fontSize: 14, fontWeight: '600', color: '#0F6E6E' },
   goalIconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   goalIconChip: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: 'transparent' },
   goalIconChipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },

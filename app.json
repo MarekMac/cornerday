@@ -8,7 +8,10 @@
     "scheme": "cornerday",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSContactsUsageDescription": "CornerDay uses your contacts to let you quickly set a trusted person to call when you feel an urge."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +25,8 @@
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
         "USE_EXACT_ALARM",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "READ_CONTACTS"
       ]
     },
     "web": {
@@ -44,7 +48,8 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-sharing",
-      "expo-image"
+      "expo-image",
+      "expo-contacts"
     ],
     "experiments": {
       "typedRoutes": true,
