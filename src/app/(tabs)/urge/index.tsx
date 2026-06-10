@@ -8,8 +8,10 @@ import {
   Alert,
   Dimensions,
   Image,
+  KeyboardAvoidingView,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -145,14 +147,15 @@ export default function UrgeScreen() {
   const [motivation, setMotivation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Log urge modal
-  const [modalVisible, setModalVisible] = useState(false);
+  // Inline log (replaces modal)
+  const [logExpanded, setLogExpanded] = useState(false);
   const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
   const [customTrigger, setCustomTrigger] = useState('');
   const [outcome, setOutcome] = useState<'overcame' | 'slipped' | null>(null);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
@@ -222,11 +225,11 @@ export default function UrgeScreen() {
     setCustomTrigger('');
     setNote('');
     setSaved(false);
-    setModalVisible(true);
+    setLogExpanded(true);
   };
 
-  const closeModal = () => {
-    setModalVisible(false);
+  const closeLog = () => {
+    setLogExpanded(false);
     setSelectedTrigger(null);
     setCustomTrigger('');
     setOutcome(null);
@@ -254,7 +257,7 @@ export default function UrgeScreen() {
     }
     setSaving(false);
     setSaved(true);
-    setTimeout(closeModal, 1200);
+    setTimeout(closeLog, 1500);
   };
 
   const canSave = selectedTrigger !== null && outcome !== null &&
@@ -310,176 +313,287 @@ export default function UrgeScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">
 
-        {/* Urge delay timer — hero card */}
-        <View style={[s.timerCard, timerDone && s.timerCardDone]}>
-          <View style={s.timerTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.timerTitle, timerDone && { color: '#27ae60' }]}>
-                {timerDone ? 'You made it! 🎉' : timerRunning ? 'Holding on...' : 'Hold on for 20 minutes'}
-              </Text>
-              <Text style={s.timerSub}>
-                {timerDone ? 'The urge has passed. That took strength.' : 'Most urges fade within 20 minutes'}
-              </Text>
-            </View>
-            <Text style={[s.timerDigits, timerDone && { color: '#27ae60' }]}>{timerDisplay}</Text>
-          </View>
-          <View style={s.timerTrack}>
-            <View style={[s.timerFill, { width: `${timerPct}%` as any }, timerDone && s.timerFillDone]} />
-          </View>
-          {timerDone && (
-            <View style={s.timerReward}>
-              <Text style={s.timerRewardEmoji}>⭐</Text>
+          {/* Red urge hero button */}
+          <Pressable
+            style={({ pressed }) => [
+              s.urgeBtn,
+              timerRunning && s.urgeBtnRunning,
+              timerDone && s.urgeBtnDone,
+              pressed && !timerRunning && !timerDone && { opacity: 0.9 },
+            ]}
+            onPress={() => { if (!timerRunning && !timerDone) startTimer(); }}>
+            <Text style={[s.urgeBtnTxt, (timerRunning || timerDone) && s.urgeBtnTxtAlt]}>
+              {timerDone
+                ? '🎉  You made it through the urge'
+                : timerRunning
+                  ? '⏱  Timer running — hold on 💪'
+                  : "I'm feeling the urge right now"}
+            </Text>
+            {!timerRunning && !timerDone && (
+              <Text style={s.urgeBtnSub}>Tap to start your 20-minute urge timer</Text>
+            )}
+          </Pressable>
+
+          {/* Urge delay timer */}
+          <View style={[s.timerCard, timerDone && s.timerCardDone]}>
+            <View style={s.timerTop}>
               <View style={{ flex: 1 }}>
-                <Text style={s.timerRewardTitle}>+1 point earned</Text>
-                <Text style={s.timerRewardSub}>
-                  {timerPointsEarned ? 'Logged to your journal automatically' : 'Already earned one today — keep going!'}
+                <Text style={[s.timerTitle, timerDone && { color: '#27ae60' }]}>
+                  {timerDone ? 'You made it! 🎉' : timerRunning ? 'Holding on...' : 'Hold on for 20 minutes'}
+                </Text>
+                <Text style={s.timerSub}>
+                  {timerDone ? 'The urge has passed. That took strength.' : 'Most urges fade within 20 minutes'}
                 </Text>
               </View>
+              <Text style={[s.timerDigits, timerDone && { color: '#27ae60' }]}>{timerDisplay}</Text>
             </View>
-          )}
-          <View style={s.timerBtns}>
-            {!timerRunning && !timerDone && (
-              <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={startTimer}>
-                <Text style={s.timerStartBtnTxt}>Start timer</Text>
-              </Pressable>
+            <View style={s.timerTrack}>
+              <View style={[s.timerFill, { width: `${timerPct}%` as any }, timerDone && s.timerFillDone]} />
+            </View>
+            {timerDone && (
+              <View style={s.timerReward}>
+                <Text style={s.timerRewardEmoji}>⭐</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.timerRewardTitle}>+1 point earned</Text>
+                  <Text style={s.timerRewardSub}>
+                    {timerPointsEarned ? 'Logged to your journal automatically' : 'Already earned one today — keep going!'}
+                  </Text>
+                </View>
+              </View>
             )}
-            {timerRunning && (
+            <View style={s.timerBtns}>
+              {!timerRunning && !timerDone && (
+                <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={startTimer}>
+                  <Text style={s.timerStartBtnTxt}>Start timer</Text>
+                </Pressable>
+              )}
+              {timerRunning && (
+                <>
+                  <Pressable style={({ pressed }) => [s.timerPastBtn, pressed && { opacity: 0.88 }]} onPress={stopTimer}>
+                    <Text style={s.timerPastBtnTxt}>I'm past it  ✓</Text>
+                  </Pressable>
+                  <Pressable style={({ pressed }) => [s.timerCancelBtn, pressed && { opacity: 0.7 }]} onPress={resetTimer}>
+                    <Text style={s.timerCancelBtnTxt}>Cancel</Text>
+                  </Pressable>
+                </>
+              )}
+              {timerDone && (
+                <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={resetTimer}>
+                  <Text style={s.timerStartBtnTxt}>Go again</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+
+          {/* How did it go? — inline expandable log */}
+          <View style={[s.logCard, logExpanded && s.logCardExpanded]}>
+            {saved ? (
+              <View style={s.savedWrap}>
+                <Text style={s.savedIcon}>✓</Text>
+                <Text style={s.savedTxt}>Entry saved</Text>
+                <Text style={s.savedSub}>Logged to your journal</Text>
+              </View>
+            ) : !logExpanded ? (
               <>
-                <Pressable style={({ pressed }) => [s.timerPastBtn, pressed && { opacity: 0.88 }]} onPress={stopTimer}>
-                  <Text style={s.timerPastBtnTxt}>I'm past it  ✓</Text>
-                </Pressable>
-                <Pressable style={({ pressed }) => [s.timerCancelBtn, pressed && { opacity: 0.7 }]} onPress={resetTimer}>
-                  <Text style={s.timerCancelBtnTxt}>Cancel</Text>
-                </Pressable>
+                <Text style={s.logTitle}>How did it go?</Text>
+                <Text style={s.logSub}>Reflect on this moment when you're ready</Text>
+                <View style={s.logBtns}>
+                  <Pressable
+                    style={({ pressed }) => [s.logBtn, s.logBtnGreen, pressed && { opacity: 0.85 }]}
+                    onPress={() => openLog('overcame')}>
+                    <Text style={s.logBtnTxtGreen}>Overcame it ✓</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [s.logBtn, s.logBtnRed, pressed && { opacity: 0.85 }]}
+                    onPress={() => openLog('slipped')}>
+                    <Text style={s.logBtnTxtRed}>Had a slip</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={s.logExpandedTitle}>Log this moment</Text>
+
+                <View style={s.outcomeRow}>
+                  <Pressable
+                    style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnGreen]}
+                    onPress={() => setOutcome('overcame')}>
+                    <Text style={[s.outcomeBtnTxt, outcome === 'overcame' && s.outcomeBtnTxtActive]}>
+                      Overcame it ✓
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[s.outcomeBtn, outcome === 'slipped' && s.outcomeBtnRed]}
+                    onPress={() => setOutcome('slipped')}>
+                    <Text style={[s.outcomeBtnTxt, outcome === 'slipped' && s.outcomeBtnTxtActive]}>
+                      Had a slip
+                    </Text>
+                  </Pressable>
+                </View>
+
+                <Text style={s.fieldLabel}>What triggered it?</Text>
+                <View style={s.chipsWrap}>
+                  {TRIGGERS.map(t => (
+                    <Pressable
+                      key={t.key}
+                      style={[s.chip, selectedTrigger === t.key && s.chipActive]}
+                      onPress={() => setSelectedTrigger(t.key)}>
+                      <Text style={[s.chipTxt, selectedTrigger === t.key && s.chipTxtActive]}>
+                        {t.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {selectedTrigger === 'other' && (
+                  <TextInput
+                    style={s.customInput}
+                    placeholder="Describe the trigger…"
+                    placeholderTextColor="#aaa"
+                    value={customTrigger}
+                    onChangeText={setCustomTrigger}
+                    maxLength={120}
+                  />
+                )}
+
+                <Text style={s.fieldLabel}>
+                  How are you feeling? <Text style={s.optional}>(optional)</Text>
+                </Text>
+                <TextInput
+                  style={s.noteInput}
+                  placeholder="Add a note…"
+                  placeholderTextColor="#aaa"
+                  value={note}
+                  onChangeText={setNote}
+                  multiline
+                  numberOfLines={3}
+                  maxLength={500}
+                  textAlignVertical="top"
+                />
+
+                <View style={s.sheetActions}>
+                  <Pressable
+                    style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]}
+                    onPress={closeLog}>
+                    <Text style={s.cancelBtnTxt}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      s.saveBtn, !canSave && s.saveBtnDisabled,
+                      pressed && canSave && { opacity: 0.85 },
+                    ]}
+                    onPress={saveEntry}
+                    disabled={!canSave || saving}>
+                    {saving
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Text style={s.saveBtnTxt}>Save entry</Text>}
+                  </Pressable>
+                </View>
               </>
             )}
-            {timerDone && (
-              <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={resetTimer}>
-                <Text style={s.timerStartBtnTxt}>Go again</Text>
-              </Pressable>
-            )}
           </View>
-        </View>
 
-        {/* Quick actions */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.iconRow}>
-          <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('games')}>
-            <Text style={s.iconPillEmoji}>🎮</Text>
-            <Text style={s.iconPillLabel}>Games</Text>
-          </Pressable>
-          <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('exercises')}>
-            <Text style={s.iconPillEmoji}>🧘</Text>
-            <Text style={s.iconPillLabel}>Exercises</Text>
-          </Pressable>
-          {DISTRACTIONS.filter(d => d.action === 'call').map(d => {
-            const label = trustedContact?.name ? `Call ${trustedContact.name}` : d.label;
-            return (
+          {/* Quick actions */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.iconRow}>
+            <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('games')}>
+              <Text style={s.iconPillEmoji}>🎮</Text>
+              <Text style={s.iconPillLabel}>Games</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => setPickerVisible('exercises')}>
+              <Text style={s.iconPillEmoji}>🧘</Text>
+              <Text style={s.iconPillLabel}>Exercises</Text>
+            </Pressable>
+            {DISTRACTIONS.filter(d => d.action === 'call').map(d => {
+              const label = trustedContact?.name ? `Call ${trustedContact.name}` : d.label;
+              return (
+                <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
+                  <Text style={s.iconPillEmoji}>{d.emoji}</Text>
+                  <Text style={s.iconPillLabel}>{label}</Text>
+                </Pressable>
+              );
+            })}
+            {DISTRACTIONS.filter(d => d.action !== 'game' && d.action !== 'call').map(d => (
               <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
                 <Text style={s.iconPillEmoji}>{d.emoji}</Text>
-                <Text style={s.iconPillLabel}>{label}</Text>
+                <Text style={s.iconPillLabel}>{d.label}</Text>
               </Pressable>
-            );
-          })}
-          {DISTRACTIONS.filter(d => d.action !== 'game' && d.action !== 'call').map(d => (
-            <Pressable key={d.label} style={({ pressed }) => [s.iconPill, pressed && { opacity: 0.7 }]} onPress={() => handleDistraction(d)}>
-              <Text style={s.iconPillEmoji}>{d.emoji}</Text>
-              <Text style={s.iconPillLabel}>{d.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+            ))}
+          </ScrollView>
 
-        {/* Your why */}
-        <View style={s.whyCard}>
-          <View style={s.whyInner}>
-            <View style={s.whyText}>
-              <Text style={s.whyLbl}>Remember your why</Text>
-              {motivations.map((m, i) => (
-                <View key={i} style={s.whyRow}>
-                  <Text style={s.whyEmoji}>{m.emoji}</Text>
-                  <Text style={s.whyVal}>{m.label}</Text>
-                </View>
-              ))}
-            </View>
-            <Pressable onPress={pickMotivationPhoto} style={s.whyPhotoBtn}>
-              {motivationPhoto ? (
-                <View>
-                  <Image source={{ uri: motivationPhoto }} style={s.whyPhoto} />
-                  <View style={s.whyPhotoBadge}>
-                    <Text style={s.whyPhotoBadgeIcon}>📷</Text>
+          {/* Your why */}
+          <View style={s.whyCard}>
+            <View style={s.whyInner}>
+              <View style={s.whyText}>
+                <Text style={s.whyLbl}>Remember your why</Text>
+                {motivations.map((m, i) => (
+                  <View key={i} style={s.whyRow}>
+                    <Text style={s.whyEmoji}>{m.emoji}</Text>
+                    <Text style={s.whyVal}>{m.label}</Text>
                   </View>
-                </View>
-              ) : (
-                <View style={s.whyPhotoEmpty}>
-                  <Text style={{ fontSize: 20 }}>📷</Text>
-                  <Text style={s.whyPhotoEmptyTxt}>Add photo</Text>
-                </View>
-              )}
-            </Pressable>
+                ))}
+              </View>
+              <Pressable onPress={pickMotivationPhoto} style={s.whyPhotoBtn}>
+                {motivationPhoto ? (
+                  <View>
+                    <Image source={{ uri: motivationPhoto }} style={s.whyPhoto} />
+                    <View style={s.whyPhotoBadge}>
+                      <Text style={s.whyPhotoBadgeIcon}>📷</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={s.whyPhotoEmpty}>
+                    <Text style={{ fontSize: 20 }}>📷</Text>
+                    <Text style={s.whyPhotoEmptyTxt}>Add photo</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
           </View>
-        </View>
 
-        <Text style={s.sectionHeader}>When you're ready</Text>
-
-        {/* Log a moment */}
-        <View style={s.logCard}>
-          <Text style={s.logTitle}>Log a moment</Text>
-          <Text style={s.logSub}>Record how you handled it</Text>
-          <View style={s.logBtns}>
-            <Pressable
-              style={({ pressed }) => [s.logBtn, s.logBtnGreen, pressed && { opacity: 0.85 }]}
-              onPress={() => openLog('overcame')}>
-              <Text style={s.logBtnTxtGreen}>Overcame it ✓</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [s.logBtn, s.logBtnRed, pressed && { opacity: 0.85 }]}
-              onPress={() => openLog('slipped')}>
-              <Text style={s.logBtnTxtRed}>Had a slip</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Prevention checklist */}
-        <Pressable
-          style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.85 }]}
-          onPress={() => router.push('/(tabs)/urge/checklist')}>
-          <Text style={s.checklistBtnIcon}>✅</Text>
-          <View style={s.checklistBtnText}>
-            <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
-            <Text style={s.checklistBtnSub}>Practical steps to protect your recovery</Text>
-          </View>
-          <Text style={s.checklistBtnChevron}>›</Text>
-        </Pressable>
-
-        {/* Crisis resources */}
-        <View style={s.crisisCard}>
-          <Text style={s.crisisTitle}>Need more help?</Text>
-          <Text style={s.crisisDesc}>
-            National Problem Gambling Helpline — free, confidential, available 24/7
-          </Text>
+          {/* Prevention checklist */}
           <Pressable
-            style={({ pressed }) => [s.crisisBtn, pressed && { opacity: 0.85 }]}
-            onPress={() => Linking.openURL('tel:18005224700')}>
-            <Text style={s.crisisBtnTxt}>📞  1-800-522-4700</Text>
+            style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push('/(tabs)/urge/checklist')}>
+            <Text style={s.checklistBtnIcon}>✅</Text>
+            <View style={s.checklistBtnText}>
+              <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
+              <Text style={s.checklistBtnSub}>Practical steps to protect your recovery</Text>
+            </View>
+            <Text style={s.checklistBtnChevron}>›</Text>
           </Pressable>
-          <Text style={s.crisisNote}>Text HOME to 741741 — Crisis Text Line</Text>
-        </View>
 
-        {/* Professional help */}
-        <Pressable
-          style={({ pressed }) => [s.therapyBtn, pressed && { opacity: 0.85 }]}
-          onPress={() => setTherapyModalVisible(true)}>
-          <Text style={s.therapyBtnIcon}>🏥</Text>
-          <View style={s.therapyBtnText}>
-            <Text style={s.therapyBtnTitle}>Find professional help</Text>
-            <Text style={s.therapyBtnSub}>Official therapy &amp; treatment resources by region</Text>
+          {/* Crisis resources */}
+          <View style={s.crisisCard}>
+            <Text style={s.crisisTitle}>Need more help?</Text>
+            <Text style={s.crisisDesc}>
+              National Problem Gambling Helpline — free, confidential, available 24/7
+            </Text>
+            <Pressable
+              style={({ pressed }) => [s.crisisBtn, pressed && { opacity: 0.85 }]}
+              onPress={() => Linking.openURL('tel:18005224700')}>
+              <Text style={s.crisisBtnTxt}>📞  1-800-522-4700</Text>
+            </Pressable>
+            <Text style={s.crisisNote}>Text HOME to 741741 — Crisis Text Line</Text>
           </View>
-          <Text style={s.therapyBtnChevron}>›</Text>
-        </Pressable>
 
-        <View style={{ height: 32 }} />
-      </ScrollView>
+          {/* Professional help */}
+          <Pressable
+            style={({ pressed }) => [s.therapyBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => setTherapyModalVisible(true)}>
+            <Text style={s.therapyBtnIcon}>🏥</Text>
+            <View style={s.therapyBtnText}>
+              <Text style={s.therapyBtnTitle}>Find professional help</Text>
+              <Text style={s.therapyBtnSub}>Official therapy &amp; treatment resources by region</Text>
+            </View>
+            <Text style={s.therapyBtnChevron}>›</Text>
+          </Pressable>
+
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Games / Exercises picker sheet */}
       <Modal
@@ -694,108 +808,6 @@ export default function UrgeScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Log moment modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={closeModal}>
-        <View style={s.modalOverlay}>
-          <Pressable style={s.modalBackdrop} onPress={closeModal} />
-          <View style={s.sheet}>
-            
-            {saved ? (
-              <View style={s.savedWrap}>
-                <Text style={s.savedIcon}>✓</Text>
-                <Text style={s.savedTxt}>Saved</Text>
-              </View>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                <Text style={s.sheetTitle}>What happened?</Text>
-
-                {/* Outcome toggle */}
-                <View style={s.outcomeRow}>
-                  <Pressable
-                    style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnGreen]}
-                    onPress={() => setOutcome('overcame')}>
-                    <Text style={[s.outcomeBtnTxt, outcome === 'overcame' && s.outcomeBtnTxtActive]}>
-                      Overcame it ✓
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[s.outcomeBtn, outcome === 'slipped' && s.outcomeBtnRed]}
-                    onPress={() => setOutcome('slipped')}>
-                    <Text style={[s.outcomeBtnTxt, outcome === 'slipped' && s.outcomeBtnTxtActive]}>
-                      Had a slip
-                    </Text>
-                  </Pressable>
-                </View>
-
-                <Text style={s.fieldLabel}>What triggered it?</Text>
-                <View style={s.chipsWrap}>
-                  {TRIGGERS.map(t => (
-                    <Pressable
-                      key={t.key}
-                      style={[s.chip, selectedTrigger === t.key && s.chipActive]}
-                      onPress={() => setSelectedTrigger(t.key)}>
-                      <Text style={[s.chipTxt, selectedTrigger === t.key && s.chipTxtActive]}>
-                        {t.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {selectedTrigger === 'other' && (
-                  <TextInput
-                    style={s.customInput}
-                    placeholder="Describe the trigger…"
-                    placeholderTextColor="#aaa"
-                    value={customTrigger}
-                    onChangeText={setCustomTrigger}
-                    maxLength={120}
-                  />
-                )}
-
-                <Text style={s.fieldLabel}>
-                  How are you feeling? <Text style={s.optional}>(optional)</Text>
-                </Text>
-                <TextInput
-                  style={s.noteInput}
-                  placeholder="Add a note…"
-                  placeholderTextColor="#aaa"
-                  value={note}
-                  onChangeText={setNote}
-                  multiline
-                  numberOfLines={3}
-                  maxLength={500}
-                  textAlignVertical="top"
-                />
-
-                <View style={s.sheetActions}>
-                  <Pressable
-                    style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]}
-                    onPress={closeModal}>
-                    <Text style={s.cancelBtnTxt}>Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      s.saveBtn, !canSave && s.saveBtnDisabled,
-                      pressed && canSave && { opacity: 0.85 },
-                    ]}
-                    onPress={saveEntry}
-                    disabled={!canSave || saving}>
-                    {saving
-                      ? <ActivityIndicator size="small" color="#fff" />
-                      : <Text style={s.saveBtnTxt}>Save entry</Text>}
-                  </Pressable>
-                </View>
-                <View style={{ height: 20 }} />
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -812,10 +824,24 @@ const s = StyleSheet.create({
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
 
-  sectionHeader: {
-    fontSize: 11, fontWeight: '700', color: '#999', textTransform: 'uppercase',
-    letterSpacing: 0.8, marginTop: 4, marginBottom: -4, paddingHorizontal: 2,
+  // ── Urge hero button ──────────────────────────────────────────────────────────
+  urgeBtn: {
+    backgroundColor: '#c0392b', borderRadius: 18,
+    paddingVertical: 18, paddingHorizontal: 20, alignItems: 'center', gap: 4,
+    shadowColor: '#c0392b', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28, shadowRadius: 12, elevation: 6,
   },
+  urgeBtnRunning: {
+    backgroundColor: '#0F6E6E',
+    shadowColor: '#0F6E6E',
+  },
+  urgeBtnDone: {
+    backgroundColor: '#27ae60',
+    shadowColor: '#27ae60',
+  },
+  urgeBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 16, textAlign: 'center' },
+  urgeBtnTxtAlt: { fontWeight: '700' },
+  urgeBtnSub: { color: 'rgba(255,255,255,0.75)', fontSize: 12, textAlign: 'center' },
 
   // ── Urge delay timer ─────────────────────────────────────────────────────────
   timerCard: {
@@ -932,13 +958,18 @@ const s = StyleSheet.create({
   },
   whyPhotoEmptyTxt: { fontSize: 10, color: '#0F6E6E', fontWeight: '600' },
 
-  // ── Log a moment ─────────────────────────────────────────────────────────────
+  // ── How did it go? (inline log) ───────────────────────────────────────────────
   logCard: {
     backgroundColor: '#fff', borderRadius: 18, padding: 18, gap: 10,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
+  logCardExpanded: {
+    borderWidth: 1.5, borderColor: '#d8eeee',
+    shadowColor: '#0F6E6E', shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+  },
   logTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
+  logExpandedTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 4 },
   logSub: { fontSize: 13, color: '#888', marginTop: -4 },
   logBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
   logBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', borderWidth: 1.5 },
@@ -999,15 +1030,14 @@ const s = StyleSheet.create({
   },
   gameCloseBtnTxt: { fontSize: 15, color: '#555', fontWeight: '600' },
 
-  // ── Log moment modal ─────────────────────────────────────────────────────────
+  // ── Inline log form fields ────────────────────────────────────────────────────
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, maxHeight: '85%',
   },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 16 },
-  outcomeRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  outcomeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   outcomeBtn: {
     flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
     backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: '#e8e8e8',
@@ -1032,7 +1062,7 @@ const s = StyleSheet.create({
   },
   noteInput: {
     borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 10,
-    padding: 12, fontSize: 14, color: '#111', minHeight: 80, marginBottom: 20,
+    padding: 12, fontSize: 14, color: '#111', minHeight: 80, marginBottom: 16,
   },
   sheetActions: { flexDirection: 'row', gap: 10 },
   cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#f5f5f5' },
@@ -1040,9 +1070,10 @@ const s = StyleSheet.create({
   saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#0F6E6E' },
   saveBtnDisabled: { backgroundColor: '#b0cece' },
   saveBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  savedWrap: { alignItems: 'center', paddingVertical: 40, gap: 12 },
-  savedIcon: { fontSize: 40, color: '#0a7a4e' },
+  savedWrap: { alignItems: 'center', paddingVertical: 32, gap: 8 },
+  savedIcon: { fontSize: 36, color: '#0a7a4e' },
   savedTxt: { fontSize: 18, fontWeight: '700', color: '#0a7a4e' },
+  savedSub: { fontSize: 13, color: '#888' },
 
   // ── Professional help modal ───────────────────────────────────────────────────
   therapyHandle: {

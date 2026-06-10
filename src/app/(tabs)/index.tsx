@@ -26,7 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -717,50 +717,54 @@ export default function HomeScreen() {
     }
 
     // Savings goal badges
-    const [savingsGoalRaw, savingsGoalForRaw, savingsGoalIconRaw, checklistRaw, checklistBadgeSent] = await Promise.all([
+    const [savingsGoalRaw, savingsGoalForRaw, savingsGoalIconRaw, checklistRaw, checklistBadgeSent, goalSetBadgeSent, goalReachedBadgeSent] = await Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
       AsyncStorage.getItem(CHECKLIST_KEY),
       AsyncStorage.getItem(CHECKLIST_BADGE_SENT_KEY),
+      AsyncStorage.getItem(GOAL_SET_BADGE_SENT_KEY),
+      AsyncStorage.getItem(GOAL_REACHED_BADGE_SENT_KEY),
     ]);
     const savingsGoalAmount = savingsGoalRaw ? Number(savingsGoalRaw) : null;
     const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
-    const newGoalBadges: { user_id: string; badge_type: string }[] = [];
-    if (savingsGoalAmount && !dedupeGuard.has('goal_set')) {
-      newGoalBadges.push({ user_id: user.id, badge_type: 'goal_set' });
-    }
-    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !dedupeGuard.has('goal_reached')) {
-      newGoalBadges.push({ user_id: user.id, badge_type: 'goal_reached' });
-    }
-    if (newGoalBadges.length > 0) {
-      await supabase.from('badges').upsert(newGoalBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
-      const logRows = newGoalBadges.map(b => ({
-        user_id: user.id,
-        type: 'milestone_earned' as const,
-        amount: b.badge_type === 'goal_reached' ? (savingsGoalAmount ?? 0) : 0,
-        category: 'Milestone',
-        note: b.badge_type === 'goal_set' ? '📍 Goal Setter badge earned' : '🎊 Savings goal reached',
-      }));
-      await supabase.from('losses').insert(logRows);
+    if (savingsGoalAmount && !goalSetBadgeSent) {
+      await AsyncStorage.setItem(GOAL_SET_BADGE_SENT_KEY, '1');
+      await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_set' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
+      await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: 0, category: 'Milestone', note: '📍 Goal Setter badge earned' });
+      earnedBadges.push('goal_set');
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
-      for (const b of newGoalBadges) {
-        earnedBadges.push(b.badge_type);
-        if (notifStatus === 'granted') {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: b.badge_type === 'goal_set' ? '📍 Goal Setter badge earned!' : '🎊 Goal Reached badge earned!',
-              body: b.badge_type === 'goal_set'
-                ? 'You\'ve set a savings goal. Having a target makes recovery real — keep saving.'
-                : 'You\'ve reached your savings goal. That\'s a massive achievement — be proud.',
-              data: { screen: '/(tabs)/' },
-            },
-            trigger: Platform.OS === 'android'
-              ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
-              : null,
-          });
-        }
+      if (notifStatus === 'granted') {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '📍 Goal Setter badge earned!',
+            body: "You've set a savings goal. Having a target makes recovery real — keep saving.",
+            data: { screen: '/(tabs)/' },
+          },
+          trigger: Platform.OS === 'android'
+            ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
+            : null,
+        });
+      }
+    }
+    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !goalReachedBadgeSent) {
+      await AsyncStorage.setItem(GOAL_REACHED_BADGE_SENT_KEY, '1');
+      await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_reached' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
+      await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: savingsGoalAmount, category: 'Milestone', note: '🎊 Savings goal reached' });
+      earnedBadges.push('goal_reached');
+      const { status: notifStatus } = await Notifications.getPermissionsAsync();
+      if (notifStatus === 'granted') {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '🎊 Goal Reached badge earned!',
+            body: "You've reached your savings goal. That's a massive achievement — be proud.",
+            data: { screen: '/(tabs)/' },
+          },
+          trigger: Platform.OS === 'android'
+            ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
+            : null,
+        });
       }
     }
 

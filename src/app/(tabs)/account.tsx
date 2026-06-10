@@ -28,7 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -173,6 +173,8 @@ export default function AccountScreen() {
 
   const [showSpendingModal, setShowSpendingModal] = useState(false);
 
+  const [totalManualSavings, setTotalManualSavings] = useState(0);
+
   // Savings goal (AsyncStorage)
   const [savingsGoal, setSavingsGoal] = useState<number | null>(null);
   const [savingsGoalFor, setSavingsGoalFor] = useState('');
@@ -211,15 +213,20 @@ export default function AccountScreen() {
     if (!user) return;
     const identities = user.identities ?? [];
     setIsPasswordUser(identities.some(id => id.provider === 'email'));
-    const [{ data }, { data: streakData }, { count: badgeCount }] = await Promise.all([
+    const [{ data }, { data: streakData }, { data: savingsRows }] = await Promise.all([
       supabase
         .from('users')
         .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
         .eq('id', user.id)
         .single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
-      supabase.from('badges').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
     ]);
+    const quitTs = data?.quit_timestamp ?? data?.quit_date;
+    const streakDays = quitTs ? Math.max(0, Date.now() - new Date(quitTs).getTime()) / 86400000 : 0;
+    const MILESTONE_DAYS = [0, 1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
+    const badgeCount = MILESTONE_DAYS.filter(d => streakDays >= d).length;
+    setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
     const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
     let resolvedAvatar = data?.avatar_url ?? null;
     if (!resolvedAvatar && googleAvatar) {
@@ -607,6 +614,8 @@ export default function AccountScreen() {
     await Promise.all([
       AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
       AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
+      AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
+      AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
       AsyncStorage.removeItem(CHECKLIST_KEY),
     ]);
     await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
@@ -643,6 +652,8 @@ export default function AccountScreen() {
         supabase.from('streaks').update({ current_streak: 0, longest_streak: 0, streak_start_date: today }).eq('user_id', user.id),
         AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
         AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
+        AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
+        AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
         AsyncStorage.removeItem(CHECKLIST_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY),
@@ -701,7 +712,7 @@ export default function AccountScreen() {
         try { await supabase.functions.invoke('delete-account'); } catch {}
         await AsyncStorage.multiRemove([
           ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
-          MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY,
+          MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY,
           SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY,
           TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY,
         ]);
@@ -718,7 +729,7 @@ export default function AccountScreen() {
     setSigningOut(true);
     await AsyncStorage.multiRemove([
       ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
-      MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY,
+      MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY,
       SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY,
       TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY,
     ]);
@@ -1008,11 +1019,16 @@ export default function AccountScreen() {
           <View style={s.infoRow}>
             <Text style={s.infoLabel}>Savings goal</Text>
             <View style={s.infoValueRow}>
-              <Text style={[s.infoValue, !savingsGoal && s.infoValueEmpty]}>
-                {savingsGoal
-                  ? `${savingsGoalIcon} ${savingsGoalFor || 'Goal'} · ${CURRENCIES.find(c => c.code === profile?.currency)?.symbol ?? ''}${savingsGoal.toLocaleString()}`
-                  : 'Not set'}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.infoValue, !savingsGoal && s.infoValueEmpty]}>
+                  {savingsGoal
+                    ? `${savingsGoalIcon} ${savingsGoalFor || 'Goal'} · ${CURRENCIES.find(c => c.code === profile?.currency)?.symbol ?? ''}${savingsGoal.toLocaleString()}`
+                    : 'Not set'}
+                </Text>
+                {savingsGoal && totalManualSavings >= savingsGoal && (
+                  <Text style={s.goalReachedNote}>🎉 Goal reached!</Text>
+                )}
+              </View>
               <Pressable
                 onPress={openGoalModal}
                 style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
@@ -1911,6 +1927,7 @@ const s = StyleSheet.create({
   infoLabel: { fontSize: 14, color: '#888' },
   infoValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   infoValue: { fontSize: 14, color: '#111', fontWeight: '600', textAlign: 'right', flexShrink: 1 },
+  goalReachedNote: { fontSize: 12, color: '#0a7a4e', fontWeight: '600', textAlign: 'right', marginTop: 2 },
   editBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#e6f7f7' },
   editBtnTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
 

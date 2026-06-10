@@ -585,7 +585,9 @@ export default function TrackerIndex() {
                 {savingsGoal ? (
                   <>
                     <Text style={s.savingsRowLabel}>{savingsGoalFor || 'Savings goal'}</Text>
-                    <Text style={s.savingsRowSub}>Tap to edit</Text>
+                    <Text style={[s.savingsRowSub, totalManualSavings >= savingsGoal && { color: '#0a7a4e', fontWeight: '600' }]}>
+                      {totalManualSavings >= savingsGoal ? '🎉 Goal reached!' : 'Tap to edit'}
+                    </Text>
                   </>
                 ) : (
                   <>
