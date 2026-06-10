@@ -326,6 +326,7 @@ export default function AnalyticsScreen() {
     ? data.moodLast30.reduce((s, r) => s + r.mood, 0) / data.moodLast30.length : null;
   const urgeResistPct = data.urgeCount > 0 ? Math.round((data.urgesOvercome / data.urgeCount) * 100) : null;
 
+  const elapsedMs = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
   const currentStreakFloat = elapsedMs / 86400000;
   const nextMilestone = MILESTONES.find(m => m.days > currentStreakFloat) ?? null;
   const nextMilestoneIdx = nextMilestone ? MILESTONES.indexOf(nextMilestone) : -1;
@@ -351,7 +352,6 @@ export default function AnalyticsScreen() {
   const isStreakImproving = data.streakHistory.length >= 3 &&
     data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
 
-  const elapsedMs = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
   const [heroNum, heroLabel] = heroTime(elapsedMs);
 
   const insights: { emoji: string; text: string; bg: string; tc: string }[] = [];
