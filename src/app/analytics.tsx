@@ -72,10 +72,13 @@ interface AnalyticsData {
   urgesByDay: number[];
   moodLast30: { date: string; mood: number }[];
   moodSparkline: (number | null)[];
+  checkInDays: number;
   savingsTimeline: { date: string; amount: number; cumulative: number }[];
+  monthlySavings: { month: string; amount: number }[];
   weekMoods: { date: string; mood: number | null }[];
   relapseCount: number;
   dailySavingsRate: number;
+  streakHistory: number[];
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -154,6 +157,20 @@ export default function AnalyticsScreen() {
       return { date: r.created_at, amount: Number(r.amount), cumulative: running };
     });
 
+    // Monthly savings — last 6 months
+    const monthMap: Record<string, number> = {};
+    savingRows.forEach(r => {
+      const d = new Date(r.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthMap[key] = (monthMap[key] ?? 0) + Number(r.amount);
+    });
+    const monthlySavings: { month: string; amount: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlySavings.push({ month: d.toLocaleDateString('en', { month: 'short' }), amount: monthMap[key] ?? 0 });
+    }
+
     const debtRows = debtsRes.data ?? [];
     const payRows = paymentsRes.data ?? [];
     const totalDebts = debtRows.reduce((s, d) => s + Number(d.total_amount), 0);
@@ -175,13 +192,13 @@ export default function AnalyticsScreen() {
       date: new Date(r.created_at).toLocaleDateString('en-CA'),
       mood: r.mood,
     }));
+    const checkInDays = Object.keys(moodByDate).length;
 
     // 30-day daily sparkline — one entry per day
     const moodSparkline: (number | null)[] = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 86400000);
-      const key = d.toLocaleDateString('en-CA');
-      moodSparkline.push(moodByDate[key] ?? null);
+      moodSparkline.push(moodByDate[d.toLocaleDateString('en-CA')] ?? null);
     }
 
     const today = new Date();
@@ -195,6 +212,19 @@ export default function AnalyticsScreen() {
     });
 
     const dailySavingsRate = currentStreakDays > 0 ? totalSavings / currentStreakDays : 0;
+
+    // Streak history — gaps between consecutive relapses + current streak
+    const sortedRelapses = [...relapseRows].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const streakHistory: number[] = [];
+    for (let i = 1; i < sortedRelapses.length; i++) {
+      const gap = Math.floor(
+        (new Date(sortedRelapses[i].created_at).getTime() - new Date(sortedRelapses[i - 1].created_at).getTime()) / 86400000
+      );
+      if (gap > 0) streakHistory.push(gap);
+    }
+    streakHistory.push(currentStreakDays);
 
     setData({
       currency,
@@ -212,10 +242,13 @@ export default function AnalyticsScreen() {
       urgesByDay,
       moodLast30,
       moodSparkline,
+      checkInDays,
       savingsTimeline,
+      monthlySavings,
       weekMoods,
       relapseCount: relapseRows.length,
       dailySavingsRate,
+      streakHistory,
     });
   }, []);
 
@@ -287,6 +320,24 @@ export default function AnalyticsScreen() {
     ? Math.ceil((data.savingsGoal! - data.totalSavings) / data.dailySavingsRate)
     : null;
 
+  // Health score
+  const checkInConsistency = Math.round((data.checkInDays / 30) * 100);
+  const streakComponent = Math.min(100, data.currentStreakDays >= 30 ? 100 : Math.round((data.currentStreakDays / 30) * 100));
+  const urgeComponent = data.urgeCount > 0 ? (urgeResistPct ?? 0) : 100;
+  const moodComponent = avgMoodVal !== null ? Math.round((avgMoodVal / 5) * 100) : 60;
+  const healthScore = Math.round(streakComponent * 0.35 + urgeComponent * 0.30 + moodComponent * 0.20 + checkInConsistency * 0.15);
+  const healthGrade = healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Good' : healthScore >= 40 ? 'Building' : 'Getting started';
+  const healthColor = healthScore >= 80 ? '#0a7a4e' : healthScore >= 60 ? '#0F6E6E' : healthScore >= 40 ? '#d97706' : '#9ca3af';
+
+  // Monthly savings
+  const maxMonthSaving = Math.max(0, ...data.monthlySavings.map(m => m.amount));
+  const monthsWithData = data.monthlySavings.filter(m => m.amount > 0).length;
+
+  // Streak history
+  const maxStreakHistory = Math.max(1, ...data.streakHistory);
+  const isStreakImproving = data.streakHistory.length >= 3 &&
+    data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
+
   // Auto-generated insights
   const insights: { emoji: string; text: string; bg: string; tc: string }[] = [];
   if (data.currentStreakDays > 0 && data.currentStreakDays >= data.longestStreak) {
@@ -306,6 +357,9 @@ export default function AnalyticsScreen() {
   }
   if (data.dailySavingsRate > 0) {
     insights.push({ emoji: '💰', text: `Saving ${fmt(data.dailySavingsRate, data.currency)} per clean day`, bg: '#e6f7f7', tc: '#0F6E6E' });
+  }
+  if (isStreakImproving) {
+    insights.push({ emoji: '📈', text: 'Your streaks are getting longer over time', bg: '#f0fdf4', tc: '#166534' });
   }
 
   if (isLoadingPurchases) {
@@ -337,10 +391,12 @@ export default function AnalyticsScreen() {
 
           <Text style={s.teaserHeading}>What you'll unlock</Text>
           {[
+            { emoji: '💚', title: 'Recovery health score', desc: 'One composite score combining streak, urge resistance, mood and consistency' },
             { emoji: '🔥', title: 'Streak overview & milestone progress', desc: 'Visual countdown to every badge with % complete' },
-            { emoji: '😊', title: '30-day mood sparkline', desc: 'Daily bar chart of your emotional wellbeing over the past month' },
+            { emoji: '📈', title: 'Streak improvement history', desc: 'See how each of your streaks compares — are you getting stronger?' },
+            { emoji: '😊', title: '30-day mood sparkline', desc: 'Daily bar chart showing your emotional wellbeing over the past month' },
             { emoji: '🧠', title: 'Urge pattern analysis', desc: 'Day-of-week breakdown — discover when you\'re most challenged' },
-            { emoji: '💰', title: 'Financial impact', desc: 'Daily savings rate and projected timeline to your goal' },
+            { emoji: '💰', title: 'Monthly savings chart + daily rate', desc: 'Month-by-month savings and projected timeline to your goal' },
             { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts based on your real data' },
           ].map((item, i) => (
             <View key={i} style={s.teaserCard}>
@@ -398,6 +454,38 @@ export default function AnalyticsScreen() {
           </View>
         </LinearGradient>
 
+        {/* Recovery health score */}
+        <View style={s.card}>
+          <SectionHeader title="💚 Recovery Health Score" />
+          <View style={s.healthRow}>
+            <View style={s.healthCircleWrap}>
+              <View style={[s.healthCircle, { borderColor: healthColor }]}>
+                <Text style={[s.healthScoreNum, { color: healthColor }]}>{healthScore}</Text>
+                <Text style={s.healthScoreOf}>/100</Text>
+              </View>
+              <View style={[s.healthGradeBadge, { backgroundColor: healthColor + '1a' }]}>
+                <Text style={[s.healthGradeText, { color: healthColor }]}>{healthGrade}</Text>
+              </View>
+            </View>
+            <View style={s.healthComponents}>
+              {([
+                { label: 'Streak', value: streakComponent },
+                { label: 'Resistance', value: urgeComponent },
+                { label: 'Mood', value: moodComponent },
+                { label: 'Check-ins', value: checkInConsistency },
+              ] as const).map(comp => (
+                <View key={comp.label} style={s.healthCompRow}>
+                  <Text style={s.healthCompLabel}>{comp.label}</Text>
+                  <View style={s.healthCompBarBg}>
+                    <View style={[s.healthCompBarFill, { width: `${comp.value}%` as any, backgroundColor: healthColor }]} />
+                  </View>
+                  <Text style={[s.healthCompPct, { color: healthColor }]}>{comp.value}%</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
         {/* Streak + Next milestone */}
         <View style={s.card}>
           <SectionHeader title="🔥 Streak" />
@@ -435,6 +523,40 @@ export default function AnalyticsScreen() {
             </View>
           )}
         </View>
+
+        {/* Streak history */}
+        {data.streakHistory.length > 1 && (
+          <View style={s.card}>
+            <SectionHeader
+              title="📈 Streak history"
+              subtitle={isStreakImproving ? 'Your streaks are getting longer ↑' : undefined}
+            />
+            <View style={s.streakHistChart}>
+              {data.streakHistory.slice(-8).map((days, i, arr) => {
+                const isCurrent = i === arr.length - 1;
+                const barH = Math.max(6, (days / maxStreakHistory) * 64);
+                return (
+                  <View key={i} style={s.streakHistItem}>
+                    <Text style={[s.streakHistDays, isCurrent && { color: '#0F6E6E' }]}>{days}d</Text>
+                    <View style={s.streakHistBarBg}>
+                      <View style={[
+                        s.streakHistBarFill,
+                        { height: barH },
+                        isCurrent ? s.streakHistBarCurrent : s.streakHistBarPast,
+                      ]} />
+                    </View>
+                    <Text style={[s.streakHistLabel, isCurrent && { color: '#0F6E6E', fontWeight: '700' }]}>
+                      {isCurrent ? 'now' : `#${i + 1}`}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            {isStreakImproving && (
+              <Text style={s.streakHistInsight}>💪 Each attempt you go further — keep building</Text>
+            )}
+          </View>
+        )}
 
         {/* Mood */}
         <View style={s.card}>
@@ -476,6 +598,14 @@ export default function AnalyticsScreen() {
               <Text style={s.chartCaption}>Daily mood — last 30 days</Text>
             </>
           )}
+
+          <View style={s.checkInRow}>
+            <Text style={s.checkInLabel}>Check-in consistency</Text>
+            <Text style={s.checkInValue}>{data.checkInDays}/30 days this month</Text>
+          </View>
+          <View style={s.progressBarBg}>
+            <View style={[s.progressBarFill, { width: `${Math.round((data.checkInDays / 30) * 100)}%` as any }]} />
+          </View>
         </View>
 
         {/* Urge resistance */}
@@ -567,7 +697,30 @@ export default function AnalyticsScreen() {
             </View>
           )}
 
-          {data.savingsTimeline.length > 0 && (
+          {/* Monthly savings chart */}
+          {maxMonthSaving > 0 && (
+            <>
+              <Text style={s.chartCaption}>Monthly savings — last 6 months</Text>
+              <View style={s.monthBarChart}>
+                {data.monthlySavings.map((item, i) => {
+                  const barH = item.amount > 0 ? Math.max(4, (item.amount / maxMonthSaving) * 64) : 4;
+                  const isCurrentMonth = i === data.monthlySavings.length - 1;
+                  return (
+                    <View key={i} style={s.monthBarItem}>
+                      <Text style={s.monthBarAmt}>{item.amount > 0 ? fmtCompact(item.amount, data.currency) : ''}</Text>
+                      <View style={s.monthBarBg}>
+                        <View style={[s.monthBarFill, { height: barH }, isCurrentMonth && s.monthBarFillCurrent]} />
+                      </View>
+                      <Text style={[s.monthBarLabel, isCurrentMonth && { color: '#0F6E6E', fontWeight: '700' }]}>{item.month}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {/* Per-entry trajectory — only show when monthly chart has < 2 months of data */}
+          {monthsWithData < 2 && data.savingsTimeline.length > 0 && (
             <>
               <Text style={s.chartCaption}>Savings trajectory</Text>
               <View style={s.barChart}>
@@ -649,10 +802,7 @@ const s = StyleSheet.create({
   lockEmoji: { fontSize: 52 },
   lockTitle: { fontSize: 22, fontWeight: '700', color: '#111', textAlign: 'center' },
   lockDesc: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
-  lockBtn: {
-    backgroundColor: '#0F6E6E', borderRadius: 14,
-    paddingVertical: 14, paddingHorizontal: 32, marginTop: 8,
-  },
+  lockBtn: { backgroundColor: '#0F6E6E', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
   lockBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
   teaserHeading: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
   teaserCard: {
@@ -661,7 +811,7 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 }, elevation: 1,
   },
-  teaserEmoji: { fontSize: 28, marginTop: 2 },
+  teaserEmoji: { fontSize: 26, marginTop: 2 },
   teaserText: { flex: 1, gap: 3 },
   teaserTitle: { fontSize: 14, fontWeight: '700', color: '#111' },
   teaserDesc: { fontSize: 13, color: '#777', lineHeight: 19 },
@@ -699,6 +849,24 @@ const s = StyleSheet.create({
   statLabel: { fontSize: 11, color: '#888', textAlign: 'center' },
   statSub: { fontSize: 10, color: '#0a7a4e', textAlign: 'center' },
 
+  // Health score
+  healthRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  healthCircleWrap: { alignItems: 'center', gap: 8 },
+  healthCircle: {
+    width: 84, height: 84, borderRadius: 42, borderWidth: 5,
+    alignItems: 'center', justifyContent: 'center', gap: 0,
+  },
+  healthScoreNum: { fontSize: 26, fontWeight: '800', lineHeight: 30 },
+  healthScoreOf: { fontSize: 11, color: '#aaa', lineHeight: 14 },
+  healthGradeBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
+  healthGradeText: { fontSize: 11, fontWeight: '700' },
+  healthComponents: { flex: 1, gap: 8 },
+  healthCompRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  healthCompLabel: { fontSize: 11, color: '#888', width: 68 },
+  healthCompBarBg: { flex: 1, height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden' },
+  healthCompBarFill: { height: '100%', borderRadius: 3 },
+  healthCompPct: { fontSize: 11, fontWeight: '700', width: 32, textAlign: 'right' },
+
   // Milestone
   milestoneWrap: { gap: 8, backgroundColor: '#f8fffe', borderRadius: 12, padding: 12 },
   milestoneRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -708,6 +876,17 @@ const s = StyleSheet.create({
   milestonePct: { fontSize: 14, fontWeight: '700', color: '#0F6E6E' },
   milestoneComplete: { alignItems: 'center', paddingVertical: 4 },
   milestoneCompleteTxt: { fontSize: 14, fontWeight: '600', color: '#0a7a4e', textAlign: 'center' },
+
+  // Streak history
+  streakHistChart: { flexDirection: 'row', alignItems: 'flex-end', height: 92, gap: 6 },
+  streakHistItem: { flex: 1, alignItems: 'center', gap: 4 },
+  streakHistDays: { fontSize: 9, color: '#888', fontWeight: '600', textAlign: 'center' },
+  streakHistBarBg: { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: '#f5f5f5', borderRadius: 6, overflow: 'hidden' },
+  streakHistBarFill: { width: '100%', borderRadius: 6 },
+  streakHistBarPast: { backgroundColor: '#a8d8d0' },
+  streakHistBarCurrent: { backgroundColor: '#0F6E6E' },
+  streakHistLabel: { fontSize: 9, color: '#aaa', textAlign: 'center' },
+  streakHistInsight: { fontSize: 12, color: '#0a7a4e', textAlign: 'center' },
 
   // Week mood strip
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -723,6 +902,11 @@ const s = StyleSheet.create({
   sparklineRow: { flexDirection: 'row', alignItems: 'flex-end', height: 38, gap: 2 },
   sparklineBar: { flex: 1, justifyContent: 'flex-end' },
   sparklineBarFill: { width: '100%', borderRadius: 2 },
+
+  // Check-in consistency
+  checkInRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  checkInLabel: { fontSize: 12, color: '#555', fontWeight: '500' },
+  checkInValue: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
 
   chartCaption: { fontSize: 11, color: '#bbb', textAlign: 'center' },
 
@@ -755,7 +939,16 @@ const s = StyleSheet.create({
   savingsRateValue: { fontSize: 15, fontWeight: '800', color: '#0F6E6E' },
   savingsRateHint: { fontSize: 12, color: '#0a7a4e' },
 
-  // Bar chart (savings trajectory)
+  // Monthly savings bar chart
+  monthBarChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 88 },
+  monthBarItem: { flex: 1, alignItems: 'center', gap: 4 },
+  monthBarAmt: { fontSize: 9, color: '#0F6E6E', fontWeight: '600', textAlign: 'center', height: 12 },
+  monthBarBg: { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: '#f5f5f5', borderRadius: 6, overflow: 'hidden' },
+  monthBarFill: { width: '100%', backgroundColor: '#a8d8d0', borderRadius: 6 },
+  monthBarFillCurrent: { backgroundColor: '#0F6E6E' },
+  monthBarLabel: { fontSize: 10, color: '#aaa', textAlign: 'center' },
+
+  // Per-entry trajectory bar chart
   barChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 90 },
   barItem: { flex: 1, alignItems: 'center', gap: 3 },
   barAmt: { fontSize: 9, color: '#0F6E6E', fontWeight: '600', textAlign: 'center' },
