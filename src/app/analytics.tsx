@@ -18,8 +18,6 @@ import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@
 import { usePurchases } from '@/context/purchases';
 import { useUser } from '@/context/user';
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
-
 function fmt(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
   const s = syms[currency] ?? currency;
@@ -42,26 +40,11 @@ function parseQuitDate(quitDate: string): Date {
   return new Date(quitDate);
 }
 
-function dualTime(days: number): [string, string, string, string] {
-  if (days < 7) return [String(days), days === 1 ? 'day' : 'days', '0', 'hrs'];
-  if (days < 30) {
-    const w = Math.floor(days / 7), d = days % 7;
-    return [String(w), w === 1 ? 'week' : 'weeks', String(d), d === 1 ? 'day' : 'days'];
-  }
-  if (days < 365) {
-    const m = Math.floor(days / 30), w = Math.floor((days % 30) / 7);
-    return [String(m), m === 1 ? 'month' : 'months', String(w), w === 1 ? 'week' : 'weeks'];
-  }
-  const y = Math.floor(days / 365), mo = Math.floor((days % 365) / 30);
-  return [String(y), y === 1 ? 'year' : 'years', String(mo), mo === 1 ? 'month' : 'months'];
-}
-
-// Like dualTime but computes real hours from elapsed milliseconds for sub-7-day display
 function heroTime(ms: number): [string, string] {
-  const mins  = Math.floor(ms / 60000);
-  const hrs   = Math.floor(ms / 3600000);
-  const days  = Math.floor(ms / 86400000);
-  const weeks = Math.floor(days / 7);
+  const mins   = Math.floor(ms / 60000);
+  const hrs    = Math.floor(ms / 3600000);
+  const days   = Math.floor(ms / 86400000);
+  const weeks  = Math.floor(days / 7);
   const months = Math.floor(days / 30);
   const years  = Math.floor(days / 365);
   if (years  >= 1) return [String(years),  years  === 1 ? 'year'  : 'years'];
@@ -80,10 +63,11 @@ function fmtDuration(days: number): string {
   return mo > 0 ? `${y}y ${mo}mo` : `${y}y`;
 }
 
-
-const MOODS = ['😞', '😕', '😐', '🙂', '😄'];
+const MOODS     = ['😞', '😕', '😐', '🙂', '😄'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DAY_SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const DAY_SHORT  = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const TOD_LABELS = ['Morning', 'Afternoon', 'Evening', 'Night'];
+const TOD_TIMES  = ['5am–12pm', '12pm–6pm', '6pm–11pm', '11pm–5am'];
 
 const MILESTONES = [
   { days: 1,   label: '1 day',    emoji: '🌱' },
@@ -96,14 +80,16 @@ const MILESTONES = [
 
 const MILESTONE_DESC: Record<string, string> = {
   '1 day':    'The hardest step is always the first. Every single hour counts.',
-  '1 week':   'Urge cravings peak in the first few days — you\'re already past the worst of it.',
-  '1 month':  'Your brain\'s reward system begins to reset around 30 days. Real change is happening inside.',
+  '1 week':   "Urge cravings peak in the first few days — you're already past the worst of it.",
+  '1 month':  "Your brain's reward system begins to reset around 30 days. Real change is happening inside.",
   '60 days':  'Sleep quality, mood and focus noticeably improve around this point. People around you notice too.',
-  '6 months': 'Research shows 6 months is when new habits become deeply wired. You\'re rewriting who you are.',
+  '6 months': "Research shows 6 months is when new habits become deeply wired. You're rewriting who you are.",
   '1 year':   'One full year. You have proven to yourself — and everyone — that this is completely possible.',
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CalDay { iso: string; status: 'clean' | 'relapse' | 'inactive' }
 
 interface AnalyticsData {
   currency: string;
@@ -119,6 +105,7 @@ interface AnalyticsData {
   urgeCount: number;
   urgesOvercome: number;
   urgesByDay: number[];
+  urgesByTimeOfDay: number[];
   moodLast30: { date: string; mood: number }[];
   moodSparkline: (number | null)[];
   checkInDays: number;
@@ -127,6 +114,11 @@ interface AnalyticsData {
   relapseCount: number;
   dailySavingsRate: number;
   streakHistory: number[];
+  calendarDays: CalDay[];
+  weekSummary: {
+    thisWeek: { urges: number; moodAvg: number | null; checkIns: number };
+    lastWeek: { urges: number; moodAvg: number | null; checkIns: number };
+  };
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -187,14 +179,14 @@ export default function AnalyticsScreen() {
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
     ]);
 
-    const profile = profileRes.data;
+    const profile  = profileRes.data;
     const currency = profile?.currency ?? 'USD';
     const quitDate = profile?.quit_timestamp ?? profile?.quit_date ?? null;
     const currentStreakDays = quitDate
       ? Math.floor(Math.max(0, Date.now() - parseQuitDate(quitDate).getTime()) / 86400000) : 0;
 
-    const lossRows = lossesRes.data ?? [];
-    const savingRows = lossRows.filter(r => r.type === 'saving');
+    const lossRows    = lossesRes.data ?? [];
+    const savingRows  = lossRows.filter(r => r.type === 'saving');
     const relapseRows = lossRows.filter(r => r.type === 'streak_reset');
     const totalSavings = savingRows.reduce((s, r) => s + Number(r.amount), 0);
 
@@ -212,16 +204,25 @@ export default function AnalyticsScreen() {
     }
 
     const debtRows = debtsRes.data ?? [];
-    const payRows = paymentsRes.data ?? [];
-    const totalDebts = debtRows.reduce((s, d) => s + Number(d.total_amount), 0);
+    const payRows  = paymentsRes.data ?? [];
+    const totalDebts    = debtRows.reduce((s, d) => s + Number(d.total_amount), 0);
     const totalDebtPaid = payRows.reduce((s, p) => s + Number(p.amount), 0);
 
-    const urgeRows = urgeRes.data ?? [];
+    const urgeRows     = urgeRes.data ?? [];
     const urgesOvercome = urgeRows.filter(u => u.outcome === 'overcame').length;
-    const urgesByDay = [0, 0, 0, 0, 0, 0, 0];
+    const urgesByDay   = [0, 0, 0, 0, 0, 0, 0];
     urgeRows.forEach(u => { urgesByDay[new Date(u.created_at).getDay()]++; });
 
-    const moodRows = moodRes.data ?? [];
+    const urgesByTimeOfDay = [0, 0, 0, 0];
+    urgeRows.forEach(u => {
+      const h = new Date(u.created_at).getHours();
+      if (h >= 5 && h < 12)       urgesByTimeOfDay[0]++;
+      else if (h >= 12 && h < 18) urgesByTimeOfDay[1]++;
+      else if (h >= 18 && h < 23) urgesByTimeOfDay[2]++;
+      else                         urgesByTimeOfDay[3]++;
+    });
+
+    const moodRows   = moodRes.data ?? [];
     const moodByDate: Record<string, number> = {};
     moodRows.forEach(r => { moodByDate[new Date(r.created_at).toLocaleDateString('en-CA')] = r.mood; });
     const moodLast30 = moodRows.map(r => ({
@@ -257,6 +258,42 @@ export default function AnalyticsScreen() {
     }
     streakHistory.push(currentStreakDays);
 
+    // 60-day calendar
+    const relapseByDate = new Set<string>(
+      relapseRows.map(r => new Date(r.created_at).toLocaleDateString('en-CA'))
+    );
+    const quitDateObj = quitDate ? parseQuitDate(quitDate) : null;
+    const calendarDays: CalDay[] = [];
+    for (let i = 59; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const iso = d.toLocaleDateString('en-CA');
+      calendarDays.push({
+        iso,
+        status: !quitDateObj || d < quitDateObj ? 'inactive' : relapseByDate.has(iso) ? 'relapse' : 'clean',
+      });
+    }
+
+    // Week summary
+    const startOfThisWeek = new Date(today);
+    startOfThisWeek.setDate(today.getDate() - today.getDay());
+    startOfThisWeek.setHours(0, 0, 0, 0);
+    const startOfLastWeek = new Date(startOfThisWeek.getTime() - 7 * 86400000);
+    const ciKey = (r: { created_at: string }) => new Date(r.created_at).toLocaleDateString('en-CA');
+    const thisWkMoods = moodRows.filter(r => new Date(r.created_at) >= startOfThisWeek).map(r => r.mood);
+    const lastWkMoods = moodRows.filter(r => { const d = new Date(r.created_at); return d >= startOfLastWeek && d < startOfThisWeek; }).map(r => r.mood);
+    const weekSummary = {
+      thisWeek: {
+        urges: urgeRows.filter(u => new Date(u.created_at) >= startOfThisWeek).length,
+        moodAvg: thisWkMoods.length > 0 ? thisWkMoods.reduce((s, m) => s + m, 0) / thisWkMoods.length : null,
+        checkIns: new Set(moodRows.filter(r => new Date(r.created_at) >= startOfThisWeek).map(ciKey)).size,
+      },
+      lastWeek: {
+        urges: urgeRows.filter(u => { const d = new Date(u.created_at); return d >= startOfLastWeek && d < startOfThisWeek; }).length,
+        moodAvg: lastWkMoods.length > 0 ? lastWkMoods.reduce((s, m) => s + m, 0) / lastWkMoods.length : null,
+        checkIns: new Set(moodRows.filter(r => { const d = new Date(r.created_at); return d >= startOfLastWeek && d < startOfThisWeek; }).map(ciKey)).size,
+      },
+    };
+
     setData({
       currency, quitDate,
       longestStreak: streakRes.data?.longest_streak ?? 0,
@@ -265,10 +302,11 @@ export default function AnalyticsScreen() {
       savingsGoalFor: goalForRaw ?? '',
       savingsGoalIcon: goalIconRaw ?? '🎯',
       totalDebts, totalDebtPaid,
-      urgeCount: urgeRows.length, urgesOvercome, urgesByDay,
+      urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByTimeOfDay,
       moodLast30, moodSparkline, checkInDays,
       monthlySavings, weekMoods,
       relapseCount: relapseRows.length, dailySavingsRate, streakHistory,
+      calendarDays, weekSummary,
     });
   }, []);
 
@@ -293,7 +331,12 @@ export default function AnalyticsScreen() {
             if (!user || !data) return;
             setResettingUrges(true);
             await supabase.from('urge_journal').delete().eq('user_id', user.id);
-            setData(prev => prev ? { ...prev, urgeCount: 0, urgesOvercome: 0, urgesByDay: [0, 0, 0, 0, 0, 0, 0] } : prev);
+            setData(prev => prev ? {
+              ...prev,
+              urgeCount: 0, urgesOvercome: 0,
+              urgesByDay: [0, 0, 0, 0, 0, 0, 0],
+              urgesByTimeOfDay: [0, 0, 0, 0],
+            } : prev);
             setResettingUrges(false);
           },
         },
@@ -320,39 +363,62 @@ export default function AnalyticsScreen() {
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
-  const goalPct = data.savingsGoal && data.savingsGoal > 0 ? Math.min(1, data.totalSavings / data.savingsGoal) : null;
-  const debtPct = data.totalDebts > 0 ? Math.min(1, data.totalDebtPaid / data.totalDebts) : null;
+  const goalPct    = data.savingsGoal && data.savingsGoal > 0 ? Math.min(1, data.totalSavings / data.savingsGoal) : null;
+  const debtPct    = data.totalDebts > 0 ? Math.min(1, data.totalDebtPaid / data.totalDebts) : null;
   const avgMoodVal = data.moodLast30.length > 0
     ? data.moodLast30.reduce((s, r) => s + r.mood, 0) / data.moodLast30.length : null;
   const urgeResistPct = data.urgeCount > 0 ? Math.round((data.urgesOvercome / data.urgeCount) * 100) : null;
 
-  const elapsedMs = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
+  const elapsedMs         = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
   const currentStreakFloat = elapsedMs / 86400000;
-  const nextMilestone = MILESTONES.find(m => m.days > currentStreakFloat) ?? null;
-  const nextMilestoneIdx = nextMilestone ? MILESTONES.indexOf(nextMilestone) : -1;
+  const nextMilestone     = MILESTONES.find(m => m.days > currentStreakFloat) ?? null;
+  const nextMilestoneIdx  = nextMilestone ? MILESTONES.indexOf(nextMilestone) : -1;
   const prevMilestoneDays = nextMilestoneIdx > 0 ? MILESTONES[nextMilestoneIdx - 1].days : 0;
-  const milestonePct = nextMilestone
+  const milestonePct      = nextMilestone
     ? Math.min(1, (currentStreakFloat - prevMilestoneDays) / (nextMilestone.days - prevMilestoneDays)) : 1;
 
-  const maxUrgeCount = Math.max(...data.urgesByDay);
-  const maxUrgeDay = data.urgesByDay.indexOf(maxUrgeCount);
-  const daysToGoal = goalPct !== null && data.dailySavingsRate > 0 && goalPct < 1
+  const maxUrgeCount    = Math.max(...data.urgesByDay);
+  const maxUrgeDay      = data.urgesByDay.indexOf(maxUrgeCount);
+  const daysToGoal      = goalPct !== null && data.dailySavingsRate > 0 && goalPct < 1
     ? Math.ceil((data.savingsGoal! - data.totalSavings) / data.dailySavingsRate) : null;
-
-  const checkInConsistency = Math.round((data.checkInDays / 30) * 100);
-  const streakComponent = Math.min(100, data.currentStreakDays >= 30 ? 100 : Math.round((data.currentStreakDays / 30) * 100));
-  const urgeComponent = data.urgeCount > 0 ? (urgeResistPct ?? 0) : 100;
-  const moodComponent = avgMoodVal !== null ? Math.round((avgMoodVal / 5) * 100) : 60;
-  const healthScore = Math.round(streakComponent * 0.35 + urgeComponent * 0.30 + moodComponent * 0.20 + checkInConsistency * 0.15);
-  const healthGrade = healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Good' : healthScore >= 40 ? 'Building' : 'Getting started';
-  const healthColor = healthScore >= 80 ? '#0a7a4e' : healthScore >= 60 ? '#0F6E6E' : healthScore >= 40 ? '#d97706' : '#9ca3af';
-
-  const maxMonthSaving = Math.max(0, ...data.monthlySavings.map(m => m.amount));
+  const maxMonthSaving   = Math.max(0, ...data.monthlySavings.map(m => m.amount));
   const maxStreakHistory = Math.max(1, ...data.streakHistory);
   const isStreakImproving = data.streakHistory.length >= 3 &&
     data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
 
   const [heroNum, heroLabel] = heroTime(elapsedMs);
+
+  // Calendar grid — arrange 60 days into week columns
+  const firstIso  = data.calendarDays[0]?.iso;
+  const firstDate = firstIso ? new Date(firstIso + 'T00:00:00') : new Date(Date.now() - 59 * 86400000);
+  const startDow  = firstDate.getDay();
+  const paddedCal: (CalDay | null)[] = [...Array(startDow).fill(null), ...data.calendarDays];
+  const calWeeks: (CalDay | null)[][] = [];
+  for (let i = 0; i < paddedCal.length; i += 7) {
+    const chunk = paddedCal.slice(i, i + 7);
+    while (chunk.length < 7) chunk.push(null);
+    calWeeks.push(chunk);
+  }
+  let lastCalMonth = -1;
+  const calMonthLabels = calWeeks.map(week => {
+    const first = week.find(d => d !== null);
+    if (!first) return '';
+    const d = new Date(first.iso + 'T00:00:00');
+    const m = d.getMonth();
+    if (m !== lastCalMonth) { lastCalMonth = m; return d.toLocaleDateString('en', { month: 'short' }); }
+    return '';
+  });
+  const cleanDaysCount = data.calendarDays.filter(d => d.status === 'clean').length;
+
+  // Week summary deltas
+  const wkUrgesDelta = data.weekSummary.thisWeek.urges - data.weekSummary.lastWeek.urges;
+  const wkMoodDelta  = data.weekSummary.thisWeek.moodAvg !== null && data.weekSummary.lastWeek.moodAvg !== null
+    ? +(data.weekSummary.thisWeek.moodAvg - data.weekSummary.lastWeek.moodAvg).toFixed(1) : null;
+  const wkCiDelta    = data.weekSummary.thisWeek.checkIns - data.weekSummary.lastWeek.checkIns;
+
+  // Time of day
+  const maxTodCount = Math.max(1, ...data.urgesByTimeOfDay);
+  const hardestTod  = data.urgesByTimeOfDay.indexOf(Math.max(...data.urgesByTimeOfDay));
 
   const insights: { emoji: string; text: string; bg: string; tc: string }[] = [];
   if (data.currentStreakDays > 0 && data.currentStreakDays >= data.longestStreak)
@@ -398,12 +464,13 @@ export default function AnalyticsScreen() {
           </View>
           <Text style={s.teaserHeading}>What you'll unlock</Text>
           {[
-            { emoji: '⏱️', title: 'Live time-based streak hero', desc: 'Weeks · days, months · weeks, years · months — at a glance' },
-            { emoji: '🏅', title: 'Milestone progress & badge history', desc: 'Visual badge row, countdown to next badge, motivating context' },
-            { emoji: '💚', title: 'Recovery health score', desc: 'One number combining streak, resistance, mood and consistency' },
+            { emoji: '⏱️', title: 'Live time-based streak hero', desc: 'Minutes · hours · days · months — at a glance' },
+            { emoji: '🏅', title: 'Milestone progress', desc: 'Countdown to your next recovery badge with motivating context' },
+            { emoji: '🗓️', title: '60-day clean days calendar', desc: 'A heatmap of every clean day — visually powerful motivation' },
+            { emoji: '📊', title: 'Weekly progress summary', desc: 'This week vs last week: urges, mood, and check-ins at a glance' },
             { emoji: '📈', title: 'Streak improvement history', desc: 'See how each of your streaks compares over time' },
             { emoji: '😊', title: '30-day mood sparkline', desc: 'Daily colour-coded bars showing your emotional wellbeing' },
-            { emoji: '🧠', title: 'Urge pattern by day of week', desc: 'Discover which days you\'re most challenged' },
+            { emoji: '🧠', title: 'Urge pattern by time & day', desc: "Discover when you're most challenged — morning, evening, weekends" },
             { emoji: '💸', title: 'Money not spent + projections', desc: 'Total saved plus what you\'ll save in a day, week, month, year' },
             { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts based on your real data' },
           ].map((item, i) => (
@@ -471,7 +538,7 @@ export default function AnalyticsScreen() {
                   <Text style={s.msDetailStatus}>
                     {Math.round(milestonePct * 100)}%  ·  {(() => {
                       const daysLeft = Math.max(0, nextMilestone.days - currentStreakFloat);
-                      if (daysLeft < 1/24) return '< 1 hour to go';
+                      if (daysLeft < 1 / 24) return '< 1 hour to go';
                       if (daysLeft < 1) return `${Math.round(daysLeft * 24)}h to go`;
                       return `${Math.ceil(daysLeft)} day${Math.ceil(daysLeft) !== 1 ? 's' : ''} to go`;
                     })()}
@@ -492,48 +559,85 @@ export default function AnalyticsScreen() {
           </View>
         )}
 
-        {/* ── Recovery Health Score ── */}
+        {/* ── 60-day clean calendar ── */}
         <View style={s.card}>
-          <SectionHeader title="💚 Recovery Health Score" />
-
-          {/* Score hero */}
-          <View style={s.healthHero}>
-            <Text style={[s.healthBigNum, { color: healthColor }]}>{healthScore}</Text>
-            <View style={s.healthHeroRight}>
-              <View style={[s.healthGradeBadge, { backgroundColor: healthColor + '22' }]}>
-                <Text style={[s.healthGradeText, { color: healthColor }]}>{healthGrade}</Text>
-              </View>
-              <Text style={s.healthCaption}>out of 100</Text>
+          <SectionHeader title="🗓️ Clean days" subtitle={`${cleanDaysCount} of last 60 days clean`} />
+          <View style={s.calWrap}>
+            <View style={s.calMonthRow}>
+              {calWeeks.map((_, wi) => (
+                <View key={wi} style={s.calCol}>
+                  <Text style={s.calMonthLabel}>{calMonthLabels[wi]}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={s.calGrid}>
+              {calWeeks.map((week, wi) => (
+                <View key={wi} style={s.calCol}>
+                  {week.map((day, di) => (
+                    <View
+                      key={di}
+                      style={[
+                        s.calDot,
+                        day === null       ? s.calDotNull     :
+                        day.status === 'clean'   ? s.calDotClean   :
+                        day.status === 'relapse' ? s.calDotRelapse :
+                        s.calDotInactive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              ))}
             </View>
           </View>
-          <View style={s.healthBarBg}>
-            <View style={[s.healthBarFill, { width: `${healthScore}%` as any, backgroundColor: healthColor }]} />
+          <View style={s.calLegend}>
+            <View style={s.calLegendItem}><View style={[s.calDot, s.calDotClean]} /><Text style={s.calLegendTxt}>Clean</Text></View>
+            <View style={s.calLegendItem}><View style={[s.calDot, s.calDotRelapse]} /><Text style={s.calLegendTxt}>Relapse</Text></View>
+            <View style={s.calLegendItem}><View style={[s.calDot, s.calDotInactive]} /><Text style={s.calLegendTxt}>Before start</Text></View>
           </View>
+        </View>
 
-          {/* Four factors */}
-          {([
-            { emoji: '⏱️', label: 'Streak',      score: streakComponent,    weight: 35 },
-            { emoji: '🧠', label: 'Urge resist', score: urgeComponent,      weight: 30 },
-            { emoji: '😊', label: 'Mood',         score: moodComponent,      weight: 20 },
-            { emoji: '📅', label: 'Check-ins',    score: checkInConsistency, weight: 15 },
-          ] as const).map(f => (
-            <View key={f.label} style={s.healthFactorRow}>
-              <Text style={s.healthFactorEmoji}>{f.emoji}</Text>
-              <View style={{ flex: 1, gap: 5 }}>
-                <View style={s.healthFactorTopRow}>
-                  <Text style={s.healthFactorLabel}>{f.label}</Text>
-                  <Text style={[s.healthFactorScore, { color: healthColor }]}>{f.score}<Text style={s.healthFactorScoreSub}>/100</Text></Text>
-                </View>
-                <View style={s.healthFactorBarBg}>
-                  <View style={[s.healthFactorBarFill, { width: `${f.score}%` as any, backgroundColor: healthColor }]} />
-                </View>
-              </View>
-              <View style={s.healthWeightPill}>
-                <Text style={s.healthWeightTxt}>{f.weight}%</Text>
-              </View>
+        {/* ── Weekly summary ── */}
+        <View style={s.card}>
+          <SectionHeader title="📊 This week vs last week" />
+          <View style={s.wkRow}>
+            <View style={s.wkBlock}>
+              <Text style={s.wkBlockLabel}>🧠 Urges</Text>
+              <Text style={s.wkBlockVal}>{data.weekSummary.thisWeek.urges}</Text>
+              {data.weekSummary.lastWeek.urges > 0 || data.weekSummary.thisWeek.urges > 0 ? (
+                <Text style={[s.wkDelta,
+                  wkUrgesDelta === 0 ? s.wkDeltaNeutral :
+                  wkUrgesDelta < 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
+                  {wkUrgesDelta === 0 ? 'same' : `${wkUrgesDelta > 0 ? '+' : ''}${wkUrgesDelta} vs last wk`}
+                </Text>
+              ) : <Text style={s.wkDeltaNeutral}>no data yet</Text>}
             </View>
-          ))}
-          <Text style={s.healthCaption}>Weight: streak 35% · urges 30% · mood 20% · check-ins 15%</Text>
+            <View style={s.wkDivider} />
+            <View style={s.wkBlock}>
+              <Text style={s.wkBlockLabel}>😊 Mood avg</Text>
+              <Text style={s.wkBlockVal}>
+                {data.weekSummary.thisWeek.moodAvg !== null ? data.weekSummary.thisWeek.moodAvg.toFixed(1) : '—'}
+              </Text>
+              {wkMoodDelta !== null ? (
+                <Text style={[s.wkDelta,
+                  wkMoodDelta === 0 ? s.wkDeltaNeutral :
+                  wkMoodDelta > 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
+                  {wkMoodDelta === 0 ? 'same' : `${wkMoodDelta > 0 ? '+' : ''}${wkMoodDelta} vs last wk`}
+                </Text>
+              ) : <Text style={s.wkDeltaNeutral}>no data yet</Text>}
+            </View>
+            <View style={s.wkDivider} />
+            <View style={s.wkBlock}>
+              <Text style={s.wkBlockLabel}>📅 Check-ins</Text>
+              <Text style={s.wkBlockVal}>{data.weekSummary.thisWeek.checkIns}</Text>
+              {data.weekSummary.lastWeek.checkIns > 0 || data.weekSummary.thisWeek.checkIns > 0 ? (
+                <Text style={[s.wkDelta,
+                  wkCiDelta === 0 ? s.wkDeltaNeutral :
+                  wkCiDelta > 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
+                  {wkCiDelta === 0 ? 'same' : `${wkCiDelta > 0 ? '+' : ''}${wkCiDelta} vs last wk`}
+                </Text>
+              ) : <Text style={s.wkDeltaNeutral}>no data yet</Text>}
+            </View>
+          </View>
         </View>
 
         {/* ── Streak history ── */}
@@ -617,6 +721,27 @@ export default function AnalyticsScreen() {
           ) : (
             <Text style={s.urgeDayInsight}>✨ No urges logged yet — keep it up!</Text>
           )}
+          {data.urgeCount > 0 && (
+            <View style={s.urgeTodWrap}>
+              <Text style={s.urgeDayTitle}>By time of day</Text>
+              {data.urgesByTimeOfDay.map((count, i) => {
+                const barW = count > 0 ? Math.max(4, (count / maxTodCount) * 100) : 4;
+                const isHardest = i === hardestTod && count > 0;
+                return (
+                  <View key={i} style={s.urgeTodRow}>
+                    <Text style={[s.urgeTodLabel, isHardest && s.urgeTodLabelHardest]}>{TOD_LABELS[i]}</Text>
+                    <View style={s.urgeTodBarBg}>
+                      <View style={[s.urgeTodBarFill, { width: `${barW}%` as any }, isHardest && s.urgeTodBarHardest]} />
+                    </View>
+                    <Text style={[s.urgeTodCount, isHardest && s.urgeTodCountHardest]}>{count}</Text>
+                  </View>
+                );
+              })}
+              {data.urgesByTimeOfDay[hardestTod] > 0 && (
+                <Text style={s.urgeDayInsight}>💡 {TOD_LABELS[hardestTod]}s ({TOD_TIMES[hardestTod]}) are your peak risk time</Text>
+              )}
+            </View>
+          )}
         </View>
 
         {/* ── Mood ── */}
@@ -642,7 +767,7 @@ export default function AnalyticsScreen() {
             <>
               <View style={s.sparklineRow}>
                 {data.moodSparkline.map((mood, i) => {
-                  const h = mood !== null ? Math.max(4, (mood / 5) * 34) : 4;
+                  const h  = mood !== null ? Math.max(4, (mood / 5) * 34) : 4;
                   const bg = mood === null ? '#f0f0f0' : mood >= 4 ? '#1a9a9a' : mood === 3 ? '#7ec8c2' : '#e0a0a0';
                   return (
                     <View key={i} style={s.sparklineBar}>
@@ -729,10 +854,10 @@ export default function AnalyticsScreen() {
             />
             <View style={s.projGrid}>
               {([
-                { label: 'Tomorrow', days: 1 },
-                { label: 'This week', days: 7 },
+                { label: 'Tomorrow',   days: 1 },
+                { label: 'This week',  days: 7 },
                 { label: 'This month', days: 30 },
-                { label: 'This year', days: 365 },
+                { label: 'This year',  days: 365 },
               ] as const).map(p => (
                 <View key={p.label} style={s.projBox}>
                   <Text style={s.projValue}>+{fmtCompact(data.dailySavingsRate * p.days, data.currency)}</Text>
@@ -749,11 +874,11 @@ export default function AnalyticsScreen() {
           <View style={s.card}>
             <SectionHeader title="🏦 Debt recovery" />
             <View style={s.statsRow}>
-              <StatBox label="Total owed" value={fmt(data.totalDebts, data.currency)} />
+              <StatBox label="Total owed"  value={fmt(data.totalDebts, data.currency)} />
               <View style={s.statsDivider} />
-              <StatBox label="Paid back" value={fmt(data.totalDebtPaid, data.currency)} color="#0a7a4e" />
+              <StatBox label="Paid back"   value={fmt(data.totalDebtPaid, data.currency)} color="#0a7a4e" />
               <View style={s.statsDivider} />
-              <StatBox label="Remaining" value={fmt(Math.max(0, data.totalDebts - data.totalDebtPaid), data.currency)} color="#c0392b" />
+              <StatBox label="Remaining"   value={fmt(Math.max(0, data.totalDebts - data.totalDebtPaid), data.currency)} color="#c0392b" />
             </View>
             {debtPct !== null && (
               <View style={s.progressBarWrap}>
@@ -790,21 +915,21 @@ export default function AnalyticsScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#edf0f0' },
+  root:        { flex: 1, backgroundColor: '#edf0f0' },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: { paddingBottom: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  backArrow: { fontSize: 30, color: '#fff', fontWeight: '300', lineHeight: 36 },
+  header:      { paddingBottom: 16 },
+  headerRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 },
+  backBtn:     { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  backArrow:   { fontSize: 30, color: '#fff', fontWeight: '300', lineHeight: 36 },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center' },
 
   lockScroll: { padding: 20, gap: 12 },
-  lockTop: { alignItems: 'center', gap: 10, paddingVertical: 24, paddingHorizontal: 12 },
-  lockEmoji: { fontSize: 52 },
-  lockTitle: { fontSize: 22, fontWeight: '700', color: '#111', textAlign: 'center' },
-  lockDesc: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
-  lockBtn: { backgroundColor: '#0F6E6E', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
+  lockTop:    { alignItems: 'center', gap: 10, paddingVertical: 24, paddingHorizontal: 12 },
+  lockEmoji:  { fontSize: 52 },
+  lockTitle:  { fontSize: 22, fontWeight: '700', color: '#111', textAlign: 'center' },
+  lockDesc:   { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 },
+  lockBtn:    { backgroundColor: '#0F6E6E', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
   lockBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
   teaserHeading: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
   teaserCard: {
@@ -813,168 +938,159 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1,
   },
   teaserEmoji: { fontSize: 26, marginTop: 2 },
-  teaserText: { flex: 1, gap: 3 },
+  teaserText:  { flex: 1, gap: 3 },
   teaserTitle: { fontSize: 14, fontWeight: '700', color: '#111' },
-  teaserDesc: { fontSize: 13, color: '#777', lineHeight: 19 },
+  teaserDesc:  { fontSize: 13, color: '#777', lineHeight: 19 },
 
-  // Hero
   heroCard: {
     borderRadius: 20, padding: 20, alignItems: 'center', gap: 8,
     shadowColor: '#0F6E6E', shadowOpacity: 0.3, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 6,
   },
-  heroDualRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
-  heroDualCol: { alignItems: 'center', gap: 2 },
-  heroDualNum: { fontSize: 60, fontWeight: '800', color: '#fff', lineHeight: 66 },
-  heroDualLabel: { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
-  heroDualSep: { fontSize: 28, color: 'rgba(255,255,255,0.4)', marginBottom: 10 },
-  heroSubLabel: { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
-  heroDate: { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
-  heroDivider: { width: '80%', height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
-  heroStatsRow: { flexDirection: 'row', width: '100%' },
-  heroStat: { flex: 1, alignItems: 'center', gap: 3 },
-  heroStatValue: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  heroStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
-  heroStatDivider: { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.2)' },
+  heroDualCol:      { alignItems: 'center', gap: 2 },
+  heroDualNum:      { fontSize: 60, fontWeight: '800', color: '#fff', lineHeight: 66 },
+  heroDualLabel:    { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  heroSubLabel:     { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
+  heroDate:         { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
+  heroDivider:      { width: '80%', height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
+  heroStatsRow:     { flexDirection: 'row', width: '100%' },
+  heroStat:         { flex: 1, alignItems: 'center', gap: 3 },
+  heroStatValue:    { fontSize: 16, fontWeight: '800', color: '#fff' },
+  heroStatLabel:    { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
+  heroStatDivider:  { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.2)' },
 
-  body: { flex: 1 },
+  body:        { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 14 },
+  card:        { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 14 },
 
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  sectionHeader: { gap: 2, flex: 1 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111' },
-  sectionSub: { fontSize: 12, color: '#888' },
+  sectionHeader:    { gap: 2, flex: 1 },
+  sectionTitle:     { fontSize: 15, fontWeight: '700', color: '#111' },
+  sectionSub:       { fontSize: 12, color: '#888' },
 
-  statsRow: { flexDirection: 'row', alignItems: 'center' },
-  statsDivider: { width: 1, height: 40, backgroundColor: '#f0f0f0', marginHorizontal: 12 },
-  statBox: { flex: 1, alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 20, fontWeight: '800', color: '#111' },
-  statLabel: { fontSize: 11, color: '#888', textAlign: 'center' },
-  statSub: { fontSize: 10, color: '#0a7a4e', textAlign: 'center' },
+  statsRow:    { flexDirection: 'row', alignItems: 'center' },
+  statsDivider:{ width: 1, height: 40, backgroundColor: '#f0f0f0', marginHorizontal: 12 },
+  statBox:     { flex: 1, alignItems: 'center', gap: 2 },
+  statValue:   { fontSize: 20, fontWeight: '800', color: '#111' },
+  statLabel:   { fontSize: 11, color: '#888', textAlign: 'center' },
+  statSub:     { fontSize: 10, color: '#0a7a4e', textAlign: 'center' },
 
-  // Milestones
-  msBadgeRow: { flexDirection: 'row', gap: 5 },
-  msBadge: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, gap: 5 },
-  msBadgeEarned: { backgroundColor: '#e6f7f7' },
-  msBadgeNext: { backgroundColor: '#f0fdf9', borderWidth: 2, borderColor: '#1a9a9a' },
-  msBadgeLocked: { backgroundColor: '#f5f5f5' },
-  msBadgeSelected: { borderWidth: 2, borderColor: '#0F6E6E' },
-  msBadgeEmoji: { fontSize: 22 },
-  msBadgeCheck: { fontSize: 9, color: '#0F6E6E', fontWeight: '800' },
-  msBadgeLabel: { fontSize: 9, fontWeight: '700', textAlign: 'center' },
-  msBadgeLabelEarned: { color: '#0F6E6E' },
-  msBadgeLabelNext: { color: '#0a7a4e' },
-  msBadgeLabelLocked: { color: '#ccc' },
-  msDetailCard: { backgroundColor: '#f8fffe', borderRadius: 12, padding: 14, gap: 10, borderWidth: 1, borderColor: '#e0f5f5' },
-  msDetailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  msDetailEmoji: { fontSize: 32 },
-  msDetailTitle: { fontSize: 15, fontWeight: '700', color: '#111' },
-  msDetailStatus: { fontSize: 13, color: '#888', marginTop: 2 },
-  msDetailStatusEarned: { color: '#0a7a4e', fontWeight: '600' },
-  msDesc: { fontSize: 13, color: '#555', lineHeight: 20, fontStyle: 'italic' },
-  msAllEarned: { alignItems: 'center', paddingVertical: 8 },
-  msAllEarnedText: { fontSize: 14, fontWeight: '600', color: '#0a7a4e', textAlign: 'center' },
+  msDetailCard:        { backgroundColor: '#f8fffe', borderRadius: 12, padding: 14, gap: 10, borderWidth: 1, borderColor: '#e0f5f5' },
+  msDetailHeader:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  msDetailEmoji:       { fontSize: 32 },
+  msDetailTitle:       { fontSize: 15, fontWeight: '700', color: '#111' },
+  msDetailStatus:      { fontSize: 13, color: '#888', marginTop: 2 },
+  msDesc:              { fontSize: 13, color: '#555', lineHeight: 20, fontStyle: 'italic' },
+  msAllEarned:         { alignItems: 'center', paddingVertical: 8 },
+  msAllEarnedText:     { fontSize: 14, fontWeight: '600', color: '#0a7a4e', textAlign: 'center' },
 
-  // Health score
-  healthHero: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  healthBigNum: { fontSize: 52, fontWeight: '800', lineHeight: 56 },
-  healthHeroRight: { gap: 4 },
-  healthGradeBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, alignSelf: 'flex-start' },
-  healthGradeText: { fontSize: 13, fontWeight: '700' },
-  healthCaption: { fontSize: 11, color: '#bbb', textAlign: 'center' },
-  healthBarBg: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  healthBarFill: { height: '100%', borderRadius: 4 },
-  healthFactorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  healthFactorEmoji: { fontSize: 18, width: 26, textAlign: 'center' },
-  healthFactorTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  healthFactorLabel: { fontSize: 13, fontWeight: '600', color: '#333' },
-  healthFactorScore: { fontSize: 14, fontWeight: '800' },
-  healthFactorScoreSub: { fontSize: 10, fontWeight: '400', color: '#aaa' },
-  healthFactorBarBg: { height: 5, backgroundColor: '#f0f0f0', borderRadius: 3, overflow: 'hidden' },
-  healthFactorBarFill: { height: '100%', borderRadius: 3 },
-  healthWeightPill: { backgroundColor: '#f5f5f5', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  healthWeightTxt: { fontSize: 10, color: '#aaa', fontWeight: '600' },
+  // 60-day calendar
+  calWrap:       { gap: 2 },
+  calMonthRow:   { flexDirection: 'row' },
+  calGrid:       { flexDirection: 'row', gap: 3 },
+  calCol:        { flex: 1, gap: 3, alignItems: 'center' },
+  calMonthLabel: { fontSize: 9, color: '#aaa', fontWeight: '600', height: 14, textAlign: 'center' },
+  calDot:        { width: 10, height: 10, borderRadius: 2 },
+  calDotNull:    { backgroundColor: 'transparent' },
+  calDotClean:   { backgroundColor: '#1a9a9a' },
+  calDotRelapse: { backgroundColor: '#e07070' },
+  calDotInactive:{ backgroundColor: '#e8e8e8' },
+  calLegend:     { flexDirection: 'row', gap: 16, justifyContent: 'center' },
+  calLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  calLegendTxt:  { fontSize: 11, color: '#888' },
+
+  // Weekly summary
+  wkRow:         { flexDirection: 'row', alignItems: 'flex-start' },
+  wkDivider:     { width: 1, backgroundColor: '#f0f0f0', alignSelf: 'stretch', marginHorizontal: 8 },
+  wkBlock:       { flex: 1, alignItems: 'center', gap: 4 },
+  wkBlockLabel:  { fontSize: 11, color: '#888', fontWeight: '500', textAlign: 'center' },
+  wkBlockVal:    { fontSize: 26, fontWeight: '800', color: '#111' },
+  wkDelta:       { fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  wkDeltaGood:   { color: '#0a7a4e' },
+  wkDeltaBad:    { color: '#c0392b' },
+  wkDeltaNeutral:{ color: '#aaa' },
 
   // Streak history
-  streakHistChart: { flexDirection: 'row', alignItems: 'flex-end', height: 92, gap: 6 },
-  streakHistItem: { flex: 1, alignItems: 'center', gap: 4 },
-  streakHistDays: { fontSize: 9, color: '#888', fontWeight: '600', textAlign: 'center' },
-  streakHistBarBg: { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: '#f5f5f5', borderRadius: 6, overflow: 'hidden' },
-  streakHistBarFill: { width: '100%', borderRadius: 6 },
-  streakHistBarPast: { backgroundColor: '#a8d8d0' },
+  streakHistChart:      { flexDirection: 'row', alignItems: 'flex-end', height: 92, gap: 6 },
+  streakHistItem:       { flex: 1, alignItems: 'center', gap: 4 },
+  streakHistDays:       { fontSize: 9, color: '#888', fontWeight: '600', textAlign: 'center' },
+  streakHistBarBg:      { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: '#f5f5f5', borderRadius: 6, overflow: 'hidden' },
+  streakHistBarFill:    { width: '100%', borderRadius: 6 },
+  streakHistBarPast:    { backgroundColor: '#a8d8d0' },
   streakHistBarCurrent: { backgroundColor: '#0F6E6E' },
-  streakHistLabel: { fontSize: 9, color: '#aaa', textAlign: 'center' },
-  streakHistInsight: { fontSize: 12, color: '#0a7a4e', textAlign: 'center' },
+  streakHistLabel:      { fontSize: 9, color: '#aaa', textAlign: 'center' },
+  streakHistInsight:    { fontSize: 12, color: '#0a7a4e', textAlign: 'center' },
 
-  // Reset link
-  resetLink: { paddingLeft: 8, paddingTop: 2 },
+  resetLink:    { paddingLeft: 8, paddingTop: 2 },
   resetLinkTxt: { fontSize: 12, color: '#c0392b', fontWeight: '600' },
 
-  // Week mood strip
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  weekDayCol: { alignItems: 'center', gap: 4 },
-  weekDot: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center' },
-  weekDotToday: { backgroundColor: '#e6f7f7', borderWidth: 1.5, borderColor: '#1a9a9a' },
-  weekDotEmpty: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#e0e0e0' },
-  weekEmoji: { fontSize: 20 },
-  weekDayLabel: { fontSize: 10, color: '#aaa', fontWeight: '500' },
+  weekRow:           { flexDirection: 'row', justifyContent: 'space-between' },
+  weekDayCol:        { alignItems: 'center', gap: 4 },
+  weekDot:           { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center' },
+  weekDotToday:      { backgroundColor: '#e6f7f7', borderWidth: 1.5, borderColor: '#1a9a9a' },
+  weekDotEmpty:      { width: 8, height: 8, borderRadius: 4, backgroundColor: '#e0e0e0' },
+  weekEmoji:         { fontSize: 20 },
+  weekDayLabel:      { fontSize: 10, color: '#aaa', fontWeight: '500' },
   weekDayLabelToday: { color: '#0F6E6E', fontWeight: '700' },
-  sparklineRow: { flexDirection: 'row', alignItems: 'flex-end', height: 38, gap: 2 },
-  sparklineBar: { flex: 1, justifyContent: 'flex-end' },
-  sparklineBarFill: { width: '100%', borderRadius: 2 },
-  checkInRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  checkInLabel: { fontSize: 12, color: '#555', fontWeight: '500' },
-  checkInValue: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
+  sparklineRow:      { flexDirection: 'row', alignItems: 'flex-end', height: 38, gap: 2 },
+  sparklineBar:      { flex: 1, justifyContent: 'flex-end' },
+  sparklineBarFill:  { width: '100%', borderRadius: 2 },
+  checkInRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  checkInLabel:      { fontSize: 12, color: '#555', fontWeight: '500' },
+  checkInValue:      { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
+  chartCaption:      { fontSize: 11, color: '#bbb', textAlign: 'center' },
 
-  chartCaption: { fontSize: 11, color: '#bbb', textAlign: 'center' },
+  urgeDayWrap:        { gap: 8, backgroundColor: '#fafafa', borderRadius: 12, padding: 12 },
+  urgeDayTitle:       { fontSize: 12, fontWeight: '600', color: '#888' },
+  urgeDayChart:       { flexDirection: 'row', alignItems: 'flex-end', height: 68, gap: 4 },
+  urgeDayItem:        { flex: 1, alignItems: 'center', gap: 4 },
+  urgeDayCount:       { fontSize: 10, color: '#888', height: 14 },
+  urgeDayBarBg:       { width: '100%', height: 44, justifyContent: 'flex-end', backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
+  urgeDayBarFill:     { width: '100%', backgroundColor: '#a8d8d0', borderRadius: 4 },
+  urgeDayBarHardest:  { backgroundColor: '#e07070' },
+  urgeDayLabel:       { fontSize: 10, color: '#aaa' },
+  urgeDayLabelHardest:{ color: '#c0392b', fontWeight: '700' },
+  urgeDayInsight:     { fontSize: 12, color: '#777', textAlign: 'center', marginTop: 2 },
 
-  // Urge day chart
-  urgeDayWrap: { gap: 8, backgroundColor: '#fafafa', borderRadius: 12, padding: 12 },
-  urgeDayTitle: { fontSize: 12, fontWeight: '600', color: '#888' },
-  urgeDayChart: { flexDirection: 'row', alignItems: 'flex-end', height: 68, gap: 4 },
-  urgeDayItem: { flex: 1, alignItems: 'center', gap: 4 },
-  urgeDayCount: { fontSize: 10, color: '#888', height: 14 },
-  urgeDayBarBg: { width: '100%', height: 44, justifyContent: 'flex-end', backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
-  urgeDayBarFill: { width: '100%', backgroundColor: '#a8d8d0', borderRadius: 4 },
-  urgeDayBarHardest: { backgroundColor: '#e07070' },
-  urgeDayLabel: { fontSize: 10, color: '#aaa' },
-  urgeDayLabelHardest: { color: '#c0392b', fontWeight: '700' },
-  urgeDayInsight: { fontSize: 12, color: '#777', textAlign: 'center', marginTop: 2 },
+  urgeTodWrap:         { gap: 8, backgroundColor: '#fafafa', borderRadius: 12, padding: 12 },
+  urgeTodRow:          { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  urgeTodLabel:        { fontSize: 12, color: '#888', width: 74, fontWeight: '500' },
+  urgeTodLabelHardest: { color: '#c0392b', fontWeight: '700' },
+  urgeTodBarBg:        { flex: 1, height: 10, backgroundColor: '#f0f0f0', borderRadius: 5, overflow: 'hidden' },
+  urgeTodBarFill:      { height: '100%', backgroundColor: '#a8d8d0', borderRadius: 5 },
+  urgeTodBarHardest:   { backgroundColor: '#e07070' },
+  urgeTodCount:        { fontSize: 12, color: '#888', width: 20, textAlign: 'right', fontWeight: '600' },
+  urgeTodCountHardest: { color: '#c0392b' },
 
-  // Progress bars
   progressBarWrap: { gap: 6 },
-  progressBarBg: { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
+  progressBarBg:   { height: 8, backgroundColor: '#f0f0f0', borderRadius: 4, overflow: 'hidden' },
   progressBarFill: { height: '100%', backgroundColor: '#1a9a9a', borderRadius: 4 },
   progressBarDone: { backgroundColor: '#0a7a4e' },
-  progressBarPct: { fontSize: 11, color: '#888', textAlign: 'right' },
-  goalBarLabel: {},
+  progressBarPct:  { fontSize: 11, color: '#888', textAlign: 'right' },
+  goalBarLabel:    {},
   goalBarLabelTxt: { fontSize: 12, color: '#555', fontWeight: '600' },
 
-  // Savings
-  savingsRateBox: { backgroundColor: '#f0fdf9', borderRadius: 10, padding: 12, gap: 4 },
-  savingsRateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  savingsRateBox:   { backgroundColor: '#f0fdf9', borderRadius: 10, padding: 12, gap: 4 },
+  savingsRateRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   savingsRateLabel: { fontSize: 13, color: '#555', fontWeight: '500' },
   savingsRateValue: { fontSize: 15, fontWeight: '800', color: '#0F6E6E' },
-  savingsRateHint: { fontSize: 12, color: '#0a7a4e' },
-  monthBarChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 88 },
-  monthBarItem: { flex: 1, alignItems: 'center', gap: 4 },
-  monthBarAmt: { fontSize: 9, color: '#0F6E6E', fontWeight: '600', textAlign: 'center', height: 12 },
-  monthBarBg: { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: '#f5f5f5', borderRadius: 6, overflow: 'hidden' },
-  monthBarFill: { width: '100%', backgroundColor: '#a8d8d0', borderRadius: 6 },
+  savingsRateHint:  { fontSize: 12, color: '#0a7a4e' },
+  monthBarChart:    { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 88 },
+  monthBarItem:     { flex: 1, alignItems: 'center', gap: 4 },
+  monthBarAmt:      { fontSize: 9, color: '#0F6E6E', fontWeight: '600', textAlign: 'center', height: 12 },
+  monthBarBg:       { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: '#f5f5f5', borderRadius: 6, overflow: 'hidden' },
+  monthBarFill:     { width: '100%', backgroundColor: '#a8d8d0', borderRadius: 6 },
   monthBarFillCurrent: { backgroundColor: '#0F6E6E' },
-  monthBarLabel: { fontSize: 10, color: '#aaa', textAlign: 'center' },
+  monthBarLabel:    { fontSize: 10, color: '#aaa', textAlign: 'center' },
 
-  // Projections
-  projGrid: { flexDirection: 'row', gap: 8 },
-  projBox: { flex: 1, alignItems: 'center', gap: 4, backgroundColor: '#f0fdf9', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 4 },
-  projValue: { fontSize: 14, fontWeight: '800', color: '#0a7a4e' },
-  projLabel: { fontSize: 10, color: '#555', fontWeight: '500', textAlign: 'center' },
+  projGrid:    { flexDirection: 'row', gap: 8 },
+  projBox:     { flex: 1, alignItems: 'center', gap: 4, backgroundColor: '#f0fdf9', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 4 },
+  projValue:   { fontSize: 14, fontWeight: '800', color: '#0a7a4e' },
+  projLabel:   { fontSize: 10, color: '#555', fontWeight: '500', textAlign: 'center' },
   projCaption: { fontSize: 11, color: '#bbb', textAlign: 'center' },
 
-  // Insights
   insightsWrap: { gap: 8 },
-  insightChip: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
+  insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
   insightEmoji: { fontSize: 18 },
-  insightText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  insightText:  { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
 });
