@@ -1050,7 +1050,6 @@ const s = StyleSheet.create({
   // ── Your why ──────────────────────────────────────────────────────────────────
   whyCard: {
     backgroundColor: '#fff', borderRadius: 18, padding: 16,
-    borderLeftWidth: 4, borderLeftColor: '#0F6E6E',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
@@ -1162,7 +1161,6 @@ const s = StyleSheet.create({
   // ── Crisis ────────────────────────────────────────────────────────────────────
   crisisCard: {
     backgroundColor: '#fff8f8', borderRadius: 18, padding: 18, gap: 10,
-    borderLeftWidth: 4, borderLeftColor: '#c0392b',
   },
   crisisTitle: { fontSize: 16, fontWeight: '700', color: '#c0392b' },
   crisisDesc: { fontSize: 14, color: '#555', lineHeight: 20 },
