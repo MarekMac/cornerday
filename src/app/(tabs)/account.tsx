@@ -977,11 +977,37 @@ export default function AccountScreen() {
               color={emailCopied ? '#0F6E6E' : '#bbb'}
             />
           </Pressable>
-          {isPremiumFromRC && (
-            <View style={s.premiumBadge}>
-              <Text style={s.premiumBadgeTxt}>✨ Premium</Text>
-            </View>
-          )}
+          <View style={s.profileSubRow}>
+            {isPremiumFromRC ? (
+              <>
+                <View style={s.profileSubLeft}>
+                  <Text style={s.profileSubBadge}>✨ Premium</Text>
+                  {renewalDate ? <Text style={s.profileSubMeta}>Renews {renewalDate}</Text> : null}
+                </View>
+                <Pressable
+                  style={({ pressed }) => [s.profileSubBtn, pressed && { opacity: 0.7 }]}
+                  onPress={() => Linking.openURL(Platform.OS === 'ios' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions')}>
+                  <Text style={s.profileSubBtnTxt}>Manage</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <View style={s.profileSubLeft}>
+                  <Text style={s.profileSubFree}>Free plan</Text>
+                  {restoringPurchases
+                    ? <ActivityIndicator size="small" color="#0F6E6E" style={{ marginTop: 2 }} />
+                    : <Pressable onPress={async () => { setRestoringPurchases(true); await restorePurchases(); setRestoringPurchases(false); }}>
+                        <Text style={s.profileSubRestore}>Already purchased? Restore</Text>
+                      </Pressable>}
+                </View>
+                <Pressable
+                  style={({ pressed }) => [s.profileUpgradeBtn, pressed && { opacity: 0.85 }]}
+                  onPress={showPaywall}>
+                  <Text style={s.profileUpgradeBtnTxt}>Upgrade</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
         </View>
 
         {/* Stats */}
@@ -1114,51 +1140,6 @@ export default function AccountScreen() {
             );
           })}
         </View>
-
-        {/* Subscription */}
-        {isPremiumFromRC ? (
-          <LinearGradient colors={['#0a5555', '#0F6E6E', '#1a9a9a']} style={s.premiumCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <View style={s.premiumCardInner}>
-              <View style={s.premiumCardLeft}>
-                <View style={s.premiumIconWrap}>
-                  <Text style={{ fontSize: 22 }}>✨</Text>
-                </View>
-                <View>
-                  <Text style={s.premiumCardTitle}>Premium Active</Text>
-                  <Text style={s.premiumCardSub}>{renewalDate ? `Renews ${renewalDate}` : 'All features unlocked'}</Text>
-                </View>
-              </View>
-              <Pressable
-                style={({ pressed }) => [s.manageSub, pressed && { opacity: 0.7 }]}
-                onPress={() => {
-                  const url = Platform.OS === 'ios'
-                    ? 'https://apps.apple.com/account/subscriptions'
-                    : 'https://play.google.com/store/account/subscriptions';
-                  Linking.openURL(url);
-                }}>
-                <Text style={s.manageSubTxt}>Manage</Text>
-              </Pressable>
-            </View>
-          </LinearGradient>
-        ) : (
-          <View style={s.card}>
-            <Text style={s.sectionTitle}>Subscription</Text>
-            <Text style={s.subStatus}>Free plan</Text>
-            <Pressable
-              style={({ pressed }) => [s.upgradeBtn, pressed && { opacity: 0.85 }]}
-              onPress={showPaywall}>
-              <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [s.restoreLink, pressed && { opacity: 0.6 }]}
-              onPress={async () => { setRestoringPurchases(true); await restorePurchases(); setRestoringPurchases(false); }}
-              disabled={restoringPurchases}>
-              {restoringPurchases
-                ? <ActivityIndicator size="small" color="#0F6E6E" />
-                : <Text style={s.restoreLinkTxt}>Already purchased? Restore</Text>}
-            </Pressable>
-          </View>
-        )}
 
         {/* Settings */}
         <View style={s.menuCard}>
@@ -1999,7 +1980,7 @@ const s = StyleSheet.create({
 
   profileCard: {
     backgroundColor: '#fff', borderRadius: 14, padding: 20,
-    alignItems: 'center', gap: 6,
+    alignItems: 'center', gap: 6, overflow: 'hidden',
   },
   avatar: {
     width: 72, height: 72, borderRadius: 36,
@@ -2041,6 +2022,27 @@ const s = StyleSheet.create({
     borderRadius: 12, marginTop: 4,
   },
   premiumBadgeTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
+
+  profileSubRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    width: '100%', borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    marginTop: 8, paddingTop: 14,
+  },
+  profileSubLeft: { gap: 2 },
+  profileSubBadge: { fontSize: 14, fontWeight: '700', color: '#0F6E6E' },
+  profileSubMeta: { fontSize: 12, color: '#aaa' },
+  profileSubFree: { fontSize: 14, fontWeight: '600', color: '#555' },
+  profileSubRestore: { fontSize: 12, color: '#0F6E6E' },
+  profileSubBtn: {
+    paddingVertical: 6, paddingHorizontal: 14, borderRadius: 10,
+    borderWidth: 1.5, borderColor: '#0F6E6E',
+  },
+  profileSubBtnTxt: { fontSize: 13, fontWeight: '700', color: '#0F6E6E' },
+  profileUpgradeBtn: {
+    paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10,
+    backgroundColor: '#0F6E6E',
+  },
+  profileUpgradeBtnTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   infoCard: { backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   infoCardTitle: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
