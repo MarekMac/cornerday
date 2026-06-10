@@ -209,6 +209,7 @@ export default function AccountScreen() {
   const [showContactsPermModal, setShowContactsPermModal] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [sendingFeedback, setSendingFeedback] = useState(false);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
   const [isPasswordUser, setIsPasswordUser] = useState(true);
   const [renewalDate, setRenewalDate] = useState<string | null>(null);
@@ -1834,16 +1835,32 @@ export default function AccountScreen() {
                 <Text style={s.confirmCancelTxt}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[s.confirmSave, !feedbackMsg.trim() && { opacity: 0.4 }]}
-                disabled={!feedbackMsg.trim()}
-                onPress={() => {
-                  const typeLabel = feedbackType === 'bug' ? 'Bug Report' : feedbackType === 'feature' ? 'Feature Request' : 'General Feedback';
-                  const subject = encodeURIComponent(`CornerDay — ${typeLabel}`);
-                  const body = encodeURIComponent(feedbackMsg.trim());
-                  Linking.openURL(`mailto:marekmac.ski@gmail.com?subject=${subject}&body=${body}`);
-                  setFeedbackVisible(false);
+                style={[s.confirmSave, (!feedbackMsg.trim() || sendingFeedback) && { opacity: 0.4 }]}
+                disabled={!feedbackMsg.trim() || sendingFeedback}
+                onPress={async () => {
+                  setSendingFeedback(true);
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    const { error } = await supabase.from('feedback').insert({
+                      user_id: user?.id ?? null,
+                      type: feedbackType,
+                      message: feedbackMsg.trim(),
+                      app_version: Constants.expoConfig?.version ?? null,
+                    });
+                    if (error) throw error;
+                    setFeedbackVisible(false);
+                    setFeedbackMsg('');
+                    setFeedbackType('general');
+                    Alert.alert('Thanks!', 'Your feedback has been sent.');
+                  } catch {
+                    Alert.alert('Error', 'Could not send feedback. Please try again.');
+                  } finally {
+                    setSendingFeedback(false);
+                  }
                 }}>
-                <Text style={s.confirmSaveTxt}>Send</Text>
+                {sendingFeedback
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.confirmSaveTxt}>Send</Text>}
               </Pressable>
             </View>
           </Pressable>
