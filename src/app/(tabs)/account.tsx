@@ -1009,94 +1009,87 @@ export default function AccountScreen() {
         <View style={s.infoCard}>
           <Text style={s.infoCardTitle}>Your recovery</Text>
           {quitFormatted && (
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Started</Text>
-              <View style={s.infoValueRow}>
-                <Text style={s.infoValue}>{quitFormatted}</Text>
-                <Pressable
-                  onPress={openEdit}
-                  disabled={saving}
-                  style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
+            <>
+              <Pressable
+                onPress={openEdit}
+                disabled={saving}
+                style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+                <View style={s.infoItemMain}>
+                  <Text style={s.infoItemLabel}>Started</Text>
                   {saving
-                    ? <ActivityIndicator size="small" color="#0F6E6E" />
-                    : <Text style={s.editBtnTxt}>Edit</Text>}
-                </Pressable>
-              </View>
-            </View>
+                    ? <ActivityIndicator size="small" color="#0F6E6E" style={{ alignSelf: 'flex-start' }} />
+                    : <Text style={s.infoItemValue}>{quitFormatted}</Text>}
+                </View>
+                <Ionicons name="pencil-outline" size={15} color="#aaa" />
+              </Pressable>
+              <View style={s.infoDivider} />
+            </>
           )}
-          <View style={s.infoRow}>
-            <Text style={s.infoLabel}>Weekly spending</Text>
-            <View style={s.infoValueRow}>
-              <Text style={[s.infoValue, !profile?.weeklyBet && s.infoValueEmpty]}>
+          <Pressable
+            onPress={openSpendingModal}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Weekly spending</Text>
+              <Text style={[s.infoItemValue, !profile?.weeklyBet && s.infoValueEmpty]}>
                 {profile?.weeklyBet
                   ? `${CURRENCIES.find(c => c.code === profile.currency)?.symbol ?? ''}${profile.weeklyBet}/wk`
                   : 'Not set'}
               </Text>
-              <Pressable
-                onPress={openSpendingModal}
-                style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
-                <Text style={s.editBtnTxt}>{profile?.weeklyBet ? 'Edit' : 'Add'}</Text>
-              </Pressable>
             </View>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={s.infoLabel}>Savings goal</Text>
-            <View style={s.infoValueRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.infoValue, !savingsGoal && s.infoValueEmpty]}>
-                  {savingsGoal
-                    ? `${savingsGoalIcon} ${savingsGoalFor || 'Goal'} · ${CURRENCIES.find(c => c.code === profile?.currency)?.symbol ?? ''}${savingsGoal.toLocaleString()}`
-                    : 'Not set'}
-                </Text>
-                {savingsGoal && totalManualSavings >= savingsGoal && (
-                  <Text style={s.goalReachedNote}>🎉 Goal reached!</Text>
-                )}
-              </View>
-              <Pressable
-                onPress={openGoalModal}
-                style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
-                <Text style={s.editBtnTxt}>{savingsGoal ? 'Edit' : 'Add'}</Text>
-              </Pressable>
+            <Ionicons name="pencil-outline" size={15} color="#aaa" />
+          </Pressable>
+          <View style={s.infoDivider} />
+          <Pressable
+            onPress={openGoalModal}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Savings goal</Text>
+              <Text style={[s.infoItemValue, !savingsGoal && s.infoValueEmpty]}>
+                {savingsGoal
+                  ? `${savingsGoalIcon} ${savingsGoalFor || 'Goal'} · ${CURRENCIES.find(c => c.code === profile?.currency)?.symbol ?? ''}${savingsGoal.toLocaleString()}`
+                  : 'Not set'}
+              </Text>
+              {savingsGoal && totalManualSavings >= savingsGoal && (
+                <Text style={s.goalReachedNote}>🎉 Goal reached!</Text>
+              )}
             </View>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={s.infoLabel}>Trusted contact</Text>
-            <View style={s.infoValueRow}>
-              <Text style={[s.infoValue, !trustedContactName && s.infoValueEmpty]}>
+            <Ionicons name="pencil-outline" size={15} color="#aaa" />
+          </Pressable>
+          <View style={s.infoDivider} />
+          <Pressable
+            onPress={openContactModal}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Trusted contact</Text>
+              <Text style={[s.infoItemValue, !trustedContactName && s.infoValueEmpty]}>
                 {trustedContactName
                   ? `${trustedContactName}${trustedContactPhone ? ` · ${trustedContactPhone}` : ''}`
                   : 'Not set'}
               </Text>
+            </View>
+            <View style={s.infoItemActions}>
               {trustedContactPhone ? (
                 <Pressable
-                  onPress={async () => {
+                  onPress={async e => {
+                    e.stopPropagation?.();
                     const url = `tel:${trustedContactPhone}`;
                     const can = await Linking.canOpenURL(url).catch(() => false);
-                    if (can) {
-                      Linking.openURL(url);
-                    } else {
-                      await Clipboard.setStringAsync(trustedContactPhone);
-                      Alert.alert('Copied', 'Phone number copied to clipboard.');
-                    }
+                    if (can) Linking.openURL(url);
+                    else { await Clipboard.setStringAsync(trustedContactPhone); Alert.alert('Copied', 'Phone number copied to clipboard.'); }
                   }}
-                  style={({ pressed }) => [s.callBtn, pressed && { opacity: 0.6 }]}
                   hitSlop={8}>
                   <Ionicons name="call-outline" size={16} color="#0F6E6E" />
                 </Pressable>
               ) : null}
-              <Pressable
-                onPress={openContactModal}
-                style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
-                <Text style={s.editBtnTxt}>{trustedContactName ? 'Edit' : 'Add'}</Text>
-              </Pressable>
+              <Ionicons name="pencil-outline" size={15} color="#aaa" />
             </View>
-          </View>
+          </Pressable>
         </View>
 
         {/* Recovery profile */}
         <View style={s.infoCard}>
           <Text style={s.infoCardTitle}>Recovery profile</Text>
-          {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map(field => {
+          {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map((field, idx) => {
             const config = FIELD_CONFIG[field];
             const raw = field === 'motivation' ? profile?.motivation
               : field === 'trigger' ? profile?.trigger
@@ -1104,18 +1097,19 @@ export default function AccountScreen() {
               : profile?.supportType;
             const display = getDisplayLabel(config.options, raw ?? null);
             return (
-              <View key={field} style={s.infoRow}>
-                <Text style={s.infoLabel}>{config.label}</Text>
-                <View style={s.infoValueRow}>
-                  <Text style={[s.infoValue, !display && s.infoValueEmpty]}>
-                    {display ?? 'Not set'}
-                  </Text>
-                  <Pressable
-                    onPress={() => openFieldModal(field)}
-                    style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}>
-                    <Text style={s.editBtnTxt}>{display ? 'Edit' : 'Add'}</Text>
-                  </Pressable>
-                </View>
+              <View key={field}>
+                {idx > 0 && <View style={s.infoDivider} />}
+                <Pressable
+                  onPress={() => openFieldModal(field)}
+                  style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+                  <View style={s.infoItemMain}>
+                    <Text style={s.infoItemLabel}>{config.label}</Text>
+                    <Text style={[s.infoItemValue, !display && s.infoValueEmpty]}>
+                      {display ?? 'Not set'}
+                    </Text>
+                  </View>
+                  <Ionicons name="pencil-outline" size={15} color="#aaa" />
+                </Pressable>
               </View>
             );
           })}
@@ -2048,13 +2042,19 @@ const s = StyleSheet.create({
   },
   premiumBadgeTxt: { fontSize: 13, color: '#0F6E6E', fontWeight: '600' },
 
-  infoCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
-  infoCardTitle: { fontSize: 14, fontWeight: '700', color: '#333' },
+  infoCard: { backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  infoCardTitle: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  infoItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 8 },
+  infoItemMain: { flex: 1, gap: 2 },
+  infoItemLabel: { fontSize: 12, color: '#aaa', fontWeight: '500' },
+  infoItemValue: { fontSize: 15, color: '#111', fontWeight: '600' },
+  infoItemActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  infoDivider: { height: 1, backgroundColor: '#f2f2f2', marginLeft: 0 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   infoLabel: { fontSize: 14, color: '#888' },
   infoValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   infoValue: { fontSize: 14, color: '#111', fontWeight: '600', textAlign: 'right', flexShrink: 1 },
-  goalReachedNote: { fontSize: 12, color: '#0a7a4e', fontWeight: '600', textAlign: 'right', marginTop: 2 },
+  goalReachedNote: { fontSize: 12, color: '#0a7a4e', fontWeight: '600', marginTop: 2 },
   editBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#e6f7f7' },
   editBtnTxt: { fontSize: 12, color: '#0F6E6E', fontWeight: '700' },
 
