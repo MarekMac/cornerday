@@ -205,6 +205,7 @@ export default function AccountScreen() {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [showPassModal, setShowPassModal] = useState(false);
   const [sendingPassReset, setSendingPassReset] = useState(false);
+  const [showContactsPermModal, setShowContactsPermModal] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
   const [restoringPurchases, setRestoringPurchases] = useState(false);
@@ -355,14 +356,7 @@ export default function AccountScreen() {
   const pickFromContacts = async () => {
     const { status } = await Contacts.requestPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
-        'Permission needed',
-        'Allow CornerDay to access your contacts in Settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => Linking.openSettings() },
-        ]
-      );
+      setShowContactsPermModal(true);
       return;
     }
     const contact = await Contacts.presentContactPickerAsync();
@@ -1593,6 +1587,49 @@ export default function AccountScreen() {
         </Pressable>
       </Modal>
 
+      {/* Contacts permission modal */}
+      <Modal visible={showContactsPermModal} transparent animationType="fade" onRequestClose={() => setShowContactsPermModal(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setShowContactsPermModal(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: '#f0fafa', borderColor: '#c0e8e8' }]}>
+                <Ionicons name="people-outline" size={26} color="#0F6E6E" />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Contacts access needed</Text>
+            <Text style={[s.confirmBody, { textAlign: 'center', marginBottom: 16 }]}>
+              To pick a trusted contact from your phone, CornerDay needs access to your contacts.
+            </Text>
+            <View style={s.permStepBox}>
+              <View style={s.permStep}>
+                <View style={s.permStepNum}><Text style={s.permStepNumTxt}>1</Text></View>
+                <Text style={s.permStepTxt}>Open <Text style={s.permStepBold}>Settings</Text> on your phone</Text>
+              </View>
+              <View style={s.permStep}>
+                <View style={s.permStepNum}><Text style={s.permStepNumTxt}>2</Text></View>
+                <Text style={s.permStepTxt}>Find <Text style={s.permStepBold}>CornerDay</Text> in the app list</Text>
+              </View>
+              <View style={s.permStep}>
+                <View style={s.permStepNum}><Text style={s.permStepNumTxt}>3</Text></View>
+                <Text style={s.permStepTxt}>Tap <Text style={s.permStepBold}>Permissions → Contacts</Text> and set to <Text style={s.permStepBold}>Allow</Text></Text>
+              </View>
+            </View>
+            <View style={[s.confirmActions, { marginTop: 20 }]}>
+              <Pressable
+                style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                onPress={() => setShowContactsPermModal(false)}>
+                <Text style={s.modalBtnCancel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
+                onPress={() => { setShowContactsPermModal(false); Linking.openSettings(); }}>
+                <Text style={s.modalBtnSaveTxt}>Open Settings</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Notification settings modal */}
       <Modal visible={notifModalVisible} transparent animationType="fade" onRequestClose={() => setNotifModalVisible(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setNotifModalVisible(false)}>
@@ -2088,6 +2125,12 @@ const s = StyleSheet.create({
     backgroundColor: '#f0fafa',
   },
   contactPickerBtnTxt: { fontSize: 14, fontWeight: '600', color: '#0F6E6E' },
+  permStepBox: { gap: 10, backgroundColor: '#f8fafa', borderRadius: 14, padding: 14 },
+  permStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  permStepNum: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#0F6E6E', alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  permStepNumTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  permStepTxt: { flex: 1, fontSize: 13, color: '#555', lineHeight: 20 },
+  permStepBold: { fontWeight: '700', color: '#222' },
   goalIconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   goalIconChip: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5', borderWidth: 1.5, borderColor: 'transparent' },
   goalIconChipActive: { borderColor: '#0F6E6E', backgroundColor: '#e6f7f7' },
