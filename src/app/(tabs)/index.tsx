@@ -670,8 +670,9 @@ export default function HomeScreen() {
         .upsert(toAward.map(b => ({ user_id: user.id, badge_type: b.type })), { onConflict: 'user_id,badge_type', ignoreDuplicates: true })
         .select('badge_type');
       const newlyInserted = new Set((insertedBadges ?? []).map((b: any) => b.badge_type));
-      // Fall back to toAward if the DB returned nothing (e.g., RLS restricts select after insert)
-      const awarded = newlyInserted.size > 0 ? toAward.filter(b => newlyInserted.has(b.type)) : toAward;
+      // Only act on badges that were actually newly inserted this run.
+      // Fallback is [] — if the upsert returns empty it means the row already existed (ignoreDuplicates).
+      const awarded = toAward.filter(b => newlyInserted.has(b.type));
 
       // Log journal entries only for badges actually inserted this run
       const toLog = awarded.filter(b => b.days > 0);
@@ -680,6 +681,24 @@ export default function HomeScreen() {
           user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
           category: 'Milestone', note: `${b.emoji} ${b.label}`,
         })));
+
+        // Send immediate notification for each newly earned milestone
+        // (scheduleAllNotifications skips past-due milestones, so we fire in-app here)
+        if (profile?.notif_milestone) {
+          const { status } = await Notifications.getPermissionsAsync();
+          if (status === 'granted') {
+            for (const b of toLog) {
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: `${b.emoji} ${b.label} milestone!`,
+                  body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
+                  data: { screen: '/(tabs)/' },
+                },
+                trigger: null,
+              });
+            }
+          }
+        }
       }
 
       toAward.forEach(b => earnedBadges.push(b.type));
