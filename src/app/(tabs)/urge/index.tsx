@@ -30,6 +30,9 @@ const { width: SCREEN_W } = Dimensions.get('window');
 const PICKER_TILE_W = Math.floor((SCREEN_W - 88 - 10) / 2);
 const TIMER_TOTAL = 20 * 60;
 
+const INTENSITY_COLORS = ['#27ae60', '#8bc34a', '#f39c12', '#e67e22', '#c0392b'];
+const INTENSITY_LABELS = ['Mild', 'Building', 'Strong', 'Intense', 'Overwhelming'];
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
@@ -193,6 +196,8 @@ export default function UrgeScreen() {
   const [slipResetting, setSlipResetting] = useState(false);
   const [slipReset, setSlipReset] = useState(false);
 
+  const [urgeIntensityBefore, setUrgeIntensityBefore] = useState<number | null>(null);
+  const [urgeIntensityAfter, setUrgeIntensityAfter] = useState<number | null>(null);
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const { personalBests, globalBests, handleScore } = useGameBests();
@@ -258,11 +263,16 @@ export default function UrgeScreen() {
     });
   };
 
-  const openLog = (presetOutcome: 'overcame' | 'slipped') => {
-    setOutcome(presetOutcome);
+  const openLog = (presetOutcome?: 'overcame' | 'slipped') => {
+    setOutcome(presetOutcome ?? null);
     setSelectedTrigger(null);
     setCustomTrigger('');
-    setNote('');
+    const intensityNote = urgeIntensityBefore !== null
+      ? urgeIntensityAfter !== null
+        ? `Intensity: ${urgeIntensityBefore}/5 → ${urgeIntensityAfter}/5`
+        : `Intensity: ${urgeIntensityBefore}/5`
+      : '';
+    setNote(intensityNote);
     setSaved(false);
     setLogExpanded(true);
   };
@@ -447,6 +457,26 @@ export default function UrgeScreen() {
                 </View>
               </View>
             )}
+            {!timerRunning && !timerDone && (
+              <View style={s.intensityWrap}>
+                <Text style={s.intensityLbl}>How strong is the urge?</Text>
+                <View style={s.intensityRow}>
+                  {[1,2,3,4,5].map(n => (
+                    <Pressable
+                      key={n}
+                      style={[s.intensityDot, urgeIntensityBefore === n && { backgroundColor: INTENSITY_COLORS[n-1], borderColor: INTENSITY_COLORS[n-1] }]}
+                      onPress={() => setUrgeIntensityBefore(prev => prev === n ? null : n)}>
+                      <Text style={[s.intensityDotTxt, urgeIntensityBefore === n && { color: '#fff' }]}>{n}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                {urgeIntensityBefore !== null && (
+                  <Text style={[s.intensityHint, { color: INTENSITY_COLORS[urgeIntensityBefore - 1] }]}>
+                    {INTENSITY_LABELS[urgeIntensityBefore - 1]}
+                  </Text>
+                )}
+              </View>
+            )}
             <View style={s.timerBtns}>
               {!timerRunning && !timerDone && (
                 <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={startTimer}>
@@ -464,7 +494,7 @@ export default function UrgeScreen() {
                 </>
               )}
               {timerDone && (
-                <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={() => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); }}>
+                <Pressable style={({ pressed }) => [s.timerStartBtn, pressed && { opacity: 0.88 }]} onPress={() => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); setTimerPointsEarned(false); setUrgeIntensityBefore(null); setUrgeIntensityAfter(null); }}>
                   <Text style={s.timerStartBtnTxt}>Go again</Text>
                 </Pressable>
               )}
@@ -501,6 +531,11 @@ export default function UrgeScreen() {
           </ScrollView>
           <View style={s.iconSeparator} />
           </View>
+          <Pressable
+            style={({ pressed }) => [s.logQuickBtn, pressed && { opacity: 0.6 }]}
+            onPress={() => openLog()}>
+            <Text style={s.logQuickBtnTxt}>📝  Log this moment</Text>
+          </Pressable>
 
           {/* Your why */}
           <View style={s.whyCard}>
@@ -696,6 +731,28 @@ export default function UrgeScreen() {
               {'. That takes real strength.'}
             </Text>
             <Text style={s.congratsNote}>{CONGRATS_VARIANTS[congratsVariant].note}</Text>
+            <View style={s.intensityAfterWrap}>
+              <Text style={s.intensityLbl}>How strong is it now?</Text>
+              <View style={s.intensityRow}>
+                {[1,2,3,4,5].map(n => (
+                  <Pressable
+                    key={n}
+                    style={[s.intensityDot, urgeIntensityAfter === n && { backgroundColor: INTENSITY_COLORS[n-1], borderColor: INTENSITY_COLORS[n-1] }]}
+                    onPress={() => setUrgeIntensityAfter(prev => prev === n ? null : n)}>
+                    <Text style={[s.intensityDotTxt, urgeIntensityAfter === n && { color: '#fff' }]}>{n}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              {urgeIntensityBefore !== null && urgeIntensityAfter !== null && (
+                <Text style={s.intensityCompare}>
+                  {urgeIntensityAfter < urgeIntensityBefore
+                    ? `Was ${urgeIntensityBefore} → now ${urgeIntensityAfter}  ↓ dropped ${urgeIntensityBefore - urgeIntensityAfter}`
+                    : urgeIntensityAfter === urgeIntensityBefore
+                    ? `Still at ${urgeIntensityAfter} — keep going`
+                    : `Was ${urgeIntensityBefore} → now ${urgeIntensityAfter}`}
+                </Text>
+              )}
+            </View>
             <Pressable
               style={({ pressed }) => [s.slipLogBtn, pressed && { opacity: 0.85 }]}
               onPress={() => { setShowCongrats(false); openLog('overcame'); }}>
@@ -1025,6 +1082,25 @@ const s = StyleSheet.create({
   timerCancelBtnTxt: { color: '#888', fontWeight: '600', fontSize: 14 },
   timerSlipBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#e0a0a0' },
   timerSlipBtnTxt: { color: '#c0392b', fontWeight: '600', fontSize: 14 },
+
+  // ── Urge intensity ────────────────────────────────────────────────────────────
+  intensityWrap: { paddingTop: 14, paddingBottom: 4, alignItems: 'center', gap: 8 },
+  intensityAfterWrap: { alignItems: 'center', gap: 8, width: '100%' },
+  intensityLbl: { fontSize: 12, color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+  intensityRow: { flexDirection: 'row', gap: 10 },
+  intensityDot: {
+    width: 40, height: 40, borderRadius: 20,
+    borderWidth: 1.5, borderColor: '#d0d0d0',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  intensityDotTxt: { fontSize: 15, fontWeight: '700', color: '#888' },
+  intensityHint: { fontSize: 12, fontWeight: '600', marginTop: -2 },
+  intensityCompare: { fontSize: 13, fontWeight: '600', color: '#27ae60', textAlign: 'center' },
+
+  // ── Always-visible log link ───────────────────────────────────────────────────
+  logQuickBtn: { alignItems: 'center', paddingVertical: 10 },
+  logQuickBtnTxt: { fontSize: 13, color: '#aaa', fontWeight: '500' },
 
   // ── Icon rows (quick actions / games / exercises) ─────────────────────────────
   iconRowWrap: { marginHorizontal: -20 },
