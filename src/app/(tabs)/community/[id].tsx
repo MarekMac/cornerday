@@ -437,7 +437,7 @@ export default function PostDetail() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1182,7 +1182,7 @@ export default function HomeScreen() {
   return (
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {/* ── Header ── */}
-      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <View style={s.headerTop}>
@@ -1680,9 +1680,23 @@ export default function HomeScreen() {
                 </>
               );
             })()}
-            <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setChecklistBadgeVisible(false)}>
-              <Text style={s.modalCloseTxt}>Close</Text>
-            </Pressable>
+            <View style={s.modalActions}>
+              {data.checklistCompleted && (
+                <View style={s.modalShareRow}>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setChecklistBadgeVisible(false); openShareCard({ emoji: '🛡️', label: 'Safe Zone' }); }}>
+                    <Ionicons name="share-outline" size={16} color={c.primary} />
+                    <Text style={s.modalShareTxt}>Share</Text>
+                  </Pressable>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setChecklistBadgeVisible(false); router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: '🛡️ Just earned the Safe Zone badge — completed every step of the prevention checklist! Taking real action to protect my recovery. 💪', initialTag: '#Milestone' } } as any); }}>
+                    <Ionicons name="people-outline" size={16} color={c.primary} />
+                    <Text style={s.modalShareTxt}>Community</Text>
+                  </Pressable>
+                </View>
+              )}
+              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setChecklistBadgeVisible(false)}>
+                <Text style={s.modalCloseTxt}>Close</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1708,9 +1722,23 @@ export default function HomeScreen() {
                 </>
               );
             })()}
-            <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setGoalSetBadgeVisible(false)}>
-              <Text style={s.modalCloseTxt}>Close</Text>
-            </Pressable>
+            <View style={s.modalActions}>
+              {data.earnedBadges.includes('goal_set') && (
+                <View style={s.modalShareRow}>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setGoalSetBadgeVisible(false); openShareCard({ emoji: '📍', label: 'Goal Setter' }); }}>
+                    <Ionicons name="share-outline" size={16} color={c.primary} />
+                    <Text style={s.modalShareTxt}>Share</Text>
+                  </Pressable>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setGoalSetBadgeVisible(false); router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: '📍 Just earned the Goal Setter badge! I\'ve set a savings goal and I\'m working toward it. Having something to aim for makes every day worth it. 💪', initialTag: '#Milestone' } } as any); }}>
+                    <Ionicons name="people-outline" size={16} color={c.primary} />
+                    <Text style={s.modalShareTxt}>Community</Text>
+                  </Pressable>
+                </View>
+              )}
+              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setGoalSetBadgeVisible(false)}>
+                <Text style={s.modalCloseTxt}>Close</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1746,9 +1774,23 @@ export default function HomeScreen() {
                 </>
               );
             })()}
-            <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setGoalReachedBadgeVisible(false)}>
-              <Text style={s.modalCloseTxt}>Close</Text>
-            </Pressable>
+            <View style={s.modalActions}>
+              {data.earnedBadges.includes('goal_reached') && (
+                <View style={s.modalShareRow}>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setGoalReachedBadgeVisible(false); openShareCard({ emoji: '🎊', label: 'Goal Met' }); }}>
+                    <Ionicons name="share-outline" size={16} color={c.primary} />
+                    <Text style={s.modalShareTxt}>Share</Text>
+                  </Pressable>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setGoalReachedBadgeVisible(false); router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: '🎊 Just reached my savings goal and earned the Goal Met badge! Proof that every day clean adds up to something real. 💪', initialTag: '#Milestone' } } as any); }}>
+                    <Ionicons name="people-outline" size={16} color={c.primary} />
+                    <Text style={s.modalShareTxt}>Community</Text>
+                  </Pressable>
+                </View>
+              )}
+              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setGoalReachedBadgeVisible(false)}>
+                <Text style={s.modalCloseTxt}>Close</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1791,9 +1833,26 @@ export default function HomeScreen() {
                 </>
               );
             })()}
-            <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setSelectedDebtId(null)}>
-              <Text style={s.modalCloseTxt}>Close</Text>
-            </Pressable>
+            <View style={s.modalActions}>
+              {selectedDebtId && (() => {
+                const debt = data.debtItems.find(d => d.id === selectedDebtId);
+                return debt?.earned ? (
+                  <View style={s.modalShareRow}>
+                    <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { const d = data.debtItems.find(x => x.id === selectedDebtId); setSelectedDebtId(null); if (d) openShareCard({ emoji: '🏦', label: `${d.name} paid` }); }}>
+                      <Ionicons name="share-outline" size={16} color={c.primary} />
+                      <Text style={s.modalShareTxt}>Share</Text>
+                    </Pressable>
+                    <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { const d = data.debtItems.find(x => x.id === selectedDebtId); setSelectedDebtId(null); if (d) router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: `🏦 Just paid off "${d.name}"! Fully cleared this debt — one more step toward financial freedom. 💪`, initialTag: '#Milestone' } } as any); }}>
+                      <Ionicons name="people-outline" size={16} color={c.primary} />
+                      <Text style={s.modalShareTxt}>Community</Text>
+                    </Pressable>
+                  </View>
+                ) : null;
+              })()}
+              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setSelectedDebtId(null)}>
+                <Text style={s.modalCloseTxt}>Close</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>

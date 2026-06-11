@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -1058,7 +1058,7 @@ export default function AccountScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Account</Text>

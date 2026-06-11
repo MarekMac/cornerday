@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -369,7 +369,7 @@ export default function JournalScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Pressable style={s.backBtn} onPress={() => from === 'home' ? router.push('/(tabs)/' as any) : router.back()} hitSlop={12}>

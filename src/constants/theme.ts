@@ -39,6 +39,7 @@ export const Colors = {
     primary:          '#0F6E6E',
     primaryMid:       '#1a9a9a',
     primaryLight:     '#a8d8d0',
+    headerGradDeep:   '#062e2e',
     headerGradStart:  '#0F6E6E',
     headerGradEnd:    '#1a9a9a',
 
@@ -87,6 +88,7 @@ export const Colors = {
     primary:          '#0F6E6E',
     primaryMid:       '#1a9a9a',
     primaryLight:     '#a8d8d0',
+    headerGradDeep:   '#010c0c',
     headerGradStart:  '#0a2626',
     headerGradEnd:    '#0F6E6E',
 

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -99,7 +99,7 @@ export default function NewPost() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.root}>
-        <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
+        <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
           <SafeAreaView edges={['top']}>
             <View style={s.headerRow}>
               <Pressable onPress={handleBack} style={s.backBtn}>

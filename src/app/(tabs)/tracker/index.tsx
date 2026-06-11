@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
@@ -522,7 +522,7 @@ export default function TrackerIndex() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Financial Tracker</Text>

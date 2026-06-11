@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -414,7 +414,7 @@ export default function AnalyticsScreen() {
   };
 
   const renderHeader = () => (
-    <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
+    <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
       <SafeAreaView edges={['top']}>
         <View style={s.headerRow}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>
