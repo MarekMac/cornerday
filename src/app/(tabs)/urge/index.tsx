@@ -39,6 +39,24 @@ import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notificatio
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
+const PLAN_DISTRACTION_OPTIONS = [
+  { key: 'walk',     emoji: '🚶', label: 'Go for a walk' },
+  { key: 'call',     emoji: '📞', label: 'Call someone' },
+  { key: 'music',    emoji: '🎵', label: 'Listen to music' },
+  { key: 'drink',    emoji: '🍵', label: 'Make a hot drink' },
+  { key: 'read',     emoji: '📖', label: 'Read' },
+  { key: 'exercise', emoji: '🏃', label: 'Exercise' },
+  { key: 'breathe',  emoji: '🧘', label: 'Meditate' },
+  { key: 'journal',  emoji: '✍️', label: 'Write in journal' },
+  { key: 'shower',   emoji: '🛁', label: 'Take a shower' },
+  { key: 'tv',       emoji: '🍿', label: 'Watch something' },
+  { key: 'game',     emoji: '🎮', label: 'Play a game' },
+  { key: 'outside',  emoji: '🌿', label: 'Go outside' },
+  { key: 'create',   emoji: '🎨', label: 'Create something' },
+  { key: 'text',     emoji: '💬', label: 'Text a friend' },
+  { key: 'puzzle',   emoji: '🧩', label: 'Do a puzzle' },
+];
+
 const MOTIVATION_MAP: Record<string, { label: string; emoji: string }> = {
   family:        { label: 'My family',              emoji: '👨‍👩‍👧' },
   finances:      { label: 'My finances',            emoji: '💰' },
@@ -180,6 +198,8 @@ export default function UrgeScreen() {
   const s = useMemo(() => makeStyles(c), [c]);
   const [motivation, setMotivation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recoveryPlan, setRecoveryPlan] = useState<{ distractions: string[]; mantra: string | null }>({ distractions: [], mantra: null });
+  const [checkedPlanItems, setCheckedPlanItems] = useState<string[]>([]);
 
   // Inline log (replaces modal)
   const [logExpanded, setLogExpanded] = useState(false);
@@ -237,17 +257,24 @@ export default function UrgeScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from('users').select('motivation').eq('id', user.id).single();
+      const { data } = await supabase.from('users').select('motivation, recovery_distractions, recovery_mantra').eq('id', user.id).single();
       if (data?.motivation != null) {
         setMotivation(data.motivation);
         AsyncStorage.setItem(MOTIVATION_CACHE_KEY, data.motivation);
       }
+      setRecoveryPlan({
+        distractions: data?.recovery_distractions ? data.recovery_distractions.split(',').filter(Boolean) : [],
+        mantra: data?.recovery_mantra ?? null,
+      });
     } catch {
       // silently keep cached data
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { fetchMotivation(); }, [fetchMotivation]));
+  useFocusEffect(useCallback(() => {
+    fetchMotivation();
+    setCheckedPlanItems([]);
+  }, [fetchMotivation]));
 
   const awardTimerPoint = async () => {
     setTimerPointsEarned(true);
@@ -542,6 +569,50 @@ export default function UrgeScreen() {
             </View>
           </View>
 
+
+          {/* Recovery plan */}
+          {(recoveryPlan.distractions.length > 0 || recoveryPlan.mantra) ? (
+            <View style={s.planCard}>
+              <Text style={s.planCardTitle}>Your recovery plan</Text>
+              {!!recoveryPlan.mantra && (
+                <View style={s.planMantraBox}>
+                  <Text style={s.planMantraTxt}>"{recoveryPlan.mantra}"</Text>
+                </View>
+              )}
+              {recoveryPlan.distractions.length > 0 && (
+                <View style={s.planChipsWrap}>
+                  {recoveryPlan.distractions.map(key => {
+                    const opt = PLAN_DISTRACTION_OPTIONS.find(o => o.key === key);
+                    if (!opt) return null;
+                    const checked = checkedPlanItems.includes(key);
+                    return (
+                      <Pressable
+                        key={key}
+                        style={({ pressed }) => [s.planChip, checked && s.planChipChecked, pressed && { opacity: 0.75 }]}
+                        onPress={() => setCheckedPlanItems(prev =>
+                          prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+                        )}>
+                        <Text style={s.planChipEmoji}>{opt.emoji}</Text>
+                        <Text style={[s.planChipLabel, checked && s.planChipLabelChecked]}>{opt.label}</Text>
+                        {checked && <Text style={s.planChipCheck}>✓</Text>}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [s.planEmptyCard, pressed && { opacity: 0.85 }]}
+              onPress={() => router.push('/(tabs)/account')}>
+              <Text style={s.planEmptyEmoji}>🗂️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.planEmptyTitle}>Build your recovery plan</Text>
+                <Text style={s.planEmptySub}>Add personal activities and a mantra for moments like this</Text>
+              </View>
+              <Text style={s.planEmptyChevron}>›</Text>
+            </Pressable>
+          )}
 
           {/* Crisis resources */}
           <View style={s.crisisCard}>
@@ -1299,4 +1370,33 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   therapyCallBtnTxt: { fontSize: 12, fontWeight: '700', color: c.error },
   therapyWebBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: c.bgTeal, borderWidth: 1, borderColor: c.primaryLight },
   therapyWebBtnTxt: { fontSize: 12, fontWeight: '700', color: c.primary },
+
+  // Recovery plan card
+  planCard: { backgroundColor: c.bgCard, borderRadius: 18, padding: 16, gap: 12 },
+  planCardTitle: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  planMantraBox: {
+    backgroundColor: c.bgTealDeep, borderRadius: 12, padding: 14,
+    borderLeftWidth: 3, borderLeftColor: c.primary,
+  },
+  planMantraTxt: { fontSize: 14, fontStyle: 'italic', color: c.textBody, lineHeight: 20 },
+  planChipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  planChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: c.bgElement, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14,
+    borderWidth: 1.5, borderColor: c.borderLight,
+  },
+  planChipChecked: { backgroundColor: c.bgTeal, borderColor: c.primary },
+  planChipEmoji: { fontSize: 16 },
+  planChipLabel: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  planChipLabelChecked: { color: c.primary },
+  planChipCheck: { fontSize: 13, color: c.primary, fontWeight: '700' },
+  planEmptyCard: {
+    backgroundColor: c.bgCard, borderRadius: 16, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1.5, borderColor: c.primaryLight, borderStyle: 'dashed',
+  },
+  planEmptyEmoji: { fontSize: 26 },
+  planEmptyTitle: { fontSize: 15, fontWeight: '700', color: c.primary },
+  planEmptySub: { fontSize: 12, color: c.textMuted, marginTop: 2 },
+  planEmptyChevron: { fontSize: 22, color: c.primaryLight, fontWeight: '300' },
 });

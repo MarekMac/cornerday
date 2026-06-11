@@ -120,6 +120,24 @@ const SUPPORT_OPTIONS = [
   { value: 'therapist', label: 'A therapist', emoji: '🏥' },
 ];
 
+const PLAN_DISTRACTION_OPTIONS = [
+  { key: 'walk',     emoji: '🚶', label: 'Go for a walk' },
+  { key: 'call',     emoji: '📞', label: 'Call someone' },
+  { key: 'music',    emoji: '🎵', label: 'Listen to music' },
+  { key: 'drink',    emoji: '🍵', label: 'Make a hot drink' },
+  { key: 'read',     emoji: '📖', label: 'Read' },
+  { key: 'exercise', emoji: '🏃', label: 'Exercise' },
+  { key: 'breathe',  emoji: '🧘', label: 'Meditate' },
+  { key: 'journal',  emoji: '✍️', label: 'Write in journal' },
+  { key: 'shower',   emoji: '🛁', label: 'Take a shower' },
+  { key: 'tv',       emoji: '🍿', label: 'Watch something' },
+  { key: 'game',     emoji: '🎮', label: 'Play a game' },
+  { key: 'outside',  emoji: '🌿', label: 'Go outside' },
+  { key: 'create',   emoji: '🎨', label: 'Create something' },
+  { key: 'text',     emoji: '💬', label: 'Text a friend' },
+  { key: 'puzzle',   emoji: '🧩', label: 'Do a puzzle' },
+];
+
 const FIELD_CONFIG: Record<FieldKey, {
   title: string;
   options: { value: string; label: string; emoji: string }[];
@@ -228,6 +246,13 @@ export default function AccountScreen() {
   const [partnerExpiresAt, setPartnerExpiresAt] = useState<string | null>(null);
   const [partnerLinkLoading, setPartnerLinkLoading] = useState(false);
 
+  const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
+  const [recoveryMantra, setRecoveryMantra] = useState('');
+  const [showRecoveryPlanModal, setShowRecoveryPlanModal] = useState(false);
+  const [planDistractionsInput, setPlanDistractionsInput] = useState<string[]>([]);
+  const [planMantraInput, setPlanMantraInput] = useState('');
+  const [savingPlan, setSavingPlan] = useState(false);
+
   const fetchProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -271,16 +296,20 @@ export default function AccountScreen() {
     });
     setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
 
-    // Trusted contact lives in its own query so a schema-cache miss never breaks the profile fetch
+    // Trusted contact and recovery plan in a separate query so schema-cache misses never break the profile fetch
     const { data: contactData } = await supabase
       .from('users')
-      .select('trusted_contact_name, trusted_contact_phone')
+      .select('trusted_contact_name, trusted_contact_phone, recovery_distractions, recovery_mantra')
       .eq('id', user.id)
       .single();
     if (contactData?.trusted_contact_name || contactData?.trusted_contact_phone) {
       setTrustedContactName(contactData.trusted_contact_name ?? '');
       setTrustedContactPhone(contactData.trusted_contact_phone ?? '');
     }
+    if (contactData?.recovery_distractions) {
+      setRecoveryDistractions(contactData.recovery_distractions.split(',').filter(Boolean));
+    }
+    setRecoveryMantra(contactData?.recovery_mantra ?? '');
     setNotifPrefs({
       notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
       notif_daily_streak: data?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
@@ -371,6 +400,23 @@ export default function AccountScreen() {
       }
     }).catch(() => {});
   }, [isPremiumFromRC]);
+
+  const savePlan = async () => {
+    setSavingPlan(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const distractionsVal = planDistractionsInput.join(',') || null;
+      const mantraVal = planMantraInput.trim() || null;
+      await supabase.from('users').update({
+        recovery_distractions: distractionsVal,
+        recovery_mantra: mantraVal,
+      }).eq('id', user.id);
+      setRecoveryDistractions(planDistractionsInput);
+      setRecoveryMantra(planMantraInput.trim());
+    }
+    setSavingPlan(false);
+    setShowRecoveryPlanModal(false);
+  };
 
   const openGoalModal = () => {
     setGoalInput(savingsGoal ? String(savingsGoal) : '');
@@ -1237,6 +1283,50 @@ export default function AccountScreen() {
               </View>
             );
           })}
+        </View>
+
+        {/* Recovery plan */}
+        <View style={s.infoCard}>
+          <Text style={s.infoCardTitle}>My recovery plan</Text>
+          <Text style={s.partnerDesc}>
+            What will you do when an urge hits? Your plan appears on the Support screen when you need it most.
+          </Text>
+          {(recoveryDistractions.length > 0 || recoveryMantra) ? (
+            <View style={s.planSummary}>
+              {recoveryDistractions.length > 0 && (
+                <View style={s.planChipRow}>
+                  {recoveryDistractions.map(key => {
+                    const opt = PLAN_DISTRACTION_OPTIONS.find(o => o.key === key);
+                    if (!opt) return null;
+                    return (
+                      <View key={key} style={s.planChip}>
+                        <Text style={s.planChipEmoji}>{opt.emoji}</Text>
+                        <Text style={s.planChipLabel}>{opt.label}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+              {!!recoveryMantra && (
+                <View style={s.planMantraBox}>
+                  <Text style={s.planMantraLabel}>Your mantra</Text>
+                  <Text style={s.planMantraText}>"{recoveryMantra}"</Text>
+                </View>
+              )}
+            </View>
+          ) : null}
+          <Pressable
+            style={({ pressed }) => [s.planEditBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => {
+              setPlanDistractionsInput([...recoveryDistractions]);
+              setPlanMantraInput(recoveryMantra);
+              setShowRecoveryPlanModal(true);
+            }}>
+            <Ionicons name="pencil-outline" size={15} color={c.white} />
+            <Text style={s.planEditBtnTxt}>
+              {recoveryDistractions.length > 0 || recoveryMantra ? 'Edit plan' : 'Build my plan'}
+            </Text>
+          </Pressable>
         </View>
 
         {/* Accountability partner */}
@@ -2188,6 +2278,73 @@ export default function AccountScreen() {
         </Pressable>
       </Modal>
 
+      {/* Recovery plan modal */}
+      <Modal visible={showRecoveryPlanModal} transparent animationType="fade" onRequestClose={() => setShowRecoveryPlanModal(false)}>
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={s.confirmOverlay} onPress={() => setShowRecoveryPlanModal(false)}>
+            <Pressable style={[s.editCenterSheet, { maxHeight: '92%' }]} onPress={() => {}}>
+              <Text style={s.editFieldTitle}>My recovery plan</Text>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={[s.spendingCustomLabel, { marginBottom: 12 }]}>
+                  What will you do when an urge hits? Choose up to 5 activities:
+                </Text>
+                <View style={s.planOptionGrid}>
+                  {PLAN_DISTRACTION_OPTIONS.map(opt => {
+                    const selected = planDistractionsInput.includes(opt.key);
+                    return (
+                      <Pressable
+                        key={opt.key}
+                        style={({ pressed }) => [s.planOption, selected && s.planOptionSelected, pressed && { opacity: 0.75 }]}
+                        onPress={() => {
+                          if (selected) {
+                            setPlanDistractionsInput(prev => prev.filter(k => k !== opt.key));
+                          } else if (planDistractionsInput.length < 5) {
+                            setPlanDistractionsInput(prev => [...prev, opt.key]);
+                          }
+                        }}>
+                        <Text style={s.planOptionEmoji}>{opt.emoji}</Text>
+                        <Text style={[s.planOptionLabel, selected && s.planOptionLabelSelected]}>{opt.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={[s.spendingCustomLabel, { marginTop: 20, marginBottom: 8 }]}>
+                  Personal mantra <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
+                </Text>
+                <TextInput
+                  style={s.planMantraInput}
+                  placeholder="e.g. I am stronger than this urge"
+                  placeholderTextColor={c.textFaint}
+                  value={planMantraInput}
+                  onChangeText={setPlanMantraInput}
+                  multiline
+                  maxLength={120}
+                  textAlignVertical="top"
+                />
+                <Text style={{ fontSize: 11, color: c.textFaint, marginTop: 4, marginBottom: 4 }}>
+                  {planMantraInput.length}/120
+                </Text>
+                <View style={[s.modalActions, { marginTop: 12, marginBottom: 8 }]}>
+                  <Pressable
+                    style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                    onPress={() => setShowRecoveryPlanModal(false)}>
+                    <Text style={s.modalBtnCancel}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
+                    onPress={savePlan}
+                    disabled={savingPlan}>
+                    {savingPlan
+                      ? <ActivityIndicator color={c.white} size="small" />
+                      : <Text style={s.modalBtnSaveTxt}>Save plan</Text>}
+                  </Pressable>
+                </View>
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* iOS date/time picker modal */}
       {Platform.OS === 'ios' && (
         <Modal visible={showIOSModal} transparent animationType="slide">
@@ -2588,4 +2745,43 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   partnerRevokeTxt: { fontSize: 13, color: c.error },
   partnerGenerateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.primary, borderRadius: 10, paddingVertical: 12 },
   partnerGenerateTxt: { fontSize: 14, fontWeight: '600', color: c.white },
+
+  // Recovery plan card
+  planSummary: { gap: 10, marginBottom: 14 },
+  planChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  planChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: c.bgTealDeep, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: c.primaryLight,
+  },
+  planChipEmoji: { fontSize: 14 },
+  planChipLabel: { fontSize: 13, fontWeight: '600', color: c.primary },
+  planMantraBox: {
+    backgroundColor: c.bgTealDeep, borderRadius: 12, padding: 14,
+    borderLeftWidth: 3, borderLeftColor: c.primary,
+  },
+  planMantraLabel: { fontSize: 11, fontWeight: '700', color: c.primary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  planMantraText: { fontSize: 14, color: c.textBody, fontStyle: 'italic', lineHeight: 20 },
+  planEditBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: c.primary, borderRadius: 10, paddingVertical: 12,
+  },
+  planEditBtnTxt: { fontSize: 14, fontWeight: '600', color: c.white },
+
+  // Recovery plan modal
+  planOptionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  planOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 9, paddingHorizontal: 14,
+    backgroundColor: c.bgInputMid, borderRadius: 20,
+    borderWidth: 1.5, borderColor: c.borderTeal,
+  },
+  planOptionSelected: { backgroundColor: c.bgTeal, borderColor: c.primary },
+  planOptionEmoji: { fontSize: 16 },
+  planOptionLabel: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  planOptionLabelSelected: { color: c.primary },
+  planMantraInput: {
+    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 10,
+    padding: 12, fontSize: 14, color: c.textPrimary, minHeight: 64,
+  },
 });
