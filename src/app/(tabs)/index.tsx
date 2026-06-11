@@ -1274,28 +1274,26 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Mood check-in */}
+        {/* Mood — combined check-in + week strip */}
         <View style={s.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
           {data.todayMood !== null && !editingMood ? (
-            <>
-              <View style={s.moodDoneWrap}>
-                <View style={s.moodDone}>
-                  <View style={s.moodDoneRow}>
-                    <Text style={s.moodDoneLabel}>Today's mood: </Text>
-                    <Text style={s.moodDoneEmoji}>{MOODS[data.todayMood - 1]}</Text>
-                    {data.todayMoodNote
-                      ? <Text style={s.moodDoneNote} numberOfLines={1}>{' '}{data.todayMoodNote}</Text>
-                      : null}
-                  </View>
-                  <Pressable onPress={() => { setEditingMood(true); setMoodNote(data.todayMoodNote ?? ''); setEditMoodValue(data.todayMood); }} style={({ pressed }) => [s.moodEditBtn, pressed && { opacity: 0.6 }]}>
-                    <Text style={s.moodEditBtnTxt}>Edit</Text>
-                  </Pressable>
+            <View style={s.moodDoneWrap}>
+              <View style={s.moodDone}>
+                <View style={s.moodDoneRow}>
+                  <Text style={s.moodDoneLabel}>Today's mood: </Text>
+                  <Text style={s.moodDoneEmoji}>{MOODS[data.todayMood - 1]}</Text>
+                  {data.todayMoodNote
+                    ? <Text style={s.moodDoneNote} numberOfLines={1}>{' '}{data.todayMoodNote}</Text>
+                    : null}
                 </View>
-                {moodStreak >= 2 && (
-                  <Text style={s.moodStreakTxt}>🗓 {moodStreak}-day check-in streak</Text>
-                )}
+                <Pressable onPress={() => { setEditingMood(true); setMoodNote(data.todayMoodNote ?? ''); setEditMoodValue(data.todayMood); }} style={({ pressed }) => [s.moodEditBtn, pressed && { opacity: 0.6 }]}>
+                  <Text style={s.moodEditBtnTxt}>Edit</Text>
+                </Pressable>
               </View>
-            </>
+              {moodStreak >= 2 && (
+                <Text style={s.moodStreakTxt}>🗓 {moodStreak}-day check-in streak</Text>
+              )}
+            </View>
           ) : (
             <>
               <Text style={s.moodCardTitle}>How are you feeling today?</Text>
@@ -1349,28 +1347,26 @@ export default function HomeScreen() {
               )}
             </>
           )}
-        </View>
 
-        {/* 7-day mood strip */}
-        <View style={s.weekStrip}>
-          <Text style={s.weekStripTitle}>Mood this week</Text>
+          <View style={s.moodInnerDivider} />
+
           <View style={s.weekStripRow}>
-          {data.weekMoods.map((day, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - (6 - i));
-            const dayLabel = d.toLocaleDateString([], { weekday: 'short' }).slice(0, 2);
-            const isToday = i === 6;
-            return (
-              <View key={i} style={s.weekStripDay}>
-                <Text style={[s.weekStripLabel, isToday && s.weekStripLabelToday]}>{dayLabel}</Text>
-                <View style={[s.weekStripDot, isToday && s.weekStripDotToday]}>
-                  {day.mood !== null
-                    ? <Text style={s.weekStripEmoji}>{MOODS[day.mood - 1]}</Text>
-                    : <View style={s.weekStripEmpty} />}
+            {data.weekMoods.map((day, i) => {
+              const d = new Date();
+              d.setDate(d.getDate() - (6 - i));
+              const dayLabel = d.toLocaleDateString([], { weekday: 'short' }).slice(0, 2);
+              const isToday = i === 6;
+              return (
+                <View key={i} style={s.weekStripDay}>
+                  <Text style={[s.weekStripLabel, isToday && s.weekStripLabelToday]}>{dayLabel}</Text>
+                  <View style={[s.weekStripDot, isToday && s.weekStripDotToday]}>
+                    {day.mood !== null
+                      ? <Text style={s.weekStripEmoji}>{MOODS[day.mood - 1]}</Text>
+                      : <View style={s.weekStripEmpty} />}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })}
           </View>
         </View>
 
@@ -1796,6 +1792,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   // Mood
   moodCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12 },
+  moodInnerDivider: { height: 1, backgroundColor: c.borderLight, marginHorizontal: -12, marginVertical: 18 },
   moodCardTitle: { fontSize: 12, fontWeight: '600', color: c.textMuted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 },
   moodRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12 },
   moodBtn: { padding: 4 },
