@@ -657,6 +657,7 @@ export default function HomeScreen() {
   const [editingMood, setEditingMood] = useState(false);
   const [moodNote, setMoodNote] = useState('');
   const [editMoodValue, setEditMoodValue] = useState<number | null>(null);
+  const [partnerMsg, setPartnerMsg] = useState<{ id: string; message: string } | null>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
   useEffect(() => {
@@ -910,13 +911,38 @@ export default function HomeScreen() {
     });
   }, [fetchData]);
 
+  const fetchPartnerMsg = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: link } = await supabase
+      .from('partner_links')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!link) return;
+    const { data: msg } = await supabase
+      .from('partner_messages')
+      .select('id, message')
+      .eq('link_id', link.id)
+      .is('read_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setPartnerMsg(msg ?? null);
+  }, []);
+
   const [focusTick, setFocusTick] = useState(0);
   useFocusEffect(useCallback(() => {
     if (initialLoadDone.current) {
       fetchData();
+      fetchPartnerMsg();
       setFocusTick(t => t + 1);
     }
-  }, [fetchData]));
+  }, [fetchData, fetchPartnerMsg]));
+
+  useEffect(() => {
+    fetchPartnerMsg();
+  }, [fetchPartnerMsg]);
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000);
@@ -1171,6 +1197,20 @@ export default function HomeScreen() {
         contentContainerStyle={s.bodyContent}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}>
+
+        {/* Partner message banner */}
+        {partnerMsg && (
+          <Pressable
+            style={({ pressed }) => [s.partnerMsgBanner, pressed && { opacity: 0.85 }]}
+            onPress={async () => {
+              await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id);
+              setPartnerMsg(null);
+            }}>
+            <Text style={s.partnerMsgEmoji}>💙</Text>
+            <Text style={s.partnerMsgTxt} numberOfLines={3}>{partnerMsg.message}</Text>
+            <Ionicons name="close-outline" size={18} color={c.primary} />
+          </Pressable>
+        )}
 
         {/* Stats */}
         <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} nowMs={nowMs} />
@@ -1899,6 +1939,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   relapseBtnTxt: { fontSize: 13, color: c.error, fontWeight: '600' },
   relapseMinimal: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
   relapseMinimalTxt: { fontSize: 13, color: c.textFaint, textDecorationLine: 'underline' },
+
+  // Partner message banner
+  partnerMsgBanner: { backgroundColor: c.bgTeal, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  partnerMsgEmoji: { fontSize: 20 },
+  partnerMsgTxt: { flex: 1, fontSize: 14, color: c.textPrimary, fontWeight: '500', lineHeight: 20 },
 
   // Week mood strip
   weekStrip: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12, gap: 10 },

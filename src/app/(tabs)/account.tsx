@@ -222,6 +222,12 @@ export default function AccountScreen() {
   const [isPasswordUser, setIsPasswordUser] = useState(true);
   const [renewalDate, setRenewalDate] = useState<string | null>(null);
 
+  const [partnerToken, setPartnerToken] = useState<string | null>(null);
+  const [partnerLinkId, setPartnerLinkId] = useState<string | null>(null);
+  const [partnerLinkLoading, setPartnerLinkLoading] = useState(false);
+  const [partnerCopied, setPartnerCopied] = useState(false);
+  const partnerCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const fetchProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -286,8 +292,53 @@ export default function AccountScreen() {
     return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
   }, []);
 
+  const loadPartnerLink = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('partner_links')
+      .select('id, token')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (data) { setPartnerToken(data.token); setPartnerLinkId(data.id); }
+  }, []);
+
+  const generatePartnerLink = async () => {
+    setPartnerLinkLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data, error } = await supabase
+        .from('partner_links')
+        .insert({ user_id: user.id })
+        .select('id, token')
+        .single();
+      if (!error && data) { setPartnerToken(data.token); setPartnerLinkId(data.id); }
+    }
+    setPartnerLinkLoading(false);
+  };
+
+  const revokePartnerLink = () => {
+    Alert.alert(
+      'Revoke link?',
+      'Your partner will no longer be able to view your progress or send messages.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Revoke', style: 'destructive', onPress: async () => {
+          setPartnerLinkLoading(true);
+          if (partnerLinkId) {
+            await supabase.from('partner_links').delete().eq('id', partnerLinkId);
+            setPartnerToken(null);
+            setPartnerLinkId(null);
+          }
+          setPartnerLinkLoading(false);
+        }},
+      ]
+    );
+  };
+
   useEffect(() => {
     fetchProfile().finally(() => setLoading(false));
+    loadPartnerLink();
     Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
@@ -307,7 +358,7 @@ export default function AccountScreen() {
       if (rawStreakHour) setNotifStreakHour(Number(rawStreakHour));
       if (rawCheckinHour) setNotifCheckinHour(Number(rawCheckinHour));
     });
-  }, [fetchProfile]);
+  }, [fetchProfile, loadPartnerLink]);
 
   useEffect(() => {
     if (!isPremiumFromRC) { setRenewalDate(null); return; }
@@ -1185,6 +1236,53 @@ export default function AccountScreen() {
               </View>
             );
           })}
+        </View>
+
+        {/* Accountability partner */}
+        <View style={s.infoCard}>
+          <Text style={s.infoCardTitle}>Accountability partner</Text>
+          <Text style={s.partnerDesc}>
+            Share a private link with someone you trust. They'll see your streak and can send you encouragement — no account needed.
+          </Text>
+          {partnerToken ? (
+            <View style={s.partnerLinkBox}>
+              <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
+                {`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/partner-view?t=${partnerToken}`}
+              </Text>
+              <View style={s.partnerBtnRow}>
+                <Pressable
+                  style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
+                  onPress={async () => {
+                    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/partner-view?t=${partnerToken}`;
+                    await Clipboard.setStringAsync(url);
+                    setPartnerCopied(true);
+                    if (partnerCopyTimerRef.current) clearTimeout(partnerCopyTimerRef.current);
+                    partnerCopyTimerRef.current = setTimeout(() => setPartnerCopied(false), 2000);
+                  }}>
+                  <Ionicons name={partnerCopied ? 'checkmark' : 'copy-outline'} size={15} color={c.white} />
+                  <Text style={s.partnerCopyTxt}>{partnerCopied ? 'Copied!' : 'Copy link'}</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [s.partnerRevokeBtn, pressed && { opacity: 0.7 }]}
+                  onPress={revokePartnerLink}
+                  disabled={partnerLinkLoading}>
+                  <Text style={s.partnerRevokeTxt}>Revoke</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [s.partnerGenerateBtn, pressed && { opacity: 0.85 }]}
+              onPress={generatePartnerLink}
+              disabled={partnerLinkLoading}>
+              {partnerLinkLoading
+                ? <ActivityIndicator color={c.white} size="small" />
+                : <>
+                    <Ionicons name="link-outline" size={16} color={c.white} />
+                    <Text style={s.partnerGenerateTxt}>Generate link</Text>
+                  </>}
+            </Pressable>
+          )}
         </View>
 
         {/* Admin section */}
@@ -2474,4 +2572,16 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   // Danger zone card (sign out + delete account)
   dangerCard: { backgroundColor: c.bgCard, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: c.bgErrorMid },
   dangerRowLabel: { color: c.error },
+
+  // Accountability partner
+  partnerDesc: { fontSize: 13, color: c.textBody, lineHeight: 19, marginBottom: 14 },
+  partnerLinkBox: { backgroundColor: c.bgElement, borderRadius: 10, padding: 12, gap: 10 },
+  partnerLinkUrl: { fontSize: 12, color: c.textMuted },
+  partnerBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  partnerCopyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.primary, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  partnerCopyTxt: { fontSize: 13, fontWeight: '600', color: c.white },
+  partnerRevokeBtn: { paddingVertical: 8, paddingHorizontal: 8 },
+  partnerRevokeTxt: { fontSize: 13, color: c.error },
+  partnerGenerateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.primary, borderRadius: 10, paddingVertical: 12 },
+  partnerGenerateTxt: { fontSize: 14, fontWeight: '600', color: c.white },
 });
