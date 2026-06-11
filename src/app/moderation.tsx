@@ -17,7 +17,16 @@ import { supabase } from '@/lib/supabase';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
-type AdminTab = 'reports' | 'feedback';
+type AdminTab = 'reports' | 'users' | 'feedback';
+
+interface UserRow {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  created_at: string;
+  is_premium: boolean;
+  is_banned: boolean;
+}
 
 interface Report {
   id: string;
@@ -110,6 +119,66 @@ export default function ModerationScreen() {
     );
   };
 
+  // ── Users ────────────────────────────────────────────────────────────────────
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [userActioning, setUserActioning] = useState<string | null>(null);
+
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
+    const { data } = await supabase
+      .from('users')
+      .select('id, display_name, email, created_at, is_premium, is_banned')
+      .order('created_at', { ascending: false });
+    setUsers((data ?? []) as UserRow[]);
+    setUsersLoading(false);
+  }, []);
+
+  const toggleBan = async (user: UserRow) => {
+    const action = user.is_banned ? 'Unban' : 'Ban';
+    const name = user.display_name ?? user.email ?? 'this user';
+    Alert.alert(
+      `${action} user`,
+      user.is_banned
+        ? `Unban ${name}? They will be able to post in the community again.`
+        : `Ban ${name} from the community? They won't be able to post or comment.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: action,
+          style: user.is_banned ? 'default' : 'destructive',
+          onPress: async () => {
+            setUserActioning(user.id);
+            await supabase.from('users').update({ is_banned: !user.is_banned }).eq('id', user.id);
+            setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_banned: !u.is_banned } : u));
+            setUserActioning(null);
+          },
+        },
+      ]
+    );
+  };
+
+  const deleteUserContent = (user: UserRow) => {
+    const name = user.display_name ?? user.email ?? 'this user';
+    Alert.alert(
+      'Delete community content',
+      `Remove all posts and comments by ${name}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete all content',
+          style: 'destructive',
+          onPress: async () => {
+            setUserActioning(user.id);
+            await supabase.from('community_posts').delete().eq('user_id', user.id);
+            await supabase.from('community_comments').delete().eq('user_id', user.id);
+            setUserActioning(null);
+          },
+        },
+      ]
+    );
+  };
+
   // ── Feedback ─────────────────────────────────────────────────────────────────
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
@@ -147,7 +216,7 @@ export default function ModerationScreen() {
     );
   };
 
-  useEffect(() => { loadReports(); loadFeedback(); }, [loadReports, loadFeedback]);
+  useEffect(() => { loadReports(); loadUsers(); loadFeedback(); }, [loadReports, loadUsers, loadFeedback]);
 
   const FEEDBACK_TYPE_LABEL: Record<string, string> = {
     bug: '🐛 Bug',
@@ -182,6 +251,13 @@ export default function ModerationScreen() {
               onPress={() => setTab('reports')}>
               <Text style={[s.tabBtnTxt, tab === 'reports' && s.tabBtnTxtActive]}>
                 Reports{reports.length > 0 ? ` (${reports.length})` : ''}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[s.tabBtn, tab === 'users' && s.tabBtnActive]}
+              onPress={() => setTab('users')}>
+              <Text style={[s.tabBtnTxt, tab === 'users' && s.tabBtnTxtActive]}>
+                Users{users.length > 0 ? ` (${users.length})` : ''}
               </Text>
             </Pressable>
             <Pressable
@@ -235,6 +311,71 @@ export default function ModerationScreen() {
                     style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }, actioning === report.id && s.btnDisabled]}
                     onPress={() => deleteContent(report)}
                     disabled={!!actioning}>
+                    <Ionicons name="trash-outline" size={14} color={c.white} />
+                    <Text style={s.deleteBtnTxt}>Delete content</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+            <View style={{ height: 32 }} />
+          </ScrollView>
+        )
+      )}
+
+      {/* ── Users tab ── */}
+      {tab === 'users' && (
+        usersLoading ? (
+          <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>
+        ) : users.length === 0 ? (
+          <View style={s.center}>
+            <Ionicons name="people-outline" size={52} color={c.primaryLight} />
+            <Text style={s.emptyTitle}>No users yet</Text>
+            <Text style={s.emptyBody}>Registered users will appear here.</Text>
+          </View>
+        ) : (
+          <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
+            <Text style={s.countLabel}>{users.length} user{users.length !== 1 ? 's' : ''}</Text>
+            {users.map(user => (
+              <View key={user.id} style={s.card}>
+                <View style={s.cardHeader}>
+                  <Text style={s.userName} numberOfLines={1}>
+                    {user.display_name ?? '(no name)'}
+                  </Text>
+                  {user.is_premium && (
+                    <View style={s.premiumPill}>
+                      <Text style={s.premiumPillTxt}>Premium</Text>
+                    </View>
+                  )}
+                  {user.is_banned && (
+                    <View style={s.bannedPill}>
+                      <Text style={s.bannedPillTxt}>Banned</Text>
+                    </View>
+                  )}
+                  <Text style={s.dateText}>
+                    {new Date(user.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: '2-digit' })}
+                  </Text>
+                </View>
+                {!!user.email && (
+                  <Text style={s.userEmail} numberOfLines={1}>{user.email}</Text>
+                )}
+                <View style={s.actions}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      s.userBanBtn,
+                      user.is_banned && s.userUnbanBtn,
+                      pressed && { opacity: 0.7 },
+                      userActioning === user.id && s.btnDisabled,
+                    ]}
+                    onPress={() => toggleBan(user)}
+                    disabled={!!userActioning}>
+                    {userActioning === user.id
+                      ? <ActivityIndicator size="small" color={c.white} />
+                      : <Text style={s.userBanBtnTxt}>{user.is_banned ? 'Unban' : 'Ban'}</Text>}
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }, userActioning === user.id && s.btnDisabled]}
+                    onPress={() => deleteUserContent(user)}
+                    disabled={!!userActioning}>
                     <Ionicons name="trash-outline" size={14} color={c.white} />
                     <Text style={s.deleteBtnTxt}>Delete content</Text>
                   </Pressable>
@@ -348,6 +489,18 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   deleteBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
   btnDisabled: { opacity: 0.5 },
+  userName: { fontSize: 15, fontWeight: '700', color: c.textPrimary, flex: 1 },
+  userEmail: { fontSize: 12, color: c.textFaint, marginTop: -4 },
+  premiumPill: { backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  premiumPillTxt: { fontSize: 11, fontWeight: '700', color: '#b45309' },
+  bannedPill: { backgroundColor: '#fef2f2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  bannedPillTxt: { fontSize: 11, fontWeight: '700', color: c.error },
+  userBanBtn: {
+    flex: 1, paddingVertical: 9, borderRadius: 10,
+    backgroundColor: c.error, alignItems: 'center', justifyContent: 'center',
+  },
+  userUnbanBtn: { backgroundColor: '#27ae60' },
+  userBanBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
   fbActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 },
   fbDeleteBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
