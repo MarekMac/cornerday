@@ -36,6 +36,29 @@ import * as Sharing from 'expo-sharing';
 
 const MILESTONES = [1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
 
+const SHARE_TAGLINES = [
+  'The day you turn it around starts today.',
+  'Every day clean is a victory worth celebrating.',
+  "You're stronger than any urge.",
+  'One day at a time. One win at a time.',
+  'The money you didn\'t lose is already yours.',
+  'Your future self is cheering you on.',
+  'Breaking free is the hardest and best thing you\'ll ever do.',
+  'This is what courage looks like.',
+  'You chose yourself today.',
+  'The streak is proof — you can do this.',
+  'Every no to gambling is a yes to your future.',
+  'Progress over perfection, always.',
+  'Your recovery is real and it matters.',
+  'You didn\'t give in. That\'s everything.',
+  'The best bet you ever made was stopping.',
+  'Showing up for yourself, every single day.',
+  'The hardest part is already behind you.',
+  'What you\'re building here is worth more than any win.',
+  'This is your story. You\'re writing a better one.',
+  'Keep going. You\'re closer than you think.',
+];
+
 const BADGE_DEFS = [
   { type: 'started',  emoji: '🚀', label: 'Started',  days: 0 },
   { type: '1_hour',   emoji: '⏰', label: '1 Hour',   days: 1/24 },
@@ -662,6 +685,7 @@ export default function HomeScreen() {
   const [showShareCard, setShowShareCard] = useState(false);
   const [capturingShare, setCapturingShare] = useState(false);
   const [shareCardBadge, setShareCardBadge] = useState<{ emoji: string; label: string } | null>(null);
+  const [shareTagline, setShareTagline] = useState('');
   const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
@@ -995,17 +1019,21 @@ export default function HomeScreen() {
   const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
   const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
 
+  const openShareCard = (badge: { emoji: string; label: string } | null) => {
+    setShareCardBadge(badge);
+    setShareTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
+    setShowShareCard(true);
+  };
+
   const shareStreak = () => {
     if (!data) return;
     const bestBadge = [...BADGE_DEFS].reverse().find(b => data.earnedBadges.includes(b.type)) ?? null;
-    setShareCardBadge(bestBadge ? { emoji: bestBadge.emoji, label: bestBadge.label } : null);
-    setShowShareCard(true);
+    openShareCard(bestBadge ? { emoji: bestBadge.emoji, label: bestBadge.label } : null);
   };
 
   const shareMilestone = () => {
     if (!selectedBadge) return;
-    setShareCardBadge({ emoji: selectedBadge.emoji, label: selectedBadge.label });
-    setShowShareCard(true);
+    openShareCard({ emoji: selectedBadge.emoji, label: selectedBadge.label });
   };
 
   const captureAndShare = async () => {
@@ -1798,6 +1826,21 @@ export default function HomeScreen() {
 
               <View style={s.shareCardDivider} />
 
+              {(() => {
+                const streakFloat = streakMs / 86400000;
+                const next = BADGE_DEFS.find(b => b.days > streakFloat) ?? null;
+                const daysLeft = next ? next.days - streakFloat : null;
+                const nextLabel = daysLeft !== null
+                  ? daysLeft < 1/24 ? '< 1 hour to go'
+                  : daysLeft < 1 ? `${Math.round(daysLeft * 24)}h to ${next!.label}`
+                  : daysLeft < 14 ? `${Math.ceil(daysLeft)} day${Math.ceil(daysLeft) !== 1 ? 's' : ''} to ${next!.label}`
+                  : `${Math.ceil(daysLeft / 7)} week${Math.ceil(daysLeft / 7) !== 1 ? 's' : ''} to ${next!.label}`
+                  : null;
+                return nextLabel ? (
+                  <Text style={s.shareCardNext}>🎯 Next: {nextLabel}</Text>
+                ) : null;
+              })()}
+
               {data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
                 <Text style={s.shareCardStat}>
                   💰 {fmt(weeklyToDaily(data.weeklyBet) * streakDays, data.currency)} not spent
@@ -1805,7 +1848,7 @@ export default function HomeScreen() {
               )}
 
               <View style={s.shareCardBottom}>
-                <Text style={s.shareCardTagline}>"The day you turn it around starts today"</Text>
+                <Text style={s.shareCardTagline}>"{shareTagline}"</Text>
                 <Text style={s.shareCardHashtag}>#CornerDay</Text>
               </View>
             </LinearGradient>
@@ -1819,6 +1862,20 @@ export default function HomeScreen() {
             >
               <Ionicons name="share-outline" size={20} color="#fff" />
               <Text style={s.shareCardShareTxt}>{capturingShare ? 'Preparing…' : 'Share'}</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [s.shareCardCommunityBtn, pressed && { opacity: 0.85 }]}
+              onPress={() => {
+                setShowShareCard(false);
+                const label = streakDays >= 1 ? `${streakDays} day${streakDays !== 1 ? 's' : ''}` : `${streakValue} ${streakUnit}`;
+                const content = shareCardBadge
+                  ? `Just hit my ${shareCardBadge.label} milestone! ${shareCardBadge.emoji} ${label} free from gambling and counting. 💪`
+                  : `${label} free from gambling! 💪 ${shareTagline}`;
+                router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: content, initialTag: shareCardBadge ? '#Milestone' : '#WinToday' } } as any);
+              }}
+            >
+              <Ionicons name="people-outline" size={20} color="#0F6E6E" />
+              <Text style={s.shareCardCommunityTxt}>Post to Community</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [s.shareCardCloseBtn, pressed && { opacity: 0.7 }]}
@@ -2132,6 +2189,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   shareCardPillTxt: { fontSize: 13, color: '#fff', fontWeight: '600' },
   shareCardDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 24 },
+  shareCardNext: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600', textAlign: 'center', marginBottom: 8 },
   shareCardStat: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '600', textAlign: 'center', marginBottom: 20 },
   shareCardBottom: { alignItems: 'center', gap: 6 },
   shareCardTagline: { fontSize: 12, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic', textAlign: 'center' },
@@ -2142,6 +2200,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     backgroundColor: '#0F6E6E', borderRadius: 14, paddingVertical: 15,
   },
   shareCardShareTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  shareCardCommunityBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 15,
+  },
+  shareCardCommunityTxt: { color: '#0F6E6E', fontWeight: '700', fontSize: 16 },
   shareCardCloseBtn: { alignItems: 'center', paddingVertical: 10 },
   shareCardCloseTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
 });
