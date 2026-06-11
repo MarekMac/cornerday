@@ -1811,8 +1811,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   whyAnchorCard: {
     backgroundColor: c.bgCard,
     borderRadius: 14,
-    borderLeftWidth: 3,
-    borderLeftColor: c.primary,
     paddingVertical: 10,
     paddingLeft: 14,
     paddingRight: 0,
