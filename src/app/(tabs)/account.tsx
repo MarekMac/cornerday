@@ -319,7 +319,6 @@ export default function AccountScreen() {
       notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
     });
     setGlobalAvatarUrl(resolvedAvatar);
-    return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
   }, []);
 
   const loadPartnerLink = useCallback(async () => {
@@ -382,13 +381,16 @@ export default function AccountScreen() {
       if (rawFor) setSavingsGoalFor(rawFor);
       if (rawIcon) setSavingsGoalIcon(rawIcon);
       if (rawContact) {
-        const c = JSON.parse(rawContact);
-        setTrustedContactName(c.name ?? '');
-        setTrustedContactPhone(c.phone ?? '');
+        try {
+          const contact = JSON.parse(rawContact);
+          setTrustedContactName(contact.name ?? '');
+          setTrustedContactPhone(contact.phone ?? '');
+        } catch { /* corrupted storage — ignore */ }
       }
       if (rawStreakHour) setNotifStreakHour(Number(rawStreakHour));
       if (rawCheckinHour) setNotifCheckinHour(Number(rawCheckinHour));
     });
+    return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
   }, [fetchProfile, loadPartnerLink]);
 
   useEffect(() => {

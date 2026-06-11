@@ -106,52 +106,54 @@ export default function PostDetail() {
 
   const loadAll = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const uid = user?.id ?? null;
-    setCurrentUserId(uid);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const uid = user?.id ?? null;
+      setCurrentUserId(uid);
 
-    const [postRes, commentsRes, reactionsRes, commentReactionsRes] = await Promise.all([
-      supabase
-        .from('community_posts')
-        .select('id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))')
-        .eq('id', id)
-        .single(),
-      supabase
-        .from('community_comments')
-        .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
-        .eq('post_id', id)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('community_reactions')
-        .select('emoji, user_id')
-        .eq('post_id', id),
-      uid
-        ? supabase
-            .from('community_comment_reactions')
-            .select('comment_id')
-            .eq('user_id', uid)
-        : Promise.resolve({ data: [] }),
-    ]);
+      const [postRes, commentsRes, reactionsRes, commentReactionsRes] = await Promise.all([
+        supabase
+          .from('community_posts')
+          .select('id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))')
+          .eq('id', id)
+          .single(),
+        supabase
+          .from('community_comments')
+          .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
+          .eq('post_id', id)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('community_reactions')
+          .select('emoji, user_id')
+          .eq('post_id', id),
+        uid
+          ? supabase
+              .from('community_comment_reactions')
+              .select('comment_id')
+              .eq('user_id', uid)
+          : Promise.resolve({ data: [] }),
+      ]);
 
-    setPost(postRes.data as Post ?? null);
-    setComments((commentsRes.data as Comment[]) ?? []);
+      setPost(postRes.data as Post ?? null);
+      setComments((commentsRes.data as Comment[]) ?? []);
 
-    const counts: Record<string, number> = {};
-    let myReaction: string | null = null;
-    for (const r of (reactionsRes.data ?? []) as { emoji: string; user_id: string }[]) {
-      counts[r.emoji] = (counts[r.emoji] ?? 0) + 1;
-      if (r.user_id === uid) myReaction = r.emoji;
+      const counts: Record<string, number> = {};
+      let myReaction: string | null = null;
+      for (const r of (reactionsRes.data ?? []) as { emoji: string; user_id: string }[]) {
+        counts[r.emoji] = (counts[r.emoji] ?? 0) + 1;
+        if (r.user_id === uid) myReaction = r.emoji;
+      }
+      setReactionCounts(counts);
+      setUserReaction(myReaction);
+
+      const myHelpful = new Set<string>();
+      for (const r of ((commentReactionsRes as any).data ?? []) as { comment_id: string }[]) {
+        myHelpful.add(r.comment_id);
+      }
+      setMyHelpfulReactions(myHelpful);
+    } finally {
+      setLoading(false);
     }
-    setReactionCounts(counts);
-    setUserReaction(myReaction);
-
-    const myHelpful = new Set<string>();
-    for (const r of ((commentReactionsRes as any).data ?? []) as { comment_id: string }[]) {
-      myHelpful.add(r.comment_id);
-    }
-    setMyHelpfulReactions(myHelpful);
-
-    setLoading(false);
   };
 
   const pickReaction = async (emoji: string) => {
@@ -213,31 +215,34 @@ export default function PostDetail() {
     if (!commentText.trim() || !currentUserId || !post) return;
     setSubmitting(true);
     const text = commentText.trim();
-    setCommentText('');
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: userData } = isCommentAnonymous
-      ? { data: null }
-      : await supabase.from('users').select('display_name').eq('id', currentUserId).single();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = isCommentAnonymous
+        ? { data: null }
+        : await supabase.from('users').select('display_name').eq('id', currentUserId).single();
 
-    const { data, error } = await supabase
-      .from('community_comments')
-      .insert({ post_id: post.id, user_id: currentUserId, content: text, is_anonymous: isCommentAnonymous })
-      .select('id, user_id, content, created_at, helpful_count, is_anonymous')
-      .single();
+      const { data, error } = await supabase
+        .from('community_comments')
+        .insert({ post_id: post.id, user_id: currentUserId, content: text, is_anonymous: isCommentAnonymous })
+        .select('id, user_id, content, created_at, helpful_count, is_anonymous')
+        .single();
 
-    if (!error && data) {
-      const newComment: Comment = {
-        ...(data as any),
-        users: isCommentAnonymous ? null : { display_name: userData?.display_name ?? user?.email ?? 'Anonymous' },
-      };
-      setComments(prev => {
-        if (prev.some(c => c.id === (data as any).id)) return prev;
-        return [...prev, newComment];
-      });
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
+      if (!error && data) {
+        setCommentText('');
+        const newComment: Comment = {
+          ...(data as any),
+          users: isCommentAnonymous ? null : { display_name: userData?.display_name ?? user?.email ?? 'Anonymous' },
+        };
+        setComments(prev => {
+          if (prev.some(c => c.id === (data as any).id)) return prev;
+          return [...prev, newComment];
+        });
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
+      }
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const sharePost = async () => {
@@ -308,15 +313,19 @@ export default function PostDetail() {
   const executeDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    if (deleteTarget.kind === 'post') {
-      await supabase.from('community_posts').delete().eq('id', deleteTarget.id);
-      router.back();
-    } else {
-      await supabase.from('community_comments').delete().eq('id', deleteTarget.id);
-      setComments(prev => prev.filter(c => c.id !== deleteTarget.id));
-      setPost(p => p ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p);
+    try {
+      if (deleteTarget.kind === 'post') {
+        await supabase.from('community_posts').delete().eq('id', deleteTarget.id);
+        setDeleteTarget(null);
+        router.back();
+      } else {
+        await supabase.from('community_comments').delete().eq('id', deleteTarget.id);
+        setComments(prev => prev.filter(c => c.id !== deleteTarget.id));
+        setPost(p => p ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p);
+        setDeleteTarget(null);
+      }
+    } finally {
       setDeleting(false);
-      setDeleteTarget(null);
     }
   };
 

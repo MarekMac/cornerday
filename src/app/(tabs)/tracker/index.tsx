@@ -263,25 +263,28 @@ export default function TrackerIndex() {
       }
     }
     setSavingDebt(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      if (editingDebt) {
-        await supabase.from('debts').update({
-          name: debtName.trim(), total_amount: amount, category: debtCategory,
-        }).eq('id', editingDebt.id);
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
-        });
-      } else {
-        await supabase.from('debts').insert({
-          user_id: user.id, name: debtName.trim(),
-          total_amount: amount, category: debtCategory,
-        });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        if (editingDebt) {
+          await supabase.from('debts').update({
+            name: debtName.trim(), total_amount: amount, category: debtCategory,
+          }).eq('id', editingDebt.id);
+          await supabase.from('losses').insert({
+            user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
+          });
+        } else {
+          await supabase.from('debts').insert({
+            user_id: user.id, name: debtName.trim(),
+            total_amount: amount, category: debtCategory,
+          });
+        }
+        closeDebtModal();
+        await fetchAll();
       }
-      closeDebtModal();
-      await fetchAll();
+    } finally {
+      setSavingDebt(false);
     }
-    setSavingDebt(false);
   };
 
   const handleDebtMenu = (debt: Debt) => setMenuDebt(debt);
@@ -291,17 +294,20 @@ export default function TrackerIndex() {
   const executeDeleteDebt = async () => {
     if (!deleteDebtTarget) return;
     setDeleting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('debts').delete().eq('id', deleteDebtTarget.id);
-      await supabase.from('losses').insert({
-        user_id: user.id, type: 'debt_deleted', amount: deleteDebtTarget.total_amount,
-        category: 'Debt', note: deleteDebtTarget.name,
-      });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('debts').delete().eq('id', deleteDebtTarget.id);
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'debt_deleted', amount: deleteDebtTarget.total_amount,
+          category: 'Debt', note: deleteDebtTarget.name,
+        });
+      }
+      setDeleteDebtTarget(null);
+      await fetchAll();
+    } finally {
+      setDeleting(false);
     }
-    setDeleteDebtTarget(null);
-    setDeleting(false);
-    await fetchAll();
   };
 
   // ── Saving actions ────────────────────────────────────────────
@@ -333,26 +339,29 @@ export default function TrackerIndex() {
       return;
     }
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      if (editingSaving) {
-        await supabase.from('losses').update({
-          amount, note: savingNote.trim() || null,
-        }).eq('id', editingSaving.id);
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'saving_edited', amount,
-          category: 'Saving', note: savingNote.trim() || null,
-        });
-      } else {
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'saving', amount,
-          category: 'Saving', note: savingNote.trim() || null,
-        });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        if (editingSaving) {
+          await supabase.from('losses').update({
+            amount, note: savingNote.trim() || null,
+          }).eq('id', editingSaving.id);
+          await supabase.from('losses').insert({
+            user_id: user.id, type: 'saving_edited', amount,
+            category: 'Saving', note: savingNote.trim() || null,
+          });
+        } else {
+          await supabase.from('losses').insert({
+            user_id: user.id, type: 'saving', amount,
+            category: 'Saving', note: savingNote.trim() || null,
+          });
+        }
+        closeSavingModal();
+        await fetchAll();
       }
-      closeSavingModal();
-      await fetchAll();
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleSavingMenu = (entry: SavingEntry) => setMenuSaving(entry);
@@ -362,17 +371,20 @@ export default function TrackerIndex() {
   const executeDeleteSaving = async () => {
     if (!deleteSavingTarget) return;
     setDeleting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('losses').delete().eq('id', deleteSavingTarget.id);
-      await supabase.from('losses').insert({
-        user_id: user.id, type: 'saving_deleted', amount: deleteSavingTarget.amount,
-        category: 'Saving', note: deleteSavingTarget.note,
-      });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('losses').delete().eq('id', deleteSavingTarget.id);
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'saving_deleted', amount: deleteSavingTarget.amount,
+          category: 'Saving', note: deleteSavingTarget.note,
+        });
+      }
+      setDeleteSavingTarget(null);
+      await fetchAll();
+    } finally {
+      setDeleting(false);
     }
-    setDeleteSavingTarget(null);
-    setDeleting(false);
-    await fetchAll();
   };
 
   const shareGoal = async () => {
@@ -463,30 +475,33 @@ export default function TrackerIndex() {
     }
     const isPayingOff = Math.round(val * 100) === Math.round(remaining * 100);
     setSubmittingQuickPay(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('debt_payments').insert({
-        user_id: user.id, debt_id: quickPayDebt.id,
-        amount: val, note: quickPayNote.trim() || null,
-      });
-      if (isPayingOff) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '🎉 Debt paid off!',
-            body: `You've fully paid off "${quickPayDebt.name}". That's a huge step — well done.`,
-            data: { screen: '/(tabs)/tracker' },
-          },
-          trigger: null,
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('debt_payments').insert({
+          user_id: user.id, debt_id: quickPayDebt.id,
+          amount: val, note: quickPayNote.trim() || null,
         });
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'debt_paid_off', amount: Number(quickPayDebt.total_amount),
-          category: 'Debt', note: quickPayDebt.name,
-        });
+        if (isPayingOff) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '🎉 Debt paid off!',
+              body: `You've fully paid off "${quickPayDebt.name}". That's a huge step — well done.`,
+              data: { screen: '/(tabs)/tracker' },
+            },
+            trigger: null,
+          });
+          await supabase.from('losses').insert({
+            user_id: user.id, type: 'debt_paid_off', amount: Number(quickPayDebt.total_amount),
+            category: 'Debt', note: quickPayDebt.name,
+          });
+        }
+        closeQuickPay();
+        await fetchAll();
       }
-      closeQuickPay();
-      await fetchAll();
+    } finally {
+      setSubmittingQuickPay(false);
     }
-    setSubmittingQuickPay(false);
   };
 
   // Sort: unpaid first (by remaining desc), paid-off last
