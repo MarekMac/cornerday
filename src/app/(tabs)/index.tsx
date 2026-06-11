@@ -608,6 +608,16 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
           </View>
         </>
       )}
+      {!weeklyBet && (
+        <>
+          <View style={s.savedSep} />
+          <Pressable
+            style={({ pressed }) => [s.savedSetupRow, pressed && { opacity: 0.7 }]}
+            onPress={() => router.push('/(tabs)/tracker' as any)}>
+            <Text style={s.savedSetupTxt}>Set up your savings tracker →</Text>
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }
@@ -673,7 +683,7 @@ export default function HomeScreen() {
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
-      supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const t = new Date(); const sun = new Date(t); sun.setDate(t.getDate() - t.getDay()); return new Date(sun.getFullYear(), sun.getMonth(), sun.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
+      supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const t = new Date(); t.setDate(t.getDate() - 6); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
@@ -870,11 +880,9 @@ export default function HomeScreen() {
           byDate[key] = { mood: r.mood, note: r.note ?? null };
         });
         const today = new Date();
-        const sun = new Date(today);
-        sun.setDate(today.getDate() - today.getDay());
         return Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(sun);
-          d.setDate(sun.getDate() + i);
+          const d = new Date(today);
+          d.setDate(today.getDate() - (6 - i));
           const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toLocaleDateString();
           return { date: key, mood: byDate[key]?.mood ?? null, note: byDate[key]?.note ?? null };
         });
@@ -894,8 +902,12 @@ export default function HomeScreen() {
     });
   }, [fetchData]);
 
+  const [focusTick, setFocusTick] = useState(0);
   useFocusEffect(useCallback(() => {
-    if (initialLoadDone.current) fetchData();
+    if (initialLoadDone.current) {
+      fetchData();
+      setFocusTick(t => t + 1);
+    }
   }, [fetchData]));
 
   useEffect(() => {
@@ -917,9 +929,9 @@ export default function HomeScreen() {
     const offset = targetIdx * ITEM_WIDTH - (screenWidth - cardPadding - 57) / 2;
     const timer = setTimeout(() => {
       badgeScrollRef.current?.scrollTo({ x: Math.max(0, offset), animated: false });
-    }, 100);
+    }, 120);
     return () => clearTimeout(timer);
-  }, [data?.earnedBadges.length]);
+  }, [data?.earnedBadges.length, focusTick]);
 
   // Award badges in real-time when the live counter crosses a threshold (fetchData only runs on focus/mount).
   const lastBadgeFetchMs = useRef(0);
@@ -1075,6 +1087,17 @@ export default function HomeScreen() {
   const motivations = (data.motivation ?? '').split(',').filter(Boolean).map(
     m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' }
   );
+  const moodStreak = (() => {
+    let count = 0;
+    for (let i = data.weekMoods.length - 1; i >= 0; i--) {
+      if (data.weekMoods[i].mood !== null) count++;
+      else break;
+    }
+    return count;
+  })();
+  const daysToPersonalBest = data.longestStreak > 0 && streakDays < data.longestStreak
+    ? data.longestStreak - streakDays
+    : null;
 
   return (
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -1119,6 +1142,11 @@ export default function HomeScreen() {
                     </Text>
                 }
                 <Text style={s.longestTxt}>Best: {formatBest(data.longestStreak, streakMs)}</Text>
+                {daysToPersonalBest !== null && (
+                  <Text style={s.personalBestTxt}>
+                    {fmtCountdown(daysToPersonalBest * 86400000)} to beat your best
+                  </Text>
+                )}
                 {!!data.quitDate && (
                   <Text style={s.startedTxt}>{formatStartDate(data.quitDate)}</Text>
                 )}
@@ -1220,17 +1248,23 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Log urge */}
-        <Pressable
-          style={({ pressed }) => [s.urgeLogCard, pressed && { opacity: 0.85 }]}
-          onPress={() => router.push('/urge')}>
-          <Text style={s.urgeLogIcon}>🧠</Text>
-          <View style={s.urgeLogText}>
-            <Text style={s.urgeLogTitle}>Feeling an urge?</Text>
-            <Text style={s.urgeLogSub}>Support is one tap away</Text>
-          </View>
-          <Text style={s.urgeLogArrow}>›</Text>
-        </Pressable>
+        {/* Quick actions */}
+        <View style={s.quickActionsCard}>
+          <Pressable style={({ pressed }) => [s.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push('/urge')}>
+            <Text style={s.quickActionEmoji}>🧠</Text>
+            <Text style={s.quickActionLabel}>Urge Help</Text>
+          </Pressable>
+          <View style={s.quickActionDivider} />
+          <Pressable style={({ pressed }) => [s.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push('/urge/journal')}>
+            <Text style={s.quickActionEmoji}>📓</Text>
+            <Text style={s.quickActionLabel}>Journal</Text>
+          </Pressable>
+          <View style={s.quickActionDivider} />
+          <Pressable style={({ pressed }) => [s.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push('/analytics' as any)}>
+            <Text style={s.quickActionEmoji}>📊</Text>
+            <Text style={s.quickActionLabel}>Analytics</Text>
+          </Pressable>
+        </View>
 
         {/* Mood check-in */}
         <View style={s.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
@@ -1248,6 +1282,11 @@ export default function HomeScreen() {
                   <Text style={s.moodEditBtnTxt}>Edit</Text>
                 </Pressable>
               </View>
+              {moodStreak >= 2 && (
+                <View style={s.moodStreakBadge}>
+                  <Text style={s.moodStreakTxt}>🗓 {moodStreak}-day check-in streak</Text>
+                </View>
+              )}
             </>
           ) : (
             <>
@@ -1309,13 +1348,10 @@ export default function HomeScreen() {
           <Text style={s.weekStripTitle}>Mood this week</Text>
           <View style={s.weekStripRow}>
           {data.weekMoods.map((day, i) => {
-            const today = new Date();
-            const sun = new Date(today);
-            sun.setDate(today.getDate() - today.getDay());
-            const d = new Date(sun);
-            d.setDate(sun.getDate() + i);
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
             const dayLabel = d.toLocaleDateString([], { weekday: 'short' }).slice(0, 2);
-            const isToday = i === today.getDay();
+            const isToday = i === 6;
             return (
               <View key={i} style={s.weekStripDay}>
                 <Text style={[s.weekStripLabel, isToday && s.weekStripLabelToday]}>{dayLabel}</Text>
@@ -1330,29 +1366,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Journal */}
-        <Pressable
-          style={({ pressed }) => [s.urgeLogCard, pressed && { opacity: 0.85 }]}
-          onPress={() => router.push('/urge/journal')}>
-          <Text style={s.urgeLogIcon}>📓</Text>
-          <View style={s.urgeLogText}>
-            <Text style={s.urgeLogTitle}>My Journal</Text>
-            <Text style={s.urgeLogSub}>View your urges, payments and savings</Text>
-          </View>
-          <Text style={s.urgeLogArrow}>›</Text>
-        </Pressable>
-
-        {/* Analytics */}
-        <Pressable
-          style={({ pressed }) => [s.urgeLogCard, pressed && { opacity: 0.85 }]}
-          onPress={() => router.push('/analytics' as any)}>
-          <Text style={s.urgeLogIcon}>📊</Text>
-          <View style={s.urgeLogText}>
-            <Text style={s.urgeLogTitle}>Progress Analytics</Text>
-            <Text style={s.urgeLogSub}>Mood trends, savings history & more</Text>
-          </View>
-          <Text style={s.urgeLogArrow}>›</Text>
-        </Pressable>
 
         {/* Your why */}
         {motivations.length > 0 && (
@@ -1370,20 +1383,31 @@ export default function HomeScreen() {
         )}
 
         {/* Relapse card */}
-        <View style={s.relapseCard}>
-          <Text style={s.relapseTitle}>Had a slip? That's okay.</Text>
-          <Text style={s.relapseSubtitle}>
-            Recovery isn't linear. Every restart is still progress.
-          </Text>
+        {streakDays >= 30 ? (
           <Pressable
-            style={({ pressed }) => [s.relapseBtn, pressed && s.pressed]}
+            style={({ pressed }) => [s.relapseMinimal, pressed && { opacity: 0.6 }]}
             onPress={handleRelapse}
             disabled={relapseLoading}>
             {relapseLoading
-              ? <ActivityIndicator color={c.textMuted} size="small" />
-              : <Text style={s.relapseBtnTxt}>Reset my streak</Text>}
+              ? <ActivityIndicator color={c.textFaint} size="small" />
+              : <Text style={s.relapseMinimalTxt}>Had a slip? Reset streak</Text>}
           </Pressable>
-        </View>
+        ) : (
+          <View style={s.relapseCard}>
+            <Text style={s.relapseTitle}>Had a slip? That's okay.</Text>
+            <Text style={s.relapseSubtitle}>
+              Recovery isn't linear. Every restart is still progress.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [s.relapseBtn, pressed && s.pressed]}
+              onPress={handleRelapse}
+              disabled={relapseLoading}>
+              {relapseLoading
+                ? <ActivityIndicator color={c.textMuted} size="small" />
+                : <Text style={s.relapseBtnTxt}>Reset my streak</Text>}
+            </Pressable>
+          </View>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -1715,6 +1739,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   milestoneTxt: { fontSize: 13, color: c.white, fontWeight: '500' },
   liveCounter: { fontSize: 14, fontWeight: '700', color: c.white, fontVariant: ['tabular-nums'] },
   longestTxt: { fontSize: 12, color: 'rgba(255,255,255,0.65)' },
+  personalBestTxt: { fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
   startedTxt: { fontSize: 11, color: 'rgba(255,255,255,0.55)' },
   resetLink: { marginTop: 2 },
   resetLinkTxt: { fontSize: 11, color: '#ff8a80', fontWeight: '600' },
@@ -1754,6 +1779,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   savedLabel: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
   savedSub: { fontSize: 12, color: c.textFaint, marginTop: 2 },
   savedAmt: { fontSize: 17, fontWeight: '800' },
+  savedSetupRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  savedSetupTxt: { fontSize: 13, fontWeight: '600', color: c.primary },
 
   // Card
   card: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
@@ -1772,6 +1799,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   moodDoneNote: { fontSize: 13, color: c.textBody, flex: 1 },
   moodEditBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: c.bgTeal },
   moodEditBtnTxt: { fontSize: 12, color: c.primary, fontWeight: '700' },
+  moodStreakBadge: { marginTop: 8, alignSelf: 'flex-start', backgroundColor: c.bgTeal, borderRadius: 10, paddingVertical: 4, paddingHorizontal: 10 },
+  moodStreakTxt: { fontSize: 12, color: c.primary, fontWeight: '600' },
   moodBtnSelected: { backgroundColor: c.bgTeal, borderRadius: 8 },
   moodInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   moodInputInline: {
@@ -1806,6 +1835,16 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   urgeLogTitle: { fontSize: 15, fontWeight: '700', color: c.textPrimary },
   urgeLogSub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
   urgeLogArrow: { fontSize: 22, color: c.textFaint, fontWeight: '300' },
+
+  // Quick actions grid
+  quickActionsCard: {
+    backgroundColor: c.bgCard, borderRadius: 14,
+    flexDirection: 'row', overflow: 'hidden',
+  },
+  quickActionBtn: { flex: 1, alignItems: 'center', paddingVertical: 16, gap: 6 },
+  quickActionEmoji: { fontSize: 24 },
+  quickActionLabel: { fontSize: 11, fontWeight: '600', color: c.textMuted },
+  quickActionDivider: { width: 1, backgroundColor: c.borderSubtle, marginVertical: 12 },
 
   // Your why anchor
   whyAnchorCard: {
@@ -1853,6 +1892,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     backgroundColor: c.bgError,
   },
   relapseBtnTxt: { fontSize: 13, color: c.error, fontWeight: '600' },
+  relapseMinimal: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
+  relapseMinimalTxt: { fontSize: 13, color: c.textFaint, textDecorationLine: 'underline' },
 
   // Week mood strip
   weekStrip: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12, gap: 10 },
