@@ -42,12 +42,19 @@ Deno.serve(async (req: Request) => {
 
   const { data: user } = await sb
     .from('users')
-    .select('display_name, expo_push_token, quit_timestamp, quit_date')
+    .select('display_name, quit_timestamp, quit_date')
     .eq('id', link.user_id)
     .single();
 
-  const quitIso = user?.quit_timestamp ?? (user?.quit_date ? user.quit_date + 'T00:00:00.000Z' : null);
-  const streakMs = quitIso ? Math.max(0, Date.now() - new Date(quitIso).getTime()) : 0;
+  const parseTs = (s: string | null): number => {
+    if (!s) return 0;
+    // PostgreSQL returns "2026-02-02 13:08:00+00" — normalise to ISO 8601
+    const iso = s.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+    const ms = Date.parse(iso);
+    return isNaN(ms) ? 0 : ms;
+  };
+  const quitMs = parseTs(user?.quit_timestamp) || parseTs(user?.quit_date ? user.quit_date + 'T00:00:00Z' : null);
+  const streakMs = Math.max(0, Date.now() - quitMs);
   const displayName = user?.display_name ?? null;
 
   if (req.method === 'GET') {
@@ -68,18 +75,6 @@ Deno.serve(async (req: Request) => {
     }
     if (message) {
       await sb.from('partner_messages').insert({ link_id: link.id, message });
-      if (user?.expo_push_token) {
-        await fetch('https://exp.host/--/api/v2/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: user.expo_push_token, sound: 'default',
-            title: '💙 Message from your supporter',
-            body: message.length > 80 ? message.slice(0, 80) + '…' : message,
-            data: { screen: '/(tabs)/' },
-          }),
-        });
-      }
     }
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
