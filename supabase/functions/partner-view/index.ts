@@ -29,12 +29,15 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const [{ data: user }, { data: streak }] = await Promise.all([
-    sb.from('users').select('display_name, expo_push_token').eq('id', link.user_id).single(),
-    sb.from('streaks').select('current_streak').eq('user_id', link.user_id).single(),
-  ]);
+  const { data: user } = await sb
+    .from('users')
+    .select('display_name, expo_push_token, quit_timestamp')
+    .eq('id', link.user_id)
+    .single();
 
-  const streakDays = streak?.current_streak ?? 0;
+  const streakDays = user?.quit_timestamp
+    ? Math.max(0, Math.floor((Date.now() - new Date(user.quit_timestamp).getTime()) / 86400000))
+    : 0;
   const displayName = user?.display_name ?? null;
 
   if (req.method === 'POST') {
