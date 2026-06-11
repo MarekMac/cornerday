@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +21,17 @@ import { AppColors } from '@/constants/theme';
 
 type AdminTab = 'reports' | 'users' | 'feedback';
 
+type BanDuration = '1w' | '1m' | '3m' | '6m' | 'permanent';
+const BAN_DURATION_LABELS: Record<BanDuration, string> = { '1w': '1 Week', '1m': '1 Month', '3m': '3 Months', '6m': '6 Months', permanent: 'Permanent' };
+const BAN_DURATION_MS: Record<BanDuration, number | null> = { '1w': 7 * 86400000, '1m': 30 * 86400000, '3m': 90 * 86400000, '6m': 180 * 86400000, permanent: null };
+
+function fmtBanExpiry(expiresAt: string | null): string {
+  if (!expiresAt) return 'Permanent';
+  const d = new Date(expiresAt);
+  if (d <= new Date()) return 'Expired';
+  return `Until ${d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+
 interface UserRow {
   id: string;
   display_name: string | null;
@@ -27,6 +39,9 @@ interface UserRow {
   created_at: string;
   is_premium: boolean;
   is_banned: boolean;
+  ban_reason: string | null;
+  ban_expires_at: string | null;
+  ban_appeal_note: string | null;
 }
 
 interface UserDetail {
@@ -139,6 +154,13 @@ export default function ModerationScreen() {
   const [detailData, setDetailData] = useState<UserDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Ban form modal
+  const [banFormUser, setBanFormUser] = useState<UserRow | null>(null);
+  const [banReason, setBanReason] = useState('');
+  const [banDuration, setBanDuration] = useState<BanDuration>('permanent');
+  const [banAppeal, setBanAppeal] = useState('');
+  const [banSubmitting, setBanSubmitting] = useState(false);
+
   // Delete content modal
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deletePosts, setDeletePosts] = useState(true);
@@ -149,7 +171,7 @@ export default function ModerationScreen() {
     setUsersLoading(true);
     const { data } = await supabase
       .from('users')
-      .select('id, display_name, email, created_at, is_premium, is_banned')
+      .select('id, display_name, email, created_at, is_premium, is_banned, ban_reason, ban_expires_at, ban_appeal_note')
       .order('created_at', { ascending: false });
     setUsers((data ?? []) as UserRow[]);
     setUsersLoading(false);
@@ -184,29 +206,44 @@ export default function ModerationScreen() {
     setDetailData(null);
   };
 
-  const toggleBan = async (user: UserRow) => {
-    const action = user.is_banned ? 'Unban' : 'Ban';
+  const openBanForm = (user: UserRow) => {
+    setBanFormUser(user);
+    setBanReason('');
+    setBanDuration('permanent');
+    setBanAppeal('');
+  };
+
+  const submitBan = async () => {
+    if (!banFormUser) return;
+    setBanSubmitting(true);
+    const ms = BAN_DURATION_MS[banDuration];
+    const expiresAt = ms ? new Date(Date.now() + ms).toISOString() : null;
+    const patch = { is_banned: true, ban_reason: banReason.trim() || null, ban_expires_at: expiresAt, ban_appeal_note: banAppeal.trim() || null };
+    await supabase.from('users').update(patch).eq('id', banFormUser.id);
+    const updated = { ...banFormUser, ...patch };
+    setUsers(prev => prev.map(u => u.id === banFormUser.id ? updated : u));
+    if (detailUser?.id === banFormUser.id) setDetailUser(updated);
+    setBanSubmitting(false);
+    setBanFormUser(null);
+  };
+
+  const unban = (user: UserRow) => {
     const name = user.display_name ?? user.email ?? 'this user';
-    Alert.alert(
-      `${action} user`,
-      user.is_banned
-        ? `Unban ${name}? They will be able to post in the community again.`
-        : `Ban ${name} from the community? They won't be able to post or comment.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: action,
-          style: user.is_banned ? 'default' : 'destructive',
-          onPress: async () => {
-            setUserActioning(user.id);
-            await supabase.from('users').update({ is_banned: !user.is_banned }).eq('id', user.id);
-            setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_banned: !u.is_banned } : u));
-            if (detailUser?.id === user.id) setDetailUser(prev => prev ? { ...prev, is_banned: !prev.is_banned } : prev);
-            setUserActioning(null);
-          },
+    Alert.alert('Unban user', `Allow ${name} to post in the community again?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Unban',
+        onPress: async () => {
+          setUserActioning(user.id);
+          const patch = { is_banned: false, ban_reason: null, ban_expires_at: null, ban_appeal_note: null };
+          await supabase.from('users').update(patch).eq('id', user.id);
+          const updated = { ...user, ...patch };
+          setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
+          if (detailUser?.id === user.id) setDetailUser(updated);
+          setUserActioning(null);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const openDeleteModal = (user: UserRow) => {
@@ -403,7 +440,7 @@ export default function ModerationScreen() {
                       pressed && { opacity: 0.7 },
                       userActioning === user.id && s.btnDisabled,
                     ]}
-                    onPress={e => { e.stopPropagation?.(); toggleBan(user); }}
+                    onPress={e => { e.stopPropagation?.(); user.is_banned ? unban(user) : openBanForm(user); }}
                     disabled={!!userActioning}>
                     {userActioning === user.id
                       ? <ActivityIndicator size="small" color={c.white} />
@@ -524,6 +561,31 @@ export default function ModerationScreen() {
               </View>
             ) : null}
 
+            {/* Ban details */}
+            {detailUser?.is_banned && (
+              <>
+                <Text style={s.modalSectionTitle}>Ban details</Text>
+                <View style={s.banDetailsBox}>
+                  <View style={s.banDetailRow}>
+                    <Text style={s.banDetailLabel}>Status</Text>
+                    <Text style={s.banDetailValue}>{fmtBanExpiry(detailUser.ban_expires_at)}</Text>
+                  </View>
+                  {!!detailUser.ban_reason && (
+                    <View style={s.banDetailRow}>
+                      <Text style={s.banDetailLabel}>Reason</Text>
+                      <Text style={[s.banDetailValue, { flex: 1 }]}>{detailUser.ban_reason}</Text>
+                    </View>
+                  )}
+                  {!!detailUser.ban_appeal_note && (
+                    <View style={s.banDetailRow}>
+                      <Text style={s.banDetailLabel}>Appeal</Text>
+                      <Text style={[s.banDetailValue, { flex: 1 }]}>{detailUser.ban_appeal_note}</Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+
             {/* Actions */}
             <Text style={s.modalSectionTitle}>Actions</Text>
             <View style={s.modalActions}>
@@ -535,7 +597,7 @@ export default function ModerationScreen() {
                     pressed && { opacity: 0.8 },
                     userActioning === detailUser.id && s.btnDisabled,
                   ]}
-                  onPress={() => detailUser && toggleBan(detailUser)}
+                  onPress={() => detailUser && (detailUser.is_banned ? unban(detailUser) : openBanForm(detailUser))}
                   disabled={!!userActioning}>
                   {userActioning === detailUser.id
                     ? <ActivityIndicator size="small" color={c.white} />
@@ -553,6 +615,69 @@ export default function ModerationScreen() {
                   <Text style={s.modalActionBtnTxt}>Delete content</Text>
                 </Pressable>
               )}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Ban form modal ── */}
+      <Modal visible={!!banFormUser} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setBanFormUser(null)}>
+        <View style={s.modalRoot}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Ban {banFormUser?.display_name ?? banFormUser?.email ?? 'user'}</Text>
+            <Pressable onPress={() => setBanFormUser(null)} hitSlop={10} style={s.modalCloseBtn}>
+              <Ionicons name="close" size={22} color={c.textPrimary} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={s.modalBody} keyboardShouldPersistTaps="handled">
+            <Text style={s.banFieldLabel}>Why are they being banned?</Text>
+            <TextInput
+              style={s.banInput}
+              placeholder="E.g. Posting harmful content"
+              placeholderTextColor={c.textFaint}
+              value={banReason}
+              onChangeText={setBanReason}
+              multiline
+              numberOfLines={3}
+            />
+
+            <Text style={s.banFieldLabel}>Duration</Text>
+            <View style={s.banDurationRow}>
+              {(Object.keys(BAN_DURATION_LABELS) as BanDuration[]).map(d => (
+                <Pressable
+                  key={d}
+                  style={[s.banDurationChip, banDuration === d && s.banDurationChipActive]}
+                  onPress={() => setBanDuration(d)}>
+                  <Text style={[s.banDurationChipTxt, banDuration === d && s.banDurationChipTxtActive]}>
+                    {BAN_DURATION_LABELS[d]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={s.banFieldLabel}>To get unbanned, they should:</Text>
+            <TextInput
+              style={s.banInput}
+              placeholder="E.g. Contact support and confirm they understand the community guidelines"
+              placeholderTextColor={c.textFaint}
+              value={banAppeal}
+              onChangeText={setBanAppeal}
+              multiline
+              numberOfLines={3}
+            />
+
+            <View style={s.deleteModalBtns}>
+              <Pressable style={({ pressed }) => [s.deleteModalCancel, pressed && { opacity: 0.7 }]} onPress={() => setBanFormUser(null)}>
+                <Text style={s.deleteModalCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [s.modalActionBtn, s.modalActionBan, banSubmitting && s.btnDisabled, pressed && { opacity: 0.8 }]}
+                onPress={submitBan}
+                disabled={banSubmitting}>
+                {banSubmitting
+                  ? <ActivityIndicator size="small" color={c.white} />
+                  : <Text style={s.modalActionBtnTxt}>Ban user</Text>}
+              </Pressable>
             </View>
           </ScrollView>
         </View>
@@ -772,4 +897,27 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     backgroundColor: '#e67e22', alignItems: 'center',
   },
   deleteModalConfirmTxt: { fontSize: 14, fontWeight: '700', color: c.white },
+
+  // Ban details in user modal
+  banDetailsBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 12, gap: 8, borderWidth: 1, borderColor: '#fca5a5' },
+  banDetailRow: { flexDirection: 'row', gap: 8 },
+  banDetailLabel: { fontSize: 12, fontWeight: '700', color: '#b91c1c', width: 54 },
+  banDetailValue: { fontSize: 13, color: '#7f1d1d' },
+
+  // Ban form
+  banFieldLabel: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  banInput: {
+    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10,
+    fontSize: 15, color: c.textPrimary, backgroundColor: c.bgInput,
+    textAlignVertical: 'top', minHeight: 72,
+  },
+  banDurationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  banDurationChip: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: 'transparent',
+  },
+  banDurationChipActive: { backgroundColor: '#fef2f2', borderColor: c.error },
+  banDurationChipTxt: { fontSize: 13, fontWeight: '600', color: c.textMuted },
+  banDurationChipTxtActive: { color: c.error },
 });

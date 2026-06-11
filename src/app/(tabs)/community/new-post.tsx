@@ -71,6 +71,18 @@ export default function NewPost() {
     setSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSubmitting(false); return; }
+    const { data: profile } = await supabase.from('users').select('is_banned, ban_reason, ban_expires_at, ban_appeal_note').eq('id', user.id).single();
+    if (profile?.is_banned && (profile.ban_expires_at === null || new Date(profile.ban_expires_at) > new Date())) {
+      setSubmitting(false);
+      const lines = ['Your community access is currently restricted.'];
+      if (profile.ban_reason) lines.push(`\nReason: ${profile.ban_reason}`);
+      lines.push(profile.ban_expires_at
+        ? `Until: ${new Date(profile.ban_expires_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}`
+        : 'Duration: Permanent');
+      if (profile.ban_appeal_note) lines.push(`\nTo appeal: ${profile.ban_appeal_note}`);
+      Alert.alert('Posting restricted', lines.join('\n'));
+      return;
+    }
     const { error } = await supabase.from('community_posts').insert({
       user_id: user.id,
       content: content.trim(),

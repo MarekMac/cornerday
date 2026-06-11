@@ -82,6 +82,7 @@ export default function CommunityFeed() {
   const [sortBy, setSortBy] = useState<SortBy>('new');
   const { isAdmin } = useUser();
   const [displayName, setDisplayName] = useState('');
+  const [banInfo, setBanInfo] = useState<{ is_banned: boolean; ban_reason: string | null; ban_expires_at: string | null; ban_appeal_note: string | null } | null>(null);
   const [userReactions, setUserReactions] = useState<Record<string, string>>({});
   const [allEmojiCounts, setAllEmojiCounts] = useState<Record<string, Record<string, number>>>({});
   const [userBookmarks, setUserBookmarks] = useState<Record<string, boolean>>({});
@@ -97,8 +98,9 @@ export default function CommunityFeed() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       currentUserIdRef.current = user.id;
-      const { data } = await supabase.from('users').select('display_name').eq('id', user.id).single();
+      const { data } = await supabase.from('users').select('display_name, is_banned, ban_reason, ban_expires_at, ban_appeal_note').eq('id', user.id).single();
       setDisplayName(data?.display_name ?? '');
+      if (data) setBanInfo({ is_banned: data.is_banned ?? false, ban_reason: data.ban_reason, ban_expires_at: data.ban_expires_at, ban_appeal_note: data.ban_appeal_note });
 
       const { data: bookmarkRows } = await supabase
         .from('community_bookmarks')
@@ -454,6 +456,20 @@ export default function CommunityFeed() {
         </ScrollView>
       </View>
 
+      {banInfo?.is_banned && (
+        <View style={s.banNotice}>
+          <Text style={s.banNoticeTitle}>⛔ Community access restricted</Text>
+          {!!banInfo.ban_reason && <Text style={s.banNoticeRow}><Text style={s.banNoticeLabel}>Reason: </Text>{banInfo.ban_reason}</Text>}
+          <Text style={s.banNoticeRow}>
+            <Text style={s.banNoticeLabel}>Duration: </Text>
+            {banInfo.ban_expires_at
+              ? `Until ${new Date(banInfo.ban_expires_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}`
+              : 'Permanent'}
+          </Text>
+          {!!banInfo.ban_appeal_note && <Text style={s.banNoticeRow}><Text style={s.banNoticeLabel}>To appeal: </Text>{banInfo.ban_appeal_note}</Text>}
+        </View>
+      )}
+
       <View style={{ flex: 1 }}>
         {loading ? (
           <View style={s.skeletonList}>
@@ -646,6 +662,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   reactBtnTxt: { fontSize: 13, color: c.textBody, fontWeight: '600' },
   stat: { fontSize: 13, color: c.textBody },
   bookmarkBtn: { paddingLeft: 8 },
+
+  banNotice: { margin: 12, backgroundColor: '#fef2f2', borderRadius: 14, padding: 14, gap: 6, borderWidth: 1, borderColor: '#fca5a5' },
+  banNoticeTitle: { fontSize: 14, fontWeight: '700', color: '#b91c1c', marginBottom: 2 },
+  banNoticeRow: { fontSize: 13, color: '#7f1d1d', lineHeight: 19 },
+  banNoticeLabel: { fontWeight: '700' },
 
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32, gap: 8 },
   emptyEmoji: { fontSize: 48, marginBottom: 4 },
