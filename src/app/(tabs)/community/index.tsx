@@ -463,7 +463,13 @@ export default function CommunityFeed() {
           <Text style={s.banNoticeRow}>
             <Text style={s.banNoticeLabel}>Duration: </Text>
             {banInfo.ban_expires_at
-              ? `Until ${new Date(banInfo.ban_expires_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}`
+              ? (() => {
+                  const ms = new Date(banInfo.ban_expires_at).getTime() - Date.now();
+                  const days = Math.floor(ms / 86400000);
+                  const hours = Math.floor((ms % 86400000) / 3600000);
+                  const remaining = days > 0 ? `${days} day${days !== 1 ? 's' : ''}` : hours > 0 ? `${hours} hour${hours !== 1 ? 's' : ''}` : '< 1 hour';
+                  return `${remaining} remaining (until ${new Date(banInfo.ban_expires_at).toLocaleDateString([], { day: 'numeric', month: 'long' })})`;
+                })()
               : 'Permanent'}
           </Text>
           {!!banInfo.ban_appeal_note && <Text style={s.banNoticeRow}><Text style={s.banNoticeLabel}>To appeal: </Text>{banInfo.ban_appeal_note}</Text>}

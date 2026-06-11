@@ -32,12 +32,27 @@ function fmtBanExpiry(expiresAt: string | null): string {
   return `Until ${d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
+function fmtBanRemaining(expiresAt: string | null): string | null {
+  if (!expiresAt) return null; // permanent — no countdown
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return 'Expired';
+  const days = Math.floor(ms / 86400000);
+  if (days > 0) return `${days} day${days !== 1 ? 's' : ''} remaining`;
+  const hours = Math.floor(ms / 3600000);
+  if (hours > 0) return `${hours} hour${hours !== 1 ? 's' : ''} remaining`;
+  return '< 1 hour remaining';
+}
+
+type StatusFilter = 'all' | 'active' | 'banned';
+type TierFilter = 'all' | 'free' | 'premium' | 'admin';
+
 interface UserRow {
   id: string;
   display_name: string | null;
   email: string | null;
   created_at: string;
   is_premium: boolean;
+  is_admin: boolean;
   is_banned: boolean;
   ban_reason: string | null;
   ban_expires_at: string | null;
@@ -148,6 +163,10 @@ export default function ModerationScreen() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [userActioning, setUserActioning] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [tierFilter, setTierFilter] = useState<TierFilter>('all');
 
   // Detail modal
   const [detailUser, setDetailUser] = useState<UserRow | null>(null);
@@ -169,13 +188,29 @@ export default function ModerationScreen() {
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
-    const { data } = await supabase
-      .from('users')
-      .select('id, display_name, email, created_at, is_premium, is_banned, ban_reason, ban_expires_at, ban_appeal_note')
-      .order('created_at', { ascending: false });
+    const [{ data: { user } }, { data }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.from('users')
+        .select('id, display_name, email, created_at, is_premium, is_admin, is_banned, ban_reason, ban_expires_at, ban_appeal_note')
+        .order('created_at', { ascending: false }),
+    ]);
+    if (user) setCurrentUserId(user.id);
     setUsers((data ?? []) as UserRow[]);
     setUsersLoading(false);
   }, []);
+
+  const filteredUsers = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return users.filter(u => {
+      if (q && !((u.display_name ?? '').toLowerCase().includes(q) || (u.email ?? '').toLowerCase().includes(q))) return false;
+      if (statusFilter === 'active' && u.is_banned) return false;
+      if (statusFilter === 'banned' && !u.is_banned) return false;
+      if (tierFilter === 'free' && (u.is_premium || u.is_admin)) return false;
+      if (tierFilter === 'premium' && !u.is_premium) return false;
+      if (tierFilter === 'admin' && !u.is_admin) return false;
+      return true;
+    });
+  }, [users, searchQuery, statusFilter, tierFilter]);
 
   const openDetail = async (user: UserRow) => {
     setDetailUser(user);
@@ -410,54 +445,113 @@ export default function ModerationScreen() {
             <Text style={s.emptyBody}>Registered users will appear here.</Text>
           </View>
         ) : (
-          <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
-            <Text style={s.countLabel}>{users.length} user{users.length !== 1 ? 's' : ''}</Text>
-            {users.map(user => (
-              <Pressable key={user.id} style={({ pressed }) => [s.card, pressed && { opacity: 0.85 }]} onPress={() => openDetail(user)}>
-                <View style={s.cardHeader}>
-                  <Text style={s.userName} numberOfLines={1}>
-                    {user.display_name ?? '(no name)'}
-                  </Text>
-                  <View style={[s.tierPill, user.is_premium ? s.tierPillPremium : s.tierPillFree]}>
-                    <Text style={[s.tierPillTxt, user.is_premium ? s.tierPillTxtPremium : s.tierPillTxtFree]}>
-                      {user.is_premium ? '⭐ Premium' : 'Free'}
+          <>
+            {/* Search + filters */}
+            <View style={s.userControls}>
+              <View style={s.searchRow}>
+                <Ionicons name="search-outline" size={16} color={c.textFaint} />
+                <TextInput
+                  style={s.searchInput}
+                  placeholder="Search by name or email…"
+                  placeholderTextColor={c.textFaint}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {searchQuery.length > 0 && (
+                  <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+                    <Ionicons name="close-circle" size={16} color={c.textFaint} />
+                  </Pressable>
+                )}
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
+                <Text style={s.filterGroupLabel}>Status:</Text>
+                {(['all', 'active', 'banned'] as StatusFilter[]).map(f => (
+                  <Pressable key={f} style={[s.filterChip, statusFilter === f && s.filterChipActive]} onPress={() => setStatusFilter(f)}>
+                    <Text style={[s.filterChipTxt, statusFilter === f && s.filterChipTxtActive]}>
+                      {f === 'all' ? 'All' : f === 'active' ? 'Active' : 'Banned'}
                     </Text>
-                  </View>
-                  {user.is_banned && (
-                    <View style={s.bannedPill}>
-                      <Text style={s.bannedPillTxt}>Banned</Text>
+                  </Pressable>
+                ))}
+                <View style={s.filterDivider} />
+                <Text style={s.filterGroupLabel}>Tier:</Text>
+                {(['all', 'free', 'premium', 'admin'] as TierFilter[]).map(f => (
+                  <Pressable key={f} style={[s.filterChip, tierFilter === f && s.filterChipActive]} onPress={() => setTierFilter(f)}>
+                    <Text style={[s.filterChipTxt, tierFilter === f && s.filterChipTxtActive]}>
+                      {f === 'all' ? 'All' : f === 'free' ? 'Free' : f === 'premium' ? 'Premium' : 'Admin'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
+              <Text style={s.countLabel}>
+                {filteredUsers.length} of {users.length} user{users.length !== 1 ? 's' : ''}
+              </Text>
+              {filteredUsers.map(user => {
+                const isSelf = user.id === currentUserId;
+                const remaining = user.is_banned ? fmtBanRemaining(user.ban_expires_at) : null;
+                const tierStyle = user.is_admin ? s.tierPillAdmin : user.is_premium ? s.tierPillPremium : s.tierPillFree;
+                const tierTxtStyle = user.is_admin ? s.tierPillTxtAdmin : user.is_premium ? s.tierPillTxtPremium : s.tierPillTxtFree;
+                const tierLabel = user.is_admin ? '🛡 Admin' : user.is_premium ? '⭐ Premium' : 'Free';
+                return (
+                  <Pressable key={user.id} style={({ pressed }) => [s.card, pressed && { opacity: 0.85 }]} onPress={() => openDetail(user)}>
+                    <View style={s.cardHeader}>
+                      <Text style={s.userName} numberOfLines={1}>
+                        {user.display_name ?? '(no name)'}{isSelf ? ' (you)' : ''}
+                      </Text>
+                      <View style={[s.tierPill, tierStyle]}>
+                        <Text style={[s.tierPillTxt, tierTxtStyle]}>{tierLabel}</Text>
+                      </View>
+                      {user.is_banned && (
+                        <View style={s.bannedPill}>
+                          <Text style={s.bannedPillTxt}>Banned</Text>
+                        </View>
+                      )}
+                      <Ionicons name="chevron-forward" size={14} color={c.textFaint} style={{ marginLeft: 'auto' }} />
                     </View>
-                  )}
-                  <Ionicons name="chevron-forward" size={14} color={c.textFaint} style={{ marginLeft: 'auto' }} />
-                </View>
-                {!!user.email && <Text style={s.userEmail} numberOfLines={1}>{user.email}</Text>}
-                <Text style={s.userJoined}>Joined {fmtDate(user.created_at)}</Text>
-                <View style={s.actions}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      s.banBtn,
-                      user.is_banned && s.unbanBtn,
-                      pressed && { opacity: 0.7 },
-                      userActioning === user.id && s.btnDisabled,
-                    ]}
-                    onPress={e => { e.stopPropagation?.(); user.is_banned ? unban(user) : openBanForm(user); }}
-                    disabled={!!userActioning}>
-                    {userActioning === user.id
-                      ? <ActivityIndicator size="small" color={c.white} />
-                      : <Text style={s.banBtnTxt}>{user.is_banned ? 'Unban' : 'Ban'}</Text>}
+                    {!!user.email && <Text style={s.userEmail} numberOfLines={1}>{user.email}</Text>}
+                    <View style={s.userMetaRow}>
+                      <Text style={s.userJoined}>Joined {fmtDate(user.created_at)}</Text>
+                      {remaining && <Text style={s.banRemaining}>{remaining}</Text>}
+                    </View>
+                    {!isSelf && (
+                      <View style={s.actions}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            s.banBtn,
+                            user.is_banned && s.unbanBtn,
+                            pressed && { opacity: 0.7 },
+                            userActioning === user.id && s.btnDisabled,
+                          ]}
+                          onPress={e => { e.stopPropagation?.(); user.is_banned ? unban(user) : openBanForm(user); }}
+                          disabled={!!userActioning}>
+                          {userActioning === user.id
+                            ? <ActivityIndicator size="small" color={c.white} />
+                            : <Text style={s.banBtnTxt}>{user.is_banned ? 'Unban' : 'Ban'}</Text>}
+                        </Pressable>
+                        <Pressable
+                          style={({ pressed }) => [s.contentBtn, pressed && { opacity: 0.7 }, userActioning === user.id && s.btnDisabled]}
+                          onPress={e => { e.stopPropagation?.(); openDeleteModal(user); }}
+                          disabled={!!userActioning}>
+                          <Ionicons name="trash-outline" size={14} color={c.white} />
+                          <Text style={s.contentBtnTxt}>Delete content</Text>
+                        </Pressable>
+                      </View>
+                    )}
                   </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [s.contentBtn, pressed && { opacity: 0.7 }, userActioning === user.id && s.btnDisabled]}
-                    onPress={e => { e.stopPropagation?.(); openDeleteModal(user); }}
-                    disabled={!!userActioning}>
-                    <Ionicons name="trash-outline" size={14} color={c.white} />
-                    <Text style={s.contentBtnTxt}>Delete content</Text>
-                  </Pressable>
+                );
+              })}
+              {filteredUsers.length === 0 && (
+                <View style={[s.center, { flex: 0, paddingVertical: 40 }]}>
+                  <Text style={s.emptyBody}>No users match your filters.</Text>
                 </View>
-              </Pressable>
-            ))}
-            <View style={{ height: 32 }} />
-          </ScrollView>
+              )}
+              <View style={{ height: 32 }} />
+            </ScrollView>
+          </>
         )
       )}
 
@@ -588,34 +682,41 @@ export default function ModerationScreen() {
 
             {/* Actions */}
             <Text style={s.modalSectionTitle}>Actions</Text>
-            <View style={s.modalActions}>
-              {detailUser && (
-                <Pressable
-                  style={({ pressed }) => [
-                    s.modalActionBtn,
-                    detailUser.is_banned ? s.modalActionUnban : s.modalActionBan,
-                    pressed && { opacity: 0.8 },
-                    userActioning === detailUser.id && s.btnDisabled,
-                  ]}
-                  onPress={() => detailUser && (detailUser.is_banned ? unban(detailUser) : openBanForm(detailUser))}
-                  disabled={!!userActioning}>
-                  {userActioning === detailUser.id
-                    ? <ActivityIndicator size="small" color={c.white} />
-                    : <>
-                        <Ionicons name={detailUser.is_banned ? 'checkmark-circle-outline' : 'ban-outline'} size={16} color={c.white} />
-                        <Text style={s.modalActionBtnTxt}>{detailUser.is_banned ? 'Unban user' : 'Ban user'}</Text>
-                      </>}
-                </Pressable>
-              )}
-              {detailUser && (
-                <Pressable
-                  style={({ pressed }) => [s.modalActionBtn, s.modalActionDelete, pressed && { opacity: 0.8 }]}
-                  onPress={() => { closeDetail(); openDeleteModal(detailUser!); }}>
-                  <Ionicons name="trash-outline" size={16} color={c.white} />
-                  <Text style={s.modalActionBtnTxt}>Delete content</Text>
-                </Pressable>
-              )}
-            </View>
+            {detailUser?.id === currentUserId ? (
+              <View style={s.selfNote}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={c.textMuted} />
+                <Text style={s.selfNoteText}>You cannot moderate your own account.</Text>
+              </View>
+            ) : (
+              <View style={s.modalActions}>
+                {detailUser && (
+                  <Pressable
+                    style={({ pressed }) => [
+                      s.modalActionBtn,
+                      detailUser.is_banned ? s.modalActionUnban : s.modalActionBan,
+                      pressed && { opacity: 0.8 },
+                      userActioning === detailUser.id && s.btnDisabled,
+                    ]}
+                    onPress={() => detailUser && (detailUser.is_banned ? unban(detailUser) : openBanForm(detailUser))}
+                    disabled={!!userActioning}>
+                    {userActioning === detailUser.id
+                      ? <ActivityIndicator size="small" color={c.white} />
+                      : <>
+                          <Ionicons name={detailUser.is_banned ? 'checkmark-circle-outline' : 'ban-outline'} size={16} color={c.white} />
+                          <Text style={s.modalActionBtnTxt}>{detailUser.is_banned ? 'Unban user' : 'Ban user'}</Text>
+                        </>}
+                  </Pressable>
+                )}
+                {detailUser && (
+                  <Pressable
+                    style={({ pressed }) => [s.modalActionBtn, s.modalActionDelete, pressed && { opacity: 0.8 }]}
+                    onPress={() => { closeDetail(); openDeleteModal(detailUser!); }}>
+                    <Ionicons name="trash-outline" size={16} color={c.white} />
+                    <Text style={s.modalActionBtnTxt}>Delete content</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
           </ScrollView>
         </View>
       </Modal>
@@ -798,14 +899,41 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   // User card
   userName: { fontSize: 15, fontWeight: '700', color: c.textPrimary, flex: 1 },
   userEmail: { fontSize: 12, color: c.textFaint },
+  userMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   userJoined: { fontSize: 11, color: c.textFaint },
+  banRemaining: { fontSize: 11, color: '#b91c1c', fontWeight: '600' },
+
+  // Search + filter bar
+  userControls: { backgroundColor: c.bgCard, borderBottomWidth: 1, borderBottomColor: c.borderSubtle, paddingBottom: 8 },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: 12, marginTop: 10, marginBottom: 6,
+    backgroundColor: c.bgInput, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: c.textPrimary, padding: 0 },
+  filterRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 6 },
+  filterGroupLabel: { fontSize: 12, fontWeight: '600', color: c.textFaint, marginRight: 2 },
+  filterChip: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
+    backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: 'transparent',
+  },
+  filterChipActive: { backgroundColor: c.bgTeal, borderColor: c.primaryMid },
+  filterChipTxt: { fontSize: 12, fontWeight: '600', color: c.textMuted },
+  filterChipTxtActive: { color: c.primary },
+  filterDivider: { width: 1, height: 16, backgroundColor: c.borderSubtle, marginHorizontal: 4 },
+
+  // Self-moderation notice
+  selfNote: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, opacity: 0.6 },
+  selfNoteText: { fontSize: 14, color: c.textMuted, fontStyle: 'italic' },
 
   tierPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   tierPillFree: { backgroundColor: c.bgElement },
   tierPillPremium: { backgroundColor: '#fef3c7' },
+  tierPillAdmin: { backgroundColor: '#ede9fe' },
   tierPillTxt: { fontSize: 11, fontWeight: '700' },
   tierPillTxtFree: { color: c.textMuted },
   tierPillTxtPremium: { color: '#b45309' },
+  tierPillTxtAdmin: { color: '#6d28d9' },
 
   bannedPill: { backgroundColor: '#fef2f2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   bannedPillTxt: { fontSize: 11, fontWeight: '700', color: c.error },

@@ -3,8 +3,11 @@
 -- Run in: Supabase Dashboard → SQL Editor
 -- ============================================================
 
--- STEP 1: Add is_banned flag
+-- STEP 1: Add moderation columns
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned boolean DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_expires_at timestamptz;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_appeal_note text;
 
 -- STEP 2: Helper functions (SECURITY DEFINER bypasses RLS — prevents infinite
 -- recursion when policies on `users` reference the same table).
@@ -25,7 +28,11 @@ SECURITY DEFINER
 SET search_path = public
 STABLE
 AS $$
-  SELECT COALESCE((SELECT is_banned FROM public.users WHERE id = auth.uid()), false);
+  SELECT COALESCE(
+    (SELECT is_banned AND (ban_expires_at IS NULL OR ban_expires_at > now())
+     FROM public.users WHERE id = auth.uid()),
+    false
+  );
 $$;
 
 -- STEP 3: Admin can read all users (others can only read their own row)
