@@ -428,6 +428,59 @@ export default function AnalyticsScreen() {
   );
 
   if (loading) return <View style={s.loadingWrap}><ActivityIndicator color={c.primary} size="large" /></View>;
+
+  if (isLoadingPurchases) {
+    return (
+      <View style={s.root}>
+        {renderHeader()}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={c.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <View style={s.root}>
+        {renderHeader()}
+        <ScrollView contentContainerStyle={s.lockScroll}>
+          <View style={s.lockTop}>
+            <Text style={s.lockEmoji}>📊</Text>
+            <Text style={s.lockTitle}>Detailed Analytics</Text>
+            <Text style={s.lockDesc}>
+              Deep insights into your recovery — see exactly how far you've come and what's driving your progress.
+            </Text>
+            <Pressable style={({ pressed }) => [s.lockBtn, pressed && { opacity: 0.85 }]} onPress={showPaywall}>
+              <Text style={s.lockBtnTxt}>✨ Upgrade to Premium</Text>
+            </Pressable>
+          </View>
+          <Text style={s.teaserHeading}>What you'll unlock</Text>
+          {[
+            { emoji: '⏱️', title: 'Live time-based streak hero', desc: 'Minutes · hours · days · months — at a glance' },
+            { emoji: '🏅', title: 'Milestone progress', desc: 'Countdown to your next recovery badge with motivating context' },
+            { emoji: '🗓️', title: '60-day clean days calendar', desc: 'A heatmap of every clean day — visually powerful motivation' },
+            { emoji: '📊', title: 'Weekly progress summary', desc: 'This week vs last week: urges, mood, and check-ins at a glance' },
+            { emoji: '📈', title: 'Streak improvement history', desc: 'See how each of your streaks compares over time' },
+            { emoji: '😊', title: '30-day mood sparkline', desc: 'Daily colour-coded bars showing your emotional wellbeing' },
+            { emoji: '🧠', title: 'Urge pattern by time & day', desc: "Discover when you're most challenged — morning, evening, weekends" },
+            { emoji: '💸', title: 'Money not spent + projections', desc: 'Total saved plus what you\'ll save in a day, week, month, year' },
+            { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts based on your real data' },
+          ].map((item, i) => (
+            <View key={i} style={s.teaserCard}>
+              <Text style={s.teaserEmoji}>{item.emoji}</Text>
+              <View style={s.teaserText}>
+                <Text style={s.teaserTitle}>{item.title}</Text>
+                <Text style={s.teaserDesc}>{item.desc}</Text>
+              </View>
+            </View>
+          ))}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      </View>
+    );
+  }
+
   if (!data) return null;
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -504,58 +557,6 @@ export default function AnalyticsScreen() {
     insights.push({ emoji: '💰', text: `Saving ${fmt(data.dailySavingsRate, data.currency)} per clean day`, bg: '#e6f7f7', tc: '#0F6E6E' });
   if (isStreakImproving)
     insights.push({ emoji: '📈', text: 'Your streaks are getting longer over time', bg: '#f0fdf4', tc: '#166534' });
-
-  if (isLoadingPurchases) {
-    return (
-      <View style={s.root}>
-        {renderHeader()}
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={c.primary} />
-        </View>
-      </View>
-    );
-  }
-
-  if (!hasAccess) {
-    return (
-      <View style={s.root}>
-        {renderHeader()}
-        <ScrollView contentContainerStyle={s.lockScroll}>
-          <View style={s.lockTop}>
-            <Text style={s.lockEmoji}>📊</Text>
-            <Text style={s.lockTitle}>Detailed Analytics</Text>
-            <Text style={s.lockDesc}>
-              Deep insights into your recovery — see exactly how far you've come and what's driving your progress.
-            </Text>
-            <Pressable style={({ pressed }) => [s.lockBtn, pressed && { opacity: 0.85 }]} onPress={showPaywall}>
-              <Text style={s.lockBtnTxt}>✨ Upgrade to Premium</Text>
-            </Pressable>
-          </View>
-          <Text style={s.teaserHeading}>What you'll unlock</Text>
-          {[
-            { emoji: '⏱️', title: 'Live time-based streak hero', desc: 'Minutes · hours · days · months — at a glance' },
-            { emoji: '🏅', title: 'Milestone progress', desc: 'Countdown to your next recovery badge with motivating context' },
-            { emoji: '🗓️', title: '60-day clean days calendar', desc: 'A heatmap of every clean day — visually powerful motivation' },
-            { emoji: '📊', title: 'Weekly progress summary', desc: 'This week vs last week: urges, mood, and check-ins at a glance' },
-            { emoji: '📈', title: 'Streak improvement history', desc: 'See how each of your streaks compares over time' },
-            { emoji: '😊', title: '30-day mood sparkline', desc: 'Daily colour-coded bars showing your emotional wellbeing' },
-            { emoji: '🧠', title: 'Urge pattern by time & day', desc: "Discover when you're most challenged — morning, evening, weekends" },
-            { emoji: '💸', title: 'Money not spent + projections', desc: 'Total saved plus what you\'ll save in a day, week, month, year' },
-            { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts based on your real data' },
-          ].map((item, i) => (
-            <View key={i} style={s.teaserCard}>
-              <Text style={s.teaserEmoji}>{item.emoji}</Text>
-              <View style={s.teaserText}>
-                <Text style={s.teaserTitle}>{item.title}</Text>
-                <Text style={s.teaserDesc}>{item.desc}</Text>
-              </View>
-            </View>
-          ))}
-          <View style={{ height: 32 }} />
-        </ScrollView>
-      </View>
-    );
-  }
 
   return (
     <View style={s.root}>
