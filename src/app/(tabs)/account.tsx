@@ -21,6 +21,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -224,9 +225,8 @@ export default function AccountScreen() {
 
   const [partnerToken, setPartnerToken] = useState<string | null>(null);
   const [partnerLinkId, setPartnerLinkId] = useState<string | null>(null);
+  const [partnerExpiresAt, setPartnerExpiresAt] = useState<string | null>(null);
   const [partnerLinkLoading, setPartnerLinkLoading] = useState(false);
-  const [partnerCopied, setPartnerCopied] = useState(false);
-  const partnerCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -297,10 +297,10 @@ export default function AccountScreen() {
     if (!user) return;
     const { data } = await supabase
       .from('partner_links')
-      .select('id, token')
+      .select('id, token, expires_at')
       .eq('user_id', user.id)
       .maybeSingle();
-    if (data) { setPartnerToken(data.token); setPartnerLinkId(data.id); }
+    if (data) { setPartnerToken(data.token); setPartnerLinkId(data.id); setPartnerExpiresAt(data.expires_at ?? null); }
   }, []);
 
   const generatePartnerLink = async () => {
@@ -310,9 +310,9 @@ export default function AccountScreen() {
       const { data, error } = await supabase
         .from('partner_links')
         .insert({ user_id: user.id })
-        .select('id, token')
+        .select('id, token, expires_at')
         .single();
-      if (!error && data) { setPartnerToken(data.token); setPartnerLinkId(data.id); }
+      if (!error && data) { setPartnerToken(data.token); setPartnerLinkId(data.id); setPartnerExpiresAt(data.expires_at ?? null); }
     }
     setPartnerLinkLoading(false);
   };
@@ -329,6 +329,7 @@ export default function AccountScreen() {
             await supabase.from('partner_links').delete().eq('id', partnerLinkId);
             setPartnerToken(null);
             setPartnerLinkId(null);
+            setPartnerExpiresAt(null);
           }
           setPartnerLinkLoading(false);
         }},
@@ -1249,18 +1250,20 @@ export default function AccountScreen() {
               <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
                 {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
               </Text>
+              {partnerExpiresAt && (
+                <Text style={s.partnerExpiry}>
+                  Expires {new Date(partnerExpiresAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                </Text>
+              )}
               <View style={s.partnerBtnRow}>
                 <Pressable
                   style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
                   onPress={async () => {
                     const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
-                    await Clipboard.setStringAsync(url);
-                    setPartnerCopied(true);
-                    if (partnerCopyTimerRef.current) clearTimeout(partnerCopyTimerRef.current);
-                    partnerCopyTimerRef.current = setTimeout(() => setPartnerCopied(false), 2000);
+                    await Share.share({ message: url, url });
                   }}>
-                  <Ionicons name={partnerCopied ? 'checkmark' : 'copy-outline'} size={15} color={c.white} />
-                  <Text style={s.partnerCopyTxt}>{partnerCopied ? 'Copied!' : 'Copy link'}</Text>
+                  <Ionicons name="share-outline" size={15} color={c.white} />
+                  <Text style={s.partnerCopyTxt}>Share link</Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [s.partnerRevokeBtn, pressed && { opacity: 0.7 }]}
@@ -2577,6 +2580,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   partnerDesc: { fontSize: 13, color: c.textBody, lineHeight: 19, marginBottom: 14 },
   partnerLinkBox: { backgroundColor: c.bgElement, borderRadius: 10, padding: 12, gap: 10 },
   partnerLinkUrl: { fontSize: 12, color: c.textMuted },
+  partnerExpiry: { fontSize: 11, color: c.textFaint, marginTop: -4 },
   partnerBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   partnerCopyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.primary, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   partnerCopyTxt: { fontSize: 13, fontWeight: '600', color: c.white },

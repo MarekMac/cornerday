@@ -122,6 +122,7 @@
       try {
         const r = await fetch(API + '?t=' + encodeURIComponent(token));
         if (r.status === 404) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link is invalid or has been revoked.</div>'; return; }
+        if (r.status === 410) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link has expired. Ask them to generate a new one in the app.</div>'; return; }
         const { streakMs, displayName: n } = await r.json();
         const fmt = formatStreak(streakMs || 0);
         const name = n || 'someone you care about';

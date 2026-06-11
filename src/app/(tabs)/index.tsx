@@ -1207,7 +1207,10 @@ export default function HomeScreen() {
               setPartnerMsg(null);
             }}>
             <Text style={s.partnerMsgEmoji}>💙</Text>
-            <Text style={s.partnerMsgTxt} numberOfLines={3}>{partnerMsg.message}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.partnerMsgLabel}>Message from your supporter</Text>
+              <Text style={s.partnerMsgTxt} numberOfLines={3}>{partnerMsg.message}</Text>
+            </View>
             <Ionicons name="close-outline" size={18} color={c.primary} />
           </Pressable>
         )}
@@ -1943,7 +1946,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   // Partner message banner
   partnerMsgBanner: { backgroundColor: c.bgTeal, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   partnerMsgEmoji: { fontSize: 20 },
-  partnerMsgTxt: { flex: 1, fontSize: 14, color: c.textPrimary, fontWeight: '500', lineHeight: 20 },
+  partnerMsgLabel: { fontSize: 11, fontWeight: '600', color: c.primary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
+  partnerMsgTxt: { fontSize: 14, color: c.textPrimary, fontWeight: '500', lineHeight: 20 },
 
   // Week mood strip
   weekStrip: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12, gap: 10 },

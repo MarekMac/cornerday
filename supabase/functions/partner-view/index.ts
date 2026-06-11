@@ -22,22 +22,32 @@ Deno.serve(async (req: Request) => {
 
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  const { data: link } = await sb.from('partner_links').select('id, user_id').eq('token', token).maybeSingle();
+  const { data: link } = await sb
+    .from('partner_links')
+    .select('id, user_id, expires_at')
+    .eq('token', token)
+    .maybeSingle();
+
   if (!link) {
     return new Response(JSON.stringify({ error: 'not_found' }), {
       status: 404, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
 
+  if (link.expires_at && new Date(link.expires_at) < new Date()) {
+    return new Response(JSON.stringify({ error: 'expired' }), {
+      status: 410, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
+
   const { data: user } = await sb
     .from('users')
-    .select('display_name, expo_push_token, quit_timestamp')
+    .select('display_name, expo_push_token, quit_timestamp, quit_date')
     .eq('id', link.user_id)
     .single();
 
-  const streakMs = user?.quit_timestamp
-    ? Math.max(0, Date.now() - new Date(user.quit_timestamp).getTime())
-    : 0;
+  const quitIso = user?.quit_timestamp ?? (user?.quit_date ? user.quit_date + 'T00:00:00.000Z' : null);
+  const streakMs = quitIso ? Math.max(0, Date.now() - new Date(quitIso).getTime()) : 0;
   const displayName = user?.display_name ?? null;
 
   if (req.method === 'GET') {
@@ -64,7 +74,7 @@ Deno.serve(async (req: Request) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: user.expo_push_token, sound: 'default',
-            title: '💙 Message from your support person',
+            title: '💙 Message from your supporter',
             body: message.length > 80 ? message.slice(0, 80) + '…' : message,
             data: { screen: '/(tabs)/' },
           }),
