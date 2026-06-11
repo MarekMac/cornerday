@@ -352,6 +352,7 @@ export default function UrgeScreen() {
     if (result.canceled) return;
     const src = result.assets[0].uri;
     const destFile = new File(Paths.document, 'motivation_photo.jpg');
+    if (destFile.exists) destFile.delete();
     await new File(src).copy(destFile);
     await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
     setMotivationPhoto(destFile.uri);
