@@ -2328,15 +2328,7 @@ export default function AccountScreen() {
                   })}
                 </View>
               )}
-              {(recoveryDistractions.length > 0 || !!recoveryMantra) && (
-                <Pressable
-                  style={{ alignSelf: 'center', marginTop: 20 }}
-                  onPress={clearPlan}
-                  disabled={savingPlan}>
-                  <Text style={{ color: c.error, fontSize: 13 }}>Remove recovery plan</Text>
-                </Pressable>
-              )}
-              <View style={[s.modalActions, { marginTop: 12 }]}>
+              <View style={[s.modalActions, { marginTop: 16 }]}>
                 <Pressable
                   style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
                   onPress={() => setShowRecoveryPlanModal(false)}>
@@ -2351,6 +2343,14 @@ export default function AccountScreen() {
                     : <Text style={s.modalBtnSaveTxt}>Save plan</Text>}
                 </Pressable>
               </View>
+              {(recoveryDistractions.length > 0 || !!recoveryMantra) && (
+                <Pressable
+                  style={{ alignSelf: 'center', marginTop: 16 }}
+                  onPress={clearPlan}
+                  disabled={savingPlan}>
+                  <Text style={{ color: c.error, fontSize: 13 }}>Remove recovery plan</Text>
+                </Pressable>
+              )}
             </ScrollView>
           </Pressable>
         </Pressable>
