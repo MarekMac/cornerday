@@ -249,6 +249,7 @@ export default function AccountScreen() {
   const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
   const [recoveryMantra, setRecoveryMantra] = useState('');
   const [showRecoveryPlanModal, setShowRecoveryPlanModal] = useState(false);
+  const [planOptionsExpanded, setPlanOptionsExpanded] = useState(false);
   const [planDistractionsInput, setPlanDistractionsInput] = useState<string[]>([]);
   const [planMantraInput, setPlanMantraInput] = useState('');
   const [savingPlan, setSavingPlan] = useState(false);
@@ -1308,6 +1309,7 @@ export default function AccountScreen() {
             onPress={() => {
               setPlanDistractionsInput([...recoveryDistractions]);
               setPlanMantraInput(recoveryMantra);
+              setPlanOptionsExpanded(false);
               setShowRecoveryPlanModal(true);
             }}>
             <Ionicons name="pencil-outline" size={15} color={c.white} />
@@ -2288,29 +2290,44 @@ export default function AccountScreen() {
               <Text style={{ fontSize: 11, color: c.textFaint, marginTop: 4, marginBottom: 20 }}>
                 {planMantraInput.length}/120
               </Text>
-              <Text style={[s.spendingCustomLabel, { marginBottom: 12 }]}>
-                What will you do when an urge hits? <Text style={{ fontWeight: '400', color: c.textFaint }}>Pick up to 5</Text>
-              </Text>
-              <View style={s.planOptionGrid}>
-                {PLAN_DISTRACTION_OPTIONS.map(opt => {
-                  const selected = planDistractionsInput.includes(opt.key);
-                  return (
-                    <Pressable
-                      key={opt.key}
-                      style={({ pressed }) => [s.planOption, selected && s.planOptionSelected, pressed && { opacity: 0.75 }]}
-                      onPress={() => {
-                        if (selected) {
-                          setPlanDistractionsInput(prev => prev.filter(k => k !== opt.key));
-                        } else if (planDistractionsInput.length < 5) {
-                          setPlanDistractionsInput(prev => [...prev, opt.key]);
-                        }
-                      }}>
-                      <Text style={s.planOptionEmoji}>{opt.emoji}</Text>
-                      <Text style={[s.planOptionLabel, selected && s.planOptionLabelSelected]} numberOfLines={2}>{opt.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <Pressable
+                style={({ pressed }) => [s.planDropdownBtn, pressed && { opacity: 0.8 }]}
+                onPress={() => setPlanOptionsExpanded(v => !v)}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.planDropdownLabel}>Activities when urge hits</Text>
+                  {planDistractionsInput.length > 0 ? (
+                    <Text style={s.planDropdownValue}>
+                      {planDistractionsInput.map(k => PLAN_DISTRACTION_OPTIONS.find(o => o.key === k)?.emoji).join('  ')}
+                      {'  ·  '}{planDistractionsInput.length}/5 selected
+                    </Text>
+                  ) : (
+                    <Text style={s.planDropdownPlaceholder}>None — tap to choose (up to 5)</Text>
+                  )}
+                </View>
+                <Ionicons name={planOptionsExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={c.textMuted} />
+              </Pressable>
+              {planOptionsExpanded && (
+                <View style={[s.planOptionGrid, { marginTop: 8 }]}>
+                  {PLAN_DISTRACTION_OPTIONS.map(opt => {
+                    const selected = planDistractionsInput.includes(opt.key);
+                    return (
+                      <Pressable
+                        key={opt.key}
+                        style={({ pressed }) => [s.planOption, selected && s.planOptionSelected, pressed && { opacity: 0.75 }]}
+                        onPress={() => {
+                          if (selected) {
+                            setPlanDistractionsInput(prev => prev.filter(k => k !== opt.key));
+                          } else if (planDistractionsInput.length < 5) {
+                            setPlanDistractionsInput(prev => [...prev, opt.key]);
+                          }
+                        }}>
+                        <Text style={s.planOptionEmoji}>{opt.emoji}</Text>
+                        <Text style={[s.planOptionLabel, selected && s.planOptionLabelSelected]} numberOfLines={2}>{opt.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
               {(recoveryDistractions.length > 0 || !!recoveryMantra) && (
                 <Pressable
                   style={{ alignSelf: 'center', marginTop: 20 }}
@@ -2781,4 +2798,12 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 10,
     padding: 12, fontSize: 14, color: c.textPrimary, minHeight: 64,
   },
+  planDropdownBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 14, backgroundColor: c.bgInputMid,
+  },
+  planDropdownLabel: { fontSize: 12, fontWeight: '600', color: c.textMuted, marginBottom: 3 },
+  planDropdownValue: { fontSize: 13, color: c.primary, fontWeight: '500' },
+  planDropdownPlaceholder: { fontSize: 13, color: c.textFaint, fontStyle: 'italic' },
 });
