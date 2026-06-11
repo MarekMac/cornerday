@@ -1034,7 +1034,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: c.bgScreen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: { paddingBottom: 22 },
+  header: { paddingBottom: 16 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12 },
   headerTitle: { fontSize: 22, fontWeight: '700', color: c.white },
   headerSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 3 },

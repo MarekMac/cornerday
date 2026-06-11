@@ -1143,7 +1143,7 @@ export default function HomeScreen() {
           <View style={s.headerContent}>
             <View style={s.headerTop}>
               <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={s.greeting}>{getGreeting(data.displayName)}</Text>
+                <Text style={s.greeting} numberOfLines={1}>{getGreeting(data.displayName)}</Text>
                 <Text style={s.quote} numberOfLines={2}>"{QUOTES[quoteIndex]}"</Text>
               </View>
               <Pressable onPress={() => router.push('/(tabs)/account' as any)} hitSlop={10}>
@@ -1769,7 +1769,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   headerAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' },
   headerAvatarFallback: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
-  greeting: { fontSize: 21, fontWeight: '700', color: c.white },
+  greeting: { fontSize: 18, fontWeight: '700', color: c.white },
   quote: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontStyle: 'italic', marginTop: 4 },
 
   // Streak card (inside header)
