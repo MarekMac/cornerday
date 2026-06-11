@@ -44,12 +44,14 @@ function SkeletonCard() {
   const s = useMemo(() => makeStyles(c), [c]);
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
-    Animated.loop(
+    const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
       ])
-    ).start();
+    );
+    anim.start();
+    return () => anim.stop();
   }, []);
   return (
     <Animated.View style={[s.skeletonCard, { opacity }]}>
@@ -154,66 +156,62 @@ export default function CommunityFeed() {
 
   const load = useCallback(async (tag: FilterTag, sort: SortBy = 'new', isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    try {
+      if (tag === 'Saved') {
+        const uid = currentUserIdRef.current;
+        if (!uid) {
+          setPosts([]);
+          setHasMore(false);
+          return;
+        }
+        const { data: bookmarkRows } = await supabase
+          .from('community_bookmarks')
+          .select('post_id')
+          .eq('user_id', uid);
+        const ids = (bookmarkRows ?? []).map((r: { post_id: string }) => r.post_id);
+        if (ids.length === 0) {
+          postsRef.current = [];
+          setPosts([]);
+          setHasMore(false);
+          return;
+        }
+        let q: any = supabase.from('community_posts').select(POST_SELECT).in('id', ids);
+        if (sort === 'popular') {
+          q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+        } else {
+          q = q.order('created_at', { ascending: false });
+        }
+        q = q.range(0, PAGE_SIZE - 1);
+        const { data } = await q;
+        const items = (data as Post[]) ?? [];
+        postsRef.current = items;
+        setPosts(items);
+        setHasMore(items.length === PAGE_SIZE);
+        fetchReactions(items.map(p => p.id), true);
+        return;
+      }
 
-    if (tag === 'Saved') {
-      const uid = currentUserIdRef.current;
-      if (!uid) {
-        setPosts([]);
-        setHasMore(false);
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-      const { data: bookmarkRows } = await supabase
-        .from('community_bookmarks')
-        .select('post_id')
-        .eq('user_id', uid);
-      const ids = (bookmarkRows ?? []).map((r: { post_id: string }) => r.post_id);
-      if (ids.length === 0) {
-        postsRef.current = [];
-        setPosts([]);
-        setHasMore(false);
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-      let q: any = supabase.from('community_posts').select(POST_SELECT).in('id', ids);
+      let q: any = supabase.from('community_posts').select(POST_SELECT);
       if (sort === 'popular') {
         q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
       } else {
         q = q.order('created_at', { ascending: false });
       }
       q = q.range(0, PAGE_SIZE - 1);
+      if (tag === 'Mine' && currentUserIdRef.current) {
+        q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
+      } else if (tag !== 'All') q = q.eq('tag', tag);
+
       const { data } = await q;
       const items = (data as Post[]) ?? [];
       postsRef.current = items;
       setPosts(items);
       setHasMore(items.length === PAGE_SIZE);
+      fetchReactions(items.map(p => p.id), true);
+    } finally {
       setLoading(false);
       setRefreshing(false);
-      fetchReactions(items.map(p => p.id), true);
-      return;
     }
-
-    let q: any = supabase.from('community_posts').select(POST_SELECT);
-    if (sort === 'popular') {
-      q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
-    } else {
-      q = q.order('created_at', { ascending: false });
-    }
-    q = q.range(0, PAGE_SIZE - 1);
-    if (tag === 'Mine' && currentUserIdRef.current) {
-      q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
-    } else if (tag !== 'All') q = q.eq('tag', tag);
-
-    const { data } = await q;
-    const items = (data as Post[]) ?? [];
-    postsRef.current = items;
-    setPosts(items);
-    setHasMore(items.length === PAGE_SIZE);
-    setLoading(false);
-    setRefreshing(false);
-    fetchReactions(items.map(p => p.id), true);
   }, []);
 
   const loadMore = async () => {
@@ -221,27 +219,30 @@ export default function CommunityFeed() {
     if (activeTag === 'Saved') return;
     activeFetch.current = true;
     setLoadingMore(true);
-    const offset = postsRef.current.length;
-    const sort = sortByRef.current;
-    let q: any = supabase.from('community_posts').select(POST_SELECT);
-    if (sort === 'popular') {
-      q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
-    } else {
-      q = q.order('created_at', { ascending: false });
+    try {
+      const offset = postsRef.current.length;
+      const sort = sortByRef.current;
+      let q: any = supabase.from('community_posts').select(POST_SELECT);
+      if (sort === 'popular') {
+        q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+      } else {
+        q = q.order('created_at', { ascending: false });
+      }
+      q = q.range(offset, offset + PAGE_SIZE - 1);
+      if (activeTag === 'Mine' && currentUserIdRef.current) {
+        q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
+      } else if (activeTag !== 'All') q = q.eq('tag', activeTag);
+      const { data } = await q;
+      const items = (data as Post[]) ?? [];
+      const next = [...postsRef.current, ...items];
+      postsRef.current = next;
+      setPosts(next);
+      setHasMore(items.length === PAGE_SIZE);
+      fetchReactions(items.map(p => p.id), false);
+    } finally {
+      setLoadingMore(false);
+      activeFetch.current = false;
     }
-    q = q.range(offset, offset + PAGE_SIZE - 1);
-    if (activeTag === 'Mine' && currentUserIdRef.current) {
-      q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
-    } else if (activeTag !== 'All') q = q.eq('tag', activeTag);
-    const { data } = await q;
-    const items = (data as Post[]) ?? [];
-    const next = [...postsRef.current, ...items];
-    postsRef.current = next;
-    setPosts(next);
-    setHasMore(items.length === PAGE_SIZE);
-    setLoadingMore(false);
-    activeFetch.current = false;
-    fetchReactions(items.map(p => p.id), false);
   };
 
   useFocusEffect(useCallback(() => { load(activeTag, sortByRef.current); }, [activeTag, load]));

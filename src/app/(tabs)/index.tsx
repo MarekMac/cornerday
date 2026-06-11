@@ -567,7 +567,6 @@ interface HomeData {
   todayMoodNote: string | null;
   todayMoodId: string | null;
   weekMoods: { date: string; mood: number | null; note: string | null }[];
-  totalLost: number;
   totalPaid: number;
   debtItems: { id: string; name: string; totalAmount: number; paidAmount: number; earned: boolean; earnedAt: string | null }[];
   checklistCompleted: boolean;
@@ -585,7 +584,7 @@ function fmtLive(amount: number, currency = 'USD') {
 
 function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
   quitDate: string | null; weeklyBet: string | null; currency: string;
-  totalLost: number; totalPaid: number; nowMs: number;
+  totalPaid: number; nowMs: number;
 }) {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
@@ -760,7 +759,6 @@ export default function HomeScreen() {
     }
 
     const lossRows = lossesRes.data ?? [];
-    const totalLost = 0;
     const totalPaid = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
     const debtRows = debtsRes.data ?? [];
@@ -870,7 +868,6 @@ export default function HomeScreen() {
       longestStreak: Math.max(longest, streak),
       earnedBadges,
       badgeTimestamps,
-      totalLost,
       totalPaid,
       debtItems,
       checklistCompleted,
@@ -1064,46 +1061,51 @@ export default function HomeScreen() {
 
   const doRelapse = async () => {
     setRelapseLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const today = todayStr();
-      const newQuitTimestamp = new Date().toISOString();
-      const days = streakDays;
-      await Promise.all([
-        supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
-        supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
-        supabase.from('badges').delete().eq('user_id', user.id),
-        supabase.from('losses').insert({
-          user_id: user.id, type: 'streak_reset', amount: 0,
-          category: 'Streak Reset',
-          note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
-        }),
-      ]);
-      // Reschedule notifications against the new quit timestamp
-      const { data: prefsRow } = await supabase
-        .from('users')
-        .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
-        .eq('id', user.id)
-        .single();
-      const prefs = {
-        notif_milestone: prefsRow?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
-        notif_daily_streak: prefsRow?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
-        notif_daily_checkin: prefsRow?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
-        notif_weekly_summary: prefsRow?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
-        notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
-      };
-      await scheduleAllNotifications(prefs, newQuitTimestamp);
-      // Optimistic reset: update local state immediately so the UI reacts without
-      // racing against useFocusEffect (which also calls fetchData and may have a
-      // stale quit_timestamp if the user navigates to account before this resolves).
-      setData(prev => prev ? {
-        ...prev,
-        quitDate: newQuitTimestamp,
-        earnedBadges: [],
-        badgeTimestamps: {},
-      } : prev);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const today = todayStr();
+        const newQuitTimestamp = new Date().toISOString();
+        const days = streakDays;
+        await Promise.all([
+          supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
+          supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
+          supabase.from('badges').delete().eq('user_id', user.id),
+          supabase.from('losses').insert({
+            user_id: user.id, type: 'streak_reset', amount: 0,
+            category: 'Streak Reset',
+            note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
+          }),
+        ]);
+        // Clear AsyncStorage badge flags so goal/checklist badges can be re-earned after a relapse
+        await AsyncStorage.multiRemove([CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]);
+        // Reschedule notifications against the new quit timestamp
+        const { data: prefsRow } = await supabase
+          .from('users')
+          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
+          .eq('id', user.id)
+          .single();
+        const prefs = {
+          notif_milestone: prefsRow?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+          notif_daily_streak: prefsRow?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+          notif_daily_checkin: prefsRow?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+          notif_weekly_summary: prefsRow?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+          notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+        };
+        await scheduleAllNotifications(prefs, newQuitTimestamp);
+        // Optimistic reset: update local state immediately so the UI reacts without
+        // racing against useFocusEffect (which also calls fetchData and may have a
+        // stale quit_timestamp if the user navigates to account before this resolves).
+        setData(prev => prev ? {
+          ...prev,
+          quitDate: newQuitTimestamp,
+          earnedBadges: [],
+          badgeTimestamps: {},
+        } : prev);
+      }
+    } finally {
+      setRelapseLoading(false);
     }
-    setRelapseLoading(false);
   };
 
 
@@ -1216,7 +1218,7 @@ export default function HomeScreen() {
         )}
 
         {/* Stats */}
-        <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalLost={data.totalLost} totalPaid={data.totalPaid} nowMs={nowMs} />
+        <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalPaid={data.totalPaid} nowMs={nowMs} />
 
         {/* Badges */}
         <View style={s.card}>

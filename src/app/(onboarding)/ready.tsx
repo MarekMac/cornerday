@@ -107,73 +107,75 @@ export default function ReadyScreen() {
   const handleGo = async () => {
     setLoading(true);
     setError('');
+    try {
+      if (!username.trim()) {
+        setError('Please enter a username.');
+        return;
+      }
 
-    if (!username.trim()) {
-      setError('Please enter a username.');
-      setLoading(false);
-      return;
-    }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Session expired. Please sign in again.');
+        return;
+      }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('Session expired. Please sign in again.');
-      setLoading(false);
-      return;
-    }
+      const quitTimestamp = data.quitDate ? new Date(data.quitDate) : new Date();
+      const now = quitTimestamp.toISOString();
+      const y = quitTimestamp.getFullYear();
+      const mo = String(quitTimestamp.getMonth() + 1).padStart(2, '0');
+      const dy = String(quitTimestamp.getDate()).padStart(2, '0');
+      const today = `${y}-${mo}-${dy}`;
 
-    const quitTimestamp = data.quitDate ? new Date(data.quitDate) : new Date();
-    const now = quitTimestamp.toISOString();
-    const y = quitTimestamp.getFullYear();
-    const mo = String(quitTimestamp.getMonth() + 1).padStart(2, '0');
-    const dy = String(quitTimestamp.getDate()).padStart(2, '0');
-    const today = `${y}-${mo}-${dy}`;
+      const [updateResult, streakResult, journeyResult] = await Promise.all([
+        supabase.from('users').update({
+          display_name: username,
+          motivation: data.motivation ?? '',
+          trigger: data.trigger ?? '',
+          goal: data.goal ?? '',
+          support_type: data.supportType ?? '',
+          weekly_bet: data.weeklyBet ?? null,
+          currency: data.currency ?? 'USD',
+          quit_date: today,
+          quit_timestamp: now,
+        }).eq('id', user.id),
 
-    const [updateResult, streakResult, journeyResult] = await Promise.all([
-      supabase.from('users').update({
-        display_name: username,
-        motivation: data.motivation ?? '',
-        trigger: data.trigger ?? '',
-        goal: data.goal ?? '',
-        support_type: data.supportType ?? '',
-        weekly_bet: data.weeklyBet ?? null,
-        currency: data.currency ?? 'USD',
-        quit_date: today,
-        quit_timestamp: now,
-      }).eq('id', user.id),
+        supabase.from('streaks').upsert({
+          user_id: user.id,
+          current_streak: 0,
+          longest_streak: 0,
+          streak_start_date: today,
+          last_check_in: today,
+        }, { onConflict: 'user_id' }),
 
-      supabase.from('streaks').upsert({
-        user_id: user.id,
-        current_streak: 0,
-        longest_streak: 0,
-        streak_start_date: today,
-        last_check_in: today,
-      }, { onConflict: 'user_id' }),
+        supabase.from('losses').insert({
+          user_id: user.id,
+          type: 'journey_started',
+          amount: 0,
+          category: 'Journal',
+          note: null,
+        }),
+      ]);
 
-      supabase.from('losses').insert({
-        user_id: user.id,
-        type: 'journey_started',
-        amount: 0,
-        category: 'Journal',
-        note: null,
-      }),
-    ]);
+      if (updateResult.error || streakResult.error || journeyResult.error) {
+        setError('Something went wrong. Please try again.');
+        return;
+      }
 
-    if (updateResult.error || streakResult.error) {
+      if (wantsNotifs === true) await requestNotificationPermissions();
+      clearProgress();
+      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
+      await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+      router.replace('/(tabs)');
+    } catch {
       setError('Something went wrong. Please try again.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    if (wantsNotifs === true) await requestNotificationPermissions();
-    clearProgress();
-    await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
-    await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
-    router.replace('/(tabs)');
   };
 
   return (
     <LinearGradient colors={['#def7e5', '#1a9a8a', '#0F6E6E']} locations={[0, 0.7, 1]} style={s.gradient}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <SafeAreaView edges={['top']} style={s.safe}>
         <Pressable
           style={s.backBtn}

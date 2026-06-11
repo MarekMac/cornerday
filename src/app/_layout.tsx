@@ -104,17 +104,6 @@ function InnerLayout() {
   }, []);
 
   useEffect(() => {
-    let sub: ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | null = null;
-    try {
-      sub = Notifications.addNotificationResponseReceivedListener(response => {
-        const screen = response.notification.request.content.data?.screen as string | undefined;
-        if (screen) router.push(screen as any);
-      });
-    } catch (_e) {}
-    return () => sub?.remove();
-  }, []);
-
-  useEffect(() => {
     if (!authChecked || !navigationState?.key || !pendingRoute) return;
     router.replace(pendingRoute as any);
     setPendingRoute(null);
