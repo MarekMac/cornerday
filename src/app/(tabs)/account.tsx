@@ -1300,7 +1300,7 @@ export default function AccountScreen() {
 
         {/* Recovery plan */}
         <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>My recovery plan</Text>
+          <Text style={s.infoCardTitle}>My distraction plan</Text>
           <Text style={s.partnerDesc}>
             What will you do when an urge hits? Your plan appears on the Support screen when you need it most.
           </Text>
@@ -2272,7 +2272,7 @@ export default function AccountScreen() {
       <Modal visible={showRecoveryPlanModal} transparent animationType="fade" onRequestClose={() => setShowRecoveryPlanModal(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setShowRecoveryPlanModal(false)}>
           <Pressable style={[s.editCenterSheet, { maxHeight: '92%' }]} onPress={() => {}}>
-            <Text style={s.editFieldTitle}>My recovery plan</Text>
+            <Text style={s.editFieldTitle}>My distraction plan</Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
               <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>
                 Personal mantra <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
@@ -2348,7 +2348,7 @@ export default function AccountScreen() {
                   style={{ alignSelf: 'center', marginTop: 28 }}
                   onPress={clearPlan}
                   disabled={savingPlan}>
-                  <Text style={{ color: c.error, fontSize: 13 }}>Remove recovery plan</Text>
+                  <Text style={{ color: c.error, fontSize: 13 }}>Remove distraction plan</Text>
                 </Pressable>
               )}
             </ScrollView>

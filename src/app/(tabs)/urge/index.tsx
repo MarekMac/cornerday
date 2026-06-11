@@ -365,11 +365,12 @@ export default function UrgeScreen() {
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
   const startTimer  = () => { ctxStartTimer(); setTimerPointsEarned(false); };
-  const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); };
+  const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); setCheckedPlanItems([]); };
   const stopTimer  = () => {
     const elapsed = TIMER_TOTAL - timerSecsLeft;
     resetTimer();
     setTimerPointsEarned(false);
+    setCheckedPlanItems([]);
     setCongratsElapsed(elapsed);
     setCongratsVariant(Math.floor(Math.random() * CONGRATS_VARIANTS.length));
     setShowCongrats(true);
@@ -377,6 +378,7 @@ export default function UrgeScreen() {
   const hadASlip = () => {
     resetTimer();
     setTimerPointsEarned(false);
+    setCheckedPlanItems([]);
     setSlipReset(false);
     setSlipVariant(Math.floor(Math.random() * SLIP_VARIANTS.length));
     setShowSlip(true);
@@ -539,6 +541,41 @@ export default function UrgeScreen() {
           <View style={s.iconSeparator} />
           </View>
 
+          {/* Recovery plan — only while timer is active */}
+          {timerRunning && (recoveryPlan.distractions.length > 0 || recoveryPlan.mantra) && (
+            <View style={s.planCard}>
+              <Text style={s.planCardTitle}>Your distraction plan</Text>
+              {!!recoveryPlan.mantra && (
+                <View style={s.planMantraBox}>
+                  <Text style={s.planMantraTxt}>"{recoveryPlan.mantra}"</Text>
+                </View>
+              )}
+              {recoveryPlan.distractions.length > 0 && (
+                <View style={s.planChipsWrap}>
+                  {recoveryPlan.distractions.map(key => {
+                    const opt = PLAN_DISTRACTION_OPTIONS.find(o => o.key === key);
+                    if (!opt) return null;
+                    const checked = checkedPlanItems.includes(key);
+                    return (
+                      <Pressable
+                        key={key}
+                        style={({ pressed }) => [s.planChip, checked && s.planChipChecked, pressed && { opacity: 0.75 }]}
+                        onPress={() => setCheckedPlanItems(prev =>
+                          prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+                        )}>
+                        <Text style={s.planChipEmoji}>{opt.emoji}</Text>
+                        <Text style={[s.planChipLabel, checked && s.planChipLabelChecked]} numberOfLines={2}>{opt.label}</Text>
+                        <View style={[s.planChipCheckBox, checked && s.planChipCheckBoxActive]}>
+                          {checked && <Text style={s.planChipCheck}>✓</Text>}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Your why */}
           <View style={s.whyCard}>
             <View style={s.whyInner}>
@@ -569,52 +606,6 @@ export default function UrgeScreen() {
             </View>
           </View>
 
-
-          {/* Recovery plan */}
-          {(recoveryPlan.distractions.length > 0 || recoveryPlan.mantra) ? (
-            <View style={s.planCard}>
-              <Text style={s.planCardTitle}>Your recovery plan</Text>
-              {!!recoveryPlan.mantra && (
-                <View style={s.planMantraBox}>
-                  <Text style={s.planMantraTxt}>"{recoveryPlan.mantra}"</Text>
-                </View>
-              )}
-              {recoveryPlan.distractions.length > 0 && (
-                <View style={s.planChipsWrap}>
-                  {recoveryPlan.distractions.map(key => {
-                    const opt = PLAN_DISTRACTION_OPTIONS.find(o => o.key === key);
-                    if (!opt) return null;
-                    const checked = checkedPlanItems.includes(key);
-                    return (
-                      <Pressable
-                        key={key}
-                        style={({ pressed }) => [s.planChip, checked && s.planChipChecked, pressed && { opacity: 0.75 }]}
-                        onPress={() => setCheckedPlanItems(prev =>
-                          prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-                        )}>
-                        <Text style={s.planChipEmoji}>{opt.emoji}</Text>
-                        <Text style={[s.planChipLabel, checked && s.planChipLabelChecked]} numberOfLines={2}>{opt.label}</Text>
-                        <View style={[s.planChipCheckBox, checked && s.planChipCheckBoxActive]}>
-                          {checked && <Text style={s.planChipCheck}>✓</Text>}
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          ) : (
-            <Pressable
-              style={({ pressed }) => [s.planEmptyCard, pressed && { opacity: 0.85 }]}
-              onPress={() => router.push('/(tabs)/account')}>
-              <Text style={s.planEmptyEmoji}>🗂️</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={s.planEmptyTitle}>Build your recovery plan</Text>
-                <Text style={s.planEmptySub}>Add personal activities and a mantra for moments like this</Text>
-              </View>
-              <Text style={s.planEmptyChevron}>›</Text>
-            </Pressable>
-          )}
 
           {/* Crisis resources */}
           <View style={s.crisisCard}>
@@ -1381,9 +1372,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderLeftWidth: 3, borderLeftColor: c.primary,
   },
   planMantraTxt: { fontSize: 14, fontStyle: 'italic', color: c.textBody, lineHeight: 20 },
-  planChipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  planChipsWrap: { flexDirection: 'column', gap: 8 },
   planChip: {
-    width: '48.5%',
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: c.bgElement, borderRadius: 14,
     paddingVertical: 12, paddingHorizontal: 12,
