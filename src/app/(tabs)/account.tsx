@@ -2268,13 +2268,28 @@ export default function AccountScreen() {
 
       {/* Recovery plan modal */}
       <Modal visible={showRecoveryPlanModal} transparent animationType="fade" onRequestClose={() => setShowRecoveryPlanModal(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.confirmOverlay} onPress={() => setShowRecoveryPlanModal(false)}>
           <Pressable style={[s.editCenterSheet, { maxHeight: '92%' }]} onPress={() => {}}>
             <Text style={s.editFieldTitle}>My recovery plan</Text>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
+              <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>
+                Personal mantra <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
+              </Text>
+              <TextInput
+                style={s.planMantraInput}
+                placeholder="e.g. I am stronger than this urge"
+                placeholderTextColor={c.textFaint}
+                value={planMantraInput}
+                onChangeText={setPlanMantraInput}
+                multiline
+                maxLength={120}
+                textAlignVertical="top"
+              />
+              <Text style={{ fontSize: 11, color: c.textFaint, marginTop: 4, marginBottom: 20 }}>
+                {planMantraInput.length}/120
+              </Text>
               <Text style={[s.spendingCustomLabel, { marginBottom: 12 }]}>
-                What will you do when an urge hits? Choose up to 5 activities:
+                What will you do when an urge hits? <Text style={{ fontWeight: '400', color: c.textFaint }}>Pick up to 5</Text>
               </Text>
               <View style={s.planOptionGrid}>
                 {PLAN_DISTRACTION_OPTIONS.map(opt => {
@@ -2296,31 +2311,15 @@ export default function AccountScreen() {
                   );
                 })}
               </View>
-              <Text style={[s.spendingCustomLabel, { marginTop: 20, marginBottom: 8 }]}>
-                Personal mantra <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
-              </Text>
-              <TextInput
-                style={s.planMantraInput}
-                placeholder="e.g. I am stronger than this urge"
-                placeholderTextColor={c.textFaint}
-                value={planMantraInput}
-                onChangeText={setPlanMantraInput}
-                multiline
-                maxLength={120}
-                textAlignVertical="top"
-              />
-              <Text style={{ fontSize: 11, color: c.textFaint, marginTop: 4 }}>
-                {planMantraInput.length}/120
-              </Text>
               {(recoveryDistractions.length > 0 || !!recoveryMantra) && (
                 <Pressable
-                  style={{ alignSelf: 'center', marginTop: 16 }}
+                  style={{ alignSelf: 'center', marginTop: 20 }}
                   onPress={clearPlan}
                   disabled={savingPlan}>
                   <Text style={{ color: c.error, fontSize: 13 }}>Remove recovery plan</Text>
                 </Pressable>
               )}
-              <View style={[s.modalActions, { marginTop: 12, marginBottom: 8 }]}>
+              <View style={[s.modalActions, { marginTop: 12 }]}>
                 <Pressable
                   style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
                   onPress={() => setShowRecoveryPlanModal(false)}>
@@ -2338,7 +2337,6 @@ export default function AccountScreen() {
             </ScrollView>
           </Pressable>
         </Pressable>
-        </KeyboardAvoidingView>
       </Modal>
 
       {/* iOS date/time picker modal */}
