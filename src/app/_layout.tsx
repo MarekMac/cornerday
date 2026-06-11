@@ -10,6 +10,7 @@ if (__DEV__) {
   const orig = console.error.bind(console);
   console.error = (...args: unknown[]) => {
     if (typeof args[0] === 'string' && args[0].includes("'GO_BACK'")) return;
+    if (typeof args[0] === 'string' && args[0].includes('expo-notifications')) return;
     orig(...args);
   };
 }
@@ -39,7 +40,7 @@ function InnerLayout() {
   useEffect(() => {
     const init = async () => {
       const [sessionResult, onboarded, savedStep, seenWelcomeVal] = await Promise.all([
-        supabase.auth.getSession(),
+        supabase.auth.getSession().catch(() => ({ data: { session: null }, error: null })),
         AsyncStorage.getItem(ONBOARDED_KEY),
         AsyncStorage.getItem(ONBOARDING_STEP_KEY),
         AsyncStorage.getItem(SEEN_WELCOME_KEY),
@@ -94,11 +95,14 @@ function InnerLayout() {
   }, []);
 
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(response => {
-      const screen = response.notification.request.content.data?.screen as string | undefined;
-      if (screen) router.push(screen as any);
-    });
-    return () => sub.remove();
+    let sub: ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | null = null;
+    try {
+      sub = Notifications.addNotificationResponseReceivedListener(response => {
+        const screen = response.notification.request.content.data?.screen as string | undefined;
+        if (screen) router.push(screen as any);
+      });
+    } catch (_e) {}
+    return () => sub?.remove();
   }, []);
 
   useEffect(() => {

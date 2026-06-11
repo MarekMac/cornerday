@@ -195,11 +195,14 @@ export default function TabsLayout() {
     };
     init();
 
-    const sub = Notifications.addNotificationResponseReceivedListener(response => {
-      const screen = response.notification.request.content.data?.screen as string | undefined;
-      if (screen) router.push(screen as any);
-    });
-    return () => sub.remove();
+    let sub: ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | null = null;
+    try {
+      sub = Notifications.addNotificationResponseReceivedListener(response => {
+        const screen = response.notification.request.content.data?.screen as string | undefined;
+        if (screen) router.push(screen as any);
+      });
+    } catch (_e) {}
+    return () => sub?.remove();
   }, []);
 
   return (
