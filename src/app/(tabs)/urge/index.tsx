@@ -250,7 +250,7 @@ export default function UrgeScreen() {
     ]);
     if (cachedMotivation) setMotivation(cachedMotivation);
     if (rawContact) setTrustedContact(JSON.parse(rawContact));
-    if (rawPhoto) setMotivationPhoto(rawPhoto);
+    if (rawPhoto) setMotivationPhoto(rawPhoto + '?t=' + Date.now());
     setLoading(false);
 
     // Refresh from network in the background; update cache on success
@@ -355,7 +355,7 @@ export default function UrgeScreen() {
     if (destFile.exists) destFile.delete();
     await new File(src).copy(destFile);
     await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
-    setMotivationPhoto(destFile.uri);
+    setMotivationPhoto(destFile.uri + '?t=' + Date.now());
   };
 
   const handleDistraction = (d: typeof DISTRACTIONS[0]) => {
