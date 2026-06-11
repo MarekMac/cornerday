@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,6 +27,15 @@ interface UserRow {
   created_at: string;
   is_premium: boolean;
   is_banned: boolean;
+}
+
+interface UserDetail {
+  currentStreak: number;
+  longestStreak: number;
+  postCount: number;
+  commentCount: number;
+  urgeCount: number;
+  lossCount: number;
 }
 
 interface Report {
@@ -124,6 +134,17 @@ export default function ModerationScreen() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [userActioning, setUserActioning] = useState<string | null>(null);
 
+  // Detail modal
+  const [detailUser, setDetailUser] = useState<UserRow | null>(null);
+  const [detailData, setDetailData] = useState<UserDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // Delete content modal
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+  const [deletePosts, setDeletePosts] = useState(true);
+  const [deleteComments, setDeleteComments] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
     const { data } = await supabase
@@ -133,6 +154,35 @@ export default function ModerationScreen() {
     setUsers((data ?? []) as UserRow[]);
     setUsersLoading(false);
   }, []);
+
+  const openDetail = async (user: UserRow) => {
+    setDetailUser(user);
+    setDetailData(null);
+    setDetailLoading(true);
+
+    const [streakRes, postRes, commentRes, urgeRes, lossRes] = await Promise.all([
+      supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).single(),
+      supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('community_comments').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('urge_journal').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).neq('type', 'journey_started'),
+    ]);
+
+    setDetailData({
+      currentStreak: streakRes.data?.current_streak ?? 0,
+      longestStreak: streakRes.data?.longest_streak ?? 0,
+      postCount: postRes.count ?? 0,
+      commentCount: commentRes.count ?? 0,
+      urgeCount: urgeRes.count ?? 0,
+      lossCount: lossRes.count ?? 0,
+    });
+    setDetailLoading(false);
+  };
+
+  const closeDetail = () => {
+    setDetailUser(null);
+    setDetailData(null);
+  };
 
   const toggleBan = async (user: UserRow) => {
     const action = user.is_banned ? 'Unban' : 'Ban';
@@ -151,6 +201,7 @@ export default function ModerationScreen() {
             setUserActioning(user.id);
             await supabase.from('users').update({ is_banned: !user.is_banned }).eq('id', user.id);
             setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_banned: !u.is_banned } : u));
+            if (detailUser?.id === user.id) setDetailUser(prev => prev ? { ...prev, is_banned: !prev.is_banned } : prev);
             setUserActioning(null);
           },
         },
@@ -158,31 +209,31 @@ export default function ModerationScreen() {
     );
   };
 
-  const deleteUserContent = (user: UserRow) => {
-    const name = user.display_name ?? user.email ?? 'this user';
-    Alert.alert(
-      'Delete community content',
-      `Remove all posts and comments by ${name}? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete all content',
-          style: 'destructive',
-          onPress: async () => {
-            setUserActioning(user.id);
-            await supabase.from('community_posts').delete().eq('user_id', user.id);
-            await supabase.from('community_comments').delete().eq('user_id', user.id);
-            setUserActioning(null);
-          },
-        },
-      ]
-    );
+  const openDeleteModal = (user: UserRow) => {
+    setDeleteTarget(user);
+    setDeletePosts(true);
+    setDeleteComments(true);
+  };
+
+  const confirmDeleteContent = async () => {
+    if (!deleteTarget || (!deletePosts && !deleteComments)) return;
+    setDeleting(true);
+    if (deletePosts) await supabase.from('community_posts').delete().eq('user_id', deleteTarget.id);
+    if (deleteComments) await supabase.from('community_comments').delete().eq('user_id', deleteTarget.id);
+    if (detailData) {
+      setDetailData(prev => prev ? {
+        ...prev,
+        postCount: deletePosts ? 0 : prev.postCount,
+        commentCount: deleteComments ? 0 : prev.commentCount,
+      } : prev);
+    }
+    setDeleting(false);
+    setDeleteTarget(null);
   };
 
   // ── Feedback ─────────────────────────────────────────────────────────────────
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
-
   const [deletingFeedback, setDeletingFeedback] = useState<string | null>(null);
 
   const loadFeedback = useCallback(async () => {
@@ -234,6 +285,9 @@ export default function ModerationScreen() {
     general: '#1d4ed8',
   };
 
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: '2-digit' });
+
   return (
     <View style={s.root}>
       <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
@@ -246,27 +300,15 @@ export default function ModerationScreen() {
             <View style={{ width: 34 }} />
           </View>
           <View style={s.tabBar}>
-            <Pressable
-              style={[s.tabBtn, tab === 'reports' && s.tabBtnActive]}
-              onPress={() => setTab('reports')}>
-              <Text style={[s.tabBtnTxt, tab === 'reports' && s.tabBtnTxtActive]}>
-                Reports{reports.length > 0 ? ` (${reports.length})` : ''}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[s.tabBtn, tab === 'users' && s.tabBtnActive]}
-              onPress={() => setTab('users')}>
-              <Text style={[s.tabBtnTxt, tab === 'users' && s.tabBtnTxtActive]}>
-                Users{users.length > 0 ? ` (${users.length})` : ''}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[s.tabBtn, tab === 'feedback' && s.tabBtnActive]}
-              onPress={() => setTab('feedback')}>
-              <Text style={[s.tabBtnTxt, tab === 'feedback' && s.tabBtnTxtActive]}>
-                Feedback{feedbackItems.length > 0 ? ` (${feedbackItems.length})` : ''}
-              </Text>
-            </Pressable>
+            {(['reports', 'users', 'feedback'] as AdminTab[]).map(t => (
+              <Pressable key={t} style={[s.tabBtn, tab === t && s.tabBtnActive]} onPress={() => setTab(t)}>
+                <Text style={[s.tabBtnTxt, tab === t && s.tabBtnTxtActive]}>
+                  {t === 'reports' ? `Reports${reports.length > 0 ? ` (${reports.length})` : ''}`
+                    : t === 'users' ? `Users${users.length > 0 ? ` (${users.length})` : ''}`
+                    : `Feedback${feedbackItems.length > 0 ? ` (${feedbackItems.length})` : ''}`}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -293,9 +335,7 @@ export default function ModerationScreen() {
                   <View style={s.reasonPill}>
                     <Text style={s.reasonPillTxt}>{report.reason}</Text>
                   </View>
-                  <Text style={s.dateText}>
-                    {new Date(report.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })}
-                  </Text>
+                  <Text style={s.dateText}>{fmtDate(report.created_at)}</Text>
                 </View>
                 <Text style={s.contentText} numberOfLines={4}>{report.content}</Text>
                 <View style={s.actions}>
@@ -336,51 +376,48 @@ export default function ModerationScreen() {
           <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
             <Text style={s.countLabel}>{users.length} user{users.length !== 1 ? 's' : ''}</Text>
             {users.map(user => (
-              <View key={user.id} style={s.card}>
+              <Pressable key={user.id} style={({ pressed }) => [s.card, pressed && { opacity: 0.85 }]} onPress={() => openDetail(user)}>
                 <View style={s.cardHeader}>
                   <Text style={s.userName} numberOfLines={1}>
                     {user.display_name ?? '(no name)'}
                   </Text>
-                  {user.is_premium && (
-                    <View style={s.premiumPill}>
-                      <Text style={s.premiumPillTxt}>Premium</Text>
-                    </View>
-                  )}
+                  <View style={[s.tierPill, user.is_premium ? s.tierPillPremium : s.tierPillFree]}>
+                    <Text style={[s.tierPillTxt, user.is_premium ? s.tierPillTxtPremium : s.tierPillTxtFree]}>
+                      {user.is_premium ? '⭐ Premium' : 'Free'}
+                    </Text>
+                  </View>
                   {user.is_banned && (
                     <View style={s.bannedPill}>
                       <Text style={s.bannedPillTxt}>Banned</Text>
                     </View>
                   )}
-                  <Text style={s.dateText}>
-                    {new Date(user.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: '2-digit' })}
-                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color={c.textFaint} style={{ marginLeft: 'auto' }} />
                 </View>
-                {!!user.email && (
-                  <Text style={s.userEmail} numberOfLines={1}>{user.email}</Text>
-                )}
+                {!!user.email && <Text style={s.userEmail} numberOfLines={1}>{user.email}</Text>}
+                <Text style={s.userJoined}>Joined {fmtDate(user.created_at)}</Text>
                 <View style={s.actions}>
                   <Pressable
                     style={({ pressed }) => [
-                      s.userBanBtn,
-                      user.is_banned && s.userUnbanBtn,
+                      s.banBtn,
+                      user.is_banned && s.unbanBtn,
                       pressed && { opacity: 0.7 },
                       userActioning === user.id && s.btnDisabled,
                     ]}
-                    onPress={() => toggleBan(user)}
+                    onPress={e => { e.stopPropagation?.(); toggleBan(user); }}
                     disabled={!!userActioning}>
                     {userActioning === user.id
                       ? <ActivityIndicator size="small" color={c.white} />
-                      : <Text style={s.userBanBtnTxt}>{user.is_banned ? 'Unban' : 'Ban'}</Text>}
+                      : <Text style={s.banBtnTxt}>{user.is_banned ? 'Unban' : 'Ban'}</Text>}
                   </Pressable>
                   <Pressable
-                    style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }, userActioning === user.id && s.btnDisabled]}
-                    onPress={() => deleteUserContent(user)}
+                    style={({ pressed }) => [s.contentBtn, pressed && { opacity: 0.7 }, userActioning === user.id && s.btnDisabled]}
+                    onPress={e => { e.stopPropagation?.(); openDeleteModal(user); }}
                     disabled={!!userActioning}>
                     <Ionicons name="trash-outline" size={14} color={c.white} />
-                    <Text style={s.deleteBtnTxt}>Delete content</Text>
+                    <Text style={s.contentBtnTxt}>Delete content</Text>
                   </Pressable>
                 </View>
-              </View>
+              </Pressable>
             ))}
             <View style={{ height: 32 }} />
           </ScrollView>
@@ -413,9 +450,7 @@ export default function ModerationScreen() {
                       <Text style={s.versionPillTxt}>v{item.app_version}</Text>
                     </View>
                   )}
-                  <Text style={s.dateText}>
-                    {new Date(item.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: '2-digit' })}
-                  </Text>
+                  <Text style={s.dateText}>{fmtDate(item.created_at)}</Text>
                 </View>
                 <Text style={s.contentText}>{item.message}</Text>
                 <View style={s.fbActions}>
@@ -437,6 +472,146 @@ export default function ModerationScreen() {
           </ScrollView>
         )
       )}
+
+      {/* ── User detail modal ── */}
+      <Modal visible={!!detailUser} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeDetail}>
+        <View style={s.modalRoot}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>{detailUser?.display_name ?? '(no name)'}</Text>
+            <Pressable onPress={closeDetail} hitSlop={10} style={s.modalCloseBtn}>
+              <Ionicons name="close" size={22} color={c.textPrimary} />
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={s.modalBody}>
+            {/* Badges row */}
+            <View style={s.modalBadgeRow}>
+              <View style={[s.tierPill, detailUser?.is_premium ? s.tierPillPremium : s.tierPillFree]}>
+                <Text style={[s.tierPillTxt, detailUser?.is_premium ? s.tierPillTxtPremium : s.tierPillTxtFree]}>
+                  {detailUser?.is_premium ? '⭐ Premium' : 'Free'}
+                </Text>
+              </View>
+              {detailUser?.is_banned && (
+                <View style={s.bannedPill}><Text style={s.bannedPillTxt}>Banned</Text></View>
+              )}
+              <Text style={s.modalJoined}>
+                Joined {detailUser ? fmtDate(detailUser.created_at) : ''}
+              </Text>
+            </View>
+            {!!detailUser?.email && (
+              <Text style={s.modalEmail}>{detailUser.email}</Text>
+            )}
+
+            {/* Activity stats */}
+            <Text style={s.modalSectionTitle}>Activity</Text>
+            {detailLoading ? (
+              <View style={s.modalLoading}><ActivityIndicator color={c.primary} /></View>
+            ) : detailData ? (
+              <View style={s.statsGrid}>
+                {[
+                  { label: 'Current streak', value: `${detailData.currentStreak}d` },
+                  { label: 'Longest streak', value: `${detailData.longestStreak}d` },
+                  { label: 'Posts', value: String(detailData.postCount) },
+                  { label: 'Comments', value: String(detailData.commentCount) },
+                  { label: 'Urges logged', value: String(detailData.urgeCount) },
+                  { label: 'Loss entries', value: String(detailData.lossCount) },
+                ].map(item => (
+                  <View key={item.label} style={s.statCell}>
+                    <Text style={s.statCellValue}>{item.value}</Text>
+                    <Text style={s.statCellLabel}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {/* Actions */}
+            <Text style={s.modalSectionTitle}>Actions</Text>
+            <View style={s.modalActions}>
+              {detailUser && (
+                <Pressable
+                  style={({ pressed }) => [
+                    s.modalActionBtn,
+                    detailUser.is_banned ? s.modalActionUnban : s.modalActionBan,
+                    pressed && { opacity: 0.8 },
+                    userActioning === detailUser.id && s.btnDisabled,
+                  ]}
+                  onPress={() => detailUser && toggleBan(detailUser)}
+                  disabled={!!userActioning}>
+                  {userActioning === detailUser.id
+                    ? <ActivityIndicator size="small" color={c.white} />
+                    : <>
+                        <Ionicons name={detailUser.is_banned ? 'checkmark-circle-outline' : 'ban-outline'} size={16} color={c.white} />
+                        <Text style={s.modalActionBtnTxt}>{detailUser.is_banned ? 'Unban user' : 'Ban user'}</Text>
+                      </>}
+                </Pressable>
+              )}
+              {detailUser && (
+                <Pressable
+                  style={({ pressed }) => [s.modalActionBtn, s.modalActionDelete, pressed && { opacity: 0.8 }]}
+                  onPress={() => { closeDetail(); openDeleteModal(detailUser!); }}>
+                  <Ionicons name="trash-outline" size={16} color={c.white} />
+                  <Text style={s.modalActionBtnTxt}>Delete content</Text>
+                </Pressable>
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Delete content modal ── */}
+      <Modal visible={!!deleteTarget} animationType="fade" transparent onRequestClose={() => setDeleteTarget(null)}>
+        <View style={s.overlayBg}>
+          <View style={s.deleteModal}>
+            <Text style={s.deleteModalTitle}>Delete content</Text>
+            <Text style={s.deleteModalSub}>
+              Choose what to delete for{' '}
+              <Text style={{ fontWeight: '700' }}>{deleteTarget?.display_name ?? deleteTarget?.email ?? 'this user'}</Text>
+            </Text>
+
+            <Pressable style={s.checkRow} onPress={() => setDeletePosts(v => !v)}>
+              <View style={[s.checkbox, deletePosts && s.checkboxOn]}>
+                {deletePosts && <Ionicons name="checkmark" size={14} color={c.white} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.checkLabel}>Community posts</Text>
+                {detailData && deleteTarget?.id === detailUser?.id && (
+                  <Text style={s.checkSub}>{detailData.postCount} post{detailData.postCount !== 1 ? 's' : ''}</Text>
+                )}
+              </View>
+            </Pressable>
+
+            <Pressable style={s.checkRow} onPress={() => setDeleteComments(v => !v)}>
+              <View style={[s.checkbox, deleteComments && s.checkboxOn]}>
+                {deleteComments && <Ionicons name="checkmark" size={14} color={c.white} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.checkLabel}>Community comments</Text>
+                {detailData && deleteTarget?.id === detailUser?.id && (
+                  <Text style={s.checkSub}>{detailData.commentCount} comment{detailData.commentCount !== 1 ? 's' : ''}</Text>
+                )}
+              </View>
+            </Pressable>
+
+            <View style={s.deleteModalBtns}>
+              <Pressable style={({ pressed }) => [s.deleteModalCancel, pressed && { opacity: 0.7 }]} onPress={() => setDeleteTarget(null)}>
+                <Text style={s.deleteModalCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  s.deleteModalConfirm,
+                  (!deletePosts && !deleteComments) && s.btnDisabled,
+                  pressed && { opacity: 0.8 },
+                ]}
+                onPress={confirmDeleteContent}
+                disabled={(!deletePosts && !deleteComments) || deleting}>
+                {deleting
+                  ? <ActivityIndicator size="small" color={c.white} />
+                  : <Text style={s.deleteModalConfirmTxt}>Delete selected</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -458,18 +633,22 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   tabBtnActive: { borderBottomColor: c.white },
   tabBtnTxt: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
   tabBtnTxtActive: { color: c.white },
+
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
   emptyBody: { fontSize: 14, color: c.textMuted },
+
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
   countLabel: { fontSize: 13, color: c.textMuted, marginBottom: 4 },
+
   card: {
-    backgroundColor: c.bgCard, borderRadius: 14, padding: 14, gap: 10,
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 14, gap: 8,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+
   typePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   typePillPost: { backgroundColor: c.bgTeal },
   typePillComment: { backgroundColor: c.bgElement },
@@ -480,6 +659,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   versionPillTxt: { fontSize: 11, color: c.textBody, fontWeight: '600' },
   dateText: { marginLeft: 'auto', fontSize: 11, color: c.textFaint },
   contentText: { fontSize: 14, color: c.textSecondary, lineHeight: 20 },
+
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   dismissBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: c.bgElement, alignItems: 'center' },
   dismissBtnTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
@@ -489,18 +669,35 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   deleteBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
   btnDisabled: { opacity: 0.5 },
+
+  // User card
   userName: { fontSize: 15, fontWeight: '700', color: c.textPrimary, flex: 1 },
-  userEmail: { fontSize: 12, color: c.textFaint, marginTop: -4 },
-  premiumPill: { backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  premiumPillTxt: { fontSize: 11, fontWeight: '700', color: '#b45309' },
+  userEmail: { fontSize: 12, color: c.textFaint },
+  userJoined: { fontSize: 11, color: c.textFaint },
+
+  tierPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  tierPillFree: { backgroundColor: c.bgElement },
+  tierPillPremium: { backgroundColor: '#fef3c7' },
+  tierPillTxt: { fontSize: 11, fontWeight: '700' },
+  tierPillTxtFree: { color: c.textMuted },
+  tierPillTxtPremium: { color: '#b45309' },
+
   bannedPill: { backgroundColor: '#fef2f2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   bannedPillTxt: { fontSize: 11, fontWeight: '700', color: c.error },
-  userBanBtn: {
+
+  banBtn: {
     flex: 1, paddingVertical: 9, borderRadius: 10,
     backgroundColor: c.error, alignItems: 'center', justifyContent: 'center',
   },
-  userUnbanBtn: { backgroundColor: '#27ae60' },
-  userBanBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
+  unbanBtn: { backgroundColor: '#27ae60' },
+  banBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
+  contentBtn: {
+    flex: 2, flexDirection: 'row', paddingVertical: 9, borderRadius: 10,
+    backgroundColor: '#e67e22', alignItems: 'center', justifyContent: 'center', gap: 5,
+  },
+  contentBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
+
+  // Feedback
   fbActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 },
   fbDeleteBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -508,4 +705,71 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     backgroundColor: c.error,
   },
   fbDeleteBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
+
+  // User detail modal
+  modalRoot: { flex: 1, backgroundColor: c.bgScreen },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 20, paddingTop: 24, borderBottomWidth: 1, borderBottomColor: c.borderSubtle,
+  },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: c.textPrimary, flex: 1 },
+  modalCloseBtn: { padding: 4 },
+  modalBody: { padding: 20, gap: 16 },
+  modalBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  modalJoined: { fontSize: 12, color: c.textFaint, marginLeft: 'auto' },
+  modalEmail: { fontSize: 13, color: c.textMuted },
+  modalSectionTitle: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
+  modalLoading: { paddingVertical: 24, alignItems: 'center' },
+
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCell: {
+    width: '30%', flex: 1, minWidth: 90,
+    backgroundColor: c.bgCard, borderRadius: 12, padding: 12, alignItems: 'center', gap: 4,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  statCellValue: { fontSize: 22, fontWeight: '800', color: c.textPrimary },
+  statCellLabel: { fontSize: 11, color: c.textMuted, textAlign: 'center' },
+
+  modalActions: { gap: 10 },
+  modalActionBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 14, borderRadius: 12,
+  },
+  modalActionBan: { backgroundColor: c.error },
+  modalActionUnban: { backgroundColor: '#27ae60' },
+  modalActionDelete: { backgroundColor: '#e67e22' },
+  modalActionBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
+
+  // Delete content modal
+  overlayBg: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  deleteModal: {
+    backgroundColor: c.bgCard, borderRadius: 20, padding: 24, width: '100%', gap: 16,
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, elevation: 10,
+  },
+  deleteModalTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
+  deleteModalSub: { fontSize: 14, color: c.textBody, lineHeight: 20, marginTop: -8 },
+
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 4 },
+  checkbox: {
+    width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: c.borderLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: '#e67e22', borderColor: '#e67e22' },
+  checkLabel: { fontSize: 15, fontWeight: '600', color: c.textPrimary },
+  checkSub: { fontSize: 12, color: c.textFaint, marginTop: 2 },
+
+  deleteModalBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  deleteModalCancel: {
+    flex: 1, paddingVertical: 13, borderRadius: 12,
+    backgroundColor: c.bgElement, alignItems: 'center',
+  },
+  deleteModalCancelTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
+  deleteModalConfirm: {
+    flex: 2, paddingVertical: 13, borderRadius: 12,
+    backgroundColor: '#e67e22', alignItems: 'center',
+  },
+  deleteModalConfirmTxt: { fontSize: 14, fontWeight: '700', color: c.white },
 });
