@@ -292,6 +292,15 @@ export default function AnalyticsScreen() {
       });
     }
 
+    // Only count relapses since the current quit date — historical resets before
+    // the quit date were from previous attempts and must not distort the current count.
+    const currentRelapseCount = quitDateObj
+      ? relapseRows.filter(r => {
+          const rd = new Date(r.created_at);
+          return new Date(rd.getFullYear(), rd.getMonth(), rd.getDate()) >= quitDateObj!;
+        }).length
+      : relapseRows.length;
+
     // Week summary
     const startOfThisWeek = new Date(today);
     startOfThisWeek.setDate(today.getDate() - today.getDay());
@@ -324,7 +333,7 @@ export default function AnalyticsScreen() {
       urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByTimeOfDay,
       moodLast30, moodSparkline, checkInDays,
       monthlySavings, weekMoods,
-      relapseCount: relapseRows.length, dailySavingsRate, streakHistory,
+      relapseCount: currentRelapseCount, dailySavingsRate, streakHistory,
       calendarDays, weekSummary,
     });
   }, []);
