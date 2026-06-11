@@ -52,8 +52,17 @@ function InnerLayout() {
       setSeenWelcome(seen);
 
       if (!sess) {
+        // Clear stale onboarding flags so back-navigation restores cleanly next reload
+        await AsyncStorage.multiRemove([ONBOARDED_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
         setPendingRoute(seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
       } else if (onboarded === 'true') {
+        // Verify user row still exists — catches deleted account with stale JWT
+        const { error: userRowError } = await supabase.from('users').select('id').eq('id', sess.user.id).single();
+        if (userRowError?.code === 'PGRST116') {
+          await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
+          await supabase.auth.signOut();
+          return;
+        }
         setPendingRoute('/(tabs)');
       } else {
         // AsyncStorage flag missing (e.g. dev reload cleared storage) — check Supabase
