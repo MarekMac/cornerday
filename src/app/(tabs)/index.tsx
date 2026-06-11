@@ -29,6 +29,8 @@ import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notificatio
 import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -657,6 +659,10 @@ export default function HomeScreen() {
   const [moodNote, setMoodNote] = useState('');
   const [editMoodValue, setEditMoodValue] = useState<number | null>(null);
   const [partnerMsg, setPartnerMsg] = useState<{ id: string; message: string } | null>(null);
+  const [showShareCard, setShowShareCard] = useState(false);
+  const [capturingShare, setCapturingShare] = useState(false);
+  const [shareCardBadge, setShareCardBadge] = useState<{ emoji: string; label: string } | null>(null);
+  const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
   useEffect(() => {
@@ -989,23 +995,33 @@ export default function HomeScreen() {
   const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
   const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
 
-  const shareStreak = async () => {
-    const label = streakDays >= 1
-      ? `${streakDays} day${streakDays !== 1 ? 's' : ''}`
-      : `${streakValue} ${streakUnit}`;
-    await Share.share({
-      message: `${label} free from gambling! 💪\n\nThe day you turn it around starts today. #CornerDay`,
-      title: 'My Recovery Streak',
-    });
+  const shareStreak = () => {
+    if (!data) return;
+    const bestBadge = [...BADGE_DEFS].reverse().find(b => data.earnedBadges.includes(b.type)) ?? null;
+    setShareCardBadge(bestBadge ? { emoji: bestBadge.emoji, label: bestBadge.label } : null);
+    setShowShareCard(true);
   };
 
-  const shareMilestone = async () => {
+  const shareMilestone = () => {
     if (!selectedBadge) return;
-    const label = streakDays >= 1 ? `${streakDays} day${streakDays !== 1 ? 's' : ''}` : `${streakValue} ${streakUnit}`;
-    await Share.share({
-      message: `I just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji}\n\n${label} free from gambling and counting. 💪\n#CornerDay #Recovery`,
-      title: `${selectedBadge.label} Milestone`,
-    });
+    setShareCardBadge({ emoji: selectedBadge.emoji, label: selectedBadge.label });
+    setShowShareCard(true);
+  };
+
+  const captureAndShare = async () => {
+    if (!shareCardRef.current || capturingShare) return;
+    setCapturingShare(true);
+    try {
+      const uri = await captureRef(shareCardRef, { format: 'png', quality: 1, result: 'tmpfile' });
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your streak' });
+    } catch {
+      const label = streakDays >= 1
+        ? `${streakDays} day${streakDays !== 1 ? 's' : ''}`
+        : `${streakValue} ${streakUnit}`;
+      await Share.share({ message: `${label} free from gambling! 💪\n\nThe day you turn it around starts today. #CornerDay` });
+    } finally {
+      setCapturingShare(false);
+    }
   };
 
   const postToCommunity = () => {
@@ -1753,6 +1769,67 @@ export default function HomeScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      {/* ── Share card modal ── */}
+      <Modal visible={showShareCard} transparent animationType="fade" onRequestClose={() => setShowShareCard(false)}>
+        <View style={s.shareOverlay}>
+          <View ref={shareCardRef} collapsable={false} style={s.shareCardWrap}>
+            <LinearGradient
+              colors={['#062e2e', '#0F6E6E', '#1a9a9a']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.shareCard}
+            >
+              <View style={s.shareCardTop}>
+                <Text style={s.shareCardBrand}>CornerDay</Text>
+                {shareCardBadge && <Text style={s.shareCardBadgeEmoji}>{shareCardBadge.emoji}</Text>}
+              </View>
+
+              <View style={s.shareCardCenter}>
+                <Text style={s.shareCardNum}>{streakDays >= 1 ? streakDays : streakValue}</Text>
+                <Text style={s.shareCardUnit}>
+                  {streakDays >= 1 ? (streakDays === 1 ? 'DAY' : 'DAYS') : streakUnit.toUpperCase()}
+                </Text>
+                <Text style={s.shareCardSub}>free from gambling</Text>
+                {shareCardBadge && (
+                  <View style={s.shareCardPill}>
+                    <Text style={s.shareCardPillTxt}>{shareCardBadge.emoji} {shareCardBadge.label} milestone</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={s.shareCardDivider} />
+
+              {data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
+                <Text style={s.shareCardStat}>
+                  💰 {fmt(weeklyToDaily(data.weeklyBet) * streakDays, data.currency)} not spent
+                </Text>
+              )}
+
+              <View style={s.shareCardBottom}>
+                <Text style={s.shareCardTagline}>"The day you turn it around starts today"</Text>
+                <Text style={s.shareCardHashtag}>#CornerDay</Text>
+              </View>
+            </LinearGradient>
+          </View>
+
+          <View style={s.shareCardActions}>
+            <Pressable
+              style={({ pressed }) => [s.shareCardShareBtn, pressed && { opacity: 0.85 }]}
+              onPress={captureAndShare}
+              disabled={capturingShare}
+            >
+              <Ionicons name="share-outline" size={20} color="#fff" />
+              <Text style={s.shareCardShareTxt}>{capturingShare ? 'Preparing…' : 'Share'}</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [s.shareCardCloseBtn, pressed && { opacity: 0.7 }]}
+              onPress={() => setShowShareCard(false)}
+            >
+              <Text style={s.shareCardCloseTxt}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
     </KeyboardAvoidingView>
   );
 }
@@ -2031,4 +2108,40 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   goalFootRow: { flexDirection: 'row', justifyContent: 'space-between' },
   goalPct: { fontSize: 12, color: c.primary, fontWeight: '600' },
   goalRemaining: { fontSize: 12, color: c.textFaint },
+
+  // Share card
+  shareOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  shareCardWrap: { width: 320, borderRadius: 24, overflow: 'hidden' },
+  shareCard: { width: 320, padding: 28, gap: 0 },
+  shareCardTop: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 28,
+  },
+  shareCardBrand: { fontSize: 15, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1 },
+  shareCardBadgeEmoji: { fontSize: 26 },
+  shareCardCenter: { alignItems: 'center', gap: 4 },
+  shareCardNum: { fontSize: 80, fontWeight: '900', color: '#fff', lineHeight: 84 },
+  shareCardUnit: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.8)', letterSpacing: 3 },
+  shareCardSub: { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  shareCardPill: {
+    marginTop: 12, backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+  },
+  shareCardPillTxt: { fontSize: 13, color: '#fff', fontWeight: '600' },
+  shareCardDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 24 },
+  shareCardStat: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '600', textAlign: 'center', marginBottom: 20 },
+  shareCardBottom: { alignItems: 'center', gap: 6 },
+  shareCardTagline: { fontSize: 12, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic', textAlign: 'center' },
+  shareCardHashtag: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
+  shareCardActions: { marginTop: 20, gap: 10, width: 320 },
+  shareCardShareBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#0F6E6E', borderRadius: 14, paddingVertical: 15,
+  },
+  shareCardShareTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  shareCardCloseBtn: { alignItems: 'center', paddingVertical: 10 },
+  shareCardCloseTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
 });
