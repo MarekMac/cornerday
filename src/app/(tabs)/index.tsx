@@ -487,14 +487,22 @@ function LiveCounter({ quitDate }: { quitDate: string | null }) {
   const secs = totalSec % 60;
 
   const years = Math.floor(days / 365);
+  const months = Math.floor(days / 30);
+  const weeks = Math.floor(days / 7);
   const remainingDays = days % 365;
+  const remainingAfterMonths = days - months * 30;
+  const remainingAfterWeeks = days % 7;
   const label = years >= 1
-    ? `${plural(years, 'year')}, ${plural(remainingDays, 'day')}`
-    : days > 0
-      ? `${plural(days, 'day')}, ${plural(hours, 'hour')}`
-      : hours > 0
-        ? `${plural(hours, 'hour')}, ${plural(mins, 'minute')}`
-        : `${plural(mins, 'minute')}, ${plural(secs, 'second')}`;
+    ? `${plural(years, 'year')}${remainingDays > 0 ? `, ${plural(remainingDays, 'day')}` : ''}`
+    : months >= 1
+      ? `${plural(months, 'month')}${remainingAfterMonths > 0 ? `, ${plural(remainingAfterMonths, 'day')}` : ''}`
+      : weeks >= 2
+        ? `${plural(weeks, 'week')}${remainingAfterWeeks > 0 ? `, ${plural(remainingAfterWeeks, 'day')}` : ''}`
+        : days > 0
+          ? `${plural(days, 'day')}${hours > 0 ? `, ${plural(hours, 'hour')}` : ''}`
+          : hours > 0
+            ? `${plural(hours, 'hour')}${mins > 0 ? `, ${plural(mins, 'minute')}` : ''}`
+            : `${plural(mins, 'minute')}, ${plural(secs, 'second')}`;
 
   return <Text style={s.liveCounter}>{label}</Text>;
 }
@@ -1255,7 +1263,7 @@ export default function HomeScreen() {
             <Text style={s.quickActionLabel}>Urge Help</Text>
           </Pressable>
           <View style={s.quickActionDivider} />
-          <Pressable style={({ pressed }) => [s.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push('/urge/journal')}>
+          <Pressable style={({ pressed }) => [s.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push('/urge/journal?from=home' as any)}>
             <Text style={s.quickActionEmoji}>📓</Text>
             <Text style={s.quickActionLabel}>Journal</Text>
           </Pressable>
@@ -1270,23 +1278,23 @@ export default function HomeScreen() {
         <View style={s.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
           {data.todayMood !== null && !editingMood ? (
             <>
-              <View style={s.moodDone}>
-                <View style={s.moodDoneRow}>
-                  <Text style={s.moodDoneLabel}>Today's mood: </Text>
-                  <Text style={s.moodDoneEmoji}>{MOODS[data.todayMood - 1]}</Text>
-                  {data.todayMoodNote
-                    ? <Text style={s.moodDoneNote} numberOfLines={1}>{' '}{data.todayMoodNote}</Text>
-                    : null}
+              <View style={s.moodDoneWrap}>
+                <View style={s.moodDone}>
+                  <View style={s.moodDoneRow}>
+                    <Text style={s.moodDoneLabel}>Today's mood: </Text>
+                    <Text style={s.moodDoneEmoji}>{MOODS[data.todayMood - 1]}</Text>
+                    {data.todayMoodNote
+                      ? <Text style={s.moodDoneNote} numberOfLines={1}>{' '}{data.todayMoodNote}</Text>
+                      : null}
+                  </View>
+                  <Pressable onPress={() => { setEditingMood(true); setMoodNote(data.todayMoodNote ?? ''); setEditMoodValue(data.todayMood); }} style={({ pressed }) => [s.moodEditBtn, pressed && { opacity: 0.6 }]}>
+                    <Text style={s.moodEditBtnTxt}>Edit</Text>
+                  </Pressable>
                 </View>
-                <Pressable onPress={() => { setEditingMood(true); setMoodNote(data.todayMoodNote ?? ''); setEditMoodValue(data.todayMood); }} style={({ pressed }) => [s.moodEditBtn, pressed && { opacity: 0.6 }]}>
-                  <Text style={s.moodEditBtnTxt}>Edit</Text>
-                </Pressable>
-              </View>
-              {moodStreak >= 2 && (
-                <View style={s.moodStreakBadge}>
+                {moodStreak >= 2 && (
                   <Text style={s.moodStreakTxt}>🗓 {moodStreak}-day check-in streak</Text>
-                </View>
-              )}
+                )}
+              </View>
             </>
           ) : (
             <>
@@ -1799,8 +1807,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   moodDoneNote: { fontSize: 13, color: c.textBody, flex: 1 },
   moodEditBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: c.bgTeal },
   moodEditBtnTxt: { fontSize: 12, color: c.primary, fontWeight: '700' },
-  moodStreakBadge: { marginTop: 8, alignSelf: 'flex-start', backgroundColor: c.bgTeal, borderRadius: 10, paddingVertical: 4, paddingHorizontal: 10 },
-  moodStreakTxt: { fontSize: 12, color: c.primary, fontWeight: '600' },
+  moodDoneWrap: { gap: 6 },
+  moodStreakTxt: { fontSize: 12, color: c.primary, fontWeight: '600', opacity: 0.85 },
   moodBtnSelected: { backgroundColor: c.bgTeal, borderRadius: 8 },
   moodInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   moodInputInline: {
