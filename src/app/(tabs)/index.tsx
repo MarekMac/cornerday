@@ -686,6 +686,7 @@ export default function HomeScreen() {
   const [capturingShare, setCapturingShare] = useState(false);
   const [shareCardBadge, setShareCardBadge] = useState<{ emoji: string; label: string } | null>(null);
   const [shareTagline, setShareTagline] = useState('');
+  const [shareCardHideTime, setShareCardHideTime] = useState(false);
   const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
@@ -1019,8 +1020,9 @@ export default function HomeScreen() {
   const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
   const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
 
-  const openShareCard = (badge: { emoji: string; label: string } | null) => {
+  const openShareCard = (badge: { emoji: string; label: string } | null, hideTime = false) => {
     setShareCardBadge(badge);
+    setShareCardHideTime(hideTime);
     setShareTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
     setShowShareCard(true);
   };
@@ -1683,7 +1685,7 @@ export default function HomeScreen() {
             <View style={s.modalActions}>
               {data.checklistCompleted && (
                 <View style={s.modalShareRow}>
-                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setChecklistBadgeVisible(false); openShareCard({ emoji: '🛡️', label: 'Safe Zone' }); }}>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setChecklistBadgeVisible(false); openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true); }}>
                     <Ionicons name="share-outline" size={16} color={c.primary} />
                     <Text style={s.modalShareTxt}>Share</Text>
                   </Pressable>
@@ -1725,7 +1727,7 @@ export default function HomeScreen() {
             <View style={s.modalActions}>
               {data.earnedBadges.includes('goal_set') && (
                 <View style={s.modalShareRow}>
-                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setGoalSetBadgeVisible(false); openShareCard({ emoji: '📍', label: 'Goal Setter' }); }}>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setGoalSetBadgeVisible(false); openShareCard({ emoji: '📍', label: 'Goal Setter' }, true); }}>
                     <Ionicons name="share-outline" size={16} color={c.primary} />
                     <Text style={s.modalShareTxt}>Share</Text>
                   </Pressable>
@@ -1777,7 +1779,7 @@ export default function HomeScreen() {
             <View style={s.modalActions}>
               {data.earnedBadges.includes('goal_reached') && (
                 <View style={s.modalShareRow}>
-                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setGoalReachedBadgeVisible(false); openShareCard({ emoji: '🎊', label: 'Goal Met' }); }}>
+                  <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { setGoalReachedBadgeVisible(false); openShareCard({ emoji: '🎊', label: 'Goal Met' }, true); }}>
                     <Ionicons name="share-outline" size={16} color={c.primary} />
                     <Text style={s.modalShareTxt}>Share</Text>
                   </Pressable>
@@ -1838,7 +1840,7 @@ export default function HomeScreen() {
                 const debt = data.debtItems.find(d => d.id === selectedDebtId);
                 return debt?.earned ? (
                   <View style={s.modalShareRow}>
-                    <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { const d = data.debtItems.find(x => x.id === selectedDebtId); setSelectedDebtId(null); if (d) openShareCard({ emoji: '🏦', label: `${d.name} paid` }); }}>
+                    <Pressable style={({ pressed }) => [s.modalShareBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={() => { const d = data.debtItems.find(x => x.id === selectedDebtId); setSelectedDebtId(null); if (d) openShareCard({ emoji: '🏦', label: `${d.name} paid` }, true); }}>
                       <Ionicons name="share-outline" size={16} color={c.primary} />
                       <Text style={s.modalShareTxt}>Share</Text>
                     </Pressable>
@@ -1870,22 +1872,30 @@ export default function HomeScreen() {
                 {shareCardBadge && <Text style={s.shareCardBadgeEmoji}>{shareCardBadge.emoji}</Text>}
               </View>
 
-              <View style={s.shareCardCenter}>
-                <Text style={s.shareCardNum}>{streakDays >= 1 ? streakDays : streakValue}</Text>
-                <Text style={s.shareCardUnit}>
-                  {streakDays >= 1 ? (streakDays === 1 ? 'DAY' : 'DAYS') : streakUnit.toUpperCase()}
-                </Text>
-                <Text style={s.shareCardSub}>free from gambling</Text>
-                {shareCardBadge && (
-                  <View style={s.shareCardPill}>
-                    <Text style={s.shareCardPillTxt}>{shareCardBadge.emoji} {shareCardBadge.label} milestone</Text>
-                  </View>
-                )}
-              </View>
+              {shareCardHideTime ? (
+                <View style={s.shareCardCenter}>
+                  <Text style={s.shareCardAchievementEmoji}>{shareCardBadge?.emoji ?? '🏆'}</Text>
+                  <Text style={s.shareCardAchievementLabel}>{shareCardBadge?.label?.toUpperCase()}</Text>
+                  <Text style={s.shareCardSub}>milestone earned</Text>
+                </View>
+              ) : (
+                <View style={s.shareCardCenter}>
+                  <Text style={s.shareCardNum}>{streakDays >= 1 ? streakDays : streakValue}</Text>
+                  <Text style={s.shareCardUnit}>
+                    {streakDays >= 1 ? (streakDays === 1 ? 'DAY' : 'DAYS') : streakUnit.toUpperCase()}
+                  </Text>
+                  <Text style={s.shareCardSub}>free from gambling</Text>
+                  {shareCardBadge && (
+                    <View style={s.shareCardPill}>
+                      <Text style={s.shareCardPillTxt}>{shareCardBadge.emoji} {shareCardBadge.label} milestone</Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
               <View style={s.shareCardDivider} />
 
-              {(() => {
+              {!shareCardHideTime && (() => {
                 const streakFloat = streakMs / 86400000;
                 const next = BADGE_DEFS.find(b => b.days > streakFloat) ?? null;
                 const daysLeft = next ? next.days - streakFloat : null;
@@ -1900,7 +1910,7 @@ export default function HomeScreen() {
                 ) : null;
               })()}
 
-              {data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
+              {!shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
                 <Text style={s.shareCardStat}>
                   💰 {fmt(weeklyToDaily(data.weeklyBet) * streakDays, data.currency)} not spent
                 </Text>
@@ -2242,6 +2252,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardNum: { fontSize: 80, fontWeight: '900', color: '#fff', lineHeight: 84 },
   shareCardUnit: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.8)', letterSpacing: 3 },
   shareCardSub: { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  shareCardAchievementEmoji: { fontSize: 72, lineHeight: 80 },
+  shareCardAchievementLabel: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 1, textAlign: 'center', marginTop: 8 },
   shareCardPill: {
     marginTop: 12, backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
