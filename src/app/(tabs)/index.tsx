@@ -921,6 +921,19 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [data?.earnedBadges.length]);
 
+  // Award badges in real-time when the live counter crosses a threshold (fetchData only runs on focus/mount).
+  const lastBadgeFetchMs = useRef(0);
+  useEffect(() => {
+    if (!data) return;
+    const hasUnearned = BADGE_DEFS.some(
+      b => b.days > 0 && streakMs >= b.days * 86400000 && !data.earnedBadges.includes(b.type)
+    );
+    if (hasUnearned && Date.now() - lastBadgeFetchMs.current > 30_000) {
+      lastBadgeFetchMs.current = Date.now();
+      fetchData();
+    }
+  }, [streakMs, data, fetchData]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     randomQuote();
