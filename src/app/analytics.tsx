@@ -323,13 +323,18 @@ export default function AnalyticsScreen() {
     });
   }, []);
 
-  useEffect(() => { fetchData().finally(() => setLoading(false)); }, [fetchData]);
+  useEffect(() => {
+    if (isLoadingPurchases) return;
+    if (!hasAccess) { setLoading(false); return; }
+    fetchData().finally(() => setLoading(false));
+  }, [fetchData, hasAccess, isLoadingPurchases]);
 
   const onRefresh = useCallback(async () => {
+    if (!hasAccess) return;
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
-  }, [fetchData]);
+  }, [fetchData, hasAccess]);
 
   const confirmResetUrges = () => {
     Alert.alert(
@@ -358,7 +363,7 @@ export default function AnalyticsScreen() {
   };
 
   const renderHeader = () => (
-    <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+    <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.header}>
       <SafeAreaView edges={['top']}>
         <View style={s.headerRow}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>
