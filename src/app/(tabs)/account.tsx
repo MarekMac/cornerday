@@ -2345,7 +2345,7 @@ export default function AccountScreen() {
               </View>
               {(recoveryDistractions.length > 0 || !!recoveryMantra) && (
                 <Pressable
-                  style={{ alignSelf: 'center', marginTop: 16 }}
+                  style={{ alignSelf: 'center', marginTop: 28 }}
                   onPress={clearPlan}
                   disabled={savingPlan}>
                   <Text style={{ color: c.error, fontSize: 13 }}>Remove recovery plan</Text>
