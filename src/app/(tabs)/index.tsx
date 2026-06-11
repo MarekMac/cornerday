@@ -1354,6 +1354,21 @@ export default function HomeScreen() {
           <Text style={s.urgeLogArrow}>›</Text>
         </Pressable>
 
+        {/* Your why */}
+        {motivations.length > 0 && (
+          <View style={s.whyAnchorCard}>
+            <Text style={s.whyAnchorLabel}>Your why</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
+              {motivations.map((m, i) => (
+                <View key={i} style={s.whyAnchorChip}>
+                  <Text style={s.whyAnchorEmoji}>{m.emoji}</Text>
+                  <Text style={s.whyAnchorText}>{m.label}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Relapse card */}
         <View style={s.relapseCard}>
           <Text style={s.relapseTitle}>Had a slip? That's okay.</Text>
@@ -1791,6 +1806,34 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   urgeLogTitle: { fontSize: 15, fontWeight: '700', color: c.textPrimary },
   urgeLogSub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
   urgeLogArrow: { fontSize: 22, color: c.textFaint, fontWeight: '300' },
+
+  // Your why anchor
+  whyAnchorCard: {
+    backgroundColor: c.bgCard,
+    borderRadius: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: c.primary,
+    paddingVertical: 10,
+    paddingLeft: 14,
+    paddingRight: 0,
+    overflow: 'hidden',
+  },
+  whyAnchorLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: c.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
+  whyAnchorRow: { flexDirection: 'row', gap: 8, paddingRight: 16, alignItems: 'center' },
+  whyAnchorChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: c.bgElement, borderRadius: 20,
+    paddingVertical: 6, paddingHorizontal: 12,
+  },
+  whyAnchorEmoji: { fontSize: 16 },
+  whyAnchorText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
 
   // Relapse
   relapseCard: {
