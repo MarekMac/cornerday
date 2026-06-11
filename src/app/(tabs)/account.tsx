@@ -1303,30 +1303,6 @@ export default function AccountScreen() {
           <Text style={s.partnerDesc}>
             What will you do when an urge hits? Your plan appears on the Support screen when you need it most.
           </Text>
-          {(recoveryDistractions.length > 0 || recoveryMantra) ? (
-            <View style={s.planSummary}>
-              {recoveryDistractions.length > 0 && (
-                <View style={s.planChipRow}>
-                  {recoveryDistractions.map(key => {
-                    const opt = PLAN_DISTRACTION_OPTIONS.find(o => o.key === key);
-                    if (!opt) return null;
-                    return (
-                      <View key={key} style={s.planChip}>
-                        <Text style={s.planChipEmoji}>{opt.emoji}</Text>
-                        <Text style={s.planChipLabel}>{opt.label}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-              {!!recoveryMantra && (
-                <View style={s.planMantraBox}>
-                  <Text style={s.planMantraLabel}>Your mantra</Text>
-                  <Text style={s.planMantraText}>"{recoveryMantra}"</Text>
-                </View>
-              )}
-            </View>
-          ) : null}
           <Pressable
             style={({ pressed }) => [s.planEditBtn, pressed && { opacity: 0.85 }]}
             onPress={() => {
@@ -2292,6 +2268,7 @@ export default function AccountScreen() {
 
       {/* Recovery plan modal */}
       <Modal visible={showRecoveryPlanModal} transparent animationType="fade" onRequestClose={() => setShowRecoveryPlanModal(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.confirmOverlay} onPress={() => setShowRecoveryPlanModal(false)}>
           <Pressable style={[s.editCenterSheet, { maxHeight: '92%' }]} onPress={() => {}}>
             <Text style={s.editFieldTitle}>My recovery plan</Text>
@@ -2361,6 +2338,7 @@ export default function AccountScreen() {
             </ScrollView>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* iOS date/time picker modal */}
