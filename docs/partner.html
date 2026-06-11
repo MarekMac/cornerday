@@ -11,7 +11,9 @@
     .logo{font-size:12px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:24px;text-align:center;opacity:.7}
     .streak-box{background:#e6f7f7;border-radius:16px;padding:22px 16px;text-align:center;margin-bottom:20px}
     .streak-num{font-size:56px;font-weight:800;color:#0F6E6E;line-height:1}
+    .streak-unit{font-size:18px;font-weight:700;color:#0F6E6E;margin-top:2px}
     .streak-sub{font-size:14px;color:#5a9090;margin-top:6px;font-weight:500}
+    .streak-detail{font-size:12px;color:#7ab0b0;margin-top:4px}
     h2{font-size:17px;font-weight:700;color:#1a2e2e;margin-bottom:6px}
     p{font-size:14px;color:#5a7a7a;line-height:1.6;margin-bottom:20px}
     .divider{height:1px;background:#e0eded;margin:20px 0}
@@ -43,10 +45,65 @@
 
     const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+    function formatStreak(ms) {
+      const totalMins  = Math.floor(ms / 60000);
+      const totalHours = Math.floor(ms / 3600000);
+      const totalDays  = Math.floor(ms / 86400000);
+
+      if (totalMins < 1)   return { primary: '1', unit: 'minute', detail: null };
+      if (totalHours < 1)  return { primary: String(totalMins), unit: totalMins === 1 ? 'minute' : 'minutes', detail: null };
+
+      const mins = totalMins % 60;
+      if (totalDays < 1) {
+        return {
+          primary: String(totalHours),
+          unit: totalHours === 1 ? 'hour' : 'hours',
+          detail: mins > 0 ? mins + (mins === 1 ? ' min' : ' mins') : null,
+        };
+      }
+
+      const hours = totalHours % 24;
+      if (totalDays < 7) {
+        return {
+          primary: String(totalDays),
+          unit: totalDays === 1 ? 'day' : 'days',
+          detail: hours > 0 ? hours + (hours === 1 ? ' hour' : ' hours') : null,
+        };
+      }
+
+      const weeks = Math.floor(totalDays / 7);
+      const remDays = totalDays % 7;
+      if (totalDays < 30) {
+        return {
+          primary: String(weeks),
+          unit: weeks === 1 ? 'week' : 'weeks',
+          detail: remDays > 0 ? remDays + (remDays === 1 ? ' day' : ' days') : null,
+        };
+      }
+
+      const months = Math.floor(totalDays / 30);
+      const remDays2 = totalDays % 30;
+      if (totalDays < 365) {
+        return {
+          primary: String(months),
+          unit: months === 1 ? 'month' : 'months',
+          detail: remDays2 > 0 ? remDays2 + (remDays2 === 1 ? ' day' : ' days') : null,
+        };
+      }
+
+      const years = Math.floor(totalDays / 365);
+      const remMonths = Math.floor((totalDays % 365) / 30);
+      return {
+        primary: String(years),
+        unit: years === 1 ? 'year' : 'years',
+        detail: remMonths > 0 ? remMonths + (remMonths === 1 ? ' month' : ' months') : null,
+      };
+    }
+
     async function send() {
       const ta = document.getElementById('msg');
       const btn = document.getElementById('btn');
-      const msg = ta.value.trim().slice(0,200);
+      const msg = ta.value.trim().slice(0, 200);
       if (!msg) return;
       btn.disabled = true; btn.textContent = 'Sending…';
       try {
@@ -56,28 +113,35 @@
         if (r.ok) {
           document.getElementById('form-area').outerHTML =
             '<div class="sent"><div class="sent-title">&#x1F499; Sent!</div><div class="sent-sub">They\'ll see your message next time they open CornerDay.</div></div>';
-        } else { btn.disabled=false; btn.textContent='Send 💙'; alert('Something went wrong.'); }
-      } catch { btn.disabled=false; btn.textContent='Send 💙'; alert('Could not send. Check your connection.'); }
+        } else { btn.disabled = false; btn.textContent = 'Send 💙'; alert('Something went wrong.'); }
+      } catch { btn.disabled = false; btn.textContent = 'Send 💙'; alert('Could not send. Check your connection.'); }
     }
 
     (async () => {
-      if (!token) { card.innerHTML='<div class="logo">CornerDay</div><div class="error">Invalid link.</div>'; return; }
+      if (!token) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">Invalid link.</div>'; return; }
       try {
         const r = await fetch(API + '?t=' + encodeURIComponent(token));
-        if (r.status === 404) { card.innerHTML='<div class="logo">CornerDay</div><div class="error">This link is invalid or has been revoked.</div>'; return; }
-        const {streakDays: d, displayName: n} = await r.json();
+        if (r.status === 404) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link is invalid or has been revoked.</div>'; return; }
+        const { streakMs, displayName: n } = await r.json();
+        const fmt = formatStreak(streakMs || 0);
         const name = n || 'someone you care about';
-        const label = d === 1 ? '1 day' : (d||0) + ' days';
+        const streakLabel = fmt.primary + ' ' + fmt.unit + (fmt.detail ? ' ' + fmt.detail : '');
+
         card.innerHTML =
           '<div class="logo">CornerDay</div>' +
-          '<div class="streak-box"><div class="streak-num">' + (d||0) + '</div><div class="streak-sub">days clean &#x1F389;</div></div>' +
-          '<h2>' + esc(name) + ' is on a ' + esc(label) + ' streak</h2>' +
+          '<div class="streak-box">' +
+            '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
+            '<div class="streak-unit">' + esc(fmt.unit) + '</div>' +
+            (fmt.detail ? '<div class="streak-detail">' + esc(fmt.detail) + '</div>' : '') +
+            '<div class="streak-sub">clean &#x1F389;</div>' +
+          '</div>' +
+          '<h2>' + esc(name) + ' is on a ' + esc(streakLabel) + ' streak</h2>' +
           '<p>They\'re working hard on their recovery. Send them a short message of support &mdash; it\'ll appear in the app next time they open it.</p>' +
           '<div class="divider"></div>' +
           '<div id="form-area"><label>Send encouragement</label>' +
           '<textarea id="msg" rows="3" maxlength="200" placeholder="Write something kind… (max 200 characters)"></textarea>' +
           '<button id="btn" onclick="send()">Send &#x1F499;</button></div>';
-      } catch { card.innerHTML='<div class="logo">CornerDay</div><div class="error">Could not load. Please try again.</div>'; }
+      } catch { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">Could not load. Please try again.</div>'; }
     })();
   </script>
 </body>

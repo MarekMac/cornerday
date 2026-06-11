@@ -35,10 +35,16 @@ Deno.serve(async (req: Request) => {
     .eq('id', link.user_id)
     .single();
 
-  const streakDays = user?.quit_timestamp
-    ? Math.max(0, Math.floor((Date.now() - new Date(user.quit_timestamp).getTime()) / 86400000))
+  const streakMs = user?.quit_timestamp
+    ? Math.max(0, Date.now() - new Date(user.quit_timestamp).getTime())
     : 0;
   const displayName = user?.display_name ?? null;
+
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ streakMs, displayName }), {
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
 
   if (req.method === 'POST') {
     let message = '';
@@ -65,12 +71,8 @@ Deno.serve(async (req: Request) => {
         });
       }
     }
-    return new Response(JSON.stringify({ ok: true, streakDays, displayName }), {
+    return new Response(JSON.stringify({ ok: true }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
-
-  return new Response(JSON.stringify({ streakDays, displayName }), {
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-  });
 });
