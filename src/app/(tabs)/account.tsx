@@ -418,6 +418,18 @@ export default function AccountScreen() {
     setShowRecoveryPlanModal(false);
   };
 
+  const clearPlan = async () => {
+    setSavingPlan(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users').update({ recovery_distractions: null, recovery_mantra: null }).eq('id', user.id);
+      setRecoveryDistractions([]);
+      setRecoveryMantra('');
+    }
+    setSavingPlan(false);
+    setShowRecoveryPlanModal(false);
+  };
+
   const openGoalModal = () => {
     setGoalInput(savingsGoal ? String(savingsGoal) : '');
     setGoalForInput(savingsGoalFor);
@@ -2280,69 +2292,75 @@ export default function AccountScreen() {
 
       {/* Recovery plan modal */}
       <Modal visible={showRecoveryPlanModal} transparent animationType="fade" onRequestClose={() => setShowRecoveryPlanModal(false)}>
-        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={s.confirmOverlay} onPress={() => setShowRecoveryPlanModal(false)}>
-            <Pressable style={[s.editCenterSheet, { maxHeight: '92%' }]} onPress={() => {}}>
-              <Text style={s.editFieldTitle}>My recovery plan</Text>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                <Text style={[s.spendingCustomLabel, { marginBottom: 12 }]}>
-                  What will you do when an urge hits? Choose up to 5 activities:
-                </Text>
-                <View style={s.planOptionGrid}>
-                  {PLAN_DISTRACTION_OPTIONS.map(opt => {
-                    const selected = planDistractionsInput.includes(opt.key);
-                    return (
-                      <Pressable
-                        key={opt.key}
-                        style={({ pressed }) => [s.planOption, selected && s.planOptionSelected, pressed && { opacity: 0.75 }]}
-                        onPress={() => {
-                          if (selected) {
-                            setPlanDistractionsInput(prev => prev.filter(k => k !== opt.key));
-                          } else if (planDistractionsInput.length < 5) {
-                            setPlanDistractionsInput(prev => [...prev, opt.key]);
-                          }
-                        }}>
-                        <Text style={s.planOptionEmoji}>{opt.emoji}</Text>
-                        <Text style={[s.planOptionLabel, selected && s.planOptionLabelSelected]}>{opt.label}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <Text style={[s.spendingCustomLabel, { marginTop: 20, marginBottom: 8 }]}>
-                  Personal mantra <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
-                </Text>
-                <TextInput
-                  style={s.planMantraInput}
-                  placeholder="e.g. I am stronger than this urge"
-                  placeholderTextColor={c.textFaint}
-                  value={planMantraInput}
-                  onChangeText={setPlanMantraInput}
-                  multiline
-                  maxLength={120}
-                  textAlignVertical="top"
-                />
-                <Text style={{ fontSize: 11, color: c.textFaint, marginTop: 4, marginBottom: 4 }}>
-                  {planMantraInput.length}/120
-                </Text>
-                <View style={[s.modalActions, { marginTop: 12, marginBottom: 8 }]}>
-                  <Pressable
-                    style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
-                    onPress={() => setShowRecoveryPlanModal(false)}>
-                    <Text style={s.modalBtnCancel}>Cancel</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
-                    onPress={savePlan}
-                    disabled={savingPlan}>
-                    {savingPlan
-                      ? <ActivityIndicator color={c.white} size="small" />
-                      : <Text style={s.modalBtnSaveTxt}>Save plan</Text>}
-                  </Pressable>
-                </View>
-              </ScrollView>
-            </Pressable>
+        <Pressable style={s.confirmOverlay} onPress={() => setShowRecoveryPlanModal(false)}>
+          <Pressable style={[s.editCenterSheet, { maxHeight: '92%' }]} onPress={() => {}}>
+            <Text style={s.editFieldTitle}>My recovery plan</Text>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={[s.spendingCustomLabel, { marginBottom: 12 }]}>
+                What will you do when an urge hits? Choose up to 5 activities:
+              </Text>
+              <View style={s.planOptionGrid}>
+                {PLAN_DISTRACTION_OPTIONS.map(opt => {
+                  const selected = planDistractionsInput.includes(opt.key);
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      style={({ pressed }) => [s.planOption, selected && s.planOptionSelected, pressed && { opacity: 0.75 }]}
+                      onPress={() => {
+                        if (selected) {
+                          setPlanDistractionsInput(prev => prev.filter(k => k !== opt.key));
+                        } else if (planDistractionsInput.length < 5) {
+                          setPlanDistractionsInput(prev => [...prev, opt.key]);
+                        }
+                      }}>
+                      <Text style={s.planOptionEmoji}>{opt.emoji}</Text>
+                      <Text style={[s.planOptionLabel, selected && s.planOptionLabelSelected]} numberOfLines={2}>{opt.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={[s.spendingCustomLabel, { marginTop: 20, marginBottom: 8 }]}>
+                Personal mantra <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
+              </Text>
+              <TextInput
+                style={s.planMantraInput}
+                placeholder="e.g. I am stronger than this urge"
+                placeholderTextColor={c.textFaint}
+                value={planMantraInput}
+                onChangeText={setPlanMantraInput}
+                multiline
+                maxLength={120}
+                textAlignVertical="top"
+              />
+              <Text style={{ fontSize: 11, color: c.textFaint, marginTop: 4 }}>
+                {planMantraInput.length}/120
+              </Text>
+              {(recoveryDistractions.length > 0 || !!recoveryMantra) && (
+                <Pressable
+                  style={{ alignSelf: 'center', marginTop: 16 }}
+                  onPress={clearPlan}
+                  disabled={savingPlan}>
+                  <Text style={{ color: c.error, fontSize: 13 }}>Remove recovery plan</Text>
+                </Pressable>
+              )}
+              <View style={[s.modalActions, { marginTop: 12, marginBottom: 8 }]}>
+                <Pressable
+                  style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                  onPress={() => setShowRecoveryPlanModal(false)}>
+                  <Text style={s.modalBtnCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
+                  onPress={savePlan}
+                  disabled={savingPlan}>
+                  {savingPlan
+                    ? <ActivityIndicator color={c.white} size="small" />
+                    : <Text style={s.modalBtnSaveTxt}>Save plan</Text>}
+                </Pressable>
+              </View>
+            </ScrollView>
           </Pressable>
-        </KeyboardAvoidingView>
+        </Pressable>
       </Modal>
 
       {/* iOS date/time picker modal */}
@@ -2750,12 +2768,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   planSummary: { gap: 10, marginBottom: 14 },
   planChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   planChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: c.bgTealDeep, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 12,
+    width: '48.5%',
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: c.bgTealDeep, borderRadius: 14,
+    paddingVertical: 10, paddingHorizontal: 12,
     borderWidth: 1, borderColor: c.primaryLight,
   },
-  planChipEmoji: { fontSize: 14 },
-  planChipLabel: { fontSize: 13, fontWeight: '600', color: c.primary },
+  planChipEmoji: { fontSize: 16 },
+  planChipLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: c.primary, lineHeight: 18 },
   planMantraBox: {
     backgroundColor: c.bgTealDeep, borderRadius: 12, padding: 14,
     borderLeftWidth: 3, borderLeftColor: c.primary,
@@ -2771,14 +2791,15 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   // Recovery plan modal
   planOptionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   planOption: {
+    width: '48.5%',
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingVertical: 9, paddingHorizontal: 14,
-    backgroundColor: c.bgInputMid, borderRadius: 20,
+    paddingVertical: 10, paddingHorizontal: 12,
+    backgroundColor: c.bgInputMid, borderRadius: 14,
     borderWidth: 1.5, borderColor: c.borderTeal,
   },
   planOptionSelected: { backgroundColor: c.bgTeal, borderColor: c.primary },
   planOptionEmoji: { fontSize: 16 },
-  planOptionLabel: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  planOptionLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: c.textBody, lineHeight: 18 },
   planOptionLabelSelected: { color: c.primary },
   planMantraInput: {
     borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 10,
