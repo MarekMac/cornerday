@@ -700,11 +700,7 @@ export default function HomeScreen() {
       const newlyAwarded: typeof toAward = [];
       for (const b of toAward) {
         const { error } = await supabase.from('badges').insert({ user_id: user.id, badge_type: b.type });
-        if (error) {
-          console.warn(`[badges] insert failed for ${b.type}:`, error.code, error.message);
-        } else {
-          newlyAwarded.push(b);
-        }
+        if (!error) newlyAwarded.push(b);
       }
 
       // Only log and notify for badges actually inserted this run
