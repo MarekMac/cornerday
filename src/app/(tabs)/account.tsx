@@ -1247,13 +1247,13 @@ export default function AccountScreen() {
           {partnerToken ? (
             <View style={s.partnerLinkBox}>
               <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
-                {`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/partner-view?t=${partnerToken}`}
+                {`https://maremmac.github.io/cornerday/partner.html?t=${partnerToken}`}
               </Text>
               <View style={s.partnerBtnRow}>
                 <Pressable
                   style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
                   onPress={async () => {
-                    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/partner-view?t=${partnerToken}`;
+                    const url = `https://maremmac.github.io/cornerday/partner.html?t=${partnerToken}`;
                     await Clipboard.setStringAsync(url);
                     setPartnerCopied(true);
                     if (partnerCopyTimerRef.current) clearTimeout(partnerCopyTimerRef.current);

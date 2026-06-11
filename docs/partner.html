@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CornerDay — Accountability Partner</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f9f9;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px}
+    .card{background:#fff;border-radius:22px;padding:28px 24px;max-width:420px;width:100%;box-shadow:0 2px 24px rgba(15,110,110,.09)}
+    .logo{font-size:12px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:24px;text-align:center;opacity:.7}
+    .streak-box{background:#e6f7f7;border-radius:16px;padding:22px 16px;text-align:center;margin-bottom:20px}
+    .streak-num{font-size:56px;font-weight:800;color:#0F6E6E;line-height:1}
+    .streak-sub{font-size:14px;color:#5a9090;margin-top:6px;font-weight:500}
+    h2{font-size:17px;font-weight:700;color:#1a2e2e;margin-bottom:6px}
+    p{font-size:14px;color:#5a7a7a;line-height:1.6;margin-bottom:20px}
+    .divider{height:1px;background:#e0eded;margin:20px 0}
+    label{font-size:13px;font-weight:600;color:#1a2e2e;display:block;margin-bottom:8px}
+    textarea{width:100%;border:1.5px solid #c8e4e4;border-radius:12px;padding:12px 14px;font-size:15px;font-family:inherit;resize:none;outline:none;color:#1a2e2e;background:#fff;transition:border-color .2s}
+    textarea:focus{border-color:#0F6E6E}
+    button{width:100%;background:#0F6E6E;color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;margin-top:12px;cursor:pointer;font-family:inherit;transition:opacity .15s}
+    button:hover{opacity:.85}
+    button:disabled{opacity:.5;cursor:default}
+    .sent{background:#e6f7f7;border-radius:14px;padding:20px;text-align:center}
+    .sent-title{font-size:17px;font-weight:700;color:#0F6E6E;margin-bottom:4px}
+    .sent-sub{font-size:13px;color:#5a9090}
+    .error{background:#fff0f0;border-radius:14px;padding:16px;text-align:center;color:#c0392b;font-size:14px}
+    footer{font-size:12px;color:#a8c0c0;text-align:center;margin-top:20px}
+    .spinner{width:32px;height:32px;border:3px solid #e6f7f7;border-top-color:#0F6E6E;border-radius:50%;animation:spin .8s linear infinite;margin:20px auto;display:block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="logo">CornerDay</div>
+    <div class="spinner"></div>
+  </div>
+  <footer>CornerDay &middot; "The day you turn it around starts today"</footer>
+  <script>
+    const API = 'https://cdgsiotlocurwnqxebrh.supabase.co/functions/v1/partner-view';
+    const token = new URLSearchParams(location.search).get('t') || '';
+    const card = document.getElementById('card');
+
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    async function send() {
+      const ta = document.getElementById('msg');
+      const btn = document.getElementById('btn');
+      const msg = ta.value.trim().slice(0,200);
+      if (!msg) return;
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        const r = await fetch(API + '?t=' + encodeURIComponent(token), {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({message: msg})
+        });
+        if (r.ok) {
+          document.getElementById('form-area').outerHTML =
+            '<div class="sent"><div class="sent-title">&#x1F499; Sent!</div><div class="sent-sub">They\'ll see your message next time they open CornerDay.</div></div>';
+        } else { btn.disabled=false; btn.textContent='Send 💙'; alert('Something went wrong.'); }
+      } catch { btn.disabled=false; btn.textContent='Send 💙'; alert('Could not send. Check your connection.'); }
+    }
+
+    (async () => {
+      if (!token) { card.innerHTML='<div class="logo">CornerDay</div><div class="error">Invalid link.</div>'; return; }
+      try {
+        const r = await fetch(API + '?t=' + encodeURIComponent(token));
+        if (r.status === 404) { card.innerHTML='<div class="logo">CornerDay</div><div class="error">This link is invalid or has been revoked.</div>'; return; }
+        const {streakDays: d, displayName: n} = await r.json();
+        const name = n || 'someone you care about';
+        const label = d === 1 ? '1 day' : (d||0) + ' days';
+        card.innerHTML =
+          '<div class="logo">CornerDay</div>' +
+          '<div class="streak-box"><div class="streak-num">' + (d||0) + '</div><div class="streak-sub">days clean &#x1F389;</div></div>' +
+          '<h2>' + esc(name) + ' is on a ' + esc(label) + ' streak</h2>' +
+          '<p>They\'re working hard on their recovery. Send them a short message of support &mdash; it\'ll appear in the app next time they open it.</p>' +
+          '<div class="divider"></div>' +
+          '<div id="form-area"><label>Send encouragement</label>' +
+          '<textarea id="msg" rows="3" maxlength="200" placeholder="Write something kind… (max 200 characters)"></textarea>' +
+          '<button id="btn" onclick="send()">Send &#x1F499;</button></div>';
+      } catch { card.innerHTML='<div class="logo">CornerDay</div><div class="error">Could not load. Please try again.</div>'; }
+    })();
+  </script>
+</body>
+</html>
