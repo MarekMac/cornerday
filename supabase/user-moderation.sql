@@ -35,11 +35,12 @@ AS $$
   );
 $$;
 
--- STEP 3: Admin can read all users (others can only read their own row)
+-- STEP 3: All authenticated users can read any user row (display names are public
+-- social data — required for PostgREST joins in community feed)
 DROP POLICY IF EXISTS admin_select_users ON users;
 CREATE POLICY admin_select_users ON users
   FOR SELECT TO authenticated
-  USING (id = auth.uid() OR public.is_admin_user());
+  USING (true);
 
 -- STEP 4: Admin can update any user (e.g. toggle is_banned)
 DROP POLICY IF EXISTS admin_update_users ON users;

@@ -182,7 +182,8 @@ export default function CommunityFeed() {
           q = q.order('created_at', { ascending: false });
         }
         q = q.range(0, PAGE_SIZE - 1);
-        const { data } = await q;
+        const { data, error } = await q;
+        if (error) console.warn('[community] saved load error:', error.message);
         const items = (data as Post[]) ?? [];
         postsRef.current = items;
         setPosts(items);
@@ -202,7 +203,8 @@ export default function CommunityFeed() {
         q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
       } else if (tag !== 'All') q = q.eq('tag', tag);
 
-      const { data } = await q;
+      const { data, error } = await q;
+      if (error) console.warn('[community] feed load error:', error.message);
       const items = (data as Post[]) ?? [];
       postsRef.current = items;
       setPosts(items);
@@ -232,7 +234,8 @@ export default function CommunityFeed() {
       if (activeTag === 'Mine' && currentUserIdRef.current) {
         q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
       } else if (activeTag !== 'All') q = q.eq('tag', activeTag);
-      const { data } = await q;
+      const { data, error } = await q;
+      if (error) console.warn('[community] loadMore error:', error.message);
       const items = (data as Post[]) ?? [];
       const next = [...postsRef.current, ...items];
       postsRef.current = next;
