@@ -593,8 +593,10 @@ export default function UrgeScreen() {
                           prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
                         )}>
                         <Text style={s.planChipEmoji}>{opt.emoji}</Text>
-                        <Text style={[s.planChipLabel, checked && s.planChipLabelChecked]}>{opt.label}</Text>
-                        {checked && <Text style={s.planChipCheck}>✓</Text>}
+                        <Text style={[s.planChipLabel, checked && s.planChipLabelChecked]} numberOfLines={2}>{opt.label}</Text>
+                        <View style={[s.planChipCheckBox, checked && s.planChipCheckBoxActive]}>
+                          {checked && <Text style={s.planChipCheck}>✓</Text>}
+                        </View>
                       </Pressable>
                     );
                   })}
@@ -1381,15 +1383,23 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   planMantraTxt: { fontSize: 14, fontStyle: 'italic', color: c.textBody, lineHeight: 20 },
   planChipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   planChip: {
+    width: '48.5%',
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: c.bgElement, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14,
+    backgroundColor: c.bgElement, borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 12,
     borderWidth: 1.5, borderColor: c.borderLight,
   },
   planChipChecked: { backgroundColor: c.bgTeal, borderColor: c.primary },
-  planChipEmoji: { fontSize: 16 },
-  planChipLabel: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  planChipEmoji: { fontSize: 18 },
+  planChipLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: c.textBody, lineHeight: 18 },
   planChipLabelChecked: { color: c.primary },
-  planChipCheck: { fontSize: 13, color: c.primary, fontWeight: '700' },
+  planChipCheckBox: {
+    width: 18, height: 18, borderRadius: 9,
+    borderWidth: 1.5, borderColor: c.borderMid,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  planChipCheckBoxActive: { backgroundColor: c.primary, borderColor: c.primary },
+  planChipCheck: { fontSize: 10, color: c.white, fontWeight: '800' },
   planEmptyCard: {
     backgroundColor: c.bgCard, borderRadius: 16, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 12,
