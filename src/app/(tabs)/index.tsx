@@ -1035,7 +1035,7 @@ export default function HomeScreen() {
 
   const shareMilestone = () => {
     if (!selectedBadge) return;
-    openShareCard({ emoji: selectedBadge.emoji, label: selectedBadge.label });
+    openShareCard({ emoji: selectedBadge.emoji, label: selectedBadge.label }, selectedBadge.days === 0);
   };
 
   const captureAndShare = async () => {
