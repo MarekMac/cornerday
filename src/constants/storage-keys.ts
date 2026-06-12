@@ -20,3 +20,4 @@ export const NOTIF_STREAK_HOUR_KEY = 'cornerday_notif_streak_hour';
 export const NOTIF_CHECKIN_HOUR_KEY = 'cornerday_notif_checkin_hour';
 export const THEME_PREF_KEY = 'cornerday_theme_pref';
 export const URGE_PREDICTION_SCHEDULE_KEY = 'cornerday_urge_prediction_schedule';
+export const BIOMETRIC_LOCK_KEY = 'cornerday_biometric_lock';

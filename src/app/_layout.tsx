@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { AppState, AppStateStatus, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
 
 // Suppress the dev-only "GO_BACK not handled" overlay — this warning is
 // emitted by React Navigation when Android restores navigation state on
@@ -36,6 +40,39 @@ function InnerLayout() {
   const [authChecked, setAuthChecked] = useState(false);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
   const [seenWelcome, setSeenWelcome] = useState<boolean>(false);
+  const [locked, setLocked] = useState(false);
+  const backgroundedAtRef = useRef<number | null>(null);
+
+  const authenticate = useCallback(async () => {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Unlock CornerDay',
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: false,
+      });
+      if (result.success) setLocked(false);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (locked) authenticate();
+  }, [locked, authenticate]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (state: AppStateStatus) => {
+      if (state === 'background' || state === 'inactive') {
+        backgroundedAtRef.current = Date.now();
+      } else if (state === 'active' && backgroundedAtRef.current !== null) {
+        const elapsed = Date.now() - backgroundedAtRef.current;
+        backgroundedAtRef.current = null;
+        if (elapsed > 2000) {
+          const flag = await AsyncStorage.getItem(BIOMETRIC_LOCK_KEY);
+          if (flag === 'true') setLocked(true);
+        }
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -114,9 +151,31 @@ function InnerLayout() {
       <AnimatedSplashOverlay />
       <Slot />
       <Paywall />
+      {authChecked && locked && (
+        <View style={lockStyles.overlay}>
+          <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']} style={lockStyles.gradient}>
+            <Text style={lockStyles.emoji}>🔒</Text>
+            <Text style={lockStyles.title}>CornerDay</Text>
+            <Text style={lockStyles.sub}>Your recovery is private</Text>
+            <Pressable style={lockStyles.btn} onPress={authenticate}>
+              <Text style={lockStyles.btnTxt}>Unlock</Text>
+            </Pressable>
+          </LinearGradient>
+        </View>
+      )}
     </ThemeProvider>
   );
 }
+
+const lockStyles = StyleSheet.create({
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  gradient: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emoji: { fontSize: 48, marginBottom: 4 },
+  title: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  sub: { fontSize: 15, color: 'rgba(255,255,255,0.75)', marginBottom: 24 },
+  btn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 24, paddingHorizontal: 40, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
+  btnTxt: { fontSize: 16, fontWeight: '700', color: '#fff' },
+});
 
 export default function RootLayout() {
   return (

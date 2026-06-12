@@ -30,7 +30,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY } from '@/constants/storage-keys';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
@@ -190,6 +191,8 @@ export default function AccountScreen() {
   const [savingField, setSavingField] = useState(false);
 
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [notifStreakHour, setNotifStreakHour] = useState(20);
   const [notifCheckinHour, setNotifCheckinHour] = useState(9);
   const [quitTimestamp, setQuitTimestamp] = useState<string | null>(null);
@@ -397,6 +400,17 @@ export default function AccountScreen() {
       ]
     );
   };
+
+  useEffect(() => {
+    Promise.all([
+      LocalAuthentication.hasHardwareAsync(),
+      LocalAuthentication.isEnrolledAsync(),
+      AsyncStorage.getItem(BIOMETRIC_LOCK_KEY),
+    ]).then(([hasHardware, isEnrolled, stored]) => {
+      setBiometricAvailable(hasHardware && isEnrolled);
+      setBiometricEnabled(stored === 'true');
+    });
+  }, []);
 
   useEffect(() => {
     fetchProfile().finally(() => setLoading(false));
@@ -1042,6 +1056,26 @@ export default function AccountScreen() {
     }
   };
 
+  const handleBiometricToggle = async (value: boolean) => {
+    if (value) {
+      if (!biometricAvailable) {
+        Alert.alert('Not available', 'Set up fingerprint or face unlock in your device settings first.');
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Confirm to enable biometric lock',
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: false,
+      });
+      if (!result.success) return;
+      await AsyncStorage.setItem(BIOMETRIC_LOCK_KEY, 'true');
+      setBiometricEnabled(true);
+    } else {
+      await AsyncStorage.removeItem(BIOMETRIC_LOCK_KEY);
+      setBiometricEnabled(false);
+    }
+  };
+
   const handleNotifToggle = async (key: keyof NotifPrefs, value: boolean) => {
     const updated = { ...notifPrefs, [key]: value };
     setNotifPrefs(updated);
@@ -1606,6 +1640,41 @@ export default function AccountScreen() {
             <Text style={s.menuRowLabel}>Privacy Policy</Text>
             <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
+        </View>
+
+        {/* Security */}
+        <View style={s.menuCard}>
+          <Text style={s.menuCardTitle}>Security</Text>
+          <View style={s.notifRow}>
+            <View style={s.notifText}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={s.notifLabel}>Biometric lock</Text>
+                {!isPremiumFromRC && (
+                  <View style={{ backgroundColor: '#0F6E6E', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={s.notifDesc}>
+                {biometricAvailable
+                  ? 'Require fingerprint or face unlock when reopening the app'
+                  : 'Set up fingerprint or face ID on your device to use this feature'}
+              </Text>
+            </View>
+            {isPremiumFromRC ? (
+              <Switch
+                value={biometricEnabled}
+                onValueChange={handleBiometricToggle}
+                disabled={!biometricAvailable}
+                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+                thumbColor={biometricEnabled ? '#0F6E6E' : '#bbb'}
+              />
+            ) : (
+              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                <Text style={{ fontSize: 12, color: '#0F6E6E', fontWeight: '600' }}>Upgrade</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {/* Footer */}
