@@ -20,7 +20,7 @@ import { usePurchases } from '@/context/purchases';
 const FEATURES = [
   { emoji: '🤖', title: 'AI Coach', desc: '24/7 personal support, available any time' },
   { emoji: '📊', title: 'Detailed Analytics', desc: 'Deep insights into your recovery progress' },
-  { emoji: '👥', title: 'Accountability Partner', desc: 'Share your journey with someone you trust' },
+  { emoji: '👥', title: 'Your Supporter', desc: 'Share your journey with someone you trust' },
   { emoji: '🚫', title: 'Ad-Free', desc: 'No distractions — just your recovery' },
 ];
 

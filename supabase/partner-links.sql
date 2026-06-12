@@ -1,4 +1,4 @@
--- Accountability partner tables
+-- Your supporter tables
 -- Run this in the Supabase SQL editor
 
 create table partner_links (

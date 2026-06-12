@@ -1327,9 +1327,9 @@ export default function AccountScreen() {
           </Pressable>
         </View>
 
-        {/* Accountability partner */}
+        {/* Your supporter */}
         <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>Accountability partner</Text>
+          <Text style={s.infoCardTitle}>Your supporter</Text>
           <Text style={s.partnerDesc}>
             Share a private link with someone you trust. They'll see your streak and can send you encouragement — no account needed.
           </Text>
@@ -2764,7 +2764,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   dangerCard: { backgroundColor: c.bgCard, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: c.bgErrorMid },
   dangerRowLabel: { color: c.error },
 
-  // Accountability partner
+  // Your supporter
   partnerDesc: { fontSize: 13, color: c.textBody, lineHeight: 19, marginBottom: 14 },
   partnerLinkBox: { backgroundColor: c.bgElement, borderRadius: 10, padding: 12, gap: 10 },
   partnerLinkUrl: { fontSize: 12, color: c.textMuted },
