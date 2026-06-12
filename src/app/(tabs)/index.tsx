@@ -679,7 +679,7 @@ export default function HomeScreen() {
   } : {
     gradient:        ['#f8fefe', '#edfafa', '#dff5f5'] as const,
     brand:           '#0a6868',
-    bigText:         '#062e2e',
+    bigText:         '#0F6E6E',
     unit:            '#0F6E6E',
     sub:             'rgba(10,104,104,0.65)',
     pillBg:          'rgba(15,110,110,0.1)',
@@ -689,7 +689,7 @@ export default function HomeScreen() {
     detailBg:        'rgba(15,110,110,0.06)',
     detailBorder:    'rgba(15,110,110,0.12)',
     detailLabel:     'rgba(10,104,104,0.6)',
-    detailValue:     '#062e2e',
+    detailValue:     '#0a5a5a',
     detailHighlight: '#0F6E6E',
     tagline:         'rgba(6,46,46,0.5)',
     hashtag:         'rgba(15,110,110,0.4)',
