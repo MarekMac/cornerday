@@ -733,6 +733,7 @@ export default function HomeScreen() {
   const [shareCardMessage, setShareCardMessage] = useState('');
   const [shareCardMilestoneLabel, setShareCardMilestoneLabel] = useState<string | null>(null);
   const [shareCardEarnedOn, setShareCardEarnedOn] = useState<string | null>(null);
+  const [urgePeakHour, setUrgePeakHour] = useState<number | null>(null);
   const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
@@ -943,6 +944,20 @@ export default function HomeScreen() {
         notifPrefs,
         profile?.is_premium ?? false,
       );
+    }
+
+    // Compute peak urge hour for home screen card
+    const urgeEntries = urgeRes.data ?? [];
+    if (profile?.is_premium && urgeEntries.length >= 3) {
+      const hourCounts: Record<number, number> = {};
+      for (const e of urgeEntries) {
+        const h = new Date(e.created_at).getHours();
+        hourCounts[h] = (hourCounts[h] ?? 0) + 1;
+      }
+      const peak = parseInt(Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0][0], 10);
+      setUrgePeakHour(peak);
+    } else {
+      setUrgePeakHour(null);
     }
 
     setData({
@@ -1602,6 +1617,29 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
         )}
+
+        {/* Urge prediction card */}
+        {urgePeakHour !== null && (() => {
+          const h = urgePeakHour;
+          const period = h < 12 ? 'AM' : 'PM';
+          const display = h === 0 ? '12' : h <= 12 ? String(h) : String(h - 12);
+          const warnH = urgePeakHour === 0 ? 23 : urgePeakHour - 1;
+          const warnPeriod = warnH < 12 ? 'AM' : 'PM';
+          const warnDisplay = warnH === 0 ? '12' : warnH <= 12 ? String(warnH) : String(warnH - 12);
+          return (
+            <Pressable
+              style={({ pressed }) => [s.urgePredCard, pressed && { opacity: 0.85 }]}
+              onPress={() => router.push('/(tabs)/urge' as any)}>
+              <Text style={s.urgePredEmoji}>🛡️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.urgePredTitle}>Your riskiest window</Text>
+                <Text style={s.urgePredTime}>Around {display}:00 {period}</Text>
+                <Text style={s.urgePredSub}>Reminder set for {warnDisplay}:30 {warnPeriod} · Tap for urge support</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={c.textFaint} />
+            </Pressable>
+          );
+        })()}
 
         {/* Relapse card */}
         {streakDays >= 30 ? (
@@ -2307,6 +2345,22 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   relapseBtnTxt: { fontSize: 13, color: c.error, fontWeight: '600' },
   relapseMinimal: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
   relapseMinimalTxt: { fontSize: 13, color: c.textFaint, textDecorationLine: 'underline' },
+
+  // Urge prediction card
+  urgePredCard: {
+    backgroundColor: c.bgCard,
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#e67e22',
+  },
+  urgePredEmoji: { fontSize: 22 },
+  urgePredTitle: { fontSize: 12, fontWeight: '700', color: '#e67e22', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
+  urgePredTime: { fontSize: 18, fontWeight: '700', color: c.textPrimary, marginBottom: 2 },
+  urgePredSub: { fontSize: 12, color: c.textMuted, lineHeight: 16 },
 
   // Partner message banner
   partnerMsgBanner: { backgroundColor: c.bgTeal, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
