@@ -72,6 +72,7 @@ export default function PostDetail() {
   const [deleting, setDeleting] = useState(false);
   const [reportTarget, setReportTarget] = useState<ActionTarget | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
   const flatListRef = useRef<FlatList>(null);
@@ -134,8 +135,15 @@ export default function PostDetail() {
           : Promise.resolve({ data: [] }),
       ]);
 
-      setPost(postRes.data as Post ?? null);
+      const loadedPost = postRes.data as Post ?? null;
+      setPost(loadedPost);
       setComments((commentsRes.data as Comment[]) ?? []);
+
+      if (uid && loadedPost && loadedPost.user_id !== uid && !loadedPost.is_anonymous) {
+        supabase.from('community_follows').select('id')
+          .eq('follower_id', uid).eq('following_id', loadedPost.user_id)
+          .maybeSingle().then(({ data }) => setIsFollowing(!!data));
+      }
 
       const counts: Record<string, number> = {};
       let myReaction: string | null = null;
@@ -341,6 +349,16 @@ export default function PostDetail() {
     Alert.alert('Reported', 'Thank you — we will review this shortly.');
   };
 
+  const toggleFollow = async () => {
+    if (!currentUserId || !post) return;
+    setIsFollowing(f => !f);
+    if (isFollowing) {
+      await supabase.from('community_follows').delete().eq('follower_id', currentUserId).eq('following_id', post.user_id);
+    } else {
+      await supabase.from('community_follows').insert({ follower_id: currentUserId, following_id: post.user_id });
+    }
+  };
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -396,6 +414,19 @@ export default function PostDetail() {
           />
         </Pressable>
       </View>
+
+      {!isAnon && !isPostOwner && (
+        <Pressable
+          style={({ pressed }) => [s.followRow, isFollowing && s.followRowActive, pressed && { opacity: 0.7 }]}
+          onPress={toggleFollow}
+          hitSlop={6}
+        >
+          <Ionicons name={isFollowing ? 'checkmark-circle' : 'person-add-outline'} size={14} color={isFollowing ? c.primary : c.textMuted} />
+          <Text style={[s.followRowTxt, isFollowing && { color: c.primary }]}>
+            {isFollowing ? `Following ${postAuthor}` : `Follow ${postAuthor}`}
+          </Text>
+        </Pressable>
+      )}
 
       <Text style={s.postContent}>{post.content}</Text>
 
@@ -730,6 +761,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   tagPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
   tagTxt: { fontSize: 11, fontWeight: '700' },
   menuBtn: { padding: 4 },
+
+  followRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 10,
+    borderRadius: 20, borderWidth: 1, borderColor: c.borderLight, backgroundColor: c.bgElement,
+  },
+  followRowActive: { backgroundColor: c.bgTeal, borderColor: c.primary },
+  followRowTxt: { fontSize: 12, fontWeight: '600', color: c.textMuted },
 
   postContent: { fontSize: 15, color: c.textSecondary, lineHeight: 23 },
 
