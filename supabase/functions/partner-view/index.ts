@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
             body: JSON.stringify({
               to: tokenRow.expo_push_token,
               sound: 'default',
-              title: 'Message from your supporter 💙',
+              title: 'Someone in your corner 💙',
               body: preview,
               data: { screen: '/(tabs)/' },
             }),

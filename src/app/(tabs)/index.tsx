@@ -1312,7 +1312,7 @@ export default function HomeScreen() {
             }}>
             <Text style={s.partnerMsgEmoji}>💙</Text>
             <View style={{ flex: 1 }}>
-              <Text style={s.partnerMsgLabel}>Message from your supporter</Text>
+              <Text style={s.partnerMsgLabel}>Message from someone in your corner</Text>
               <Text style={s.partnerMsgTxt} numberOfLines={3}>{partnerMsg.message}</Text>
             </View>
             <Ionicons name="close-outline" size={18} color={c.primary} />

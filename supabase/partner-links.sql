@@ -1,4 +1,4 @@
--- Your supporter tables
+-- Someone in your corner tables
 -- Run this in the Supabase SQL editor
 
 create table partner_links (

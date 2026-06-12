@@ -60,7 +60,7 @@ function buildHtml(firstName: string, streakDays: number): string {
       <tr>
         <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F91D;</td>
         <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Your supporter</div>
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Someone in your corner</div>
           <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Connect a trusted person — a partner, friend, or family member — so they can see your streak and cheer you on. Recovery is stronger with someone in your corner.</div>
         </td>
       </tr>
