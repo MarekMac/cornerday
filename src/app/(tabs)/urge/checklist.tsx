@@ -84,7 +84,7 @@ export default function ChecklistScreen() {
 
   useEffect(() => {
     AsyncStorage.getItem(CHECKLIST_KEY).then(raw => {
-      if (raw) setChecked(JSON.parse(raw));
+      if (raw) { try { setChecked(JSON.parse(raw)); } catch { /* corrupted, start fresh */ } }
       setLoaded(true);
     });
   }, []);

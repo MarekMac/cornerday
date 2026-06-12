@@ -478,10 +478,14 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('debt_payments').insert({
+        const { error: payError } = await supabase.from('debt_payments').insert({
           user_id: user.id, debt_id: quickPayDebt.id,
           amount: val, note: quickPayNote.trim() || null,
         });
+        if (payError) {
+          Alert.alert('Could not save payment', payError.message);
+          return;
+        }
         if (isPayingOff) {
           await Notifications.scheduleNotificationAsync({
             content: {

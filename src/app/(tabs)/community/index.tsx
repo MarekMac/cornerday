@@ -324,7 +324,8 @@ export default function CommunityFeed() {
             [emoji]: (prev[postId]?.[emoji] ?? 0) + 1,
           },
         }));
-        await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
+        const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
+        if (delErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); return; }
         const { error } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
         if (error) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
       } else {

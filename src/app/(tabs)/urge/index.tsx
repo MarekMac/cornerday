@@ -253,7 +253,7 @@ export default function UrgeScreen() {
       AsyncStorage.getItem(MOTIVATION_PHOTO_KEY),
     ]);
     if (cachedMotivation) setMotivation(cachedMotivation);
-    if (rawContact) setTrustedContact(JSON.parse(rawContact));
+    if (rawContact) { try { setTrustedContact(JSON.parse(rawContact)); } catch { /* corrupted */ } }
     if (rawPhoto) setMotivationPhoto(rawPhoto + '?t=' + Date.now());
     setLoading(false);
 

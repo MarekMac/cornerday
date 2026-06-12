@@ -184,7 +184,8 @@ export default function PostDetail() {
         [old]: Math.max(0, (prev[old] ?? 1) - 1),
         [emoji]: (prev[emoji] ?? 0) + 1,
       }));
-      await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+      const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+      if (delErr) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); return; }
       const { error } = await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
       if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
     } else {
@@ -320,15 +321,20 @@ export default function PostDetail() {
   const saveEdit = async () => {
     if (!editTarget || !editText.trim()) return;
     setEditSaving(true);
+    let error;
     if (editTarget.kind === 'post') {
-      await supabase.from('community_posts').update({ content: editText.trim() }).eq('id', editTarget.id);
-      setPost(p => p ? { ...p, content: editText.trim() } : p);
+      ({ error } = await supabase.from('community_posts').update({ content: editText.trim() }).eq('id', editTarget.id));
+      if (!error) setPost(p => p ? { ...p, content: editText.trim() } : p);
     } else {
-      await supabase.from('community_comments').update({ content: editText.trim() }).eq('id', editTarget.id);
-      setComments(prev => prev.map(c => c.id === editTarget.id ? { ...c, content: editText.trim() } : c));
+      ({ error } = await supabase.from('community_comments').update({ content: editText.trim() }).eq('id', editTarget.id));
+      if (!error) setComments(prev => prev.map(c => c.id === editTarget.id ? { ...c, content: editText.trim() } : c));
     }
     setEditSaving(false);
-    setEditTarget(null);
+    if (error) {
+      Alert.alert('Could not save', error.message);
+    } else {
+      setEditTarget(null);
+    }
   };
 
   const executeDelete = async () => {
@@ -336,11 +342,13 @@ export default function PostDetail() {
     setDeleting(true);
     try {
       if (deleteTarget.kind === 'post') {
-        await supabase.from('community_posts').delete().eq('id', deleteTarget.id);
+        const { error } = await supabase.from('community_posts').delete().eq('id', deleteTarget.id);
+        if (error) { Alert.alert('Could not delete', error.message); return; }
         setDeleteTarget(null);
         router.back();
       } else {
-        await supabase.from('community_comments').delete().eq('id', deleteTarget.id);
+        const { error } = await supabase.from('community_comments').delete().eq('id', deleteTarget.id);
+        if (error) { Alert.alert('Could not delete', error.message); return; }
         setComments(prev => prev.filter(c => c.id !== deleteTarget.id));
         setPost(p => p ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p);
         setDeleteTarget(null);
@@ -353,11 +361,12 @@ export default function PostDetail() {
   const executeReport = async (reason: string) => {
     if (!reportTarget || !currentUserId || reporting) return;
     setReporting(true);
-    await supabase.from('community_reports').insert({
+    const { error } = await supabase.from('community_reports').insert({
       target_type: reportTarget.kind, target_id: reportTarget.id,
       reporter_id: currentUserId, reason,
     });
     setReporting(false);
+    if (error) { Alert.alert('Could not submit report', error.message); return; }
     setReportTarget(null);
     Alert.alert('Reported', 'Thank you — we will review this shortly.');
   };
