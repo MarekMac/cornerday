@@ -1914,22 +1914,7 @@ export default function HomeScreen() {
 
               <View style={s.shareCardDivider} />
 
-              {!shareCardHideTime && (() => {
-                const streakFloat = streakMs / 86400000;
-                const next = BADGE_DEFS.find(b => b.days > streakFloat) ?? null;
-                const daysLeft = next ? next.days - streakFloat : null;
-                const nextLabel = daysLeft !== null
-                  ? daysLeft < 1/24 ? '< 1 hour to go'
-                  : daysLeft < 1 ? `${Math.round(daysLeft * 24)}h to ${next!.label}`
-                  : daysLeft < 14 ? `${Math.ceil(daysLeft)} day${Math.ceil(daysLeft) !== 1 ? 's' : ''} to ${next!.label}`
-                  : `${Math.ceil(daysLeft / 7)} week${Math.ceil(daysLeft / 7) !== 1 ? 's' : ''} to ${next!.label}`
-                  : null;
-                return nextLabel ? (
-                  <Text style={s.shareCardNext}>🎯 Next: {nextLabel}</Text>
-                ) : null;
-              })()}
-
-              {!shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
+{!shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
                 <Text style={s.shareCardStat}>
                   💰 {fmt(weeklyToDaily(data.weeklyBet) * streakDays, data.currency)} not spent
                 </Text>
