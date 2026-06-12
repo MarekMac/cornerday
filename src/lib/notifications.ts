@@ -224,8 +224,10 @@ export async function scheduleUrgePredictionNotification(
     const h = new Date(e.created_at).getHours();
     hourCounts[h] = (hourCounts[h] ?? 0) + 1;
   }
-  const [peakHourStr] = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
-  const peakHour = parseInt(peakHourStr, 10);
+  const sorted = Object.entries(hourCounts).sort((a, b) => b[1] - a[1]);
+  if (sorted.length === 0) { await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY); return; }
+  const peakHour = parseInt(sorted[0][0], 10);
+  if (isNaN(peakHour)) { await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY); return; }
 
   // 30 minutes before peak, wrapping past midnight
   const totalMinutes = ((peakHour * 60 - 30) + 1440) % 1440;

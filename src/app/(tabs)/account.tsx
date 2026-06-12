@@ -277,8 +277,8 @@ export default function AccountScreen() {
     const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
     let resolvedAvatar = data?.avatar_url ?? null;
     if (!resolvedAvatar && googleAvatar) {
-      resolvedAvatar = googleAvatar;
-      await supabase.from('users').update({ avatar_url: googleAvatar }).eq('id', user.id);
+      const { error: avatarErr } = await supabase.from('users').update({ avatar_url: googleAvatar }).eq('id', user.id);
+      if (!avatarErr) resolvedAvatar = googleAvatar;
     }
 
     setProfile({

@@ -251,7 +251,7 @@ export default function TrackerIndex() {
 
   const saveDebt = async () => {
     const amount = parseFloat(debtAmount);
-    if (!debtName.trim() || isNaN(amount) || amount <= 0) {
+    if (!debtName.trim() || isNaN(amount) || !isFinite(amount) || amount <= 0 || amount > 999_999_999) {
       Alert.alert('Missing info', 'Please enter a name and a valid amount.');
       return;
     }
@@ -622,7 +622,7 @@ export default function TrackerIndex() {
                   </>
                 )}
               </View>
-              {savingsGoal ? (
+              {savingsGoal != null && savingsGoal > 0 ? (
                 <View style={s.goalAmtRow}>
                   <Text style={[s.savingsRowAmt, { color: c.success, fontSize: 12, fontWeight: '600', textAlign: 'right' }]}>
                     {fmt(totalManualSavings, currency)} of {fmt(savingsGoal, currency)} · {Math.round(Math.min(1, totalManualSavings / savingsGoal) * 100)}%

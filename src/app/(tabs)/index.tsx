@@ -803,10 +803,11 @@ export default function HomeScreen() {
       // Only log and notify for badges actually inserted this run
       const toLog = newlyAwarded.filter(b => b.days > 0);
       if (toLog.length > 0) {
-        await supabase.from('losses').insert(toLog.map(b => ({
+        const { error: journalErr } = await supabase.from('losses').insert(toLog.map(b => ({
           user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
           category: 'Milestone', note: `${b.emoji} ${b.label}`,
         })));
+        if (journalErr) console.warn('Milestone journal insert failed:', journalErr.message);
 
         // Send immediate notification for each newly earned milestone
         // (scheduleAllNotifications skips past-due milestones, so we fire in-app here)
@@ -983,7 +984,8 @@ export default function HomeScreen() {
         const rows = weekMoodRes.data ?? [];
         const byDate: Record<string, { mood: number; note: string | null }> = {};
         rows.forEach(r => {
-          const key = new Date(r.created_at).toLocaleDateString();
+          const rd = new Date(r.created_at);
+          const key = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate()).toLocaleDateString();
           byDate[key] = { mood: r.mood, note: r.note ?? null };
         });
         const today = new Date();
