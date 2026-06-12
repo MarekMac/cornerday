@@ -40,27 +40,48 @@ function buildHtml(firstName: string, amountFmt: string): string {
       Most people never face the real number. You just did. That honesty is exactly what recovery is built on — not willpower alone, but the truth.
     </td></tr>
 
-    <tr><td style="background:#f9fdfd;border-radius:12px;padding:18px;margin-bottom:20px;">
+    <tr><td style="background:#f9fdfd;border-radius:12px;padding:18px;">
     <table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="font-size:13px;color:#0F6E6E;font-weight:700;padding-bottom:10px;">How CornerDay helps your financial recovery</td></tr>
       <tr>
-        <td style="font-size:13px;color:#0F6E6E;font-weight:700;padding-bottom:8px;">What logging does for you</td>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:12px;">&#x1F4CA;</td>
+        <td style="vertical-align:top;padding-bottom:12px;">
+          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">See the full picture</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Log every loss and every payment in one place. CornerDay shows you exactly how much you owe and how much you've paid back — no guessing, no avoiding.</div>
+        </td>
       </tr>
-      <tr><td style="font-size:13px;color:#555;line-height:1.7;">
-        ✓&nbsp; Creates a number you can actually work toward paying back<br>
-        ✓&nbsp; Turns shame into something concrete and manageable<br>
-        ✓&nbsp; Starts the recovery progress bar — every payment chips away at it
-      </td></tr>
+      <tr>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:12px;">&#x1F4C8;</td>
+        <td style="vertical-align:top;padding-bottom:12px;">
+          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">Watch the number shrink</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Every payment you log moves your recovery progress bar. Seeing that bar inch forward is one of the most motivating things in the app.</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:12px;">&#x1F4B8;</td>
+        <td style="vertical-align:top;padding-bottom:12px;">
+          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">Track money not gambled</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Every week you stay clean, CornerDay shows you how much you didn't spend. Over time, that number tells a powerful story.</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size:22px;width:36px;vertical-align:top;">&#x2705;</td>
+        <td style="vertical-align:top;">
+          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">Turn shame into a plan</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">A number on a screen is something you can work with. Shame kept in your head just grows. You've already done the hardest part.</div>
+        </td>
+      </tr>
     </table>
     </td></tr>
 
-    <tr><td style="height:4px;"></td></tr>
+    <tr><td style="height:16px;"></td></tr>
 
     <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
-      You can log payments whenever you make them, and watch the number shrink. One entry at a time.
+      Log payments whenever you make them — even small ones count. Every entry moves the bar.
     </td></tr>
 
     <tr><td style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
-      Loss Tracker is in the second tab of CornerDay.
+      Loss Tracker is the second tab in CornerDay.
     </td></tr>
 
   </table>

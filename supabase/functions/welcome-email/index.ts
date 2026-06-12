@@ -55,24 +55,45 @@ function buildHtml(firstName: string, whyLabel: string): string {
     <tr><td style="background:#f9fdfd;border-radius:12px;padding:16px;">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">📅</td>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4C5;</td>
         <td style="vertical-align:top;padding-bottom:14px;">
           <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Streak tracker</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Every day clean counts. Milestones, badges, your longest run — all tracked.</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Every day clean counts. Watch your streak grow, earn badges at 1 week, 1 month, 6 months and beyond.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">🚨</td>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F6A8;</td>
         <td style="vertical-align:top;padding-bottom:14px;">
           <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Urge support</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Breathing exercises, distractions, crisis line. Available the moment you need it.</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Breathing exercises, distraction tools, and a direct line to the National Problem Gambling Helpline — available the moment you need it.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;">💰</td>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4B0;</td>
+        <td style="vertical-align:top;padding-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Loss &amp; debt tracker</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Log what was lost, record payments as you make them, and watch your recovery progress bar move. Honest numbers, no shame.</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4D4;</td>
+        <td style="vertical-align:top;padding-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Urge journal</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Log urges as you face them — what triggered it, how you handled it. Patterns become visible. Knowledge becomes power.</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F465;</td>
+        <td style="vertical-align:top;padding-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Community</div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">An anonymous space to share wins, post on hard days, and hear from others on the same journey. You're not alone in this.</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size:22px;width:36px;vertical-align:top;">&#x1F916;</td>
         <td style="vertical-align:top;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Loss tracker</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Track what was lost and what you're paying back. Honest numbers, no shame.</div>
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">AI Coach <span style="font-size:11px;font-weight:600;color:#fff;background:#0F6E6E;border-radius:6px;padding:2px 7px;vertical-align:middle;">Premium</span></div>
+          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">24/7 private support from an AI coach trained on evidence-based recovery strategies. Available whenever you need to talk it through.</div>
         </td>
       </tr>
     </table>
