@@ -1618,8 +1618,11 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Urge prediction card */}
+        {/* Urge prediction card — only visible 1h before and after peak */}
         {urgePeakHour !== null && (() => {
+          const nowHour = new Date().getHours();
+          const diff = ((nowHour - urgePeakHour + 24) % 24);
+          if (diff > 1 && diff < 23) return null;
           const h = urgePeakHour;
           const period = h < 12 ? 'AM' : 'PM';
           const display = h === 0 ? '12' : h <= 12 ? String(h) : String(h - 12);
