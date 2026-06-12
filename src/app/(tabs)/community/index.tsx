@@ -379,7 +379,7 @@ export default function CommunityFeed() {
     if (item.user_id === currentUserIdRef.current) return;
     setProfileUser({
       userId: item.user_id,
-      displayName: item.users?.display_name ?? 'User',
+      displayName: item.users?.display_name || 'User',
       streak: item.users?.streaks?.[0]?.current_streak ?? 0,
     });
   };

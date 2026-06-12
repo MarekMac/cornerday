@@ -90,7 +90,7 @@ export default function PostDetail() {
             .from('community_comments')
             .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
             .eq('id', payload.new.id)
-            .single();
+            .maybeSingle();
           if (data) {
             setComments(prev => {
               if (prev.some(c => c.id === (data as any).id)) return prev;
@@ -238,7 +238,7 @@ export default function PostDetail() {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: userData } = isCommentAnonymous
         ? { data: null }
-        : await supabase.from('users').select('display_name').eq('id', currentUserId).single();
+        : await supabase.from('users').select('display_name').eq('id', currentUserId).maybeSingle();
 
       const { data, error } = await supabase
         .from('community_comments')
@@ -364,12 +364,15 @@ export default function PostDetail() {
 
   const toggleFollow = async () => {
     if (!currentUserId || !post) return;
+    const prev = isFollowing;
     setIsFollowing(f => !f);
+    let error;
     if (isFollowing) {
-      await supabase.from('community_follows').delete().eq('follower_id', currentUserId).eq('following_id', post.user_id);
+      ({ error } = await supabase.from('community_follows').delete().eq('follower_id', currentUserId).eq('following_id', post.user_id));
     } else {
-      await supabase.from('community_follows').insert({ follower_id: currentUserId, following_id: post.user_id });
+      ({ error } = await supabase.from('community_follows').insert({ follower_id: currentUserId, following_id: post.user_id }));
     }
+    if (error) setIsFollowing(prev);
   };
 
   // ─── Render ─────────────────────────────────────────────────────────────────
