@@ -687,6 +687,7 @@ export default function HomeScreen() {
   const [shareCardBadge, setShareCardBadge] = useState<{ emoji: string; label: string } | null>(null);
   const [shareTagline, setShareTagline] = useState('');
   const [shareCardHideTime, setShareCardHideTime] = useState(false);
+  const [shareCardDetails, setShareCardDetails] = useState<Array<{ label: string; value: string; highlight?: boolean }>>([]);
   const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
@@ -1020,9 +1021,10 @@ export default function HomeScreen() {
   const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
   const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
 
-  const openShareCard = (badge: { emoji: string; label: string } | null, hideTime = false) => {
+  const openShareCard = (badge: { emoji: string; label: string } | null, hideTime = false, details: Array<{ label: string; value: string; highlight?: boolean }> = []) => {
     setShareCardBadge(badge);
     setShareCardHideTime(hideTime);
+    setShareCardDetails(details);
     setShareTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
     setShowShareCard(true);
   };
@@ -1279,7 +1281,24 @@ export default function HomeScreen() {
               const streakFrac = streakMs / 86400000;
               const progress = earned ? 1 : badge.days > 0 ? Math.min(1, streakFrac / badge.days) : 1;
               return (
-                <Pressable key={badge.type} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]} onPress={() => { if (earned) { openShareCard({ emoji: badge.emoji, label: badge.label }, badge.days === 0); } else { setSelectedBadge(badge); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                <Pressable key={badge.type} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]} onPress={() => {
+                  if (earned) {
+                    const earnedAt = data.badgeTimestamps[badge.type];
+                    const dailyRate = weeklyToDaily(data.weeklyBet);
+                    const det: Array<{ label: string; value: string; highlight?: boolean }> = [];
+                    if (badge.days === 0) {
+                      const d = earnedAt ?? data.quitDate;
+                      if (d) det.push({ label: 'Started on', value: new Date(d).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
+                    } else {
+                      if (earnedAt) det.push({ label: 'Earned on', value: new Date(earnedAt).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
+                      if (dailyRate > 0) {
+                        det.push({ label: 'Saved at milestone', value: fmt(badge.days * dailyRate, data.currency) });
+                        det.push({ label: 'Total saved', value: fmt((streakMs / 86400000) * dailyRate, data.currency), highlight: true });
+                      }
+                    }
+                    openShareCard({ emoji: badge.emoji, label: badge.label }, badge.days === 0, det);
+                  } else { setSelectedBadge(badge); setBadgeMsgIndex(Math.floor(Math.random() * 20)); }
+                }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={progress} />
                     <Text style={s.badgeEmoji}>{earned ? badge.emoji : '🔒'}</Text>
@@ -1294,7 +1313,7 @@ export default function HomeScreen() {
               const progress = debt.earned ? 1 : debt.totalAmount > 0 ? Math.min(1, debt.paidAmount / debt.totalAmount) : 0;
               return (
                 <Pressable key={debt.id} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (debt.earned) { openShareCard({ emoji: '🏦', label: `${debt.name} paid` }, true); } else { setSelectedDebtId(debt.id); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                  onPress={() => { if (debt.earned) { openShareCard({ emoji: '🏦', label: `${debt.name} paid` }, true, [{ label: 'Total paid off', value: fmt(debt.totalAmount, data.currency), highlight: true }]); } else { setSelectedDebtId(debt.id); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
                   <View style={[s.badgeCircle, debt.earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={progress} />
                     <Text style={s.badgeEmoji}>{debt.earned ? '🏦' : '🔒'}</Text>
@@ -1307,7 +1326,7 @@ export default function HomeScreen() {
               const earned = data.checklistCompleted;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (earned) { openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true); } else { setChecklistBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                  onPress={() => { if (earned) { openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Achievement', value: 'All prevention steps completed' }]); } else { setChecklistBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : data.checklistProgress} />
                     <Text style={s.badgeEmoji}>{earned ? '🛡️' : '🔒'}</Text>
@@ -1320,7 +1339,7 @@ export default function HomeScreen() {
               const earned = data.earnedBadges.includes('goal_set');
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (earned) { openShareCard({ emoji: '📍', label: 'Goal Setter' }, true); } else { setGoalSetBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                  onPress={() => { if (earned) { openShareCard({ emoji: '📍', label: 'Goal Setter' }, true, [{ label: 'Saving towards', value: data.savingsGoalFor || 'My goal' }, { label: 'Goal amount', value: fmt(data.savingsGoal ?? 0, data.currency) }]); } else { setGoalSetBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : 0} />
                     <Text style={s.badgeEmoji}>{earned ? '📍' : '🔒'}</Text>
@@ -1335,7 +1354,7 @@ export default function HomeScreen() {
                 ? Math.min(1, data.totalPaid / data.savingsGoal) : 0;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (earned) { openShareCard({ emoji: '🎊', label: 'Goal Met' }, true); } else { setGoalReachedBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                  onPress={() => { if (earned) { openShareCard({ emoji: '🎊', label: 'Goal Met' }, true, [{ label: 'Goal', value: data.savingsGoalFor || 'My goal' }, { label: 'Amount saved', value: fmt(data.totalPaid, data.currency), highlight: true }]); } else { setGoalReachedBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : progress} />
                     <Text style={s.badgeEmoji}>{earned ? '🎊' : '🔒'}</Text>
@@ -1923,6 +1942,17 @@ export default function HomeScreen() {
             </LinearGradient>
           </View>
 
+          {shareCardDetails.length > 0 && (
+            <View style={s.shareCardDetailBox}>
+              {shareCardDetails.map((d, i) => (
+                <View key={i} style={[s.shareCardDetailRow, i === shareCardDetails.length - 1 && { borderBottomWidth: 0 }]}>
+                  <Text style={s.shareCardDetailLabel}>{d.label}</Text>
+                  <Text style={[s.shareCardDetailValue, d.highlight && { color: c.primary }]}>{d.value}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
           <View style={s.shareCardActions}>
             <Pressable
               style={({ pressed }) => [s.shareCardShareBtn, pressed && { opacity: 0.85 }]}
@@ -2278,4 +2308,15 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardCommunityTxt: { color: '#0F6E6E', fontWeight: '700', fontSize: 16 },
   shareCardCloseBtn: { alignItems: 'center', paddingVertical: 10 },
   shareCardCloseTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
+  shareCardDetailBox: {
+    backgroundColor: c.bgCard, borderRadius: 14, paddingVertical: 4,
+    marginTop: 10, marginHorizontal: 4,
+  },
+  shareCardDetailRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle,
+  },
+  shareCardDetailLabel: { fontSize: 13, color: c.textMuted },
+  shareCardDetailValue: { fontSize: 13, fontWeight: '700', color: c.textPrimary },
 });
