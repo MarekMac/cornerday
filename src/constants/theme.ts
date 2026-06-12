@@ -39,9 +39,9 @@ export const Colors = {
     primary:          '#0F6E6E',
     primaryMid:       '#1a9a9a',
     primaryLight:     '#a8d8d0',
-    headerGradDeep:   '#0a7878',
-    headerGradStart:  '#12a0a0',
-    headerGradEnd:    '#4ecece',
+    headerGradDeep:   '#062e2e',
+    headerGradStart:  '#0F6E6E',
+    headerGradEnd:    '#1a9a9a',
 
     // ── Status ─────────────────────────────────────────────────────────────────
     success: '#0a7a4e',

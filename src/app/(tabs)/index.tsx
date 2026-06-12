@@ -657,9 +657,45 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
 export default function HomeScreen() {
   const { colors: c, colorScheme } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
-  const cardGradient = colorScheme === 'dark'
-    ? ['#062e2e', '#0F6E6E', '#1a9a9a'] as const
-    : ['#0a7878', '#12a0a0', '#4ecece'] as const;
+  const cc = colorScheme === 'dark' ? {
+    gradient:        ['#062e2e', '#0F6E6E', '#1a9a9a'] as const,
+    brand:           'rgba(255,255,255,0.7)',
+    bigText:         '#ffffff',
+    unit:            'rgba(255,255,255,0.8)',
+    sub:             'rgba(255,255,255,0.7)',
+    pillBg:          'rgba(255,255,255,0.15)',
+    pillTxt:         '#ffffff',
+    divider:         'rgba(255,255,255,0.2)',
+    stat:            'rgba(255,255,255,0.85)',
+    detailBg:        'rgba(255,255,255,0.08)',
+    detailBorder:    'rgba(255,255,255,0.12)',
+    detailLabel:     'rgba(255,255,255,0.55)',
+    detailValue:     '#ffffff',
+    detailHighlight: '#a8d8d0',
+    tagline:         'rgba(255,255,255,0.55)',
+    hashtag:         'rgba(255,255,255,0.4)',
+    progressTrack:   'rgba(255,255,255,0.18)',
+    progressFill:    '#a8d8d0',
+  } : {
+    gradient:        ['#f8fefe', '#edfafa', '#dff5f5'] as const,
+    brand:           '#0a6868',
+    bigText:         '#062e2e',
+    unit:            '#0F6E6E',
+    sub:             'rgba(10,104,104,0.65)',
+    pillBg:          'rgba(15,110,110,0.1)',
+    pillTxt:         '#0F6E6E',
+    divider:         'rgba(15,110,110,0.15)',
+    stat:            '#0F6E6E',
+    detailBg:        'rgba(15,110,110,0.06)',
+    detailBorder:    'rgba(15,110,110,0.12)',
+    detailLabel:     'rgba(10,104,104,0.6)',
+    detailValue:     '#062e2e',
+    detailHighlight: '#0F6E6E',
+    tagline:         'rgba(6,46,46,0.5)',
+    hashtag:         'rgba(15,110,110,0.4)',
+    progressTrack:   'rgba(15,110,110,0.15)',
+    progressFill:    '#0F6E6E',
+  };
   const { avatarUrl } = useUser();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1910,12 +1946,12 @@ export default function HomeScreen() {
           <Pressable onPress={() => {}} style={{ alignItems: 'center' }}>
             <View ref={shareCardRef} collapsable={false} style={s.shareCardWrap}>
               <LinearGradient
-                colors={cardGradient}
+                colors={cc.gradient}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={s.shareCard}
               >
                 <View style={s.shareCardTop}>
-                  <Text style={s.shareCardBrand}>CornerDay</Text>
+                  <Text style={[s.shareCardBrand, { color: cc.brand }]}>CornerDay</Text>
                   {shareCardBadge && (
                     <Text style={s.shareCardBadgeEmoji}>
                       {shareCardLocked ? '🔒' : shareCardBadge.emoji}
@@ -1926,52 +1962,52 @@ export default function HomeScreen() {
                 {shareCardLocked ? (
                   <View style={s.shareCardCenter}>
                     <Text style={s.shareCardAchievementEmoji}>🔒</Text>
-                    <Text style={s.shareCardAchievementLabel}>{shareCardBadge?.label?.toUpperCase()}</Text>
+                    <Text style={[s.shareCardAchievementLabel, { color: cc.bigText }]}>{shareCardBadge?.label?.toUpperCase()}</Text>
                     {shareCardProgress > 0 && (
-                      <Text style={s.shareCardSub}>{Math.round(shareCardProgress * 100)}% of the way there</Text>
+                      <Text style={[s.shareCardSub, { color: cc.sub }]}>{Math.round(shareCardProgress * 100)}% of the way there</Text>
                     )}
                   </View>
                 ) : shareCardHideTime ? (
                   <View style={s.shareCardCenter}>
                     <Text style={s.shareCardAchievementEmoji}>{shareCardBadge?.emoji ?? '🏆'}</Text>
-                    <Text style={s.shareCardAchievementLabel}>{shareCardBadge?.label?.toUpperCase()}</Text>
-                    <Text style={s.shareCardSub}>milestone earned</Text>
+                    <Text style={[s.shareCardAchievementLabel, { color: cc.bigText }]}>{shareCardBadge?.label?.toUpperCase()}</Text>
+                    <Text style={[s.shareCardSub, { color: cc.sub }]}>milestone earned</Text>
                   </View>
                 ) : (
                   <View style={s.shareCardCenter}>
-                    <Text style={s.shareCardNum}>{streakDays >= 1 ? streakDays : streakValue}</Text>
-                    <Text style={s.shareCardUnit}>
+                    <Text style={[s.shareCardNum, { color: cc.bigText }]}>{streakDays >= 1 ? streakDays : streakValue}</Text>
+                    <Text style={[s.shareCardUnit, { color: cc.unit }]}>
                       {streakDays >= 1 ? (streakDays === 1 ? 'DAY' : 'DAYS') : streakUnit.toUpperCase()}
                     </Text>
-                    <Text style={s.shareCardSub}>free from gambling</Text>
+                    <Text style={[s.shareCardSub, { color: cc.sub }]}>free from gambling</Text>
                     {shareCardBadge && (
-                      <View style={s.shareCardPill}>
-                        <Text style={s.shareCardPillTxt}>{shareCardBadge.emoji} {shareCardBadge.label} milestone</Text>
+                      <View style={[s.shareCardPill, { backgroundColor: cc.pillBg }]}>
+                        <Text style={[s.shareCardPillTxt, { color: cc.pillTxt }]}>{shareCardBadge.emoji} {shareCardBadge.label} milestone</Text>
                       </View>
                     )}
                   </View>
                 )}
 
                 {shareCardLocked && shareCardProgress > 0 && (
-                  <View style={s.shareCardProgressTrack}>
-                    <View style={[s.shareCardProgressFill, { width: `${Math.round(shareCardProgress * 100)}%` as any }]} />
+                  <View style={[s.shareCardProgressTrack, { backgroundColor: cc.progressTrack }]}>
+                    <View style={[s.shareCardProgressFill, { width: `${Math.round(shareCardProgress * 100)}%` as any, backgroundColor: cc.progressFill }]} />
                   </View>
                 )}
 
-                <View style={s.shareCardDivider} />
+                <View style={[s.shareCardDivider, { backgroundColor: cc.divider }]} />
 
                 {!shareCardLocked && !shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
-                  <Text style={s.shareCardStat}>
+                  <Text style={[s.shareCardStat, { color: cc.stat }]}>
                     💰 {fmt(weeklyToDaily(data.weeklyBet) * streakDays, data.currency)} not spent
                   </Text>
                 )}
 
                 {shareCardDetails.length > 0 && (
-                  <View style={s.shareCardDetailBox}>
+                  <View style={[s.shareCardDetailBox, { backgroundColor: cc.detailBg }]}>
                     {shareCardDetails.map((d, i) => (
-                      <View key={i} style={[s.shareCardDetailRow, i === shareCardDetails.length - 1 && { borderBottomWidth: 0 }]}>
-                        <Text style={s.shareCardDetailLabel}>{d.label}</Text>
-                        <Text style={[s.shareCardDetailValue, d.highlight && { color: '#a8d8d0' }]}>{d.value}</Text>
+                      <View key={i} style={[s.shareCardDetailRow, { borderBottomColor: cc.detailBorder }, i === shareCardDetails.length - 1 && { borderBottomWidth: 0 }]}>
+                        <Text style={[s.shareCardDetailLabel, { color: cc.detailLabel }]}>{d.label}</Text>
+                        <Text style={[s.shareCardDetailValue, { color: cc.detailValue }, d.highlight && { color: cc.detailHighlight }]}>{d.value}</Text>
                       </View>
                     ))}
                   </View>
@@ -1979,11 +2015,11 @@ export default function HomeScreen() {
 
                 <View style={s.shareCardBottom}>
                   {shareCardLocked ? (
-                    <Text style={s.shareCardTagline}>{shareCardMessage}</Text>
+                    <Text style={[s.shareCardTagline, { color: cc.tagline }]}>{shareCardMessage}</Text>
                   ) : (
                     <>
-                      <Text style={s.shareCardTagline}>"{shareTagline}"</Text>
-                      <Text style={s.shareCardHashtag}>#CornerDay</Text>
+                      <Text style={[s.shareCardTagline, { color: cc.tagline }]}>"{shareTagline}"</Text>
+                      <Text style={[s.shareCardHashtag, { color: cc.hashtag }]}>#CornerDay</Text>
                     </>
                   )}
                 </View>
