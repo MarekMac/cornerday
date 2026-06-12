@@ -688,6 +688,9 @@ export default function HomeScreen() {
   const [shareTagline, setShareTagline] = useState('');
   const [shareCardHideTime, setShareCardHideTime] = useState(false);
   const [shareCardDetails, setShareCardDetails] = useState<Array<{ label: string; value: string; highlight?: boolean }>>([]);
+  const [shareCardLocked, setShareCardLocked] = useState(false);
+  const [shareCardProgress, setShareCardProgress] = useState(0);
+  const [shareCardMessage, setShareCardMessage] = useState('');
   const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
@@ -1021,11 +1024,21 @@ export default function HomeScreen() {
   const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
   const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
 
-  const openShareCard = (badge: { emoji: string; label: string } | null, hideTime = false, details: Array<{ label: string; value: string; highlight?: boolean }> = []) => {
+  const openShareCard = (
+    badge: { emoji: string; label: string } | null,
+    hideTime = false,
+    details: Array<{ label: string; value: string; highlight?: boolean }> = [],
+    locked = false,
+    progress = 0,
+    message = '',
+  ) => {
     setShareCardBadge(badge);
     setShareCardHideTime(hideTime);
     setShareCardDetails(details);
-    setShareTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
+    setShareCardLocked(locked);
+    setShareCardProgress(progress);
+    setShareCardMessage(message);
+    if (!locked) setShareTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
     setShowShareCard(true);
   };
 
@@ -1297,7 +1310,18 @@ export default function HomeScreen() {
                       }
                     }
                     openShareCard({ emoji: badge.emoji, label: badge.label }, badge.days === 0, det);
-                  } else { setSelectedBadge(badge); setBadgeMsgIndex(Math.floor(Math.random() * 20)); }
+                  } else {
+                    const sf = streakMs / 86400000;
+                    const dLeft = badge.days - sf;
+                    const estDate = data.quitDate ? new Date(parseQuitDate(data.quitDate).getTime() + badge.days * 86400000) : null;
+                    const dr = weeklyToDaily(data.weeklyBet);
+                    const det: Array<{ label: string; value: string; highlight?: boolean }> = [
+                      { label: 'Time remaining', value: formatTimeLeft(dLeft) },
+                      ...(estDate ? [{ label: 'Est. date', value: estDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) }] : []),
+                      ...(dr > 0 ? [{ label: "You'll have saved", value: fmt(badge.days * dr, data.currency), highlight: true }] : []),
+                    ];
+                    openShareCard({ emoji: badge.emoji, label: badge.label }, true, det, true, badge.days > 0 ? Math.min(1, sf / badge.days) : 0, BADGE_PENDING_MSGS[Math.floor(Math.random() * BADGE_PENDING_MSGS.length)]);
+                  }
                 }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={progress} />
@@ -1313,7 +1337,7 @@ export default function HomeScreen() {
               const progress = debt.earned ? 1 : debt.totalAmount > 0 ? Math.min(1, debt.paidAmount / debt.totalAmount) : 0;
               return (
                 <Pressable key={debt.id} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (debt.earned) { openShareCard({ emoji: '🏦', label: `${debt.name} paid` }, true, [{ label: 'Total paid off', value: fmt(debt.totalAmount, data.currency), highlight: true }]); } else { setSelectedDebtId(debt.id); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                  onPress={() => { if (debt.earned) { openShareCard({ emoji: '🏦', label: `${debt.name} paid` }, true, [{ label: 'Total paid off', value: fmt(debt.totalAmount, data.currency), highlight: true }]); } else { const owed = Math.max(0, debt.totalAmount - debt.paidAmount); openShareCard({ emoji: '🏦', label: `${debt.name} paid` }, true, [{ label: 'Total', value: fmt(debt.totalAmount, data.currency) }, { label: 'Paid back', value: fmt(debt.paidAmount, data.currency), highlight: true }, ...(owed > 0 ? [{ label: 'Still owed', value: fmt(owed, data.currency) }] : [])], true, debt.totalAmount > 0 ? Math.min(1, debt.paidAmount / debt.totalAmount) : 0, "Keep making payments and this badge will be yours."); } }}>
                   <View style={[s.badgeCircle, debt.earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={progress} />
                     <Text style={s.badgeEmoji}>{debt.earned ? '🏦' : '🔒'}</Text>
@@ -1326,7 +1350,7 @@ export default function HomeScreen() {
               const earned = data.checklistCompleted;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (earned) { openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Achievement', value: 'All prevention steps completed' }]); } else { setChecklistBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                  onPress={() => { if (earned) { openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Achievement', value: 'All prevention steps completed' }]); } else { const done = Math.round(data.checklistProgress * CHECKLIST_TOTAL); openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Steps completed', value: `${done} of ${CHECKLIST_TOTAL}` }], true, data.checklistProgress, "Complete every step of the prevention checklist in Support."); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : data.checklistProgress} />
                     <Text style={s.badgeEmoji}>{earned ? '🛡️' : '🔒'}</Text>
@@ -1339,7 +1363,7 @@ export default function HomeScreen() {
               const earned = data.earnedBadges.includes('goal_set');
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (earned) { openShareCard({ emoji: '📍', label: 'Goal Setter' }, true, [{ label: 'Saving towards', value: data.savingsGoalFor || 'My goal' }, { label: 'Goal amount', value: fmt(data.savingsGoal ?? 0, data.currency) }]); } else { setGoalSetBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                  onPress={() => { if (earned) { openShareCard({ emoji: '📍', label: 'Goal Setter' }, true, [{ label: 'Saving towards', value: data.savingsGoalFor || 'My goal' }, { label: 'Goal amount', value: fmt(data.savingsGoal ?? 0, data.currency) }]); } else { openShareCard({ emoji: '📍', label: 'Goal Setter' }, true, [], true, 0, "Set a savings goal in the Tracker tab to earn this badge."); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : 0} />
                     <Text style={s.badgeEmoji}>{earned ? '📍' : '🔒'}</Text>
@@ -1354,7 +1378,7 @@ export default function HomeScreen() {
                 ? Math.min(1, data.totalPaid / data.savingsGoal) : 0;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (earned) { openShareCard({ emoji: '🎊', label: 'Goal Met' }, true, [{ label: 'Goal', value: data.savingsGoalFor || 'My goal' }, { label: 'Amount saved', value: fmt(data.totalPaid, data.currency), highlight: true }]); } else { setGoalReachedBadgeVisible(true); setBadgeMsgIndex(Math.floor(Math.random() * 20)); } }}>
+                  onPress={() => { if (earned) { openShareCard({ emoji: '🎊', label: 'Goal Met' }, true, [{ label: 'Goal', value: data.savingsGoalFor || 'My goal' }, { label: 'Amount saved', value: fmt(data.totalPaid, data.currency), highlight: true }]); } else { const prog = data.savingsGoal && data.savingsGoal > 0 ? Math.min(1, data.totalPaid / data.savingsGoal) : 0; const det = data.savingsGoal ? [{ label: 'Goal', value: fmt(data.savingsGoal, data.currency) }, { label: 'Saved so far', value: fmt(data.totalPaid, data.currency), highlight: true as const }, { label: 'Remaining', value: fmt(Math.max(0, data.savingsGoal - data.totalPaid), data.currency) }] : [{ label: 'Next step', value: 'Set a savings goal in Tracker' }]; openShareCard({ emoji: '🎊', label: 'Goal Met' }, true, det, true, prog, "Every saving logged brings you closer to this milestone."); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : progress} />
                     <Text style={s.badgeEmoji}>{earned ? '🎊' : '🔒'}</Text>
@@ -1877,98 +1901,128 @@ export default function HomeScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-      {/* ── Share card modal ── */}
+      {/* ── Share / badge card modal ── */}
       <Modal visible={showShareCard} transparent animationType="fade" onRequestClose={() => setShowShareCard(false)}>
-        <View style={s.shareOverlay}>
-          <View ref={shareCardRef} collapsable={false} style={s.shareCardWrap}>
-            <LinearGradient
-              colors={['#062e2e', '#0F6E6E', '#1a9a9a']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={s.shareCard}
-            >
-              <View style={s.shareCardTop}>
-                <Text style={s.shareCardBrand}>CornerDay</Text>
-                {shareCardBadge && <Text style={s.shareCardBadgeEmoji}>{shareCardBadge.emoji}</Text>}
-              </View>
-
-              {shareCardHideTime ? (
-                <View style={s.shareCardCenter}>
-                  <Text style={s.shareCardAchievementEmoji}>{shareCardBadge?.emoji ?? '🏆'}</Text>
-                  <Text style={s.shareCardAchievementLabel}>{shareCardBadge?.label?.toUpperCase()}</Text>
-                  <Text style={s.shareCardSub}>milestone earned</Text>
-                </View>
-              ) : (
-                <View style={s.shareCardCenter}>
-                  <Text style={s.shareCardNum}>{streakDays >= 1 ? streakDays : streakValue}</Text>
-                  <Text style={s.shareCardUnit}>
-                    {streakDays >= 1 ? (streakDays === 1 ? 'DAY' : 'DAYS') : streakUnit.toUpperCase()}
-                  </Text>
-                  <Text style={s.shareCardSub}>free from gambling</Text>
+        <Pressable style={s.shareOverlay} onPress={() => setShowShareCard(false)}>
+          <Pressable onPress={() => {}} style={{ alignItems: 'center' }}>
+            <View ref={shareCardRef} collapsable={false} style={s.shareCardWrap}>
+              <LinearGradient
+                colors={['#062e2e', '#0F6E6E', '#1a9a9a']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={s.shareCard}
+              >
+                <View style={s.shareCardTop}>
+                  <Text style={s.shareCardBrand}>CornerDay</Text>
                   {shareCardBadge && (
-                    <View style={s.shareCardPill}>
-                      <Text style={s.shareCardPillTxt}>{shareCardBadge.emoji} {shareCardBadge.label} milestone</Text>
-                    </View>
+                    <Text style={s.shareCardBadgeEmoji}>
+                      {shareCardLocked ? '🔒' : shareCardBadge.emoji}
+                    </Text>
                   )}
                 </View>
-              )}
 
-              <View style={s.shareCardDivider} />
+                {shareCardLocked ? (
+                  <View style={s.shareCardCenter}>
+                    <Text style={s.shareCardAchievementEmoji}>🔒</Text>
+                    <Text style={s.shareCardAchievementLabel}>{shareCardBadge?.label?.toUpperCase()}</Text>
+                    {shareCardProgress > 0 && (
+                      <Text style={s.shareCardSub}>{Math.round(shareCardProgress * 100)}% of the way there</Text>
+                    )}
+                  </View>
+                ) : shareCardHideTime ? (
+                  <View style={s.shareCardCenter}>
+                    <Text style={s.shareCardAchievementEmoji}>{shareCardBadge?.emoji ?? '🏆'}</Text>
+                    <Text style={s.shareCardAchievementLabel}>{shareCardBadge?.label?.toUpperCase()}</Text>
+                    <Text style={s.shareCardSub}>milestone earned</Text>
+                  </View>
+                ) : (
+                  <View style={s.shareCardCenter}>
+                    <Text style={s.shareCardNum}>{streakDays >= 1 ? streakDays : streakValue}</Text>
+                    <Text style={s.shareCardUnit}>
+                      {streakDays >= 1 ? (streakDays === 1 ? 'DAY' : 'DAYS') : streakUnit.toUpperCase()}
+                    </Text>
+                    <Text style={s.shareCardSub}>free from gambling</Text>
+                    {shareCardBadge && (
+                      <View style={s.shareCardPill}>
+                        <Text style={s.shareCardPillTxt}>{shareCardBadge.emoji} {shareCardBadge.label} milestone</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
 
-{!shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
-                <Text style={s.shareCardStat}>
-                  💰 {fmt(weeklyToDaily(data.weeklyBet) * streakDays, data.currency)} not spent
-                </Text>
-              )}
+                {shareCardLocked && shareCardProgress > 0 && (
+                  <View style={s.shareCardProgressTrack}>
+                    <View style={[s.shareCardProgressFill, { width: `${Math.round(shareCardProgress * 100)}%` as any }]} />
+                  </View>
+                )}
 
-              {shareCardDetails.length > 0 && (
-                <View style={s.shareCardDetailBox}>
-                  {shareCardDetails.map((d, i) => (
-                    <View key={i} style={[s.shareCardDetailRow, i === shareCardDetails.length - 1 && { borderBottomWidth: 0 }]}>
-                      <Text style={s.shareCardDetailLabel}>{d.label}</Text>
-                      <Text style={[s.shareCardDetailValue, d.highlight && { color: '#a8d8d0' }]}>{d.value}</Text>
-                    </View>
-                  ))}
+                <View style={s.shareCardDivider} />
+
+                {!shareCardLocked && !shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
+                  <Text style={s.shareCardStat}>
+                    💰 {fmt(weeklyToDaily(data.weeklyBet) * streakDays, data.currency)} not spent
+                  </Text>
+                )}
+
+                {shareCardDetails.length > 0 && (
+                  <View style={s.shareCardDetailBox}>
+                    {shareCardDetails.map((d, i) => (
+                      <View key={i} style={[s.shareCardDetailRow, i === shareCardDetails.length - 1 && { borderBottomWidth: 0 }]}>
+                        <Text style={s.shareCardDetailLabel}>{d.label}</Text>
+                        <Text style={[s.shareCardDetailValue, d.highlight && { color: '#a8d8d0' }]}>{d.value}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                <View style={s.shareCardBottom}>
+                  {shareCardLocked ? (
+                    <Text style={s.shareCardTagline}>{shareCardMessage}</Text>
+                  ) : (
+                    <>
+                      <Text style={s.shareCardTagline}>"{shareTagline}"</Text>
+                      <Text style={s.shareCardHashtag}>#CornerDay</Text>
+                    </>
+                  )}
                 </View>
+              </LinearGradient>
+            </View>
+
+            <View style={s.shareCardActions}>
+              {!shareCardLocked && (
+                <>
+                  <Pressable
+                    style={({ pressed }) => [s.shareCardShareBtn, pressed && { opacity: 0.85 }]}
+                    onPress={captureAndShare}
+                    disabled={capturingShare}
+                  >
+                    <Ionicons name="share-outline" size={20} color="#fff" />
+                    <Text style={s.shareCardShareTxt}>{capturingShare ? 'Preparing…' : 'Share'}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [s.shareCardCommunityBtn, pressed && { opacity: 0.85 }]}
+                    onPress={() => {
+                      setShowShareCard(false);
+                      const label = streakDays >= 1 ? `${streakDays} day${streakDays !== 1 ? 's' : ''}` : `${streakValue} ${streakUnit}`;
+                      const content = shareCardBadge
+                        ? `Just hit my ${shareCardBadge.label} milestone! ${shareCardBadge.emoji} ${label} free from gambling and counting. 💪`
+                        : `${label} free from gambling! 💪 ${shareTagline}`;
+                      router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: content, initialTag: shareCardBadge ? '#Milestone' : '#WinToday' } } as any);
+                    }}
+                  >
+                    <Ionicons name="people-outline" size={20} color="#0F6E6E" />
+                    <Text style={s.shareCardCommunityTxt}>Post to Community</Text>
+                  </Pressable>
+                </>
               )}
-
-              <View style={s.shareCardBottom}>
-                <Text style={s.shareCardTagline}>"{shareTagline}"</Text>
-                <Text style={s.shareCardHashtag}>#CornerDay</Text>
-              </View>
-            </LinearGradient>
-          </View>
-
-          <View style={s.shareCardActions}>
-            <Pressable
-              style={({ pressed }) => [s.shareCardShareBtn, pressed && { opacity: 0.85 }]}
-              onPress={captureAndShare}
-              disabled={capturingShare}
-            >
-              <Ionicons name="share-outline" size={20} color="#fff" />
-              <Text style={s.shareCardShareTxt}>{capturingShare ? 'Preparing…' : 'Share'}</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [s.shareCardCommunityBtn, pressed && { opacity: 0.85 }]}
-              onPress={() => {
-                setShowShareCard(false);
-                const label = streakDays >= 1 ? `${streakDays} day${streakDays !== 1 ? 's' : ''}` : `${streakValue} ${streakUnit}`;
-                const content = shareCardBadge
-                  ? `Just hit my ${shareCardBadge.label} milestone! ${shareCardBadge.emoji} ${label} free from gambling and counting. 💪`
-                  : `${label} free from gambling! 💪 ${shareTagline}`;
-                router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: content, initialTag: shareCardBadge ? '#Milestone' : '#WinToday' } } as any);
-              }}
-            >
-              <Ionicons name="people-outline" size={20} color="#0F6E6E" />
-              <Text style={s.shareCardCommunityTxt}>Post to Community</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [s.shareCardCloseBtn, pressed && { opacity: 0.7 }]}
-              onPress={() => setShowShareCard(false)}
-            >
-              <Text style={s.shareCardCloseTxt}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
+              <Pressable
+                style={({ pressed }) => [s.shareCardCloseBtn, pressed && { opacity: 0.7 }]}
+                onPress={() => setShowShareCard(false)}
+              >
+                <Text style={s.shareCardCloseTxt}>Close</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
     </KeyboardAvoidingView>
@@ -2293,6 +2347,13 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardCommunityTxt: { color: '#0F6E6E', fontWeight: '700', fontSize: 16 },
   shareCardCloseBtn: { alignItems: 'center', paddingVertical: 10 },
   shareCardCloseTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
+  shareCardProgressTrack: {
+    height: 6, backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 3, overflow: 'hidden', marginTop: 16,
+  },
+  shareCardProgressFill: {
+    height: '100%', backgroundColor: '#a8d8d0', borderRadius: 3,
+  },
   shareCardDetailBox: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 16, marginTop: 4, marginBottom: 20, paddingVertical: 4,
