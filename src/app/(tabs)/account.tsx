@@ -263,7 +263,7 @@ export default function AccountScreen() {
     const [{ data }, { data: streakData }, { data: savingsRows }] = await Promise.all([
       supabase
         .from('users')
-        .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
+        .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
         .eq('id', user.id)
         .single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
@@ -318,6 +318,7 @@ export default function AccountScreen() {
       notif_daily_checkin: data?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
       notif_weekly_summary: data?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
       notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+      notif_urge_prediction: data?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
     });
     setGlobalAvatarUrl(resolvedAvatar);
   }, []);
@@ -2026,6 +2027,30 @@ export default function AccountScreen() {
                 )}
               </View>
             ))}
+            {/* Urge prediction — premium only */}
+            <View style={s.notifRow}>
+              <View style={s.notifText}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={s.notifLabel}>Urge prediction</Text>
+                  <View style={{ backgroundColor: '#0F6E6E', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  </View>
+                </View>
+                <Text style={s.notifDesc}>Daily heads-up before your riskiest window based on your urge patterns</Text>
+              </View>
+              {isPremiumFromRC ? (
+                <Switch
+                  value={notifPrefs.notif_urge_prediction}
+                  onValueChange={v => handleNotifToggle('notif_urge_prediction', v)}
+                  trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+                  thumbColor={notifPrefs.notif_urge_prediction ? '#0F6E6E' : '#bbb'}
+                />
+              ) : (
+                <Pressable onPress={() => { setNotifModalVisible(false); showPaywall(); }} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 12, color: '#0F6E6E', fontWeight: '600' }}>Upgrade</Text>
+                </Pressable>
+              )}
+            </View>
             <Pressable style={[s.confirmSave, { marginTop: 20, flex: 0 }]} onPress={() => setNotifModalVisible(false)}>
               <Text style={s.confirmSaveTxt}>Done</Text>
             </Pressable>

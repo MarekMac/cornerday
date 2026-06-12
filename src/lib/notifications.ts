@@ -1,5 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { URGE_PREDICTION_SCHEDULE_KEY } from '../constants/storage-keys';
 
 export interface NotifPrefs {
   notif_milestone: boolean;
@@ -7,6 +9,7 @@ export interface NotifPrefs {
   notif_daily_checkin: boolean;
   notif_weekly_summary: boolean;
   notif_milestone_approaching: boolean;
+  notif_urge_prediction: boolean;
 }
 
 export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
@@ -15,6 +18,7 @@ export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
   notif_daily_checkin: false,
   notif_weekly_summary: false,
   notif_milestone_approaching: false,
+  notif_urge_prediction: false,
 };
 
 const SCHEDULED_MILESTONES = [
@@ -183,4 +187,63 @@ export async function scheduleAllNotifications(
       }) as any,
     });
   }
+
+  // 6. Urge prediction — restore saved schedule (computed from urge journal patterns)
+  if (prefs.notif_urge_prediction) {
+    const saved = await AsyncStorage.getItem(URGE_PREDICTION_SCHEDULE_KEY);
+    if (saved) {
+      const { hour, minute } = JSON.parse(saved) as { hour: number; minute: number };
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `🛡️ Your high-risk window is coming up`,
+          body: `This is usually when urges hit hardest. Have your plan ready.`,
+          data: { screen: '/(tabs)/urge' },
+        },
+        trigger: androidTrigger({
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour,
+          minute,
+        }) as any,
+      });
+    }
+  }
+}
+
+export async function scheduleUrgePredictionNotification(
+  entries: { created_at: string }[],
+  prefs: NotifPrefs,
+  isPremium: boolean,
+): Promise<void> {
+  if (!isPremium || !prefs.notif_urge_prediction || entries.length < 3) {
+    await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY);
+    return;
+  }
+
+  const hourCounts: Record<number, number> = {};
+  for (const e of entries) {
+    const h = new Date(e.created_at).getHours();
+    hourCounts[h] = (hourCounts[h] ?? 0) + 1;
+  }
+  const [peakHourStr] = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
+  const peakHour = parseInt(peakHourStr, 10);
+
+  // 30 minutes before peak, wrapping past midnight
+  const totalMinutes = ((peakHour * 60 - 30) + 1440) % 1440;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+
+  await AsyncStorage.setItem(URGE_PREDICTION_SCHEDULE_KEY, JSON.stringify({ hour, minute }));
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: `🛡️ Your high-risk window is coming up`,
+      body: `This is usually when urges hit hardest. Have your plan ready.`,
+      data: { screen: '/(tabs)/urge' },
+    },
+    trigger: androidTrigger({
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour,
+      minute,
+    }) as any,
+  });
 }

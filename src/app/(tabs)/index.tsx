@@ -26,7 +26,7 @@ import Svg, { Circle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
-import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
+import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNotification } from '@/lib/notifications';
 import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -763,8 +763,8 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes] = await Promise.all([
-      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone').eq('id', user.id).single(),
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes] = await Promise.all([
+      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).single(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
@@ -772,6 +772,7 @@ export default function HomeScreen() {
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
+      supabase.from('urge_journal').select('created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(90),
     ]);
 
     const profile = profileRes.data;
@@ -928,6 +929,20 @@ export default function HomeScreen() {
           trigger: null,
         });
       }
+    }
+
+    const notifPrefs = {
+      ...DEFAULT_NOTIF_PREFS,
+      notif_milestone: profile?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+      notif_urge_prediction: profile?.notif_urge_prediction ?? false,
+    };
+    const { status: notifStatus } = await Notifications.getPermissionsAsync();
+    if (notifStatus === 'granted') {
+      await scheduleUrgePredictionNotification(
+        urgeRes.data ?? [],
+        notifPrefs,
+        profile?.is_premium ?? false,
+      );
     }
 
     setData({
