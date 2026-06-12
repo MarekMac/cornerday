@@ -23,7 +23,7 @@ import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
 const PAGE_SIZE = 15;
-const ALL_TAGS = ['All', 'Mine', 'Saved', ...COMMUNITY_TAGS] as const;
+const ALL_TAGS = ['All', 'Following', 'Mine', 'Saved', ...COMMUNITY_TAGS] as const;
 type FilterTag = typeof ALL_TAGS[number];
 type SortBy = 'new' | 'popular';
 
@@ -90,6 +90,8 @@ export default function CommunityFeed() {
   const [userBookmarks, setUserBookmarks] = useState<Record<string, boolean>>({});
   const [guidelinesVisible, setGuidelinesVisible] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
+  const [followedUsers, setFollowedUsers] = useState<Record<string, boolean>>({});
+  const [profileUser, setProfileUser] = useState<{ userId: string; displayName: string; streak: number } | null>(null);
 
   const currentUserIdRef = useRef<string | null>(null);
   const postsRef = useRef<Post[]>([]);
@@ -104,16 +106,19 @@ export default function CommunityFeed() {
       setDisplayName(data?.display_name ?? '');
       if (data) setBanInfo({ is_banned: data.is_banned ?? false, ban_reason: data.ban_reason, ban_expires_at: data.ban_expires_at, ban_appeal_note: data.ban_appeal_note });
 
-      const { data: bookmarkRows } = await supabase
-        .from('community_bookmarks')
-        .select('post_id')
-        .eq('user_id', user.id);
-      if (bookmarkRows) {
+      const [bookmarkRes, followRes] = await Promise.all([
+        supabase.from('community_bookmarks').select('post_id').eq('user_id', user.id),
+        supabase.from('community_follows').select('following_id').eq('follower_id', user.id),
+      ]);
+      if (bookmarkRes.data) {
         const bm: Record<string, boolean> = {};
-        for (const row of bookmarkRows as { post_id: string }[]) {
-          bm[row.post_id] = true;
-        }
+        for (const row of bookmarkRes.data as { post_id: string }[]) bm[row.post_id] = true;
         setUserBookmarks(bm);
+      }
+      if (followRes.data) {
+        const fm: Record<string, boolean> = {};
+        for (const row of followRes.data as { following_id: string }[]) fm[row.following_id] = true;
+        setFollowedUsers(fm);
       }
     });
 
@@ -157,6 +162,27 @@ export default function CommunityFeed() {
   const load = useCallback(async (tag: FilterTag, sort: SortBy = 'new', isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
+      if (tag === 'Following') {
+        const uid = currentUserIdRef.current;
+        if (!uid) { setPosts([]); setHasMore(false); return; }
+        const { data: followRows } = await supabase
+          .from('community_follows').select('following_id').eq('follower_id', uid);
+        const ids = (followRows ?? []).map((r: { following_id: string }) => r.following_id);
+        if (ids.length === 0) { postsRef.current = []; setPosts([]); setHasMore(false); return; }
+        let q: any = supabase.from('community_posts').select(POST_SELECT).in('user_id', ids);
+        if (sort === 'popular') q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+        else q = q.order('created_at', { ascending: false });
+        q = q.range(0, PAGE_SIZE - 1);
+        const { data, error } = await q;
+        if (error) console.warn('[community] following load error:', error.message);
+        const items = (data as Post[]) ?? [];
+        postsRef.current = items;
+        setPosts(items);
+        setHasMore(items.length === PAGE_SIZE);
+        fetchReactions(items.map(p => p.id), true);
+        return;
+      }
+
       if (tag === 'Saved') {
         const uid = currentUserIdRef.current;
         if (!uid) {
@@ -218,7 +244,7 @@ export default function CommunityFeed() {
 
   const loadMore = async () => {
     if (loadingMore || !hasMore || activeFetch.current) return;
-    if (activeTag === 'Saved') return;
+    if (activeTag === 'Saved' || activeTag === 'Following') return;
     activeFetch.current = true;
     setLoadingMore(true);
     try {
@@ -307,6 +333,32 @@ export default function CommunityFeed() {
     }
   };
 
+  const toggleFollow = async (userId: string) => {
+    const uid = currentUserIdRef.current;
+    if (!uid || uid === userId) return;
+    const isFollowing = followedUsers[userId] ?? false;
+    setFollowedUsers(prev => ({ ...prev, [userId]: !isFollowing }));
+    if (isFollowing) {
+      await supabase.from('community_follows').delete().eq('follower_id', uid).eq('following_id', userId);
+      if (activeTag === 'Following') {
+        setPosts(prev => prev.filter(p => p.user_id !== userId));
+        postsRef.current = postsRef.current.filter(p => p.user_id !== userId);
+      }
+    } else {
+      await supabase.from('community_follows').insert({ follower_id: uid, following_id: userId });
+    }
+  };
+
+  const handleAuthorPress = (item: Post) => {
+    if (item.is_anonymous) return;
+    if (item.user_id === currentUserIdRef.current) return;
+    setProfileUser({
+      userId: item.user_id,
+      displayName: item.users?.display_name ?? 'User',
+      streak: item.users?.streaks?.[0]?.current_streak ?? 0,
+    });
+  };
+
   const renderPost = ({ item }: { item: Post }) => {
     const isAnon = item.is_anonymous ?? false;
     const color = isAnon ? '#aaa' : avatarColor(item.user_id);
@@ -323,20 +375,29 @@ export default function CommunityFeed() {
         onPress={() => router.push(`/(tabs)/community/${item.id}` as any)}
       >
         <View style={s.cardHeader}>
-          <View style={[s.avatar, { backgroundColor: color }]}>
-            <Text style={s.avatarTxt}>{name[0].toUpperCase()}</Text>
-          </View>
-          <View style={s.cardMeta}>
-            <View style={s.authorRow}>
-              <Text style={s.authorName}>{name}</Text>
-              {badge ? (
-                <View style={s.streakPill}>
-                  <Text style={s.streakPillTxt}>{badge}</Text>
-                </View>
-              ) : null}
+          <Pressable
+            onPress={(e) => { e.stopPropagation(); handleAuthorPress(item); }}
+            disabled={isAnon || item.user_id === currentUserIdRef.current}
+            style={s.authorTapArea}
+          >
+            <View style={[s.avatar, { backgroundColor: color }]}>
+              <Text style={s.avatarTxt}>{name[0].toUpperCase()}</Text>
             </View>
-            <Text style={s.timeStr}>{timeAgo(item.created_at)}</Text>
-          </View>
+            <View style={s.cardMeta}>
+              <View style={s.authorRow}>
+                <Text style={s.authorName}>{name}</Text>
+                {!isAnon && followedUsers[item.user_id] && (
+                  <Text style={s.followingTag}>following</Text>
+                )}
+                {badge ? (
+                  <View style={s.streakPill}>
+                    <Text style={s.streakPillTxt}>{badge}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={s.timeStr}>{timeAgo(item.created_at)}</Text>
+            </View>
+          </Pressable>
           {item.tag ? (
             <View style={[s.tagPill, { backgroundColor: (TAG_COLORS[item.tag] ?? '#0F6E6E') + '20' }]}>
               <Text style={[s.tagTxt, { color: TAG_COLORS[item.tag] ?? '#0F6E6E' }]}>{item.tag}</Text>
@@ -498,15 +559,22 @@ export default function CommunityFeed() {
             ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color={c.primary} /> : null}
             ListEmptyComponent={
               <View style={s.empty}>
-                <Text style={s.emptyEmoji}>{activeTag === 'Saved' ? '🔖' : '🌱'}</Text>
+                <Text style={s.emptyEmoji}>{activeTag === 'Saved' ? '🔖' : activeTag === 'Following' ? '👥' : '🌱'}</Text>
                 <Text style={s.emptyTitle}>
-                  {activeTag === 'Mine' ? 'No stories yet' : activeTag === 'Saved' ? 'No saved posts' : 'Be the first to share'}
+                  {activeTag === 'Mine' ? 'No stories yet'
+                    : activeTag === 'Saved' ? 'No saved posts'
+                    : activeTag === 'Following' ? (Object.keys(followedUsers).length === 0 ? 'Not following anyone yet' : 'No posts yet')
+                    : 'Be the first to share'}
                 </Text>
                 <Text style={s.emptySubtitle}>
                   {activeTag === 'Mine'
                     ? 'Your shared stories will appear here.'
                     : activeTag === 'Saved'
                     ? 'Tap the bookmark icon on any post to save it here.'
+                    : activeTag === 'Following'
+                    ? (Object.keys(followedUsers).length === 0
+                        ? 'Tap any author\'s name or avatar to follow them — their posts will appear here.'
+                        : 'People you follow haven\'t posted recently.')
                     : 'This community is just getting started.\nShare your story and inspire someone today.'}
                 </Text>
               </View>
@@ -523,6 +591,42 @@ export default function CommunityFeed() {
           </LinearGradient>
         </Pressable>
       </View>
+
+      {/* Author profile sheet */}
+      <Modal visible={!!profileUser} transparent animationType="fade" onRequestClose={() => setProfileUser(null)}>
+        <Pressable style={s.profileOverlay} onPress={() => setProfileUser(null)}>
+          <Pressable onPress={() => {}} style={s.profileSheet}>
+            {profileUser && (
+              <>
+                <View style={[s.profileAvatar, { backgroundColor: avatarColor(profileUser.userId) }]}>
+                  <Text style={s.profileAvatarTxt}>{profileUser.displayName[0].toUpperCase()}</Text>
+                </View>
+                <Text style={s.profileName}>{profileUser.displayName}</Text>
+                {streakBadge(profileUser.streak) && (
+                  <View style={s.profileStreakPill}>
+                    <Text style={s.profileStreakTxt}>{streakBadge(profileUser.streak)}</Text>
+                  </View>
+                )}
+                <Pressable
+                  style={({ pressed }) => [
+                    s.followBtn,
+                    followedUsers[profileUser.userId] && s.followBtnActive,
+                    pressed && { opacity: 0.75 },
+                  ]}
+                  onPress={() => toggleFollow(profileUser.userId)}
+                >
+                  <Text style={[s.followBtnTxt, followedUsers[profileUser.userId] && s.followBtnTxtActive]}>
+                    {followedUsers[profileUser.userId] ? '✓ Following' : 'Follow'}
+                  </Text>
+                </Pressable>
+                <Pressable style={({ pressed }) => [s.profileClose, pressed && { opacity: 0.6 }]} onPress={() => setProfileUser(null)}>
+                  <Text style={s.profileCloseTxt}>Close</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Community guidelines — shown once on first visit */}
       <Modal
@@ -643,12 +747,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
 
   card: { backgroundColor: c.bgCard, borderRadius: 16, padding: 16, gap: 8 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   avatarTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   cardMeta: { flex: 1 },
+  authorTapArea: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   authorName: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
+  followingTag: { fontSize: 10, color: c.primary, fontWeight: '700', backgroundColor: c.bgTeal, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   streakPill: {
     backgroundColor: c.bgTeal, borderRadius: 8,
     paddingHorizontal: 6, paddingVertical: 2,
@@ -709,4 +815,26 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     paddingVertical: 15, alignItems: 'center',
   },
   glBtnTxt: { color: c.white, fontSize: 16, fontWeight: '700' },
+
+  // Author profile sheet
+  profileOverlay: { flex: 1, backgroundColor: c.overlay, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  profileSheet: {
+    backgroundColor: c.bgCard, borderRadius: 24, padding: 28, width: '100%',
+    alignItems: 'center', gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 20,
+  },
+  profileAvatar: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  profileAvatarTxt: { fontSize: 26, fontWeight: '800', color: c.white },
+  profileName: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
+  profileStreakPill: { backgroundColor: c.bgTeal, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  profileStreakTxt: { fontSize: 13, fontWeight: '600', color: c.primary },
+  followBtn: {
+    marginTop: 8, paddingVertical: 13, paddingHorizontal: 48, borderRadius: 14,
+    backgroundColor: c.primary,
+  },
+  followBtnActive: { backgroundColor: c.bgTeal, borderWidth: 1.5, borderColor: c.primary },
+  followBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
+  followBtnTxtActive: { color: c.primary },
+  profileClose: { marginTop: 4, paddingVertical: 8 },
+  profileCloseTxt: { fontSize: 14, color: c.textFaint, fontWeight: '600' },
 });
