@@ -487,14 +487,17 @@ export default function TrackerIndex() {
           return;
         }
         if (isPayingOff) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: '🎉 Debt paid off!',
-              body: `You've fully paid off "${quickPayDebt.name}". That's a huge step — well done.`,
-              data: { screen: '/(tabs)/tracker' },
-            },
-            trigger: null,
-          });
+          const { status: notifStatus } = await Notifications.getPermissionsAsync();
+          if (notifStatus === 'granted') {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: '🎉 Debt paid off!',
+                body: `You've fully paid off "${quickPayDebt.name}". That's a huge step — well done.`,
+                data: { screen: '/(tabs)/tracker' },
+              },
+              trigger: null,
+            });
+          }
           await supabase.from('losses').insert({
             user_id: user.id, type: 'debt_paid_off', amount: Number(quickPayDebt.total_amount),
             category: 'Debt', note: quickPayDebt.name,

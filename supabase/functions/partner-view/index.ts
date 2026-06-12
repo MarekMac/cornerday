@@ -63,6 +63,13 @@ Deno.serve(async (req: Request) => {
     return isNaN(ms) ? 0 : ms;
   };
   const quitMs = parseTs(user?.quit_timestamp) || parseTs(user?.quit_date ? user.quit_date + 'T00:00:00Z' : null);
+  // Guard: if no quit date is set (new user or deleted account) return zero streak
+  // rather than Date.now() - 0 which would incorrectly show ~55 years.
+  if (!quitMs) {
+    return new Response(JSON.stringify({ streakMs: 0, displayName: user?.display_name ?? null }), {
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
   const streakMs = Math.max(0, Date.now() - quitMs);
   const displayName = user?.display_name ?? null;
 
@@ -117,10 +124,10 @@ Deno.serve(async (req: Request) => {
         result.totalPaid = totalPaid;
         result.recoveryPct = totalLost > 0 ? Math.min(Math.round((totalPaid / totalLost) * 100), 100) : null;
 
-        // Estimated money saved = weekly_bet / 7 * streak_days
+        // Estimated money saved = weekly_bet / 7 * streak_days (fractional, matches home screen)
         const weeklyBet = Number(user?.weekly_bet ?? 0);
         if (weeklyBet > 0) {
-          const streakDays = Math.floor(streakMs / 86_400_000);
+          const streakDays = streakMs / 86_400_000;
           result.moneySaved = Math.round(weeklyBet * streakDays / 7);
           result.currency = user?.currency ?? 'USD';
         }

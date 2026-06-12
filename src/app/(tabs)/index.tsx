@@ -1033,6 +1033,12 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [data?.earnedBadges.length, focusTick]);
 
+  // Must be before any early returns to follow Rules of Hooks — and before the
+  // useEffect below that depends on streakMs to avoid temporal dead zone issues.
+  const nowMs = useMemo(() => Date.now(), [tick]);
+  const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
+  const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
+
   // Award badges in real-time when the live counter crosses a threshold (fetchData only runs on focus/mount).
   const lastBadgeFetchMs = useRef(0);
   useEffect(() => {
@@ -1052,11 +1058,6 @@ export default function HomeScreen() {
     await fetchData();
     setRefreshing(false);
   }, [fetchData, randomQuote]);
-
-  // Must be before any early returns to follow Rules of Hooks
-  const nowMs = useMemo(() => Date.now(), [tick]);
-  const streakInfo = useMemo(() => calcStreakInfo(data?.quitDate ?? null), [data?.quitDate, tick]);
-  const { value: streakValue, unit: streakUnit, days: streakDays, ms: streakMs } = streakInfo;
 
   const openShareCard = (
     badge: { emoji: string; label: string } | null,

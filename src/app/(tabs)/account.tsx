@@ -353,12 +353,20 @@ export default function AccountScreen() {
     setPartnerLinkLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // Delete any existing links first to prevent duplicate rows that would
+      // break the maybeSingle() fetch.
+      await supabase.from('partner_links').delete().eq('user_id', user.id);
       const { data, error } = await supabase
         .from('partner_links')
         .insert({ user_id: user.id })
         .select('id, token, expires_at')
         .single();
-      if (!error && data) { setPartnerToken(data.token); setPartnerLinkId(data.id); setPartnerExpiresAt(data.expires_at ?? null); }
+      if (!error && data) {
+        setPartnerToken(data.token);
+        setPartnerLinkId(data.id);
+        setPartnerExpiresAt(data.expires_at ?? null);
+        setShareSettings({ mood: false, milestones: false, recovery: false });
+      }
     }
     setPartnerLinkLoading(false);
   };
@@ -372,7 +380,12 @@ export default function AccountScreen() {
         { text: 'Revoke', style: 'destructive', onPress: async () => {
           setPartnerLinkLoading(true);
           if (partnerLinkId) {
-            await supabase.from('partner_links').delete().eq('id', partnerLinkId);
+            const { error } = await supabase.from('partner_links').delete().eq('id', partnerLinkId);
+            if (error) {
+              Alert.alert('Could not revoke link', error.message);
+              setPartnerLinkLoading(false);
+              return;
+            }
             setPartnerToken(null);
             setPartnerLinkId(null);
             setPartnerExpiresAt(null);
