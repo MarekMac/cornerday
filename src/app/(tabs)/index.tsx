@@ -2295,7 +2295,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardCloseTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
   shareCardDetailBox: {
     backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16, marginTop: 8, marginBottom: 8, paddingVertical: 4,
+    borderRadius: 16, marginTop: 4, marginBottom: 20, paddingVertical: 4,
   },
   shareCardDetailRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
