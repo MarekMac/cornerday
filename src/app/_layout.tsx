@@ -76,11 +76,12 @@ function InnerLayout() {
 
   useEffect(() => {
     const init = async () => {
-      const [sessionResult, onboarded, savedStep, seenWelcomeVal] = await Promise.all([
+      const [sessionResult, onboarded, savedStep, seenWelcomeVal, biometricFlag] = await Promise.all([
         supabase.auth.getSession().catch(() => ({ data: { session: null }, error: null })),
         AsyncStorage.getItem(ONBOARDED_KEY),
         AsyncStorage.getItem(ONBOARDING_STEP_KEY),
         AsyncStorage.getItem(SEEN_WELCOME_KEY),
+        AsyncStorage.getItem(BIOMETRIC_LOCK_KEY),
       ]);
 
       const sess = sessionResult.data.session;
@@ -120,6 +121,9 @@ function InnerLayout() {
           setPendingRoute(`/(onboarding)/${savedStep ?? 'q1'}`);
         }
       }
+
+      // Lock on cold start if biometric is enabled and user has an active session
+      if (biometricFlag === 'true' && sess) setLocked(true);
 
       setAuthChecked(true);
     };
