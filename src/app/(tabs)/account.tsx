@@ -1333,7 +1333,19 @@ export default function AccountScreen() {
           <Text style={s.partnerDesc}>
             Share a private link with someone you trust. They'll see your streak and can send you encouragement — no account needed.
           </Text>
-          {partnerToken ? (
+          {!isPremiumFromRC ? (
+            <>
+              <View style={s.partnerLockedRow}>
+                <Ionicons name="lock-closed" size={13} color={c.textMuted} />
+                <Text style={s.partnerLockedTxt}>Premium feature</Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [s.partnerGenerateBtn, s.partnerLockedBtn, pressed && { opacity: 0.8 }]}
+                onPress={showPaywall}>
+                <Text style={s.partnerLockedBtnTxt}>Unlock with Premium</Text>
+              </Pressable>
+            </>
+          ) : partnerToken ? (
             <View style={s.partnerLinkBox}>
               <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
                 {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
@@ -2764,6 +2776,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   partnerRevokeTxt: { fontSize: 13, color: c.error },
   partnerGenerateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.primary, borderRadius: 10, paddingVertical: 12 },
   partnerGenerateTxt: { fontSize: 14, fontWeight: '600', color: c.white },
+  partnerLockedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
+  partnerLockedTxt: { fontSize: 12, color: c.textMuted },
+  partnerLockedBtn: { backgroundColor: c.bgElement },
+  partnerLockedBtnTxt: { fontSize: 14, fontWeight: '600', color: c.primary },
 
   // Recovery plan card
   planSummary: { gap: 10, marginBottom: 14 },

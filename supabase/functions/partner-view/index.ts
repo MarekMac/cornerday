@@ -75,6 +75,29 @@ Deno.serve(async (req: Request) => {
     }
     if (message) {
       await sb.from('partner_messages').insert({ link_id: link.id, message });
+
+      // Push notification — non-fatal if token missing or push fails
+      try {
+        const { data: tokenRow } = await sb
+          .from('users')
+          .select('expo_push_token')
+          .eq('id', link.user_id)
+          .maybeSingle();
+        if (tokenRow?.expo_push_token) {
+          const preview = message.length > 100 ? message.slice(0, 100) + '…' : message;
+          await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: tokenRow.expo_push_token,
+              sound: 'default',
+              title: 'Message from your supporter 💙',
+              body: preview,
+              data: { screen: '/(tabs)/' },
+            }),
+          });
+        }
+      } catch (_) { /* push is non-fatal */ }
     }
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
