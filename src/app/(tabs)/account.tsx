@@ -1080,6 +1080,13 @@ export default function AccountScreen() {
     return { value: String(Math.max(1, mins)), unit: mins <= 1 ? 'min' : 'mins' };
   })();
 
+  const longestStreakDisplay = (() => {
+    const dbDays = profile?.longestStreak ?? 0;
+    if (dbDays >= 1) return { value: String(dbDays), unit: 'days' };
+    // No full day logged yet — current streak is the longest
+    return streakDisplay;
+  })();
+
   return (
     <View style={s.root}>
       <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
@@ -1202,9 +1209,9 @@ export default function AccountScreen() {
           </View>
           <View style={s.statDivider} />
           <View style={s.statCol}>
-            <Text style={s.statValue}>{profile?.longestStreak ?? 0}</Text>
+            <Text style={s.statValue}>{longestStreakDisplay.value}</Text>
             <Text style={s.statLabel}>Longest streak</Text>
-            <Text style={s.statUnit}>days</Text>
+            <Text style={s.statUnit}>{longestStreakDisplay.unit}</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.statCol}>

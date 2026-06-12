@@ -581,6 +581,14 @@ export default function UrgeScreen() {
             </View>
           )}
 
+          {/* Log this moment */}
+          <Pressable
+            style={({ pressed }) => [s.logNowBtn, pressed && { opacity: 0.8 }]}
+            onPress={() => openLog('overcame')}>
+            <Text style={s.logNowBtnTxt}>✍️  Log this moment</Text>
+            <Text style={s.logNowBtnSub}>Record a trigger, urge, or slip in your journal</Text>
+          </Pressable>
+
           {/* Your why */}
           <View style={s.whyCard}>
             <View style={s.whyInner}>
@@ -623,7 +631,11 @@ export default function UrgeScreen() {
               onPress={() => Linking.openURL('tel:18005224700')}>
               <Text style={s.crisisBtnTxt}>📞  1-800-522-4700</Text>
             </Pressable>
-            <Text style={s.crisisNote}>Text HOME to 741741 — Crisis Text Line</Text>
+            <Pressable
+              style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+              onPress={() => Linking.openURL('sms:741741?body=HOME')}>
+              <Text style={s.crisisNote}>💬  Text HOME to 741741 — Crisis Text Line</Text>
+            </Pressable>
           </View>
 
           {/* Professional help */}
@@ -1160,6 +1172,17 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     backgroundColor: c.bgElement, borderRadius: 12, paddingVertical: 12, alignItems: 'center',
   },
   distractionDismissTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
+
+  // ── Log now button ───────────────────────────────────────────────────────────
+  logNowBtn: {
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 16,
+    flexDirection: 'column', gap: 3,
+    borderWidth: 1, borderColor: c.bgTealMid,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  },
+  logNowBtnTxt: { fontSize: 15, fontWeight: '700', color: c.primary },
+  logNowBtnSub: { fontSize: 12, color: c.textMuted },
 
   // ── Your why ──────────────────────────────────────────────────────────────────
   whyCard: {
