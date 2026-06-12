@@ -1947,7 +1947,7 @@ export default function HomeScreen() {
               {shareCardDetails.map((d, i) => (
                 <View key={i} style={[s.shareCardDetailRow, i === shareCardDetails.length - 1 && { borderBottomWidth: 0 }]}>
                   <Text style={s.shareCardDetailLabel}>{d.label}</Text>
-                  <Text style={[s.shareCardDetailValue, d.highlight && { color: c.primary }]}>{d.value}</Text>
+                  <Text style={[s.shareCardDetailValue, d.highlight && { color: '#a8d8d0' }]}>{d.value}</Text>
                 </View>
               ))}
             </View>
@@ -2309,14 +2309,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardCloseBtn: { alignItems: 'center', paddingVertical: 10 },
   shareCardCloseTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
   shareCardDetailBox: {
-    backgroundColor: c.bgCard, borderRadius: 14, paddingVertical: 4,
-    marginTop: 10, marginHorizontal: 4,
+    width: 320, backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16, marginTop: 10, paddingVertical: 4,
   },
   shareCardDetailRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.borderSubtle,
+    paddingHorizontal: 16, paddingVertical: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.12)',
   },
-  shareCardDetailLabel: { fontSize: 13, color: c.textMuted },
-  shareCardDetailValue: { fontSize: 13, fontWeight: '700', color: c.textPrimary },
+  shareCardDetailLabel: { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
+  shareCardDetailValue: { fontSize: 13, fontWeight: '700', color: '#fff' },
 });
