@@ -97,12 +97,13 @@ export default function CommunityFeed() {
   const postsRef = useRef<Post[]>([]);
   const activeFetch = useRef(false);
   const sortByRef = useRef<SortBy>('new');
+  const reactingRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       currentUserIdRef.current = user.id;
-      const { data } = await supabase.from('users').select('display_name, is_banned, ban_reason, ban_expires_at, ban_appeal_note').eq('id', user.id).single();
+      const { data } = await supabase.from('users').select('display_name, is_banned, ban_reason, ban_expires_at, ban_appeal_note').eq('id', user.id).maybeSingle();
       setDisplayName(data?.display_name ?? '');
       if (data) setBanInfo({ is_banned: data.is_banned ?? false, ban_reason: data.ban_reason, ban_expires_at: data.ban_expires_at, ban_appeal_note: data.ban_appeal_note });
 
@@ -274,7 +275,20 @@ export default function CommunityFeed() {
     }
   };
 
-  useFocusEffect(useCallback(() => { load(activeTag, sortByRef.current); }, [activeTag, load]));
+  useFocusEffect(useCallback(() => {
+    load(activeTag, sortByRef.current, true);
+    const uid = currentUserIdRef.current;
+    if (uid) {
+      supabase.from('community_follows').select('following_id').eq('follower_id', uid)
+        .then(({ data }) => {
+          if (data) {
+            const fm: Record<string, boolean> = {};
+            for (const row of data as { following_id: string }[]) fm[row.following_id] = true;
+            setFollowedUsers(fm);
+          }
+        }).catch(() => {});
+    }
+  }, [activeTag, load]));
 
   const changeTag = (tag: FilterTag) => {
     setActiveTag(tag);
@@ -283,37 +297,48 @@ export default function CommunityFeed() {
 
   const toggleFeedReaction = async (postId: string, emoji: string) => {
     const uid = currentUserIdRef.current;
-    if (!uid) return;
+    if (!uid || reactingRef.current[postId]) return;
+    reactingRef.current[postId] = true;
     const current = userReactions[postId];
+    const prevReactions = userReactions;
+    const prevCounts = allEmojiCounts;
+    const prevPosts = posts;
 
-    if (current === emoji) {
-      setUserReactions(prev => { const next = { ...prev }; delete next[postId]; return next; });
-      setAllEmojiCounts(prev => ({
-        ...prev,
-        [postId]: { ...prev[postId], [emoji]: Math.max(0, (prev[postId]?.[emoji] ?? 1) - 1) },
-      }));
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p));
-      await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
-    } else if (current) {
-      setUserReactions(prev => ({ ...prev, [postId]: emoji }));
-      setAllEmojiCounts(prev => ({
-        ...prev,
-        [postId]: {
-          ...prev[postId],
-          [current]: Math.max(0, (prev[postId]?.[current] ?? 1) - 1),
-          [emoji]: (prev[postId]?.[emoji] ?? 0) + 1,
-        },
-      }));
-      await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
-      await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
-    } else {
-      setUserReactions(prev => ({ ...prev, [postId]: emoji }));
-      setAllEmojiCounts(prev => ({
-        ...prev,
-        [postId]: { ...prev[postId], [emoji]: (prev[postId]?.[emoji] ?? 0) + 1 },
-      }));
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: p.reactions_count + 1 } : p));
-      await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
+    try {
+      if (current === emoji) {
+        setUserReactions(prev => { const next = { ...prev }; delete next[postId]; return next; });
+        setAllEmojiCounts(prev => ({
+          ...prev,
+          [postId]: { ...prev[postId], [emoji]: Math.max(0, (prev[postId]?.[emoji] ?? 1) - 1) },
+        }));
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p));
+        const { error } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
+        if (error) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+      } else if (current) {
+        setUserReactions(prev => ({ ...prev, [postId]: emoji }));
+        setAllEmojiCounts(prev => ({
+          ...prev,
+          [postId]: {
+            ...prev[postId],
+            [current]: Math.max(0, (prev[postId]?.[current] ?? 1) - 1),
+            [emoji]: (prev[postId]?.[emoji] ?? 0) + 1,
+          },
+        }));
+        await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
+        const { error } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
+        if (error) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+      } else {
+        setUserReactions(prev => ({ ...prev, [postId]: emoji }));
+        setAllEmojiCounts(prev => ({
+          ...prev,
+          [postId]: { ...prev[postId], [emoji]: (prev[postId]?.[emoji] ?? 0) + 1 },
+        }));
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: p.reactions_count + 1 } : p));
+        const { error } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
+        if (error) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+      }
+    } finally {
+      reactingRef.current[postId] = false;
     }
   };
 
@@ -362,7 +387,7 @@ export default function CommunityFeed() {
   const renderPost = ({ item }: { item: Post }) => {
     const isAnon = item.is_anonymous ?? false;
     const color = isAnon ? '#aaa' : avatarColor(item.user_id);
-    const name = isAnon ? 'Anonymous' : (item.users?.display_name ?? 'Anonymous');
+    const name = isAnon ? 'Anonymous' : (item.users?.display_name || 'Anonymous');
     const currentStreak = isAnon ? 0 : (item.users?.streaks?.[0]?.current_streak ?? 0);
     const badge = streakBadge(currentStreak);
     const emojiCounts = allEmojiCounts[item.id] ?? {};

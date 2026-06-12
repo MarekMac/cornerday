@@ -231,8 +231,12 @@ export default function UrgeScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const isMounted = useRef(true);
+  const closeLogTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { return () => { isMounted.current = false; }; }, []);
+  useEffect(() => { return () => {
+    isMounted.current = false;
+    if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
+  }; }, []);
 
   // Award a point when the timer completes
   useEffect(() => {
@@ -260,7 +264,7 @@ export default function UrgeScreen() {
       const { data } = await supabase.from('users').select('motivation, recovery_distractions, recovery_mantra').eq('id', user.id).single();
       if (data?.motivation != null) {
         setMotivation(data.motivation);
-        AsyncStorage.setItem(MOTIVATION_CACHE_KEY, data.motivation);
+        await AsyncStorage.setItem(MOTIVATION_CACHE_KEY, data.motivation);
       }
       setRecoveryPlan({
         distractions: data?.recovery_distractions ? data.recovery_distractions.split(',').filter(Boolean) : [],
@@ -331,7 +335,7 @@ export default function UrgeScreen() {
     }
     setSaving(false);
     setSaved(true);
-    setTimeout(closeLog, 1500);
+    closeLogTimeoutRef.current = setTimeout(() => { if (isMounted.current) closeLog(); }, 1500);
   };
 
   const canSave = selectedTrigger !== null && outcome !== null &&

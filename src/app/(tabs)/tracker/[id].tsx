@@ -105,7 +105,12 @@ export default function DebtDetailScreen() {
   const executeDeletePayment = async () => {
     if (!deletePayTarget) return;
     setDeleting(true);
-    await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id);
+    const { error } = await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id);
+    if (error) {
+      Alert.alert('Could not delete payment', error.message);
+      setDeleting(false);
+      return;
+    }
     setDeletePayTarget(null);
     setDeleting(false);
     await fetchData();
@@ -135,10 +140,15 @@ export default function DebtDetailScreen() {
       Alert.alert('Session expired', 'Please sign in again.');
       return;
     }
-    await supabase.from('debt_payments').insert({
+    const { error: insertError } = await supabase.from('debt_payments').insert({
       user_id: user.id, debt_id: debt.id,
       amount: val, note: note.trim() || null,
     });
+    if (insertError) {
+      Alert.alert('Could not save payment', insertError.message);
+      setSubmitting(false);
+      return;
+    }
     if (isPayingOff) {
       await Notifications.scheduleNotificationAsync({
         content: {

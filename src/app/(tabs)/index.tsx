@@ -881,9 +881,7 @@ export default function HomeScreen() {
             body: "You've set a savings goal. Having a target makes recovery real — keep saving.",
             data: { screen: '/(tabs)/' },
           },
-          trigger: Platform.OS === 'android'
-            ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
-            : null,
+          trigger: null,
         });
       }
     }
@@ -900,9 +898,7 @@ export default function HomeScreen() {
             body: "You've reached your savings goal. That's a massive achievement — be proud.",
             data: { screen: '/(tabs)/' },
           },
-          trigger: Platform.OS === 'android'
-            ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
-            : null,
+          trigger: null,
         });
       }
     }
@@ -926,9 +922,7 @@ export default function HomeScreen() {
             body: "You've completed every step of the prevention checklist. Your recovery is protected.",
             data: { screen: '/(tabs)/' },
           },
-          trigger: Platform.OS === 'android'
-            ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any
-            : null,
+          trigger: null,
         });
       }
     }

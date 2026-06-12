@@ -142,7 +142,7 @@ export default function PostDetail() {
       if (uid && loadedPost && loadedPost.user_id !== uid && !loadedPost.is_anonymous) {
         supabase.from('community_follows').select('id')
           .eq('follower_id', uid).eq('following_id', loadedPost.user_id)
-          .maybeSingle().then(({ data }) => setIsFollowing(!!data));
+          .maybeSingle().then(({ data }) => setIsFollowing(!!data)).catch(() => {});
       }
 
       const counts: Record<string, number> = {};
@@ -166,11 +166,16 @@ export default function PostDetail() {
 
   const pickReaction = async (emoji: string) => {
     if (!currentUserId || !post) return;
+    const prevReaction = userReaction;
+    const prevCounts = { ...reactionCounts };
+    const prevPost = post;
+
     if (userReaction === emoji) {
       setUserReaction(null);
       setReactionCounts(prev => ({ ...prev, [emoji]: Math.max(0, (prev[emoji] ?? 1) - 1) }));
       setPost(p => p ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p);
-      await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+      const { error } = await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+      if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
     } else if (userReaction) {
       const old = userReaction;
       setUserReaction(emoji);
@@ -180,20 +185,23 @@ export default function PostDetail() {
         [emoji]: (prev[emoji] ?? 0) + 1,
       }));
       await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
-      await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
+      const { error } = await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
+      if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
     } else {
       setUserReaction(emoji);
       setReactionCounts(prev => ({ ...prev, [emoji]: (prev[emoji] ?? 0) + 1 }));
       setPost(p => p ? { ...p, reactions_count: p.reactions_count + 1 } : p);
-      await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
+      const { error } = await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
+      if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
     }
   };
 
   const toggleCommentReaction = async (commentId: string) => {
     if (!currentUserId) return;
     const hasReacted = myHelpfulReactions.has(commentId);
+    const prevReactions = new Set(myHelpfulReactions);
+    const prevComments = comments;
 
-    // Optimistic update
     setMyHelpfulReactions(prev => {
       const next = new Set(prev);
       if (hasReacted) next.delete(commentId);
@@ -206,17 +214,19 @@ export default function PostDetail() {
         : c
     ));
 
+    let error;
     if (hasReacted) {
-      await supabase
+      ({ error } = await supabase
         .from('community_comment_reactions')
         .delete()
         .eq('comment_id', commentId)
-        .eq('user_id', currentUserId);
+        .eq('user_id', currentUserId));
     } else {
-      await supabase
+      ({ error } = await supabase
         .from('community_comment_reactions')
-        .insert({ comment_id: commentId, user_id: currentUserId });
+        .insert({ comment_id: commentId, user_id: currentUserId }));
     }
+    if (error) { setMyHelpfulReactions(prevReactions); setComments(prevComments); }
   };
 
   const submitComment = async () => {
@@ -236,7 +246,9 @@ export default function PostDetail() {
         .select('id, user_id, content, created_at, helpful_count, is_anonymous')
         .single();
 
-      if (!error && data) {
+      if (error) {
+        Alert.alert('Could not post comment', error.message);
+      } else if (data) {
         setCommentText('');
         const newComment: Comment = {
           ...(data as any),
@@ -300,7 +312,8 @@ export default function PostDetail() {
     const target = menuTarget;
     setMenuTarget(null);
     if (!target) return;
-    const targetId = target.kind === 'post' ? post!.id : target.id;
+    const targetId = target.kind === 'post' ? post?.id : target.id;
+    if (!targetId) return;
     setDeleteTarget({ kind: target.kind, id: targetId });
   };
 
@@ -378,7 +391,7 @@ export default function PostDetail() {
   }
 
   const isAnon = post.is_anonymous ?? false;
-  const postAuthor = isAnon ? 'Anonymous' : (post.users?.display_name ?? 'Anonymous');
+  const postAuthor = isAnon ? 'Anonymous' : (post.users?.display_name || 'Anonymous');
   const postColor = isAnon ? '#aaa' : avatarColor(post.user_id);
   const postStreak = isAnon ? 0 : (post.users?.streaks?.[0]?.current_streak ?? 0);
   const postStreakBadge = streakBadge(postStreak);
@@ -495,7 +508,7 @@ export default function PostDetail() {
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const cIsAnon = item.is_anonymous ?? false;
-            const cName = cIsAnon ? 'Anonymous' : (item.users?.display_name ?? 'Anonymous');
+            const cName = cIsAnon ? 'Anonymous' : (item.users?.display_name || 'Anonymous');
             const cColor = cIsAnon ? '#aaa' : avatarColor(item.user_id);
             const isOwner = item.user_id === currentUserId;
             const iHelpedThis = myHelpfulReactions.has(item.id);
