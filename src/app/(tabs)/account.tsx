@@ -245,6 +245,7 @@ export default function AccountScreen() {
   const [partnerLinkId, setPartnerLinkId] = useState<string | null>(null);
   const [partnerExpiresAt, setPartnerExpiresAt] = useState<string | null>(null);
   const [partnerLinkLoading, setPartnerLinkLoading] = useState(false);
+  const [shareSettings, setShareSettings] = useState({ mood: false, milestones: false, recovery: false });
 
   const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
   const [recoveryMantra, setRecoveryMantra] = useState('');
@@ -326,11 +327,23 @@ export default function AccountScreen() {
     if (!user) return;
     const { data } = await supabase
       .from('partner_links')
-      .select('id, token, expires_at')
+      .select('id, token, expires_at, share_mood, share_milestones, share_recovery')
       .eq('user_id', user.id)
       .maybeSingle();
-    if (data) { setPartnerToken(data.token); setPartnerLinkId(data.id); setPartnerExpiresAt(data.expires_at ?? null); }
+    if (data) {
+      setPartnerToken(data.token);
+      setPartnerLinkId(data.id);
+      setPartnerExpiresAt(data.expires_at ?? null);
+      setShareSettings({ mood: data.share_mood ?? false, milestones: data.share_milestones ?? false, recovery: data.share_recovery ?? false });
+    }
   }, []);
+
+  const updateShareSetting = async (key: 'share_mood' | 'share_milestones' | 'share_recovery', value: boolean) => {
+    if (!partnerLinkId) return;
+    const shortKey = key.replace('share_', '') as 'mood' | 'milestones' | 'recovery';
+    setShareSettings(prev => ({ ...prev, [shortKey]: value }));
+    await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
+  };
 
   const generatePartnerLink = async () => {
     setPartnerLinkLoading(true);
@@ -1346,33 +1359,69 @@ export default function AccountScreen() {
               </Pressable>
             </>
           ) : partnerToken ? (
-            <View style={s.partnerLinkBox}>
-              <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
-                {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
-              </Text>
-              {partnerExpiresAt && (
-                <Text style={s.partnerExpiry}>
-                  Expires {new Date(partnerExpiresAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+            <>
+              <View style={s.partnerLinkBox}>
+                <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
+                  {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
                 </Text>
-              )}
-              <View style={s.partnerBtnRow}>
-                <Pressable
-                  style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
-                  onPress={async () => {
-                    const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
-                    await Share.share({ message: url, url });
-                  }}>
-                  <Ionicons name="share-outline" size={15} color={c.white} />
-                  <Text style={s.partnerCopyTxt}>Share link</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [s.partnerRevokeBtn, pressed && { opacity: 0.7 }]}
-                  onPress={revokePartnerLink}
-                  disabled={partnerLinkLoading}>
-                  <Text style={s.partnerRevokeTxt}>Revoke</Text>
-                </Pressable>
+                {partnerExpiresAt && (
+                  <Text style={s.partnerExpiry}>
+                    Expires {new Date(partnerExpiresAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Text>
+                )}
+                <View style={s.partnerBtnRow}>
+                  <Pressable
+                    style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
+                    onPress={async () => {
+                      const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
+                      await Share.share({ message: url, url });
+                    }}>
+                    <Ionicons name="share-outline" size={15} color={c.white} />
+                    <Text style={s.partnerCopyTxt}>Share link</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [s.partnerRevokeBtn, pressed && { opacity: 0.7 }]}
+                    onPress={revokePartnerLink}
+                    disabled={partnerLinkLoading}>
+                    <Text style={s.partnerRevokeTxt}>Revoke</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
+              <View style={s.shareSettingsBox}>
+                <Text style={s.shareSettingsTitle}>What they can see</Text>
+                <View style={s.shareSettingRow}>
+                  <Text style={s.shareSettingLabel}>Streak</Text>
+                  <Text style={s.shareAlwaysTxt}>Always shown</Text>
+                </View>
+                <View style={s.shareSettingRow}>
+                  <Text style={s.shareSettingLabel}>Mood this week</Text>
+                  <Switch
+                    value={shareSettings.mood}
+                    onValueChange={v => updateShareSetting('share_mood', v)}
+                    trackColor={{ true: c.primary, false: c.bgElement }}
+                    thumbColor={c.white}
+                  />
+                </View>
+                <View style={s.shareSettingRow}>
+                  <Text style={s.shareSettingLabel}>Milestones earned</Text>
+                  <Switch
+                    value={shareSettings.milestones}
+                    onValueChange={v => updateShareSetting('share_milestones', v)}
+                    trackColor={{ true: c.primary, false: c.bgElement }}
+                    thumbColor={c.white}
+                  />
+                </View>
+                <View style={s.shareSettingRow}>
+                  <Text style={s.shareSettingLabel}>Recovery progress</Text>
+                  <Switch
+                    value={shareSettings.recovery}
+                    onValueChange={v => updateShareSetting('share_recovery', v)}
+                    trackColor={{ true: c.primary, false: c.bgElement }}
+                    thumbColor={c.white}
+                  />
+                </View>
+              </View>
+            </>
           ) : (
             <Pressable
               style={({ pressed }) => [s.partnerGenerateBtn, pressed && { opacity: 0.85 }]}
@@ -2780,6 +2829,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   partnerLockedTxt: { fontSize: 12, color: c.textMuted },
   partnerLockedBtn: { backgroundColor: c.bgElement },
   partnerLockedBtnTxt: { fontSize: 14, fontWeight: '600', color: c.primary },
+  shareSettingsBox: { marginTop: 12, borderTopWidth: 1, borderTopColor: c.bgElement, paddingTop: 12, gap: 2 },
+  shareSettingsTitle: { fontSize: 11, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
+  shareSettingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
+  shareSettingLabel: { fontSize: 14, color: c.textBody },
+  shareAlwaysTxt: { fontSize: 12, color: c.textFaint },
 
   // Recovery plan card
   planSummary: { gap: 10, marginBottom: 14 },

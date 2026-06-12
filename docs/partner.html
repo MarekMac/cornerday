@@ -14,6 +14,17 @@
     .streak-unit{font-size:18px;font-weight:700;color:#0F6E6E;margin-top:2px}
     .streak-sub{font-size:14px;color:#5a9090;margin-top:6px;font-weight:500}
     .streak-detail{font-size:12px;color:#7ab0b0;margin-top:4px}
+    .section{background:#f9fdfd;border-radius:14px;padding:16px;margin-bottom:12px}
+    .section-label{font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .mood-row{display:flex;align-items:center;gap:10px}
+    .mood-emoji{font-size:28px;line-height:1}
+    .mood-text{font-size:15px;font-weight:700;color:#1a2e2e}
+    .mood-sub{font-size:12px;color:#5a7a7a;margin-top:2px}
+    .milestone-count{font-size:26px;font-weight:800;color:#0F6E6E;line-height:1}
+    .milestone-sub{font-size:13px;color:#5a7a7a;margin-top:4px}
+    .progress-bar-track{background:#ddd;border-radius:4px;height:8px;overflow:hidden;margin:10px 0 6px}
+    .progress-bar-fill{background:linear-gradient(90deg,#0F6E6E,#1a9a9a);height:100%;border-radius:4px;transition:width .4s}
+    .progress-label{font-size:13px;color:#5a7a7a}
     h2{font-size:17px;font-weight:700;color:#1a2e2e;margin-bottom:6px}
     p{font-size:14px;color:#5a7a7a;line-height:1.6;margin-bottom:20px}
     .divider{height:1px;background:#e0eded;margin:20px 0}
@@ -55,49 +66,69 @@
 
       const mins = totalMins % 60;
       if (totalDays < 1) {
-        return {
-          primary: String(totalHours),
-          unit: totalHours === 1 ? 'hour' : 'hours',
-          detail: mins > 0 ? mins + (mins === 1 ? ' min' : ' mins') : null,
-        };
+        return { primary: String(totalHours), unit: totalHours === 1 ? 'hour' : 'hours', detail: mins > 0 ? mins + (mins === 1 ? ' min' : ' mins') : null };
       }
 
       const hours = totalHours % 24;
       if (totalDays < 7) {
-        return {
-          primary: String(totalDays),
-          unit: totalDays === 1 ? 'day' : 'days',
-          detail: hours > 0 ? hours + (hours === 1 ? ' hour' : ' hours') : null,
-        };
+        return { primary: String(totalDays), unit: totalDays === 1 ? 'day' : 'days', detail: hours > 0 ? hours + (hours === 1 ? ' hour' : ' hours') : null };
       }
 
       const weeks = Math.floor(totalDays / 7);
       const remDays = totalDays % 7;
       if (totalDays < 30) {
-        return {
-          primary: String(weeks),
-          unit: weeks === 1 ? 'week' : 'weeks',
-          detail: remDays > 0 ? remDays + (remDays === 1 ? ' day' : ' days') : null,
-        };
+        return { primary: String(weeks), unit: weeks === 1 ? 'week' : 'weeks', detail: remDays > 0 ? remDays + (remDays === 1 ? ' day' : ' days') : null };
       }
 
       const months = Math.floor(totalDays / 30);
       const remDays2 = totalDays % 30;
       if (totalDays < 365) {
-        return {
-          primary: String(months),
-          unit: months === 1 ? 'month' : 'months',
-          detail: remDays2 > 0 ? remDays2 + (remDays2 === 1 ? ' day' : ' days') : null,
-        };
+        return { primary: String(months), unit: months === 1 ? 'month' : 'months', detail: remDays2 > 0 ? remDays2 + (remDays2 === 1 ? ' day' : ' days') : null };
       }
 
       const years = Math.floor(totalDays / 365);
       const remMonths = Math.floor((totalDays % 365) / 30);
-      return {
-        primary: String(years),
-        unit: years === 1 ? 'year' : 'years',
-        detail: remMonths > 0 ? remMonths + (remMonths === 1 ? ' month' : ' months') : null,
-      };
+      return { primary: String(years), unit: years === 1 ? 'year' : 'years', detail: remMonths > 0 ? remMonths + (remMonths === 1 ? ' month' : ' months') : null };
+    }
+
+    function moodLabel(avg) {
+      if (avg === null) return { emoji: '—', text: 'No check-ins this week' };
+      if (avg >= 4.2) return { emoji: '😄', text: 'Great week' };
+      if (avg >= 3.5) return { emoji: '😊', text: 'Good week' };
+      if (avg >= 2.5) return { emoji: '😐', text: 'Getting through it' };
+      if (avg >= 1.5) return { emoji: '😟', text: 'Difficult week' };
+      return { emoji: '😔', text: 'Tough week' };
+    }
+
+    function buildMoodSection(moodAvg, moodCheckins) {
+      const m = moodLabel(moodAvg);
+      return `<div class="section">
+        <div class="section-label">Mood this week</div>
+        <div class="mood-row">
+          <div class="mood-emoji">${m.emoji}</div>
+          <div>
+            <div class="mood-text">${esc(m.text)}</div>
+            <div class="mood-sub">${moodCheckins} check-in${moodCheckins !== 1 ? 's' : ''} this week</div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function buildMilestonesSection(count, latestLabel) {
+      return `<div class="section">
+        <div class="section-label">Milestones</div>
+        <div class="milestone-count">${esc(String(count))}</div>
+        <div class="milestone-sub">milestone${count !== 1 ? 's' : ''} earned${latestLabel ? ' &mdash; most recent: ' + esc(latestLabel) : ''}</div>
+      </div>`;
+    }
+
+    function buildRecoverySection(pct) {
+      if (pct === null) return '';
+      return `<div class="section">
+        <div class="section-label">Financial recovery</div>
+        <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+        <div class="progress-label">${pct}% of debt paid back</div>
+      </div>`;
     }
 
     async function send() {
@@ -123,10 +154,16 @@
         const r = await fetch(API + '?t=' + encodeURIComponent(token));
         if (r.status === 404) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link is invalid or has been revoked.</div>'; return; }
         if (r.status === 410) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link has expired. Ask them to generate a new one in the app.</div>'; return; }
-        const { streakMs, displayName: n } = await r.json();
+        const data = await r.json();
+        const { streakMs, displayName: n, moodAvg, moodCheckins, milestonesEarned, latestMilestoneLabel, recoveryPct } = data;
         const fmt = formatStreak(streakMs || 0);
         const name = n || 'someone you care about';
         const streakLabel = fmt.primary + ' ' + fmt.unit + (fmt.detail ? ' ' + fmt.detail : '');
+
+        let extraSections = '';
+        if (moodAvg !== undefined) extraSections += buildMoodSection(moodAvg, moodCheckins ?? 0);
+        if (milestonesEarned !== undefined) extraSections += buildMilestonesSection(milestonesEarned, latestMilestoneLabel ?? null);
+        if (recoveryPct !== undefined) extraSections += buildRecoverySection(recoveryPct);
 
         card.innerHTML =
           '<div class="logo">CornerDay</div>' +
@@ -138,6 +175,7 @@
           '</div>' +
           '<h2>' + esc(name) + ' is on a ' + esc(streakLabel) + ' streak</h2>' +
           '<p>They\'re working hard on their recovery. Send them a short message of support &mdash; it\'ll appear in the app next time they open it.</p>' +
+          extraSections +
           '<div class="divider"></div>' +
           '<div id="form-area"><label>Send encouragement</label>' +
           '<textarea id="msg" rows="3" maxlength="200" placeholder="Write something kind… (max 200 characters)"></textarea>' +

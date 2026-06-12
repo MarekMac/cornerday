@@ -6,6 +6,16 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+const MILESTONE_LABELS: Record<string, string> = {
+  '1_hour': '1 Hour', '3_hours': '3 Hours', '6_hours': '6 Hours', '12_hours': '12 Hours',
+  '1_day': '1 Day', '3_days': '3 Days', '1_week': '1 Week', '10_days': '10 Days',
+  '2_weeks': '2 Weeks', '3_weeks': '3 Weeks', '1_month': '1 Month', '45_days': '45 Days',
+  '2_months': '2 Months', '3_months': '3 Months', '4_months': '4 Months',
+  '5_months': '5 Months', '6_months': '6 Months', '9_months': '9 Months',
+  '1_year': '1 Year', '18_months': '18 Months', '2_years': '2 Years',
+  '3_years': '3 Years', '4_years': '4 Years', '5_years': '5 Years',
+};
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS });
@@ -24,7 +34,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: link } = await sb
     .from('partner_links')
-    .select('id, user_id, expires_at')
+    .select('id, user_id, expires_at, share_mood, share_milestones, share_recovery')
     .eq('token', token)
     .maybeSingle();
 
@@ -48,7 +58,6 @@ Deno.serve(async (req: Request) => {
 
   const parseTs = (s: string | null): number => {
     if (!s) return 0;
-    // PostgreSQL returns "2026-02-02 13:08:00+00" — normalise to ISO 8601
     const iso = s.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
     const ms = Date.parse(iso);
     return isNaN(ms) ? 0 : ms;
@@ -58,7 +67,60 @@ Deno.serve(async (req: Request) => {
   const displayName = user?.display_name ?? null;
 
   if (req.method === 'GET') {
-    return new Response(JSON.stringify({ streakMs, displayName }), {
+    const result: Record<string, unknown> = { streakMs, displayName };
+
+    // Conditionally fetch shared data in parallel
+    const fetches: Promise<void>[] = [];
+
+    if (link.share_mood) {
+      fetches.push((async () => {
+        const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+        const { data: moods } = await sb
+          .from('mood_checkins')
+          .select('mood')
+          .eq('user_id', link.user_id)
+          .gte('created_at', weekAgo);
+        const list = (moods ?? []) as { mood: number }[];
+        result.moodAvg = list.length > 0 ? list.reduce((s, m) => s + m.mood, 0) / list.length : null;
+        result.moodCheckins = list.length;
+      })());
+    }
+
+    if (link.share_milestones) {
+      fetches.push((async () => {
+        const { count } = await sb
+          .from('badges')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', link.user_id);
+        const { data: latest } = await sb
+          .from('badges')
+          .select('badge_type, earned_at')
+          .eq('user_id', link.user_id)
+          .order('earned_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        result.milestonesEarned = count ?? 0;
+        result.latestMilestoneLabel = latest?.badge_type ? (MILESTONE_LABELS[latest.badge_type] ?? latest.badge_type) : null;
+      })());
+    }
+
+    if (link.share_recovery) {
+      fetches.push((async () => {
+        const { data: rows } = await sb
+          .from('losses')
+          .select('type, amount')
+          .eq('user_id', link.user_id)
+          .in('type', ['loss', 'payment']);
+        const list = (rows ?? []) as { type: string; amount: number }[];
+        const totalLost = list.filter(r => r.type === 'loss').reduce((s, r) => s + Number(r.amount), 0);
+        const totalPaid = list.filter(r => r.type === 'payment').reduce((s, r) => s + Number(r.amount), 0);
+        result.recoveryPct = totalLost > 0 ? Math.min(Math.round((totalPaid / totalLost) * 100), 100) : null;
+      })());
+    }
+
+    await Promise.all(fetches);
+
+    return new Response(JSON.stringify(result), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
