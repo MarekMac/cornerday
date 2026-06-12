@@ -731,6 +731,8 @@ export default function HomeScreen() {
   const [shareCardLocked, setShareCardLocked] = useState(false);
   const [shareCardProgress, setShareCardProgress] = useState(0);
   const [shareCardMessage, setShareCardMessage] = useState('');
+  const [shareCardMilestoneLabel, setShareCardMilestoneLabel] = useState<string | null>(null);
+  const [shareCardEarnedOn, setShareCardEarnedOn] = useState<string | null>(null);
   const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
@@ -1066,6 +1068,8 @@ export default function HomeScreen() {
     locked = false,
     progress = 0,
     message = '',
+    milestoneLabel: string | null = null,
+    earnedOn: string | null = null,
   ) => {
     setShareCardBadge(badge);
     setShareCardHideTime(hideTime);
@@ -1073,6 +1077,8 @@ export default function HomeScreen() {
     setShareCardLocked(locked);
     setShareCardProgress(progress);
     setShareCardMessage(message);
+    setShareCardMilestoneLabel(milestoneLabel);
+    setShareCardEarnedOn(earnedOn);
     if (!locked) setShareTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
     setShowShareCard(true);
   };
@@ -1085,7 +1091,16 @@ export default function HomeScreen() {
 
   const shareMilestone = () => {
     if (!selectedBadge) return;
-    openShareCard({ emoji: selectedBadge.emoji, label: selectedBadge.label }, selectedBadge.days === 0);
+    openShareCard(
+      { emoji: selectedBadge.emoji, label: selectedBadge.label },
+      selectedBadge.days === 0,
+      [],
+      false,
+      0,
+      '',
+      selectedBadge.days > 0 ? selectedBadge.label : null,
+      selectedBadge.days > 0 ? (data?.badgeTimestamps?.[selectedBadge.type] ?? null) : null,
+    );
   };
 
   const captureAndShare = async () => {
@@ -1346,12 +1361,23 @@ export default function HomeScreen() {
                       if (d) det.push({ label: 'Started on', value: new Date(d).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
                     } else {
                       if (earnedAt) det.push({ label: 'Earned on', value: new Date(earnedAt).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
+                      const streakDaysNow = streakMs / 86400000;
+                      det.push({ label: 'Current streak', value: streakDaysNow >= 1 ? `${Math.floor(streakDaysNow)} ${Math.floor(streakDaysNow) === 1 ? 'day' : 'days'}` : `${Math.round(streakDaysNow * 24)}h` });
                       if (dailyRate > 0) {
                         det.push({ label: 'Saved at milestone', value: fmt(badge.days * dailyRate, data.currency) });
                         det.push({ label: 'Total saved', value: fmt((streakMs / 86400000) * dailyRate, data.currency), highlight: true });
                       }
                     }
-                    openShareCard({ emoji: badge.emoji, label: badge.label }, badge.days === 0, det);
+                    openShareCard(
+                      { emoji: badge.emoji, label: badge.label },
+                      badge.days === 0,
+                      det,
+                      false,
+                      0,
+                      '',
+                      badge.days > 0 ? badge.label : null,
+                      badge.days > 0 ? (earnedAt ?? null) : null,
+                    );
                   } else {
                     const sf = streakMs / 86400000;
                     const dLeft = badge.days - sf;
@@ -1975,6 +2001,19 @@ export default function HomeScreen() {
                     <Text style={s.shareCardAchievementEmoji}>{shareCardBadge?.emoji ?? '🏆'}</Text>
                     <Text style={[s.shareCardAchievementLabel, { color: cc.bigText }]}>{shareCardBadge?.label?.toUpperCase()}</Text>
                     <Text style={[s.shareCardSub, { color: cc.sub }]}>milestone earned</Text>
+                  </View>
+                ) : shareCardMilestoneLabel ? (
+                  <View style={s.shareCardCenter}>
+                    <Text style={[s.shareCardNum, { color: cc.bigText }]}>{shareCardMilestoneLabel.split(' ')[0]}</Text>
+                    <Text style={[s.shareCardUnit, { color: cc.unit }]}>
+                      {shareCardMilestoneLabel.split(' ').slice(1).join(' ').toUpperCase()}
+                    </Text>
+                    <Text style={[s.shareCardSub, { color: cc.sub }]}>milestone reached</Text>
+                    {shareCardEarnedOn && (
+                      <Text style={[s.shareCardSub, { color: cc.sub, fontSize: 12, marginTop: 4 }]}>
+                        Earned on {new Date(shareCardEarnedOn).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </Text>
+                    )}
                   </View>
                 ) : (
                   <View style={s.shareCardCenter}>
