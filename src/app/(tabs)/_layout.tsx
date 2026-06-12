@@ -1,5 +1,6 @@
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { Tabs, router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
@@ -180,9 +181,14 @@ export default function TabsLayout() {
       const earnedBadgeTypes = (badgeData ?? []).map((b: any) => b.badge_type);
       await scheduleAllNotifications(prefs, data.quit_timestamp ?? null, earnedBadgeTypes);
 
-      // Save Expo push token for community comment notifications
+      // Save Expo push token for push notifications
       try {
-        const tokenData = await Notifications.getExpoPushTokenAsync();
+        const projectId =
+          Constants.easConfig?.projectId ??
+          (Constants.expoConfig?.extra as any)?.eas?.projectId;
+        const tokenData = await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined
+        );
         if (tokenData?.data) {
           await supabase
             .from('users')

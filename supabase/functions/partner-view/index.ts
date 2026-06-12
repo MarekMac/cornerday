@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: user } = await sb
     .from('users')
-    .select('display_name, quit_timestamp, quit_date')
+    .select('display_name, quit_timestamp, quit_date, weekly_bet, currency')
     .eq('id', link.user_id)
     .single();
 
@@ -69,7 +69,6 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'GET') {
     const result: Record<string, unknown> = { streakMs, displayName };
 
-    // Conditionally fetch shared data in parallel
     const fetches: Promise<void>[] = [];
 
     if (link.share_mood) {
@@ -88,19 +87,19 @@ Deno.serve(async (req: Request) => {
 
     if (link.share_milestones) {
       fetches.push((async () => {
-        const { count } = await sb
-          .from('badges')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', link.user_id);
-        const { data: latest } = await sb
-          .from('badges')
-          .select('badge_type, earned_at')
-          .eq('user_id', link.user_id)
-          .order('earned_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        result.milestonesEarned = count ?? 0;
-        result.latestMilestoneLabel = latest?.badge_type ? (MILESTONE_LABELS[latest.badge_type] ?? latest.badge_type) : null;
+        const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+        const [badgeCountRes, latestRes, urgeRes] = await Promise.all([
+          sb.from('badges').select('id', { count: 'exact', head: true }).eq('user_id', link.user_id),
+          sb.from('badges').select('badge_type, earned_at').eq('user_id', link.user_id)
+            .order('earned_at', { ascending: false }).limit(1).maybeSingle(),
+          sb.from('urge_journal').select('id', { count: 'exact', head: true })
+            .eq('user_id', link.user_id).eq('outcome', 'overcame').gte('created_at', weekAgo),
+        ]);
+        result.milestonesEarned = badgeCountRes.count ?? 0;
+        result.latestMilestoneLabel = latestRes.data?.badge_type
+          ? (MILESTONE_LABELS[latestRes.data.badge_type] ?? latestRes.data.badge_type)
+          : null;
+        result.urgesResisted = urgeRes.count ?? 0;
       })());
     }
 
@@ -114,7 +113,17 @@ Deno.serve(async (req: Request) => {
         const list = (rows ?? []) as { type: string; amount: number }[];
         const totalLost = list.filter(r => r.type === 'loss').reduce((s, r) => s + Number(r.amount), 0);
         const totalPaid = list.filter(r => r.type === 'payment').reduce((s, r) => s + Number(r.amount), 0);
+        result.totalLost = totalLost;
+        result.totalPaid = totalPaid;
         result.recoveryPct = totalLost > 0 ? Math.min(Math.round((totalPaid / totalLost) * 100), 100) : null;
+
+        // Estimated money saved = weekly_bet / 7 * streak_days
+        const weeklyBet = Number(user?.weekly_bet ?? 0);
+        if (weeklyBet > 0) {
+          const streakDays = Math.floor(streakMs / 86_400_000);
+          result.moneySaved = Math.round(weeklyBet * streakDays / 7);
+          result.currency = user?.currency ?? 'USD';
+        }
       })());
     }
 

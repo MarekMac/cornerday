@@ -342,7 +342,11 @@ export default function AccountScreen() {
     if (!partnerLinkId) return;
     const shortKey = key.replace('share_', '') as 'mood' | 'milestones' | 'recovery';
     setShareSettings(prev => ({ ...prev, [shortKey]: value }));
-    await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
+    const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
+    if (error) {
+      setShareSettings(prev => ({ ...prev, [shortKey]: !value }));
+      Alert.alert('Could not save setting', error.message);
+    }
   };
 
   const generatePartnerLink = async () => {
@@ -372,6 +376,7 @@ export default function AccountScreen() {
             setPartnerToken(null);
             setPartnerLinkId(null);
             setPartnerExpiresAt(null);
+            setShareSettings({ mood: false, milestones: false, recovery: false });
           }
           setPartnerLinkLoading(false);
         }},

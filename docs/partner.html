@@ -15,16 +15,35 @@
     .streak-sub{font-size:14px;color:#5a9090;margin-top:6px;font-weight:500}
     .streak-detail{font-size:12px;color:#7ab0b0;margin-top:4px}
     .section{background:#f9fdfd;border-radius:14px;padding:16px;margin-bottom:12px}
-    .section-label{font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+    .section-label{font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
     .mood-row{display:flex;align-items:center;gap:10px}
     .mood-emoji{font-size:28px;line-height:1}
     .mood-text{font-size:15px;font-weight:700;color:#1a2e2e}
     .mood-sub{font-size:12px;color:#5a7a7a;margin-top:2px}
-    .milestone-count{font-size:26px;font-weight:800;color:#0F6E6E;line-height:1}
-    .milestone-sub{font-size:13px;color:#5a7a7a;margin-top:4px}
+    .stat-row{display:flex;gap:10px;margin-bottom:4px}
+    .stat-box{flex:1;background:#fff;border-radius:10px;padding:12px 10px;text-align:center;border:1px solid #e0eded}
+    .stat-val{font-size:22px;font-weight:800;color:#0F6E6E;line-height:1}
+    .stat-lbl{font-size:11px;color:#5a7a7a;margin-top:3px;font-weight:600}
+    .milestone-sub{font-size:13px;color:#5a7a7a;margin-top:6px}
+    .urge-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #e0eded}
+    .urge-val{font-size:20px;font-weight:800;color:#0F6E6E}
+    .urge-lbl{font-size:13px;color:#5a7a7a}
     .progress-bar-track{background:#ddd;border-radius:4px;height:8px;overflow:hidden;margin:10px 0 6px}
     .progress-bar-fill{background:linear-gradient(90deg,#0F6E6E,#1a9a9a);height:100%;border-radius:4px;transition:width .4s}
     .progress-label{font-size:13px;color:#5a7a7a}
+    .recovery-row{display:flex;gap:10px;margin-bottom:10px}
+    .recovery-box{flex:1;background:#fff;border-radius:10px;padding:12px 10px;text-align:center;border:1px solid #e0eded}
+    .recovery-val{font-size:18px;font-weight:800;color:#1a2e2e;line-height:1}
+    .recovery-val.green{color:#0F6E6E}
+    .recovery-lbl{font-size:11px;color:#5a7a7a;margin-top:3px;font-weight:600}
+    .clean-start{display:flex;align-items:center;gap:10px}
+    .clean-start-emoji{font-size:28px}
+    .clean-start-text{font-size:14px;font-weight:600;color:#1a2e2e}
+    .clean-start-sub{font-size:12px;color:#5a7a7a;margin-top:2px}
+    .savings-highlight{background:#e6f7f7;border-radius:10px;padding:12px 14px;margin-top:8px;display:flex;align-items:center;gap:10px}
+    .savings-emoji{font-size:22px}
+    .savings-text{font-size:14px;font-weight:700;color:#0F6E6E}
+    .savings-sub{font-size:12px;color:#5a9090;margin-top:1px}
     h2{font-size:17px;font-weight:700;color:#1a2e2e;margin-bottom:6px}
     p{font-size:14px;color:#5a7a7a;line-height:1.6;margin-bottom:20px}
     .divider{height:1px;background:#e0eded;margin:20px 0}
@@ -53,6 +72,9 @@
     const API = 'https://cdgsiotlocurwnqxebrh.supabase.co/functions/v1/partner-view';
     const token = new URLSearchParams(location.search).get('t') || '';
     const card = document.getElementById('card');
+
+    const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
+    const currSym = c => CURRENCY_SYMBOLS[c] || c || '$';
 
     const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
@@ -114,21 +136,75 @@
       </div>`;
     }
 
-    function buildMilestonesSection(count, latestLabel) {
+    function buildMilestonesSection(count, latestLabel, urgesResisted) {
+      const urgeHtml = (typeof urgesResisted === 'number')
+        ? `<div class="urge-row">
+            <div class="urge-val">${esc(String(urgesResisted))}</div>
+            <div class="urge-lbl">urge${urgesResisted !== 1 ? 's' : ''} resisted this week 💪</div>
+           </div>`
+        : '';
       return `<div class="section">
-        <div class="section-label">Milestones</div>
-        <div class="milestone-count">${esc(String(count))}</div>
-        <div class="milestone-sub">milestone${count !== 1 ? 's' : ''} earned${latestLabel ? ' &mdash; most recent: ' + esc(latestLabel) : ''}</div>
+        <div class="section-label">Milestones &amp; Resilience</div>
+        <div class="stat-row">
+          <div class="stat-box">
+            <div class="stat-val">${esc(String(count))}</div>
+            <div class="stat-lbl">milestone${count !== 1 ? 's' : ''} earned</div>
+          </div>
+        </div>
+        ${latestLabel ? `<div class="milestone-sub">Most recent: <strong>${esc(latestLabel)}</strong></div>` : ''}
+        ${urgeHtml}
       </div>`;
     }
 
-    function buildRecoverySection(pct) {
-      if (pct === null) return '';
-      return `<div class="section">
-        <div class="section-label">Financial recovery</div>
-        <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
-        <div class="progress-label">${pct}% of debt paid back</div>
-      </div>`;
+    function buildRecoverySection(recoveryPct, totalLost, totalPaid, moneySaved, currency) {
+      const sym = currSym(currency);
+      let html = `<div class="section"><div class="section-label">Financial Recovery</div>`;
+
+      if (totalLost > 0) {
+        // Has tracked debt — show amounts + progress bar
+        const owed = Math.max(0, totalLost - totalPaid);
+        html += `<div class="recovery-row">
+          <div class="recovery-box">
+            <div class="recovery-val">${sym}${Number(totalLost).toLocaleString()}</div>
+            <div class="recovery-lbl">total tracked</div>
+          </div>
+          <div class="recovery-box">
+            <div class="recovery-val green">${sym}${Number(totalPaid).toLocaleString()}</div>
+            <div class="recovery-lbl">paid back</div>
+          </div>
+          <div class="recovery-box">
+            <div class="recovery-val">${sym}${Number(owed).toLocaleString()}</div>
+            <div class="recovery-lbl">still owed</div>
+          </div>
+        </div>`;
+        if (recoveryPct !== null) {
+          html += `<div class="progress-bar-track"><div class="progress-bar-fill" style="width:${recoveryPct}%"></div></div>
+          <div class="progress-label">${recoveryPct}% of debt paid back</div>`;
+        }
+      } else {
+        // No tracked debt
+        html += `<div class="clean-start">
+          <div class="clean-start-emoji">🎉</div>
+          <div>
+            <div class="clean-start-text">No gambling debt tracked</div>
+            <div class="clean-start-sub">They're starting clean — no debt to pay back.</div>
+          </div>
+        </div>`;
+      }
+
+      // Estimated money saved (shown whenever weekly_bet is set)
+      if (moneySaved > 0) {
+        html += `<div class="savings-highlight">
+          <div class="savings-emoji">💰</div>
+          <div>
+            <div class="savings-text">~${sym}${Number(moneySaved).toLocaleString()} saved by not gambling</div>
+            <div class="savings-sub">Estimated based on their usual weekly spend</div>
+          </div>
+        </div>`;
+      }
+
+      html += `</div>`;
+      return html;
     }
 
     async function send() {
@@ -155,15 +231,28 @@
         if (r.status === 404) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link is invalid or has been revoked.</div>'; return; }
         if (r.status === 410) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link has expired. Ask them to generate a new one in the app.</div>'; return; }
         const data = await r.json();
-        const { streakMs, displayName: n, moodAvg, moodCheckins, milestonesEarned, latestMilestoneLabel, recoveryPct } = data;
+        const {
+          streakMs, displayName: n,
+          moodAvg, moodCheckins,
+          milestonesEarned, latestMilestoneLabel, urgesResisted,
+          recoveryPct, totalLost, totalPaid, moneySaved, currency,
+        } = data;
         const fmt = formatStreak(streakMs || 0);
         const name = n || 'someone you care about';
         const streakLabel = fmt.primary + ' ' + fmt.unit + (fmt.detail ? ' ' + fmt.detail : '');
 
         let extraSections = '';
         if (moodAvg !== undefined) extraSections += buildMoodSection(moodAvg, moodCheckins ?? 0);
-        if (milestonesEarned !== undefined) extraSections += buildMilestonesSection(milestonesEarned, latestMilestoneLabel ?? null);
-        if (recoveryPct !== undefined) extraSections += buildRecoverySection(recoveryPct);
+        if (milestonesEarned !== undefined) extraSections += buildMilestonesSection(milestonesEarned, latestMilestoneLabel ?? null, urgesResisted);
+        if (recoveryPct !== undefined || totalLost !== undefined || moneySaved !== undefined) {
+          extraSections += buildRecoverySection(
+            recoveryPct ?? null,
+            totalLost ?? 0,
+            totalPaid ?? 0,
+            moneySaved ?? 0,
+            currency ?? 'USD'
+          );
+        }
 
         card.innerHTML =
           '<div class="logo">CornerDay</div>' +
