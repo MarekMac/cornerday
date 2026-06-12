@@ -410,10 +410,11 @@ export default function AccountScreen() {
     if (user) {
       const distractionsVal = planDistractionsInput.join(',') || null;
       const mantraVal = planMantraInput.trim() || null;
-      await supabase.from('users').update({
+      const { error } = await supabase.from('users').update({
         recovery_distractions: distractionsVal,
         recovery_mantra: mantraVal,
       }).eq('id', user.id);
+      if (error) { Alert.alert('Could not save', error.message); setSavingPlan(false); return; }
       setRecoveryDistractions(planDistractionsInput);
       setRecoveryMantra(planMantraInput.trim());
     }
@@ -425,7 +426,8 @@ export default function AccountScreen() {
     setSavingPlan(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('users').update({ recovery_distractions: null, recovery_mantra: null }).eq('id', user.id);
+      const { error } = await supabase.from('users').update({ recovery_distractions: null, recovery_mantra: null }).eq('id', user.id);
+      if (error) { Alert.alert('Could not clear plan', error.message); setSavingPlan(false); return; }
       setRecoveryDistractions([]);
       setRecoveryMantra('');
     }
@@ -536,7 +538,8 @@ export default function AccountScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const value = config.multi ? editModalSelections.join(',') : (editModalSelections[0] ?? '');
-      await supabase.from('users').update({ [config.dbField]: value }).eq('id', user.id);
+      const { error } = await supabase.from('users').update({ [config.dbField]: value }).eq('id', user.id);
+      if (error) { Alert.alert('Could not save', error.message); setSavingField(false); return; }
       setProfile(prev => {
         if (!prev) return prev;
         if (editField === 'motivation') return { ...prev, motivation: value };
@@ -563,7 +566,8 @@ export default function AccountScreen() {
     setSavingSpending(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('users').update({ weekly_bet: value, currency: spendingCurrency }).eq('id', user.id);
+      const { error } = await supabase.from('users').update({ weekly_bet: value, currency: spendingCurrency }).eq('id', user.id);
+      if (error) { Alert.alert('Could not save', error.message); setSavingSpending(false); return; }
       setProfile(prev => prev ? { ...prev, weeklyBet: value, currency: spendingCurrency } : prev);
     }
     setSavingSpending(false);
@@ -667,7 +671,8 @@ export default function AccountScreen() {
     setSavingName(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('users').update({ display_name: trimmed }).eq('id', user.id);
+      const { error } = await supabase.from('users').update({ display_name: trimmed }).eq('id', user.id);
+      if (error) { Alert.alert('Could not save name', error.message); setSavingName(false); return; }
       setProfile(prev => prev ? { ...prev, displayName: trimmed } : prev);
     }
     setSavingName(false);
@@ -721,10 +726,11 @@ export default function AccountScreen() {
       const clamped = date > now ? now : date;
       const iso = clamped.toISOString();
       const dateOnly = iso.split('T')[0];
-      await supabase.from('users').update({
+      const { error } = await supabase.from('users').update({
         quit_timestamp: iso,
         quit_date: dateOnly,
       }).eq('id', user.id);
+      if (error) { Alert.alert('Could not save date', error.message); setSaving(false); return; }
       await Promise.all([
         supabase.from('streaks').update({ streak_start_date: dateOnly, current_streak: 0 }).eq('user_id', user.id),
         supabase.from('badges').delete().eq('user_id', user.id),

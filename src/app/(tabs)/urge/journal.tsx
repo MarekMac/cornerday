@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -355,12 +356,18 @@ export default function JournalScreen() {
     setClearingAll(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await Promise.all([
+      const results = await Promise.all([
         supabase.from('urge_journal').delete().eq('user_id', user.id),
         supabase.from('debt_payments').delete().eq('user_id', user.id),
         supabase.from('debts').delete().eq('user_id', user.id),
         supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
       ]);
+      const dbError = results.find(r => r.error)?.error;
+      if (dbError) {
+        Alert.alert('Could not clear journal', dbError.message);
+        setClearingAll(false);
+        return;
+      }
       await fetchFeed();
     }
     setClearAllVisible(false);

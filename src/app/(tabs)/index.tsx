@@ -4,6 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -1138,7 +1139,12 @@ export default function HomeScreen() {
   const handleClearMood = async () => {
     if (!data?.todayMoodId) return;
     setMoodSubmitting(true);
-    await supabase.from('mood_checkins').delete().eq('id', data.todayMoodId);
+    const { error } = await supabase.from('mood_checkins').delete().eq('id', data.todayMoodId);
+    if (error) {
+      Alert.alert('Could not clear mood', error.message);
+      setMoodSubmitting(false);
+      return;
+    }
     const todayKey = new Date().toLocaleDateString();
     setData(prev => {
       if (!prev) return prev;
@@ -1161,7 +1167,7 @@ export default function HomeScreen() {
         const today = todayStr();
         const newQuitTimestamp = new Date().toISOString();
         const days = streakDays;
-        await Promise.all([
+        const results = await Promise.all([
           supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
           supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
           supabase.from('badges').delete().eq('user_id', user.id),
@@ -1171,6 +1177,11 @@ export default function HomeScreen() {
             note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
           }),
         ]);
+        const dbError = results.find(r => r.error)?.error;
+        if (dbError) {
+          Alert.alert('Could not reset streak', dbError.message);
+          return;
+        }
         // Clear AsyncStorage badge flags so goal/checklist badges can be re-earned after a relapse
         await AsyncStorage.multiRemove([CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]);
         // Reschedule notifications against the new quit timestamp
@@ -1187,9 +1198,6 @@ export default function HomeScreen() {
           notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
         };
         await scheduleAllNotifications(prefs, newQuitTimestamp);
-        // Optimistic reset: update local state immediately so the UI reacts without
-        // racing against useFocusEffect (which also calls fetchData and may have a
-        // stale quit_timestamp if the user navigates to account before this resolves).
         setData(prev => prev ? {
           ...prev,
           quitDate: newQuitTimestamp,
