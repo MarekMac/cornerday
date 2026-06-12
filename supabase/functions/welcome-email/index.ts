@@ -128,6 +128,11 @@ Deno.serve(async (req: Request) => {
   if (!userId) return new Response(JSON.stringify({ error: 'no user_id' }), { status: 400 });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  const { data: alreadySent } = await supabase
+    .from('badges').select('id').eq('user_id', userId).eq('badge_type', 'welcome_email_sent').maybeSingle();
+  if (alreadySent) return new Response(JSON.stringify({ skipped: 'already sent' }), { status: 200 });
+
   const { data: user } = await supabase
     .from('users')
     .select('email, display_name, motivation')
@@ -152,6 +157,7 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: err }), { status: 500 });
   }
 
+  await supabase.from('badges').insert({ user_id: userId, badge_type: 'welcome_email_sent' });
   console.log(`Welcome email sent to ${userId}`);
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 });

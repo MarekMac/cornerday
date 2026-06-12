@@ -109,14 +109,9 @@ Deno.serve(async (req: Request) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Only send for the very first loss entry
-  const { count } = await supabase
-    .from('losses')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user_id)
-    .eq('type', 'loss');
-
-  if ((count ?? 0) > 1) return new Response(JSON.stringify({ skipped: 'not first loss' }), { status: 200 });
+  const { data: alreadySent } = await supabase
+    .from('badges').select('id').eq('user_id', user_id).eq('badge_type', 'first_loss_email_sent').maybeSingle();
+  if (alreadySent) return new Response(JSON.stringify({ skipped: 'already sent' }), { status: 200 });
 
   const { data: user } = await supabase
     .from('users')
@@ -142,6 +137,7 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: err }), { status: 500 });
   }
 
+  await supabase.from('badges').insert({ user_id: user_id, badge_type: 'first_loss_email_sent' });
   console.log(`First-loss email sent to ${user_id}`);
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 });
