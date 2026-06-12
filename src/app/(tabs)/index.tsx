@@ -655,8 +655,11 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
 }
 
 export default function HomeScreen() {
-  const { colors: c } = useAppTheme();
+  const { colors: c, colorScheme } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
+  const cardGradient = colorScheme === 'dark'
+    ? ['#062e2e', '#0F6E6E', '#1a9a9a'] as const
+    : ['#0a7878', '#12a0a0', '#4ecece'] as const;
   const { avatarUrl } = useUser();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1907,7 +1910,7 @@ export default function HomeScreen() {
           <Pressable onPress={() => {}} style={{ alignItems: 'center' }}>
             <View ref={shareCardRef} collapsable={false} style={s.shareCardWrap}>
               <LinearGradient
-                colors={['#062e2e', '#0F6E6E', '#1a9a9a']}
+                colors={cardGradient}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={s.shareCard}
               >
