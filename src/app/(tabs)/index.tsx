@@ -1235,7 +1235,7 @@ export default function HomeScreen() {
         // Reschedule notifications against the new quit timestamp
         const { data: prefsRow } = await supabase
           .from('users')
-          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
+          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
           .eq('id', user.id)
           .single();
         const prefs = {
@@ -1244,6 +1244,7 @@ export default function HomeScreen() {
           notif_daily_checkin: prefsRow?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
           notif_weekly_summary: prefsRow?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
           notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+          notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
         };
         await scheduleAllNotifications(prefs, newQuitTimestamp);
         setData(prev => prev ? {

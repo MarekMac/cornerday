@@ -276,18 +276,19 @@ export default function CommunityFeed() {
   };
 
   useFocusEffect(useCallback(() => {
+    let cancelled = false;
     load(activeTag, sortByRef.current, true);
     const uid = currentUserIdRef.current;
     if (uid) {
       supabase.from('community_follows').select('following_id').eq('follower_id', uid)
         .then(({ data }) => {
-          if (data) {
-            const fm: Record<string, boolean> = {};
-            for (const row of data as { following_id: string }[]) fm[row.following_id] = true;
-            setFollowedUsers(fm);
-          }
+          if (cancelled || !data) return;
+          const fm: Record<string, boolean> = {};
+          for (const row of data as { following_id: string }[]) fm[row.following_id] = true;
+          setFollowedUsers(fm);
         }).catch(() => {});
     }
+    return () => { cancelled = true; };
   }, [activeTag, load]));
 
   const changeTag = (tag: FilterTag) => {

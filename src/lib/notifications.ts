@@ -192,7 +192,13 @@ export async function scheduleAllNotifications(
   if (prefs.notif_urge_prediction) {
     const saved = await AsyncStorage.getItem(URGE_PREDICTION_SCHEDULE_KEY);
     if (saved) {
-      const { hour, minute } = JSON.parse(saved) as { hour: number; minute: number };
+      let parsed: { hour: number; minute: number } | null = null;
+      try { parsed = JSON.parse(saved); } catch {}
+      if (!parsed || typeof parsed.hour !== 'number' || typeof parsed.minute !== 'number') {
+        await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY);
+        return;
+      }
+      const { hour, minute } = parsed;
       await Notifications.scheduleNotificationAsync({
         content: {
           title: `🛡️ Your high-risk window is coming up`,
