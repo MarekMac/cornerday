@@ -10,7 +10,8 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "NSContactsUsageDescription": "CornerDay uses your contacts to let you quickly set a trusted person to call when you feel an urge."
+        "NSContactsUsageDescription": "CornerDay uses your contacts to let you quickly set a trusted person to call when you feel an urge.",
+        "NSFaceIDUsageDescription": "CornerDay uses Face ID to protect your recovery data."
       }
     },
     "android": {
