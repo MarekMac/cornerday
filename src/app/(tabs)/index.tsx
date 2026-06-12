@@ -2009,11 +2009,6 @@ export default function HomeScreen() {
                       {shareCardMilestoneLabel.split(' ').slice(1).join(' ').toUpperCase()}
                     </Text>
                     <Text style={[s.shareCardSub, { color: cc.sub }]}>milestone reached</Text>
-                    {shareCardEarnedOn && (
-                      <Text style={[s.shareCardSub, { color: cc.sub, fontSize: 12, marginTop: 4 }]}>
-                        Earned on {new Date(shareCardEarnedOn).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </Text>
-                    )}
                   </View>
                 ) : (
                   <View style={s.shareCardCenter}>
