@@ -638,64 +638,44 @@ export default function TrackerIndex() {
                   <View style={[s.progressFill, { width: `${recoveryPct * 100}%` as any }]} />
                 </View>
                 <Text style={s.progressLbl}>{Math.round(recoveryPct * 100)}% recovered</Text>
+                {(() => {
+                  const daysElapsed = days;
+                  const daysRemaining = debtTargetDate ? Math.ceil((debtTargetDate.getTime() - Date.now()) / 86400000) : null;
+                  const requiredPerDay = daysRemaining && daysRemaining > 0 && stillOwed > 0 ? stillOwed / daysRemaining : null;
+                  const actualPerDay = daysElapsed > 0 && totalPaid > 0 ? totalPaid / daysElapsed : null;
+                  const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
+                  return (
+                    <Pressable onPress={openDebtTargetPicker} style={s.pacingFooter}>
+                      {!debtTargetDate ? (
+                        <Text style={s.pacingFooterSet}>📅 Set payoff target date</Text>
+                      ) : (
+                        <View style={s.pacingFooterRow}>
+                          <Text style={s.pacingFooterDate}>
+                            📅 {debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {daysRemaining !== null && (
+                              <Text style={{ color: daysRemaining <= 0 ? c.error : c.textFaint }}>
+                                {daysRemaining > 0 ? `  ·  ${daysRemaining}d left` : '  ·  Past target'}
+                              </Text>
+                            )}
+                          </Text>
+                          <View style={s.pacingFooterStats}>
+                            {requiredPerDay !== null && (
+                              <Text style={s.pacingFooterStat}>Need {fmt(requiredPerDay, currency)}/day</Text>
+                            )}
+                            {actualPerDay !== null && isAhead !== null && (
+                              <View style={[s.paceBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
+                                <Text style={s.paceBadgeTxt}>{isAhead ? '▲ Ahead' : '▼ Behind'}</Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })()}
               </>
             )}
           </View>
-
-          {/* Debt payoff target */}
-          {totalDebt > 0 && (() => {
-            const daysElapsed = days;
-            const daysRemaining = debtTargetDate ? Math.ceil((debtTargetDate.getTime() - Date.now()) / 86400000) : null;
-            const requiredPerDay = daysRemaining && daysRemaining > 0 && stillOwed > 0 ? stillOwed / daysRemaining : null;
-            const actualPerDay = daysElapsed > 0 && totalPaid > 0 ? totalPaid / daysElapsed : null;
-            const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
-            return (
-              <View style={s.targetCard}>
-                <View style={s.targetHeader}>
-                  <Text style={s.targetTitle}>🎯 Payoff target</Text>
-                  <Pressable onPress={openDebtTargetPicker} style={s.targetEditBtn}>
-                    <Text style={s.targetEditTxt}>{debtTargetDate ? '✏️ Edit' : '+ Set date'}</Text>
-                  </Pressable>
-                </View>
-                {!debtTargetDate ? (
-                  <Text style={s.targetEmpty}>Set a target date to see your required daily payment and track your pace.</Text>
-                ) : (
-                  <View style={s.targetRows}>
-                    <View style={s.targetRow}>
-                      <Text style={s.targetLbl}>Target</Text>
-                      <Text style={s.targetVal}>
-                        {debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {daysRemaining !== null && (
-                          <Text style={{ color: daysRemaining <= 0 ? c.error : c.textMuted }}>
-                            {daysRemaining > 0 ? `  ·  ${daysRemaining} days left` : '  ·  Past target'}
-                          </Text>
-                        )}
-                      </Text>
-                    </View>
-                    {requiredPerDay !== null && (
-                      <View style={s.targetRow}>
-                        <Text style={s.targetLbl}>Need</Text>
-                        <Text style={s.targetVal}>{fmt(requiredPerDay, currency)}/day</Text>
-                      </View>
-                    )}
-                    {actualPerDay !== null && (
-                      <View style={s.targetRow}>
-                        <Text style={s.targetLbl}>Pace</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <Text style={s.targetVal}>{fmt(actualPerDay, currency)}/day</Text>
-                          {isAhead !== null && (
-                            <View style={[s.paceBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
-                              <Text style={s.paceBadgeTxt}>{isAhead ? '▲ Ahead' : '▼ Behind'}</Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })()}
 
           {/* Savings card */}
           <View style={s.savingsCard}>
@@ -945,6 +925,27 @@ export default function TrackerIndex() {
                     </Pressable>
                   ))}
                 </View>
+                <Text style={s.fieldLbl}>
+                  Payoff target date <Text style={[s.fieldLbl, { fontWeight: '400', textTransform: 'none', letterSpacing: 0 }]}>(optional)</Text>
+                </Text>
+                <Pressable style={s.dateRow} onPress={openDebtTargetPicker}>
+                  <Ionicons name="calendar-outline" size={16} color={c.textMuted} />
+                  <Text style={[s.dateRowTxt, !debtTargetDate && { color: c.textFaint }]}>
+                    {debtTargetDate
+                      ? debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
+                      : 'No target date set'}
+                  </Text>
+                  {debtTargetDate && (
+                    <Pressable onPress={async e => {
+                      e.stopPropagation();
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) await supabase.from('users').update({ debt_target_date: null }).eq('id', user.id);
+                      setDebtTargetDate(null);
+                    }} hitSlop={10}>
+                      <Ionicons name="close-circle" size={16} color={c.textFaint} />
+                    </Pressable>
+                  )}
+                </Pressable>
               </ScrollView>
               <View style={s.sheetActions}>
                 <Pressable style={s.cancelBtn} onPress={closeDebtModal}>
@@ -1541,6 +1542,16 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   targetVal: { fontSize: 13, color: c.textPrimary, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
   paceBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   paceBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#fff' },
+
+  pacingFooter: {
+    marginTop: 6, paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderLight,
+  },
+  pacingFooterSet: { fontSize: 12, color: c.primary, fontWeight: '500' },
+  pacingFooterRow: { gap: 4 },
+  pacingFooterDate: { fontSize: 12, color: c.textMuted, fontWeight: '500' },
+  pacingFooterStats: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pacingFooterStat: { fontSize: 12, color: c.textMuted },
 
   dateRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

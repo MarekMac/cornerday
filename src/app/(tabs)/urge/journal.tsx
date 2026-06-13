@@ -28,8 +28,26 @@ const TRIGGERS = [
   { key: 'other',       label: 'Other' },
 ];
 
+const PLAN_DISTRACTION_OPTIONS = [
+  { key: 'walk',     label: 'Go for a walk' },
+  { key: 'call',     label: 'Call someone' },
+  { key: 'music',    label: 'Listen to music' },
+  { key: 'drink',    label: 'Make a hot drink' },
+  { key: 'read',     label: 'Read' },
+  { key: 'exercise', label: 'Exercise' },
+  { key: 'breathe',  label: 'Meditate' },
+  { key: 'journal',  label: 'Write in journal' },
+  { key: 'shower',   label: 'Take a shower' },
+  { key: 'tv',       label: 'Watch something' },
+  { key: 'game',     label: 'Play a game' },
+  { key: 'outside',  label: 'Go outside' },
+  { key: 'create',   label: 'Create something' },
+  { key: 'text',     label: 'Text a friend' },
+  { key: 'puzzle',   label: 'Do a puzzle' },
+];
+
 type FeedEntry =
-  | { kind: 'urge';          id: string; trigger: string; outcome: 'overcame' | 'slipped'; note: string | null; created_at: string }
+  | { kind: 'urge';          id: string; trigger: string; outcome: 'overcame' | 'slipped'; note: string | null; distraction_used: string | null; created_at: string }
   | { kind: 'debt';          id: string; name: string; total_amount: number; category: string; created_at: string }
   | { kind: 'payment';       id: string; amount: number; note: string | null; debt_name: string; created_at: string }
   | { kind: 'saving';        id: string; amount: number; note: string | null; created_at: string }
@@ -79,6 +97,9 @@ function EntryCard({ entry, currency, c }: { entry: FeedEntry; currency: string;
           <Text style={s.cardDate}>{formatDate(entry.created_at)}</Text>
         </View>
         <Text style={s.cardTitle}>{triggerLabel(entry.trigger)}</Text>
+        {entry.distraction_used && (
+          <Text style={s.cardNote}>💪 {PLAN_DISTRACTION_OPTIONS.find(o => o.key === entry.distraction_used)?.label ?? entry.distraction_used}</Text>
+        )}
         {entry.note ? <Text style={s.cardNote}>{entry.note}</Text> : null}
       </View>
     );

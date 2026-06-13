@@ -208,6 +208,7 @@ export default function UrgeScreen() {
   const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
   const [customTrigger, setCustomTrigger] = useState('');
   const [outcome, setOutcome] = useState<'overcame' | 'slipped' | null>(null);
+  const [distractionUsed, setDistractionUsed] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -313,6 +314,7 @@ export default function UrgeScreen() {
     setSelectedTrigger(null);
     setCustomTrigger('');
     setOutcome(null);
+    setDistractionUsed(null);
     setNote('');
     setSaved(false);
   };
@@ -328,6 +330,7 @@ export default function UrgeScreen() {
       const { error } = await supabase.from('urge_journal').insert({
         user_id: user.id, trigger: triggerValue, outcome,
         note: note.trim() || null,
+        distraction_used: outcome === 'overcame' ? (distractionUsed || null) : null,
       });
       if (error) {
         setSaving(false);
@@ -721,6 +724,31 @@ export default function UrgeScreen() {
                       maxLength={120}
                     />
                   )}
+                  {outcome === 'overcame' && (() => {
+                    const planKeys = recoveryPlan.distractions.length > 0
+                      ? recoveryPlan.distractions
+                      : ['walk', 'call', 'breathe', 'music', 'exercise', 'drink'];
+                    const opts = PLAN_DISTRACTION_OPTIONS.filter(o => planKeys.includes(o.key));
+                    return (
+                      <View>
+                        <Text style={s.fieldLabel}>
+                          What helped? <Text style={s.optional}>(optional)</Text>
+                        </Text>
+                        <View style={s.chipsWrap}>
+                          {opts.map(o => (
+                            <Pressable
+                              key={o.key}
+                              style={[s.chip, distractionUsed === o.key && s.chipActive]}
+                              onPress={() => setDistractionUsed(prev => prev === o.key ? null : o.key)}>
+                              <Text style={[s.chipTxt, distractionUsed === o.key && s.chipTxtActive]}>
+                                {o.emoji} {o.label}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })()}
                   <Text style={s.fieldLabel}>
                     How are you feeling? <Text style={s.optional}>(optional)</Text>
                   </Text>
