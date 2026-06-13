@@ -260,6 +260,18 @@ function formatStreakDual(ms: number): string {
   return '< 1m';
 }
 
+function formatStreakFull(ms: number): string {
+  const mins  = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const days  = Math.floor(ms / 86400000);
+  const weeks = Math.floor(days / 7);
+  if (weeks >= 1) { const d = days - weeks * 7; return d > 0 ? `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ${d} ${d === 1 ? 'day' : 'days'}` : `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`; }
+  if (days >= 1)  { const h = hours - days * 24; return h > 0 ? `${days} ${days === 1 ? 'day' : 'days'} ${h} ${h === 1 ? 'hour' : 'hours'}` : `${days} ${days === 1 ? 'day' : 'days'}`; }
+  if (hours >= 1) { const m = mins - hours * 60; return m > 0 ? `${hours} ${hours === 1 ? 'hour' : 'hours'} ${m} ${m === 1 ? 'minute' : 'minutes'}` : `${hours} ${hours === 1 ? 'hour' : 'hours'}`; }
+  if (mins >= 1) return `${mins} ${mins === 1 ? 'minute' : 'minutes'}`;
+  return '< 1 minute';
+}
+
 function getMilestone(ms: number) {
   const days = ms / 86400000;
   const next = MILESTONES.find(m => m > days) ?? 3650;
@@ -1395,7 +1407,7 @@ export default function HomeScreen() {
                     } else {
                       if (earnedAt) det.push({ label: 'Earned on', value: new Date(earnedAt).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
                       const streakDaysNow = streakMs / 86400000;
-                      det.push({ label: 'Current streak', value: streakDaysNow >= 1 ? `${Math.floor(streakDaysNow)} ${Math.floor(streakDaysNow) === 1 ? 'day' : 'days'}` : `${Math.round(streakDaysNow * 24)}h` });
+                      det.push({ label: 'Current streak', value: formatStreakFull(streakMs) });
                       if (dailyRate > 0) {
                         det.push({ label: 'Saved at milestone', value: fmt(badge.days * dailyRate, data.currency) });
                         det.push({ label: 'Total saved', value: fmt((streakMs / 86400000) * dailyRate, data.currency), highlight: true });
