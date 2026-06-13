@@ -235,7 +235,7 @@ export default function TabsLayout() {
             tabPress: (e) => { e.preventDefault(); navigation.navigate('urge', { screen: 'index' }); },
           })}
         />
-        <Tabs.Screen name="coach" options={{ title: 'Coach' }} />
+        <Tabs.Screen name="coach" options={{ title: 'Corner' }} />
         <Tabs.Screen
           name="community"
           options={{ title: 'Community' }}
