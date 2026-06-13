@@ -68,6 +68,7 @@ const BADGE_DEFS = [
   { type: '12_hours', emoji: '🌗', label: '12 Hours', days: 12/24 },
   { type: '1_day',    emoji: '🌱', label: '1 Day',    days: 1 },
   { type: '3_days',   emoji: '🌿', label: '3 Days',   days: 3 },
+  { type: '5_days',   emoji: '🕊️', label: '5 Days',   days: 5 },
   { type: '1_week',   emoji: '⭐', label: '1 Week',   days: 7 },
   { type: '10_days',  emoji: '✨', label: '10 Days',  days: 10 },
   { type: '2_weeks',  emoji: '🌙', label: '2 Weeks',  days: 14 },
