@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import {
   ActivityIndicator,
   Alert,
@@ -354,15 +355,20 @@ export default function UrgeScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,
+        quality: 1,
         exif: false,
       });
       if (result.canceled) return;
       try {
         const src = result.assets[0].uri;
+        const resized = await ImageManipulator.manipulateAsync(
+          src,
+          [{ resize: { width: 1080, height: 1080 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        );
         const destFile = new File(Paths.document, 'motivation_photo.jpg');
         if (destFile.exists) destFile.delete();
-        await new File(src).copy(destFile);
+        await new File(resized.uri).copy(destFile);
         await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
         setMotivationPhoto(destFile.uri + '?t=' + Date.now());
       } catch (err) {
