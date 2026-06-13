@@ -964,8 +964,9 @@ export default function HomeScreen() {
         const h = new Date(e.created_at).getHours();
         hourCounts[h] = (hourCounts[h] ?? 0) + 1;
       }
-      const peak = parseInt(Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0][0], 10);
-      setUrgePeakHour(peak);
+      const sorted = Object.entries(hourCounts).sort((a, b) => b[1] - a[1]);
+      const peak = sorted.length > 0 ? parseInt(sorted[0][0], 10) : NaN;
+      setUrgePeakHour(!isNaN(peak) ? peak : null);
     } else {
       setUrgePeakHour(null);
     }
