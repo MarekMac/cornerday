@@ -131,6 +131,7 @@ export default function CoachScreen() {
     setIsStreaming(true);
     scrollToBottom();
 
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
@@ -149,7 +150,7 @@ export default function CoachScreen() {
         throw new Error((errBody as any).error ?? 'Request failed');
       }
 
-      const reader = response.body!.getReader();
+      reader = response.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -201,6 +202,7 @@ export default function CoachScreen() {
         ),
       );
     } finally {
+      reader?.cancel().catch(() => {});
       setIsStreaming(false);
       // Clear pending flag if the stream ended before any text arrived
       setMessages(prev =>

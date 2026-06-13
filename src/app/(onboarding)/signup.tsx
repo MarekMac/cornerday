@@ -117,7 +117,7 @@ export default function SignupScreen() {
         const { data: profile } = await supabase
           .from('users')
           .select('motivation')
-          .single();
+          .maybeSingle();
 
         if (profile?.motivation) {
           router.replace('/(tabs)');
@@ -166,7 +166,7 @@ export default function SignupScreen() {
           const { data: profile } = await supabase
             .from('users')
             .select('motivation')
-            .single();
+            .maybeSingle();
           if (profile?.motivation) {
             router.replace('/(tabs)');
           } else {
@@ -221,7 +221,7 @@ export default function SignupScreen() {
           const { data: profile } = await supabase
             .from('users')
             .select('motivation')
-            .single();
+            .maybeSingle();
           if (profile?.motivation) {
             router.replace('/(tabs)');
           } else {

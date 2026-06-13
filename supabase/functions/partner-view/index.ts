@@ -54,7 +54,7 @@ Deno.serve(async (req: Request) => {
     .from('users')
     .select('display_name, quit_timestamp, quit_date, weekly_bet, currency')
     .eq('id', link.user_id)
-    .single();
+    .maybeSingle();
 
   const parseTs = (s: string | null): number => {
     if (!s) return 0;

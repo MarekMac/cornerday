@@ -766,7 +766,7 @@ export default function HomeScreen() {
 
     const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).single(),
-      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
+      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
       supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const t = new Date(); t.setDate(t.getDate() - 6); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
@@ -1237,7 +1237,7 @@ export default function HomeScreen() {
           .from('users')
           .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         const prefs = {
           notif_milestone: prefsRow?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
           notif_daily_streak: prefsRow?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
