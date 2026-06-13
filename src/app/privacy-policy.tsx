@@ -23,7 +23,7 @@ const SECTIONS = [
   },
   {
     title: '4. Who we share data with',
-    body: 'We use the following third-party services to operate CornerDay:\n\n• Supabase — secure database and authentication (data stored in EU region)\n• RevenueCat — subscription management (premium users only)\n\nThese providers are bound by their own privacy policies and are not permitted to use your data for their own purposes.',
+    body: 'We use the following third-party services to operate CornerDay:\n\n• Supabase — secure database and authentication (data stored in EU region)\n• RevenueCat — subscription management (premium users only)\n• Google AdMob — non-personalised ads for free tier users (never shown on crisis or urge screens)\n\nThese providers are bound by their own privacy policies and are not permitted to use your data for their own purposes.',
   },
   {
     title: '5. Data security',
