@@ -1656,7 +1656,7 @@ export default function AccountScreen() {
         {/* Security */}
         <View style={s.menuCard}>
           <Text style={s.menuCardTitle}>Security</Text>
-          <View style={s.notifRow}>
+          <View style={[s.notifRow, { paddingHorizontal: 16, borderBottomWidth: 0 }]}>
             <View style={s.notifText}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={s.notifLabel}>Biometric lock</Text>
