@@ -93,6 +93,16 @@ const BADGE_DEFS = [
   { type: '10_years', emoji: '💫', label: '10 Years', days: 3650 },
 ];
 
+const ACTIVITY_BADGE_DEFS = [
+  { type: 'first_checkin',    emoji: '🧘', label: 'First Check-in',  earned: 'First mood check-in logged.',         pending: 'Log your first mood check-in on the home screen.' },
+  { type: 'checkins_7',       emoji: '🗓️', label: '7 Check-ins',     earned: '7 mood check-ins logged.',            pending: 'Log 7 mood check-ins to earn this.' },
+  { type: 'checkins_30',      emoji: '📅', label: '30 Check-ins',    earned: '30 mood check-ins logged.',           pending: 'Log 30 mood check-ins to earn this.' },
+  { type: 'first_journal',    emoji: '📝', label: 'First Entry',     earned: 'First urge journal entry logged.',    pending: 'Log an urge from the Support screen to earn this.' },
+  { type: 'urge_overcame_1',  emoji: '🛡️', label: 'Urge Fighter',   earned: 'Overcame your first urge.',           pending: 'Log an urge you overcame in the Support screen.' },
+  { type: 'urge_overcame_10', emoji: '💪', label: 'Urge Warrior',   earned: 'Overcame 10 urges.',                  pending: 'Overcome 10 urges to earn this.' },
+  { type: 'first_payment',    emoji: '💰', label: 'First Payment',  earned: 'First debt payment logged.',          pending: 'Log a payment in the Tracker tab to earn this.' },
+];
+
 const MOODS = ['😢', '😕', '😐', '🙂', '😄'];
 
 const QUOTES = [
@@ -773,7 +783,7 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes] = await Promise.all([
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, moodCountRes, paymentCountRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
@@ -782,7 +792,9 @@ export default function HomeScreen() {
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
-      supabase.from('urge_journal').select('created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(90),
+      supabase.from('urge_journal').select('created_at, outcome').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
+      supabase.from('mood_checkins').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
     ]);
 
     const profile = profileRes.data;
@@ -868,6 +880,28 @@ export default function HomeScreen() {
     if (newDebtBadges.length > 0) {
       await supabase.from('badges').upsert(newDebtBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       newDebtBadges.forEach(b => earnedBadges.push(b.badge_type));
+    }
+
+    // Activity badges
+    const moodCount = moodCountRes.count ?? 0;
+    const urgeList = urgeRes.data ?? [];
+    const urgesOvercome = urgeList.filter(e => e.outcome === 'overcame').length;
+    const paymentCount = paymentCountRes.count ?? 0;
+    const activityConditions: Record<string, boolean> = {
+      first_checkin:    moodCount >= 1,
+      checkins_7:       moodCount >= 7,
+      checkins_30:      moodCount >= 30,
+      first_journal:    urgeList.length >= 1,
+      urge_overcame_1:  urgesOvercome >= 1,
+      urge_overcame_10: urgesOvercome >= 10,
+      first_payment:    paymentCount >= 1,
+    };
+    const newActivityBadges = ACTIVITY_BADGE_DEFS
+      .filter(b => activityConditions[b.type] && !dedupeGuard.has(b.type))
+      .map(b => ({ user_id: user.id, badge_type: b.type }));
+    if (newActivityBadges.length > 0) {
+      await supabase.from('badges').upsert(newActivityBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
+      newActivityBadges.forEach(b => earnedBadges.push(b.badge_type));
     }
 
     // Savings goal badges
@@ -1498,6 +1532,28 @@ export default function HomeScreen() {
                 </Pressable>
               );
             })()}
+            {ACTIVITY_BADGE_DEFS.map(badge => {
+              const earned = data.earnedBadges.includes(badge.type);
+              const earnedAt = data.badgeTimestamps[badge.type];
+              return (
+                <Pressable key={badge.type} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  onPress={() => {
+                    if (earned) {
+                      const det: Array<{ label: string; value: string }> = [{ label: 'Achievement', value: badge.earned }];
+                      if (earnedAt) det.unshift({ label: 'Earned on', value: new Date(earnedAt).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
+                      openShareCard({ emoji: badge.emoji, label: badge.label }, true, det);
+                    } else {
+                      openShareCard({ emoji: badge.emoji, label: badge.label }, true, [{ label: 'How to earn', value: badge.pending }], true, 0, badge.pending);
+                    }
+                  }}>
+                  <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
+                    <BadgeRing progress={earned ? 1 : 0} />
+                    <Text style={s.badgeEmoji}>{earned ? badge.emoji : '🔒'}</Text>
+                  </View>
+                  <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2} ellipsizeMode="tail">{badge.label}</Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
 
