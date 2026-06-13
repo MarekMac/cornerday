@@ -5,6 +5,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@cornerday.app>';
 
+const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
+
 function jwtRole(authHeader: string): string | null {
   try {
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
@@ -625,8 +628,8 @@ async function buildEmailForUser(
   const resetCount    = resetRes.count ?? 0;
   const longestStreak = streakRes.data?.longest_streak ?? 0;
   const time          = buildTimeDisplay(quitMs);
-  const firstName     = (user.display_name || 'there').split(' ')[0];
-  const whyLabel      = motivationLabel(user.motivation);
+  const firstName     = esc((user.display_name || 'there').split(' ')[0]);
+  const whyLabel      = esc(motivationLabel(user.motivation));
   const currency      = user.currency ?? 'USD';
 
   if (!isPremium) {

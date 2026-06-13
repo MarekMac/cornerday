@@ -5,6 +5,9 @@ const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@cornerday.app>';
 
+const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
+
 interface Milestone {
   pct: number;
   badge: string;
@@ -134,7 +137,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (!user?.email) return new Response(JSON.stringify({ error: 'user not found' }), { status: 404 });
 
-    const firstName = user.display_name?.split(' ')[0] || 'there';
+    const firstName = esc(user.display_name?.split(' ')?.[0] || 'there');
     const html = buildHtml(firstName, m, testPaid, testLost);
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -191,7 +194,7 @@ Deno.serve(async (req: Request) => {
 
         if (existing) continue;
 
-        const firstName = user.display_name?.split(' ')[0] || 'there';
+        const firstName = esc(user.display_name?.split(' ')?.[0] || 'there');
         const html = buildHtml(firstName, m, stats.totalPaid, stats.totalLost);
 
         const [, emailRes] = await Promise.all([

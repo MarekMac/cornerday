@@ -139,7 +139,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
           console.warn('[RevenueCat] auth change error:', e);
         }
       } else if (event === 'SIGNED_OUT') {
-        try { await Purchases.logOut(); } catch {}
+        try { await Purchases.logOut(); } catch (e) { console.warn('[RevenueCat] logOut error:', e); }
         isAdminRef.current = false;
         setIsPremium(false);
       }
