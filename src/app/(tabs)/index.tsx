@@ -35,7 +35,7 @@ import * as Sharing from 'expo-sharing';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MILESTONES = [1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
+const MILESTONES = [1/24, 3/24, 6/24, 12/24, 1, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 100, 120, 150, 180, 200, 270, 365, 500, 548, 730, 821, 912, 1000, 1095, 1186, 1278, 1369, 1460, 1551, 1643, 1734, 1825, 1917, 2008, 2099, 2190, 2281, 2373, 2464, 2555, 2646, 2738, 2829, 2920, 3011, 3103, 3194, 3285, 3376, 3468, 3559, 3650];
 
 const SHARE_TAGLINES = [
   'The day you turn it around starts today.',
@@ -86,16 +86,39 @@ const BADGE_DEFS = [
   { type: '1_year',   emoji: '🏆', label: '1 Year',   days: 365 },
   { type: '500_days', emoji: '🔑', label: '500 Days', days: 500 },
   { type: '18_months',emoji: '🦅', label: '18 Months',days: 548 },
-  { type: '2_years',   emoji: '👑', label: '2 Years',   days: 730 },
-  { type: '1000_days', emoji: '🎖️', label: '1000 Days', days: 1000 },
-  { type: '3_years',   emoji: '🌟', label: '3 Years',   days: 1095 },
-  { type: '4_years',  emoji: '🔱', label: '4 Years',  days: 1460 },
-  { type: '5_years',  emoji: '🦁', label: '5 Years',  days: 1825 },
-  { type: '6_years',  emoji: '🌍', label: '6 Years',  days: 2190 },
-  { type: '7_years',  emoji: '⚜️', label: '7 Years',  days: 2555 },
-  { type: '8_years',  emoji: '🔮', label: '8 Years',  days: 2920 },
-  { type: '9_years',  emoji: '🌠', label: '9 Years',  days: 3285 },
-  { type: '10_years', emoji: '💫', label: '10 Years', days: 3650 },
+  { type: '2_years',    emoji: '👑', label: '2 Years',    days: 730 },
+  { type: '27_months',  emoji: '🕯️', label: '27 Months',  days: 821 },
+  { type: '2_5_years',  emoji: '⚓', label: '2.5 Years',  days: 912 },
+  { type: '1000_days',  emoji: '🎖️', label: '1000 Days',  days: 1000 },
+  { type: '3_years',    emoji: '🌟', label: '3 Years',    days: 1095 },
+  { type: '39_months',  emoji: '🌷', label: '39 Months',  days: 1186 },
+  { type: '3_5_years',  emoji: '🧭', label: '3.5 Years',  days: 1278 },
+  { type: '45_months',  emoji: '🌻', label: '45 Months',  days: 1369 },
+  { type: '4_years',    emoji: '🔱', label: '4 Years',    days: 1460 },
+  { type: '51_months',  emoji: '🦩', label: '51 Months',  days: 1551 },
+  { type: '4_5_years',  emoji: '🎸', label: '4.5 Years',  days: 1643 },
+  { type: '57_months',  emoji: '🌾', label: '57 Months',  days: 1734 },
+  { type: '5_years',    emoji: '🦁', label: '5 Years',    days: 1825 },
+  { type: '63_months',  emoji: '🐢', label: '63 Months',  days: 1917 },
+  { type: '5_5_years',  emoji: '🦊', label: '5.5 Years',  days: 2008 },
+  { type: '69_months',  emoji: '🌼', label: '69 Months',  days: 2099 },
+  { type: '6_years',    emoji: '🌍', label: '6 Years',    days: 2190 },
+  { type: '75_months',  emoji: '🍃', label: '75 Months',  days: 2281 },
+  { type: '6_5_years',  emoji: '🦜', label: '6.5 Years',  days: 2373 },
+  { type: '81_months',  emoji: '🍀', label: '81 Months',  days: 2464 },
+  { type: '7_years',    emoji: '⚜️', label: '7 Years',    days: 2555 },
+  { type: '87_months',  emoji: '🎋', label: '87 Months',  days: 2646 },
+  { type: '7_5_years',  emoji: '🦢', label: '7.5 Years',  days: 2738 },
+  { type: '93_months',  emoji: '🌺', label: '93 Months',  days: 2829 },
+  { type: '8_years',    emoji: '🔮', label: '8 Years',    days: 2920 },
+  { type: '99_months',  emoji: '🐋', label: '99 Months',  days: 3011 },
+  { type: '8_5_years',  emoji: '🌏', label: '8.5 Years',  days: 3103 },
+  { type: '105_months', emoji: '🪷', label: '105 Months', days: 3194 },
+  { type: '9_years',    emoji: '🌠', label: '9 Years',    days: 3285 },
+  { type: '111_months', emoji: '🦄', label: '111 Months', days: 3376 },
+  { type: '9_5_years',  emoji: '🔭', label: '9.5 Years',  days: 3468 },
+  { type: '117_months', emoji: '✴️', label: '117 Months', days: 3559 },
+  { type: '10_years',   emoji: '💫', label: '10 Years',   days: 3650 },
 ];
 
 const ACTIVITY_BADGE_DEFS = [
