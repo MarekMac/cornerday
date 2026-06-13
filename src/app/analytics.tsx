@@ -1,10 +1,14 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -197,6 +201,12 @@ export default function AnalyticsScreen() {
   const hasAccess = isPremium || isAdmin;
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [debtTargetDate, setDebtTargetDate] = useState<Date | null>(null);
+  const [savingsTargetDate, setSavingsTargetDate] = useState<Date | null>(null);
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [targetKind, setTargetKind] = useState<'debt' | 'savings'>('debt');
+  const [editTargetDate, setEditTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
+  const [savingTarget, setSavingTarget] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [resettingUrges, setResettingUrges] = useState(false);
   const [tick, setTick] = useState(0);
@@ -214,7 +224,7 @@ export default function AnalyticsScreen() {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
 
     const [profileRes, streakRes, lossesRes, debtsRes, paymentsRes, urgeRes, moodRes] = await Promise.all([
-      supabase.from('users').select('currency, quit_date, quit_timestamp').eq('id', user.id).maybeSingle(),
+      supabase.from('users').select('currency, quit_date, quit_timestamp, debt_target_date, savings_target_date').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
       supabase.from('debts').select('id, total_amount').eq('user_id', user.id),
@@ -358,6 +368,9 @@ export default function AnalyticsScreen() {
       },
     };
 
+    if (profile?.debt_target_date) setDebtTargetDate(new Date(profile.debt_target_date));
+    if (profile?.savings_target_date) setSavingsTargetDate(new Date(profile.savings_target_date));
+
     setData({
       currency, quitDate,
       longestStreak: streakRes.data?.longest_streak ?? 0,
@@ -411,6 +424,39 @@ export default function AnalyticsScreen() {
         },
       ]
     );
+  };
+
+  const saveTargetDate = async (kind: 'debt' | 'savings', date: Date) => {
+    setSavingTarget(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const field = kind === 'debt' ? 'debt_target_date' : 'savings_target_date';
+      await supabase.from('users').update({ [field]: date.toISOString().split('T')[0] }).eq('id', user.id);
+      if (kind === 'debt') setDebtTargetDate(date);
+      else setSavingsTargetDate(date);
+    }
+    setSavingTarget(false);
+    setShowTargetModal(false);
+  };
+
+  const openTargetPicker = (kind: 'debt' | 'savings') => {
+    const current = kind === 'debt' ? debtTargetDate : savingsTargetDate;
+    const seed = current ?? new Date(Date.now() + 90 * 86400000);
+    setTargetKind(kind);
+    setEditTargetDate(seed);
+    if (Platform.OS === 'ios') {
+      setShowTargetModal(true);
+    } else {
+      DateTimePickerAndroid.open({
+        value: seed,
+        mode: 'date',
+        minimumDate: new Date(),
+        onValueChange: (_evt: any, d?: Date) => {
+          if (!d) return;
+          saveTargetDate(kind, d);
+        },
+      });
+    }
   };
 
   const renderHeader = () => (
@@ -943,26 +989,81 @@ export default function AnalyticsScreen() {
         )}
 
         {/* ── Debt recovery ── */}
-        {data.totalDebts > 0 && (
-          <View style={s.card}>
-            <SectionHeader title="🏦 Debt recovery" />
-            <View style={s.statsRow}>
-              <StatBox label="Total owed"  value={fmt(data.totalDebts, data.currency)} />
-              <View style={s.statsDivider} />
-              <StatBox label="Paid back"   value={fmt(data.totalDebtPaid, data.currency)} color={c.success} />
-              <View style={s.statsDivider} />
-              <StatBox label="Remaining"   value={fmt(Math.max(0, data.totalDebts - data.totalDebtPaid), data.currency)} color={c.error} />
-            </View>
-            {debtPct !== null && (
-              <View style={s.progressBarWrap}>
-                <View style={s.progressBarBg}>
-                  <View style={[s.progressBarFill, { width: `${Math.round(debtPct * 100)}%` as any }, debtPct >= 1 && s.progressBarDone]} />
-                </View>
-                <Text style={s.progressBarPct}>{Math.round(debtPct * 100)}% repaid</Text>
+        {data.totalDebts > 0 && (() => {
+          const remaining = Math.max(0, data.totalDebts - data.totalDebtPaid);
+          const daysElapsed = data.currentStreakDays;
+          const daysRemaining = debtTargetDate ? Math.ceil((debtTargetDate.getTime() - Date.now()) / 86400000) : null;
+          const requiredPerDay = daysRemaining && daysRemaining > 0 && remaining > 0 ? remaining / daysRemaining : null;
+          const actualPerDay = daysElapsed > 0 ? data.totalDebtPaid / daysElapsed : null;
+          const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
+          const projDays = actualPerDay && actualPerDay > 0 ? Math.ceil(remaining / actualPerDay) : null;
+          return (
+            <View style={s.card}>
+              <SectionHeader
+                title="🏦 Debt recovery"
+                action={
+                  <Pressable onPress={() => openTargetPicker('debt')} style={s.setTargetBtn}>
+                    <Text style={s.setTargetTxt}>{debtTargetDate ? '✏️ Target' : '+ Set target'}</Text>
+                  </Pressable>
+                }
+              />
+              <View style={s.statsRow}>
+                <StatBox label="Total owed"  value={fmt(data.totalDebts, data.currency)} />
+                <View style={s.statsDivider} />
+                <StatBox label="Paid back"   value={fmt(data.totalDebtPaid, data.currency)} color={c.success} />
+                <View style={s.statsDivider} />
+                <StatBox label="Remaining"   value={fmt(remaining, data.currency)} color={c.error} />
               </View>
-            )}
-          </View>
-        )}
+              {debtPct !== null && (
+                <View style={s.progressBarWrap}>
+                  <View style={s.progressBarBg}>
+                    <View style={[s.progressBarFill, { width: `${Math.round(debtPct * 100)}%` as any }, debtPct >= 1 && s.progressBarDone]} />
+                  </View>
+                  <Text style={s.progressBarPct}>{Math.round(debtPct * 100)}% repaid</Text>
+                </View>
+              )}
+              {debtTargetDate && daysRemaining !== null && (
+                <View style={s.pacingCard}>
+                  <View style={s.pacingRow}>
+                    <Text style={s.pacingLabel}>Target date</Text>
+                    <Text style={s.pacingValue}>
+                      {debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {daysRemaining > 0 ? `  ·  ${daysRemaining}d left` : '  ·  Past target'}
+                    </Text>
+                  </View>
+                  {requiredPerDay !== null && (
+                    <View style={s.pacingRow}>
+                      <Text style={s.pacingLabel}>Need</Text>
+                      <Text style={s.pacingValue}>{fmt(requiredPerDay, data.currency)}/day to hit target</Text>
+                    </View>
+                  )}
+                  {actualPerDay !== null && (
+                    <View style={s.pacingRow}>
+                      <Text style={s.pacingLabel}>Pace</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={s.pacingValue}>{fmt(actualPerDay, data.currency)}/day</Text>
+                        {isAhead !== null && (
+                          <View style={[s.pacingBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
+                            <Text style={s.pacingBadgeTxt}>{isAhead ? '▲ Ahead' : '▼ Behind'}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
+                  {projDays !== null && remaining > 0 && (
+                    <View style={s.pacingRow}>
+                      <Text style={s.pacingLabel}>Projected</Text>
+                      <Text style={s.pacingValue}>
+                        {new Date(Date.now() + projDays * 86400000).toLocaleDateString([], { month: 'short', year: 'numeric' })}
+                        {' '}({projDays} days)
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
         {/* ── Personal insights ── */}
         {insights.length > 0 && (
@@ -981,6 +1082,38 @@ export default function AnalyticsScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* iOS target date picker modal */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={showTargetModal} transparent animationType="slide">
+          <View style={s.modalOverlay}>
+            <View style={s.modalSheet}>
+              <Text style={s.modalTitle}>
+                {targetKind === 'debt' ? 'Debt payoff target' : 'Savings target date'}
+              </Text>
+              <DateTimePicker
+                value={editTargetDate}
+                mode="date"
+                display="spinner"
+                minimumDate={new Date()}
+                onValueChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
+                style={{ height: 200 }}
+              />
+              <View style={s.modalActions}>
+                <Pressable style={s.modalBtn} onPress={() => setShowTargetModal(false)}>
+                  <Text style={s.modalBtnCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[s.modalBtn, s.modalBtnSave, savingTarget && { opacity: 0.5 }]}
+                  disabled={savingTarget}
+                  onPress={() => saveTargetDate(targetKind, editTargetDate)}>
+                  <Text style={s.modalBtnSaveTxt}>{savingTarget ? 'Saving…' : 'Save'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -1166,4 +1299,23 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
   insightEmoji: { fontSize: 18 },
   insightText:  { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+
+  setTargetBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: c.bgTeal, borderRadius: 8 },
+  setTargetTxt: { fontSize: 12, fontWeight: '600', color: c.primary },
+
+  pacingCard: { marginTop: 12, backgroundColor: c.bgElement, borderRadius: 10, padding: 12, gap: 8 },
+  pacingRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  pacingLabel: { fontSize: 12, color: c.textMuted, fontWeight: '500' },
+  pacingValue: { fontSize: 13, color: c.textPrimary, fontWeight: '600' },
+  pacingBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  pacingBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#fff' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet:   { backgroundColor: c.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  modalTitle:   { fontSize: 16, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  modalBtn:     { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center', backgroundColor: c.bgElement },
+  modalBtnSave: { backgroundColor: c.primary },
+  modalBtnCancel: { fontSize: 15, fontWeight: '600', color: c.textSecondary },
+  modalBtnSaveTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

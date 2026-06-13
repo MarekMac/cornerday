@@ -1,4 +1,6 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
@@ -172,6 +174,15 @@ export default function TrackerIndex() {
   const [goalForInput, setGoalForInput] = useState('');
   const [goalIconInput, setGoalIconInput] = useState<string>('🎯');
 
+  // Target dates
+  const [debtTargetDate, setDebtTargetDate] = useState<Date | null>(null);
+  const [savingsTargetDate, setSavingsTargetDate] = useState<Date | null>(null);
+  const [goalTargetDateInput, setGoalTargetDateInput] = useState<Date | null>(null);
+  const [showDebtTargetModal, setShowDebtTargetModal] = useState(false);
+  const [showSavingsTargetModal, setShowSavingsTargetModal] = useState(false);
+  const [editTargetDate, setEditTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
+  const [savingTargetDate, setSavingTargetDate] = useState(false);
+
   // Swipe refs — one per debt card
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
   // Prevent useFocusEffect from duplicating the initial useEffect fetch
@@ -185,7 +196,7 @@ export default function TrackerIndex() {
       supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
-      supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date').eq('id', user.id).maybeSingle(),
+      supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, debt_target_date, savings_target_date').eq('id', user.id).maybeSingle(),
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
@@ -198,6 +209,8 @@ export default function TrackerIndex() {
       setCurrency(profileRes.data.currency ?? 'USD');
       setWeeklyBet(profileRes.data.weekly_bet ?? null);
       setQuitTs(profileRes.data.quit_timestamp ?? profileRes.data.quit_date ?? null);
+      setDebtTargetDate(profileRes.data.debt_target_date ? new Date(profileRes.data.debt_target_date) : null);
+      setSavingsTargetDate(profileRes.data.savings_target_date ? new Date(profileRes.data.savings_target_date) : null);
     }
     setSavingsGoal(rawGoal ? Number(rawGoal) : null);
     setSavingsGoalFor(rawFor ?? '');
@@ -401,6 +414,7 @@ export default function TrackerIndex() {
     setGoalInput(savingsGoal ? String(savingsGoal) : '');
     setGoalForInput(savingsGoalFor);
     setGoalIconInput(savingsGoalIcon);
+    setGoalTargetDateInput(savingsTargetDate);
     setGoalModalVisible(true);
   };
   const closeGoalModal = () => {
@@ -409,6 +423,7 @@ export default function TrackerIndex() {
     setGoalInput('');
     setGoalForInput('');
     setGoalIconInput('🎯');
+    setGoalTargetDateInput(null);
   };
   const logGoalEvent = async (type: string, amount: number | null, note: string | null) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -442,7 +457,56 @@ export default function TrackerIndex() {
       setSavingsGoalFor(forVal);
       setSavingsGoalIcon(iconVal);
     }
+    // Persist savings target date to DB
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users').update({
+        savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
+      }).eq('id', user.id);
+      setSavingsTargetDate(goalTargetDateInput);
+    }
     closeGoalModal();
+  };
+
+  const saveDebtTargetDate = async (date: Date) => {
+    setSavingTargetDate(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users').update({ debt_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+      setDebtTargetDate(date);
+    }
+    setSavingTargetDate(false);
+    setShowDebtTargetModal(false);
+  };
+
+  const openDebtTargetPicker = () => {
+    const seed = debtTargetDate ?? new Date(Date.now() + 90 * 86400000);
+    setEditTargetDate(seed);
+    if (Platform.OS === 'ios') {
+      setShowDebtTargetModal(true);
+    } else {
+      DateTimePickerAndroid.open({
+        value: seed,
+        mode: 'date',
+        minimumDate: new Date(),
+        onValueChange: (_evt: any, d?: Date) => { if (d) saveDebtTargetDate(d); },
+      });
+    }
+  };
+
+  const openSavingsTargetPicker = () => {
+    const seed = goalTargetDateInput ?? new Date(Date.now() + 90 * 86400000);
+    setEditTargetDate(seed);
+    if (Platform.OS === 'ios') {
+      setShowSavingsTargetModal(true);
+    } else {
+      DateTimePickerAndroid.open({
+        value: seed,
+        mode: 'date',
+        minimumDate: new Date(),
+        onValueChange: (_evt: any, d?: Date) => { if (d) { setGoalTargetDateInput(d); setShowSavingsTargetModal(false); } },
+      });
+    }
   };
 
   // Quick pay actions
@@ -577,6 +641,61 @@ export default function TrackerIndex() {
               </>
             )}
           </View>
+
+          {/* Debt payoff target */}
+          {totalDebt > 0 && (() => {
+            const daysElapsed = days;
+            const daysRemaining = debtTargetDate ? Math.ceil((debtTargetDate.getTime() - Date.now()) / 86400000) : null;
+            const requiredPerDay = daysRemaining && daysRemaining > 0 && stillOwed > 0 ? stillOwed / daysRemaining : null;
+            const actualPerDay = daysElapsed > 0 && totalPaid > 0 ? totalPaid / daysElapsed : null;
+            const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
+            return (
+              <View style={s.targetCard}>
+                <View style={s.targetHeader}>
+                  <Text style={s.targetTitle}>🎯 Payoff target</Text>
+                  <Pressable onPress={openDebtTargetPicker} style={s.targetEditBtn}>
+                    <Text style={s.targetEditTxt}>{debtTargetDate ? '✏️ Edit' : '+ Set date'}</Text>
+                  </Pressable>
+                </View>
+                {!debtTargetDate ? (
+                  <Text style={s.targetEmpty}>Set a target date to see your required daily payment and track your pace.</Text>
+                ) : (
+                  <View style={s.targetRows}>
+                    <View style={s.targetRow}>
+                      <Text style={s.targetLbl}>Target</Text>
+                      <Text style={s.targetVal}>
+                        {debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {daysRemaining !== null && (
+                          <Text style={{ color: daysRemaining <= 0 ? c.error : c.textMuted }}>
+                            {daysRemaining > 0 ? `  ·  ${daysRemaining} days left` : '  ·  Past target'}
+                          </Text>
+                        )}
+                      </Text>
+                    </View>
+                    {requiredPerDay !== null && (
+                      <View style={s.targetRow}>
+                        <Text style={s.targetLbl}>Need</Text>
+                        <Text style={s.targetVal}>{fmt(requiredPerDay, currency)}/day</Text>
+                      </View>
+                    )}
+                    {actualPerDay !== null && (
+                      <View style={s.targetRow}>
+                        <Text style={s.targetLbl}>Pace</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={s.targetVal}>{fmt(actualPerDay, currency)}/day</Text>
+                          {isAhead !== null && (
+                            <View style={[s.paceBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
+                              <Text style={s.paceBadgeTxt}>{isAhead ? '▲ Ahead' : '▼ Behind'}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })()}
 
           {/* Savings card */}
           <View style={s.savingsCard}>
@@ -1069,6 +1188,23 @@ export default function TrackerIndex() {
                   value={goalInput}
                   onChangeText={setGoalInput}
                 />
+                <Text style={s.fieldLbl}>
+                  Target date{' '}
+                  <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
+                </Text>
+                <Pressable style={s.dateRow} onPress={openSavingsTargetPicker}>
+                  <Ionicons name="calendar-outline" size={16} color={c.textMuted} />
+                  <Text style={[s.dateRowTxt, !goalTargetDateInput && { color: c.textFaint }]}>
+                    {goalTargetDateInput
+                      ? goalTargetDateInput.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+                      : 'Set a target date'}
+                  </Text>
+                  {goalTargetDateInput && (
+                    <Pressable onPress={() => setGoalTargetDateInput(null)} hitSlop={8}>
+                      <Ionicons name="close-circle" size={16} color={c.textFaint} />
+                    </Pressable>
+                  )}
+                </Pressable>
                 {savingsGoal && (
                   <Pressable
                     onPress={async () => {
@@ -1138,6 +1274,65 @@ export default function TrackerIndex() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* iOS debt target date picker */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={showDebtTargetModal} transparent animationType="slide">
+          <View style={s.iosModalOverlay}>
+            <View style={s.iosModalSheet}>
+              <Text style={s.iosModalTitle}>Debt payoff target</Text>
+              <DateTimePicker
+                value={editTargetDate}
+                mode="date"
+                display="spinner"
+                minimumDate={new Date()}
+                onValueChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
+                style={{ height: 200 }}
+              />
+              <View style={s.iosModalActions}>
+                <Pressable style={s.iosModalBtn} onPress={() => setShowDebtTargetModal(false)}>
+                  <Text style={s.iosModalCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[s.iosModalBtn, s.iosModalSave, savingTargetDate && { opacity: 0.5 }]}
+                  disabled={savingTargetDate}
+                  onPress={() => saveDebtTargetDate(editTargetDate)}>
+                  <Text style={s.iosModalSaveTxt}>{savingTargetDate ? 'Saving…' : 'Save'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* iOS savings target date picker (inside goal modal flow) */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={showSavingsTargetModal} transparent animationType="slide">
+          <View style={s.iosModalOverlay}>
+            <View style={s.iosModalSheet}>
+              <Text style={s.iosModalTitle}>Savings target date</Text>
+              <DateTimePicker
+                value={editTargetDate}
+                mode="date"
+                display="spinner"
+                minimumDate={new Date()}
+                onValueChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
+                style={{ height: 200 }}
+              />
+              <View style={s.iosModalActions}>
+                <Pressable style={s.iosModalBtn} onPress={() => setShowSavingsTargetModal(false)}>
+                  <Text style={s.iosModalCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[s.iosModalBtn, s.iosModalSave]}
+                  onPress={() => { setGoalTargetDateInput(new Date(editTargetDate.getTime())); setShowSavingsTargetModal(false); }}>
+                  <Text style={s.iosModalSaveTxt}>Confirm</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -1333,4 +1528,34 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   deleteBold: { fontWeight: '700', color: c.textSecondary },
   deleteBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
   deleteBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
+
+  targetCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
+  targetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  targetTitle: { fontSize: 13, fontWeight: '700', color: c.textSecondary },
+  targetEditBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: c.bgTeal, borderRadius: 8 },
+  targetEditTxt: { fontSize: 12, fontWeight: '600', color: c.primary },
+  targetEmpty: { fontSize: 13, color: c.textMuted, lineHeight: 19 },
+  targetRows: { gap: 8 },
+  targetRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  targetLbl: { fontSize: 12, color: c.textMuted, fontWeight: '500' },
+  targetVal: { fontSize: 13, color: c.textPrimary, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  paceBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  paceBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#fff' },
+
+  dateRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: c.borderLight, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: c.bgInput,
+  },
+  dateRowTxt: { flex: 1, fontSize: 15, color: c.textPrimary },
+
+  iosModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  iosModalSheet: { backgroundColor: c.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  iosModalTitle: { fontSize: 16, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  iosModalActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  iosModalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center', backgroundColor: c.bgElement },
+  iosModalSave: { backgroundColor: c.primary },
+  iosModalCancel: { fontSize: 15, fontWeight: '600', color: c.textSecondary },
+  iosModalSaveTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

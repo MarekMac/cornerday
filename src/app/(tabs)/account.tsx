@@ -206,6 +206,12 @@ export default function AccountScreen() {
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [debtTargetDate, setDebtTargetDate] = useState<Date | null>(null);
+  const [savingsTargetDate, setSavingsTargetDate] = useState<Date | null>(null);
+  const [showDebtTargetModal, setShowDebtTargetModal] = useState(false);
+  const [showSavingsTargetModal, setShowSavingsTargetModal] = useState(false);
+  const [editGoalTargetDate, setEditGoalTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
+  const [savingGoalTarget, setSavingGoalTarget] = useState(false);
   const [notifStreakHour, setNotifStreakHour] = useState(20);
   const [notifCheckinHour, setNotifCheckinHour] = useState(9);
   const [quitTimestamp, setQuitTimestamp] = useState<string | null>(null);
@@ -279,7 +285,7 @@ export default function AccountScreen() {
     const [{ data }, { data: streakData }, { data: savingsRows }] = await Promise.all([
       supabase
         .from('users')
-        .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
+        .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, debt_target_date, savings_target_date')
         .eq('id', user.id)
         .maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
@@ -313,6 +319,8 @@ export default function AccountScreen() {
       milestonesEarned: badgeCount ?? 0,
     });
     setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
+    if (data?.debt_target_date) setDebtTargetDate(new Date(data.debt_target_date));
+    if (data?.savings_target_date) setSavingsTargetDate(new Date(data.savings_target_date));
 
     // Trusted contact and recovery plan in a separate query so schema-cache misses never break the profile fetch
     const { data: contactData } = await supabase
@@ -492,6 +500,36 @@ export default function AccountScreen() {
     }
     setSavingPlan(false);
     setShowRecoveryPlanModal(false);
+  };
+
+  const saveGoalTargetDate = async (kind: 'debt' | 'savings', date: Date) => {
+    setSavingGoalTarget(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const col = kind === 'debt' ? 'debt_target_date' : 'savings_target_date';
+      const { error } = await supabase.from('users').update({ [col]: date.toISOString().split('T')[0] }).eq('id', user.id);
+      if (error) { Alert.alert('Could not save date', error.message); setSavingGoalTarget(false); return; }
+      if (kind === 'debt') { setDebtTargetDate(date); setShowDebtTargetModal(false); }
+      else { setSavingsTargetDate(date); setShowSavingsTargetModal(false); }
+    }
+    setSavingGoalTarget(false);
+  };
+
+  const openGoalTargetPicker = (kind: 'debt' | 'savings') => {
+    const current = kind === 'debt' ? debtTargetDate : savingsTargetDate;
+    const initial = current ?? new Date(Date.now() + 90 * 86400000);
+    setEditGoalTargetDate(initial);
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: initial,
+        mode: 'date',
+        minimumDate: new Date(),
+        onChange: (_, date) => { if (date) saveGoalTargetDate(kind, date); },
+      });
+    } else {
+      if (kind === 'debt') setShowDebtTargetModal(true);
+      else setShowSavingsTargetModal(true);
+    }
   };
 
   const openGoalModal = () => {
@@ -1388,6 +1426,38 @@ export default function AccountScreen() {
               </View>
             );
           })}
+        </View>
+
+        {/* Goals & Targets */}
+        <View style={s.infoCard}>
+          <Text style={s.infoCardTitle}>Goals &amp; Targets</Text>
+          <Pressable
+            onPress={() => openGoalTargetPicker('debt')}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Debt payoff target date</Text>
+              <Text style={[s.infoItemValue, !debtTargetDate && s.infoValueEmpty]}>
+                {debtTargetDate
+                  ? debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
+                  : 'Not set'}
+              </Text>
+            </View>
+            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
+          </Pressable>
+          <View style={s.infoDivider} />
+          <Pressable
+            onPress={() => openGoalTargetPicker('savings')}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Savings goal target date</Text>
+              <Text style={[s.infoItemValue, !savingsTargetDate && s.infoValueEmpty]}>
+                {savingsTargetDate
+                  ? savingsTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
+                  : 'Not set'}
+              </Text>
+            </View>
+            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
+          </Pressable>
         </View>
 
         {/* Recovery plan */}
@@ -2554,6 +2624,74 @@ export default function AccountScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* iOS debt target date picker */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={showDebtTargetModal} transparent animationType="slide">
+          <View style={s.modalOverlay}>
+            <View style={s.modalSheet}>
+              <Text style={s.modalTitle}>Debt payoff target date</Text>
+              <DateTimePicker
+                value={editGoalTargetDate}
+                mode="date"
+                display="spinner"
+                minimumDate={new Date()}
+                onChange={(_e, d) => d && setEditGoalTargetDate(d)}
+                style={{ height: 200 }}
+              />
+              <View style={s.modalActions}>
+                <Pressable
+                  style={({ pressed }) => [s.modalBtn, pressed && { opacity: 0.7 }]}
+                  onPress={() => setShowDebtTargetModal(false)}>
+                  <Text style={s.modalBtnCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [s.modalBtn, s.modalBtnSave, pressed && { opacity: 0.85 }]}
+                  onPress={() => saveGoalTargetDate('debt', editGoalTargetDate)}
+                  disabled={savingGoalTarget}>
+                  {savingGoalTarget
+                    ? <ActivityIndicator size="small" color={c.white} />
+                    : <Text style={s.modalBtnSaveTxt}>Save</Text>}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* iOS savings target date picker */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={showSavingsTargetModal} transparent animationType="slide">
+          <View style={s.modalOverlay}>
+            <View style={s.modalSheet}>
+              <Text style={s.modalTitle}>Savings goal target date</Text>
+              <DateTimePicker
+                value={editGoalTargetDate}
+                mode="date"
+                display="spinner"
+                minimumDate={new Date()}
+                onChange={(_e, d) => d && setEditGoalTargetDate(d)}
+                style={{ height: 200 }}
+              />
+              <View style={s.modalActions}>
+                <Pressable
+                  style={({ pressed }) => [s.modalBtn, pressed && { opacity: 0.7 }]}
+                  onPress={() => setShowSavingsTargetModal(false)}>
+                  <Text style={s.modalBtnCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [s.modalBtn, s.modalBtnSave, pressed && { opacity: 0.85 }]}
+                  onPress={() => saveGoalTargetDate('savings', editGoalTargetDate)}
+                  disabled={savingGoalTarget}>
+                  {savingGoalTarget
+                    ? <ActivityIndicator size="small" color={c.white} />
+                    : <Text style={s.modalBtnSaveTxt}>Save</Text>}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       {/* iOS date/time picker modal */}
       {Platform.OS === 'ios' && (
