@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { setImagePickerActive } from '@/lib/image-picker-active';
 import { type GameKey, GAMES, renderGame } from '@/lib/games';
 import { GAME_SCORE_FMT, useGameBests } from '@/lib/useGameBests';
 import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
@@ -342,24 +343,29 @@ export default function UrgeScreen() {
     (selectedTrigger !== 'other' || customTrigger.trim().length > 0);
 
   const pickMotivationPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permission needed', 'Allow photo access in your device settings to add a photo.');
-      return;
+    setImagePickerActive(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission needed', 'Allow photo access in your device settings to add a photo.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.75,
+      });
+      if (result.canceled) return;
+      const src = result.assets[0].uri;
+      const destFile = new File(Paths.document, 'motivation_photo.jpg');
+      if (destFile.exists) destFile.delete();
+      await new File(src).copy(destFile);
+      await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
+      setMotivationPhoto(destFile.uri + '?t=' + Date.now());
+    } finally {
+      setTimeout(() => setImagePickerActive(false), 500);
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.75,
-    });
-    if (result.canceled) return;
-    const src = result.assets[0].uri;
-    const destFile = new File(Paths.document, 'motivation_photo.jpg');
-    if (destFile.exists) destFile.delete();
-    await new File(src).copy(destFile);
-    await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
-    setMotivationPhoto(destFile.uri + '?t=' + Date.now());
   };
 
   const handleDistraction = (d: typeof DISTRACTIONS[0]) => {

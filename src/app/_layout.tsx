@@ -5,6 +5,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { AppState, AppStateStatus, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
+import { getImagePickerActive } from '@/lib/image-picker-active';
 
 // Suppress the dev-only "GO_BACK not handled" overlay — this warning is
 // emitted by React Navigation when Android restores navigation state on
@@ -65,7 +66,7 @@ function InnerLayout() {
       } else if (state === 'active' && backgroundedAtRef.current !== null) {
         const elapsed = Date.now() - backgroundedAtRef.current;
         backgroundedAtRef.current = null;
-        if (elapsed > 2000) {
+        if (elapsed > 2000 && !getImagePickerActive()) {
           const flag = await AsyncStorage.getItem(BIOMETRIC_LOCK_KEY);
           if (flag === 'true') setLocked(true);
         }

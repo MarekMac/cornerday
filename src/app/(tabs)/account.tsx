@@ -33,6 +33,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as LocalAuthentication from 'expo-local-authentication';
 import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
+import { setImagePickerActive } from '@/lib/image-picker-active';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
@@ -641,8 +642,10 @@ export default function AccountScreen() {
   };
 
   const pickAvatar = async () => {
+    setImagePickerActive(true);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
+      setTimeout(() => setImagePickerActive(false), 500);
       Alert.alert('Permission required', 'Please allow access to your photo library.');
       return;
     }
@@ -653,7 +656,7 @@ export default function AccountScreen() {
       quality: 0.5,
       exif: false,
     });
-    if (result.canceled) return;
+    if (result.canceled) { setTimeout(() => setImagePickerActive(false), 500); return; }
 
     setUploadingAvatar(true);
     try {
@@ -700,8 +703,10 @@ export default function AccountScreen() {
       } else {
         Alert.alert('Upload failed', 'Could not upload photo. Please try again.');
       }
+    } finally {
+      setTimeout(() => setImagePickerActive(false), 500);
+      setUploadingAvatar(false);
     }
-    setUploadingAvatar(false);
   };
 
   const removeAvatar = async () => {
