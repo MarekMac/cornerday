@@ -6,11 +6,45 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SYSTEM_PROMPT = `You are AI Corner — a compassionate, evidence-based support companion helping people overcome gambling addiction. You speak in a warm, conversational tone — never clinical or preachy.
+
+Your approach:
+- Ground your support in CBT and motivational interviewing, but keep language natural and human
+- Celebrate every step of progress, however small
+- When someone is struggling with an urge, offer practical grounding techniques tailored to their specific trigger
+- If they mention a relapse or slip, respond with compassion — "a slip is a data point, not a failure"
+- Reference their personal reason for quitting when it's genuinely relevant, without being repetitive
+- Keep responses concise and focused — 2 to 3 short paragraphs max unless they clearly need more
+- If they seem to be in crisis or mention self-harm, immediately share the National Problem Gambling Helpline: 1-800-522-4700 (free, 24/7)
+
+You are a supportive coach, not a replacement for professional therapy. For serious mental health concerns, gently encourage professional support while continuing to offer what you can.`;
+
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
+}
+
+function daysCleanLabel(quitTimestamp: string | null, quitDate: string | null): { days: number; label: string } {
+  const raw = quitTimestamp ?? quitDate;
+  if (!raw) return { days: 0, label: 'just starting out' };
+  const ms = Date.now() - new Date(raw).getTime();
+  const days = Math.max(0, Math.floor(ms / 86_400_000));
+  const label = days === 0 ? 'just starting out' : days === 1 ? '1 day clean' : `${days} days clean`;
+  return { days, label };
+}
+
+function supportLabel(s: string | null): string {
+  if (!s) return 'no one mentioned';
+  const map: Record<string, string> = {
+    partner: 'partner',
+    family: 'family member',
+    friend: 'friend',
+    therapist: 'therapist',
+    keep_private: 'keeping it private for now',
+  };
+  return map[s] ?? s;
 }
 
 Deno.serve(async (req: Request) => {
@@ -36,9 +70,23 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    const { messages, checklistState } = await req.json() as {
+      messages: { role: string; content: string }[];
+      checklistState?: Record<string, boolean>;
+    };
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return json({ error: 'messages required' }, 400);
+    }
+
+    const isFirstTurn = messages.length === 1;
+
+    // Always verify premium status
     const { data: profile } = await admin
       .from('users')
-      .select('is_premium, is_admin, display_name, motivation, trigger, goal, quit_date')
+      .select(isFirstTurn
+        ? 'is_premium, is_admin, display_name, motivation, trigger, goal, support_type, quit_date, quit_timestamp'
+        : 'is_premium, is_admin')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -46,12 +94,91 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Premium required' }, 403);
     }
 
-    const { messages } = await req.json();
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return json({ error: 'messages required' }, 400);
+    let finalMessages = messages as { role: string; content: string }[];
+
+    if (isFirstTurn) {
+      // Fetch supporting data in parallel
+      const [streakRes, lossesRes, moodRes] = await Promise.all([
+        admin.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
+        admin.from('losses').select('type, amount').eq('user_id', user.id),
+        admin.from('mood_checkins').select('mood').eq('user_id', user.id).order('created_at', { ascending: false }).limit(7),
+      ]);
+
+      const { days: daysClean, label: cleanLabel } = daysCleanLabel(
+        profile.quit_timestamp ?? null,
+        profile.quit_date ?? null,
+      );
+      const longestStreak = Math.max(
+        streakRes.data?.longest_streak ?? 0,
+        streakRes.data?.current_streak ?? 0,
+        daysClean,
+      );
+
+      let totalLost = 0, totalPaid = 0;
+      for (const row of lossesRes.data ?? []) {
+        if (row.type === 'loss') totalLost += Number(row.amount);
+        else if (row.type === 'payment') totalPaid += Number(row.amount);
+      }
+      const stillOwed = Math.max(0, totalLost - totalPaid);
+
+      const moods = moodRes.data ?? [];
+      const avgMood = moods.length > 0
+        ? (moods.reduce((s, m) => s + m.mood, 0) / moods.length).toFixed(1)
+        : null;
+
+      // Checklist summary (sent from client)
+      const CHECKLIST_IDS = [
+        'delete_apps', 'remove_cards', 'delete_accounts',
+        'website_blocker', 'bank_block', 'spending_limit',
+        'self_exclude_operators', 'national_exclusion',
+        'tell_someone', 'save_helpline',
+        'unsubscribe_emails', 'unfollow_social', 'clear_bookmarks',
+      ];
+      const CHECKLIST_LABELS: Record<string, string> = {
+        delete_apps: 'deleted gambling apps',
+        remove_cards: 'removed saved payment details',
+        delete_accounts: 'closed gambling accounts',
+        website_blocker: 'installed website blocker',
+        bank_block: 'blocked gambling at bank',
+        spending_limit: 'set spending limit',
+        self_exclude_operators: 'self-excluded from operators',
+        national_exclusion: 'joined national exclusion scheme',
+        tell_someone: 'told a trusted person',
+        save_helpline: 'saved helpline number',
+        unsubscribe_emails: 'unsubscribed from promo emails',
+        unfollow_social: 'unfollowed gambling accounts',
+        clear_bookmarks: 'cleared gambling bookmarks',
+      };
+      const checkedIds = checklistState ? Object.entries(checklistState).filter(([, v]) => v).map(([k]) => k) : [];
+      const uncheckedIds = CHECKLIST_IDS.filter(id => !checkedIds.includes(id));
+      const checklistSummary = checkedIds.length === 0
+        ? 'none completed yet'
+        : `${checkedIds.length}/${CHECKLIST_IDS.length} complete — done: ${checkedIds.map(id => CHECKLIST_LABELS[id] ?? id).join(', ')}${uncheckedIds.length > 0 ? `; still to do: ${uncheckedIds.map(id => CHECKLIST_LABELS[id] ?? id).join(', ')}` : ''}`;
+
+      const contextLines: string[] = [
+        `[User context — use naturally in conversation, do not quote verbatim]`,
+        `Name: ${profile.display_name ?? 'there'}`,
+        `Recovery: ${cleanLabel}${longestStreak > daysClean ? ` (longest streak: ${longestStreak} days)` : ''}`,
+        `Why they quit: ${profile.motivation ?? 'a better life'}`,
+        `Biggest trigger: ${profile.trigger ?? 'urges'}`,
+        `Main goal: ${profile.goal ?? 'stay free from gambling'}`,
+        `Support: ${supportLabel(profile.support_type)}`,
+      ];
+      if (totalLost > 0) {
+        contextLines.push(`Finances: lost ${totalLost.toLocaleString()} total — paid back ${totalPaid.toLocaleString()} — still owed ${stillOwed.toLocaleString()}`);
+      }
+      if (avgMood !== null) {
+        contextLines.push(`Recent mood (last ${moods.length} check-ins): ${avgMood}/5`);
+      }
+      contextLines.push(`Prevention checklist: ${checklistSummary}`);
+      contextLines.push(`[End context]`);
+
+      const contextBlock = contextLines.join('\n');
+      const firstContent = `${contextBlock}\n\n${messages[0].content}`;
+      finalMessages = [{ role: 'user', content: firstContent }, ...messages.slice(1)];
     }
 
-    const upstream = await callAnthropic(profile, messages);
+    const upstream = await callAnthropic(finalMessages);
     if (!upstream.ok) {
       const err = await upstream.text();
       console.error('Anthropic error:', err);
@@ -72,41 +199,7 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function callAnthropic(profile: any, messages: unknown[]) {
-  const name = profile.display_name ?? 'there';
-  const motivation = profile.motivation ?? 'a better life';
-  const trigger = profile.trigger ?? 'urges';
-  const goal = profile.goal ?? 'stay free from gambling';
-
-  let daysClean = 0;
-  if (profile.quit_date) {
-    const ms = Date.now() - new Date(profile.quit_date).getTime();
-    daysClean = Math.max(0, Math.floor(ms / 86_400_000));
-  }
-
-  const cleanLabel = daysClean === 0
-    ? 'just starting out'
-    : daysClean === 1 ? '1 day clean' : `${daysClean} days clean`;
-
-  const systemPrompt = `You are AI Corner — a compassionate, evidence-based support companion helping ${name} overcome gambling addiction. You speak in a warm, conversational tone — never clinical or preachy.
-
-About ${name}:
-- Why they want to quit: ${motivation}
-- Biggest trigger: ${trigger}
-- Primary goal: ${goal}
-- Recovery progress: ${cleanLabel}
-
-Your approach:
-- Ground your support in CBT and motivational interviewing, but keep language natural and human
-- Celebrate every step of progress, however small
-- When ${name} is struggling with an urge, offer practical grounding techniques tailored to their specific trigger (${trigger})
-- If they mention a relapse or slip, respond with compassion — "a slip is a data point, not a failure"
-- Reference their personal reason for quitting (${motivation}) when it's genuinely relevant, without being repetitive
-- Keep responses concise and focused — 2 to 3 short paragraphs max unless they clearly need more
-- If they seem to be in crisis or mention self-harm, immediately share the National Problem Gambling Helpline: 1-800-522-4700 (free, 24/7)
-
-You are a supportive coach, not a replacement for professional therapy. For serious mental health concerns, gently encourage professional support while continuing to offer what you can.`;
-
+async function callAnthropic(messages: { role: string; content: string }[]) {
   const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!anthropicKey) throw new Error('ANTHROPIC_API_KEY not set');
 
@@ -121,7 +214,7 @@ You are a supportive coach, not a replacement for professional therapy. For seri
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       stream: true,
-      system: systemPrompt,
+      system: SYSTEM_PROMPT,
       messages,
     }),
   });

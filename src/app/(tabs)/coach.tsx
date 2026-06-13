@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -20,6 +21,7 @@ import { useUser } from '@/context/user';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { CHECKLIST_KEY } from '@/constants/storage-keys';
 
 const FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1`;
 
@@ -131,10 +133,20 @@ export default function CoachScreen() {
     setIsStreaming(true);
     scrollToBottom();
 
+    const isFirstTurn = apiMessages.length === 1;
+
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const [{ data: { session } }, checklistRaw] = await Promise.all([
+        supabase.auth.getSession(),
+        isFirstTurn ? AsyncStorage.getItem(CHECKLIST_KEY) : Promise.resolve(null),
+      ]);
       if (!session) throw new Error('Not authenticated');
+
+      let checklistState: Record<string, boolean> | undefined;
+      if (isFirstTurn && checklistRaw) {
+        try { checklistState = JSON.parse(checklistRaw); } catch { /* ignore */ }
+      }
 
       const response = await fetch(`${FUNCTIONS_URL}/ai-coach`, {
         method: 'POST',
@@ -142,7 +154,7 @@ export default function CoachScreen() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, checklistState }),
       });
 
       if (!response.ok) {
