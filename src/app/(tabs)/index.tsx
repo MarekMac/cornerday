@@ -356,10 +356,7 @@ function formatBest(days: number, ms: number) {
 
 function formatTimeLeft(days: number): string {
   if (days <= 0) return 'now';
-  if (days < 1 / 24) return `${Math.ceil(days * 1440)} min`;
-  if (days < 1) return `${Math.ceil(days * 24)} hour${Math.ceil(days * 24) !== 1 ? 's' : ''}`;
-  const d = Math.ceil(days);
-  return `${d} day${d !== 1 ? 's' : ''}`;
+  return formatStreakFull(days * 86400000);
 }
 
 function fmtTimeSince(ms: number): string {
