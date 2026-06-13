@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -220,9 +221,14 @@ export default function CoachScreen() {
 
   const showStarters = messages.length === 1;
 
-  const randomStarters = useMemo(
-    () => [...STARTERS].sort(() => Math.random() - 0.5).slice(0, 5),
-    [],
+  const [randomStarters, setRandomStarters] = useState<string[]>(() =>
+    [...STARTERS].sort(() => Math.random() - 0.5).slice(0, 5),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      setRandomStarters([...STARTERS].sort(() => Math.random() - 0.5).slice(0, 5));
+    }, []),
   );
 
   const renderMessage = useCallback(
