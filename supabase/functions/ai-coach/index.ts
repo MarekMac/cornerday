@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const DAILY_LIMIT = 30;
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -22,7 +24,6 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'Unauthorized' }, 401);
 
-    // Verify JWT with the anon key (user-scoped RLS applies)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -32,7 +33,6 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return json({ error: 'Unauthorized' }, 401);
 
-    // Fetch profile with service role to bypass RLS
     const admin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await admin
       .from('users')
-      .select('is_premium, is_admin, display_name, motivation, trigger, goal, quit_date')
+      .select('is_premium, is_admin, display_name, motivation, trigger, goal, quit_date, ai_messages_today, ai_messages_date')
       .eq('id', user.id)
       .single();
 
@@ -48,28 +48,95 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Premium required' }, 403);
     }
 
+    // Daily limit — admins are exempt
+    if (!profile.is_admin) {
+      const today = new Date().toISOString().slice(0, 10);
+      const isToday = profile.ai_messages_date === today;
+      const usedToday = isToday ? (profile.ai_messages_today ?? 0) : 0;
+
+      if (usedToday >= DAILY_LIMIT) {
+        return json({ error: 'Daily limit reached', remaining: 0 }, 429);
+      }
+
+      // Increment before streaming — message is being consumed regardless of stream outcome
+      await admin
+        .from('users')
+        .update({
+          ai_messages_today: usedToday + 1,
+          ai_messages_date: today,
+        })
+        .eq('id', user.id);
+
+      const remaining = DAILY_LIMIT - (usedToday + 1);
+
+      const { messages } = await req.json();
+      if (!Array.isArray(messages) || messages.length === 0) {
+        return json({ error: 'messages required' }, 400);
+      }
+
+      const upstream = await callAnthropic(profile, messages);
+      if (!upstream.ok) {
+        const err = await upstream.text();
+        console.error('Anthropic error:', err);
+        return json({ error: 'AI service error' }, 502);
+      }
+
+      return new Response(upstream.body, {
+        headers: {
+          ...CORS,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'X-Accel-Buffering': 'no',
+          'X-Messages-Remaining': String(remaining),
+        },
+      });
+    }
+
+    // Admin path — no limit
     const { messages } = await req.json();
     if (!Array.isArray(messages) || messages.length === 0) {
       return json({ error: 'messages required' }, 400);
     }
 
-    // Build personalised system prompt from onboarding data
-    const name = profile.display_name ?? 'there';
-    const motivation = profile.motivation ?? 'a better life';
-    const trigger = profile.trigger ?? 'urges';
-    const goal = profile.goal ?? 'stay free from gambling';
-
-    let daysClean = 0;
-    if (profile.quit_date) {
-      const ms = Date.now() - new Date(profile.quit_date).getTime();
-      daysClean = Math.max(0, Math.floor(ms / 86_400_000));
+    const upstream = await callAnthropic(profile, messages);
+    if (!upstream.ok) {
+      const err = await upstream.text();
+      console.error('Anthropic error:', err);
+      return json({ error: 'AI service error' }, 502);
     }
 
-    const cleanLabel = daysClean === 0
-      ? 'just starting out'
-      : daysClean === 1 ? '1 day clean' : `${daysClean} days clean`;
+    return new Response(upstream.body, {
+      headers: {
+        ...CORS,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no',
+        'X-Messages-Remaining': '999',
+      },
+    });
+  } catch (err) {
+    console.error('ai-coach error:', err);
+    return json({ error: String(err) }, 500);
+  }
+});
 
-    const systemPrompt = `You are AI Corner — a compassionate, evidence-based support companion helping ${name} overcome gambling addiction. You speak in a warm, conversational tone — never clinical or preachy.
+async function callAnthropic(profile: any, messages: unknown[]) {
+  const name = profile.display_name ?? 'there';
+  const motivation = profile.motivation ?? 'a better life';
+  const trigger = profile.trigger ?? 'urges';
+  const goal = profile.goal ?? 'stay free from gambling';
+
+  let daysClean = 0;
+  if (profile.quit_date) {
+    const ms = Date.now() - new Date(profile.quit_date).getTime();
+    daysClean = Math.max(0, Math.floor(ms / 86_400_000));
+  }
+
+  const cleanLabel = daysClean === 0
+    ? 'just starting out'
+    : daysClean === 1 ? '1 day clean' : `${daysClean} days clean`;
+
+  const systemPrompt = `You are AI Corner — a compassionate, evidence-based support companion helping ${name} overcome gambling addiction. You speak in a warm, conversational tone — never clinical or preachy.
 
 About ${name}:
 - Why they want to quit: ${motivation}
@@ -88,42 +155,22 @@ Your approach:
 
 You are a supportive coach, not a replacement for professional therapy. For serious mental health concerns, gently encourage professional support while continuing to offer what you can.`;
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!anthropicKey) return json({ error: 'Service unavailable' }, 503);
+  const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!anthropicKey) throw new Error('ANTHROPIC_API_KEY not set');
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        stream: true,
-        system: systemPrompt,
-        messages,
-      }),
-    });
-
-    if (!upstream.ok) {
-      const err = await upstream.text();
-      console.error('Anthropic error:', err);
-      return json({ error: 'AI service error' }, 502);
-    }
-
-    // Pipe the Anthropic SSE stream directly to the client
-    return new Response(upstream.body, {
-      headers: {
-        ...CORS,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'X-Accel-Buffering': 'no',
-      },
-    });
-  } catch (err) {
-    console.error('ai-coach error:', err);
-    return json({ error: String(err) }, 500);
-  }
-});
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      stream: true,
+      system: systemPrompt,
+      messages,
+    }),
+  });
+}

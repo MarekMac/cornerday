@@ -1221,6 +1221,7 @@ export default function AccountScreen() {
                 <View style={s.profileSubLeft}>
                   <Text style={s.profileSubBadge}>✨ Premium</Text>
                   {renewalDate ? <Text style={s.profileSubMeta}>Renews {renewalDate}</Text> : null}
+                  <Text style={s.profileSubMeta}>AI Corner: 30 messages/day</Text>
                 </View>
                 <Pressable
                   style={({ pressed }) => [s.profileSubBtn, pressed && { opacity: 0.7 }]}
