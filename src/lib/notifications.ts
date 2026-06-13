@@ -200,7 +200,7 @@ export async function scheduleAllNotifications(
         return;
       }
       const { hour, minute } = parsed;
-      await Notifications.scheduleNotificationAsync({
+      const restoredId = await Notifications.scheduleNotificationAsync({
         content: {
           title: `🛡️ Your high-risk window is coming up`,
           body: `This is usually when urges hit hardest. Have your plan ready.`,
@@ -212,6 +212,7 @@ export async function scheduleAllNotifications(
           minute,
         }) as any,
       });
+      await AsyncStorage.setItem(URGE_PREDICTION_NOTIF_ID_KEY, restoredId);
     }
   }
 }
