@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { URGE_PREDICTION_SCHEDULE_KEY } from '../constants/storage-keys';
+import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY } from '../constants/storage-keys';
 
 export interface NotifPrefs {
   notif_milestone: boolean;
@@ -90,6 +90,7 @@ export async function scheduleAllNotifications(
   timeOverrides: { streakHour?: number; checkinHour?: number } = {},
 ) {
   await Notifications.cancelAllScheduledNotificationsAsync();
+  await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
   if (!quitTimestamp) return;
 
   const quitMs = new Date(quitTimestamp).getTime();
@@ -215,12 +216,21 @@ export async function scheduleAllNotifications(
   }
 }
 
+async function cancelExistingUrgePredictionNotif() {
+  const existingId = await AsyncStorage.getItem(URGE_PREDICTION_NOTIF_ID_KEY);
+  if (existingId) {
+    try { await Notifications.cancelScheduledNotificationAsync(existingId); } catch {}
+    await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
+  }
+}
+
 export async function scheduleUrgePredictionNotification(
   entries: { created_at: string }[],
   prefs: NotifPrefs,
   isPremium: boolean,
 ): Promise<void> {
   if (!isPremium || !prefs.notif_urge_prediction || entries.length < 3) {
+    await cancelExistingUrgePredictionNotif();
     await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY);
     return;
   }
@@ -231,18 +241,21 @@ export async function scheduleUrgePredictionNotification(
     hourCounts[h] = (hourCounts[h] ?? 0) + 1;
   }
   const sorted = Object.entries(hourCounts).sort((a, b) => b[1] - a[1]);
-  if (sorted.length === 0) { await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY); return; }
+  if (sorted.length === 0) { await cancelExistingUrgePredictionNotif(); await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY); return; }
   const peakHour = parseInt(sorted[0][0], 10);
-  if (isNaN(peakHour)) { await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY); return; }
+  if (isNaN(peakHour)) { await cancelExistingUrgePredictionNotif(); await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY); return; }
 
   // 30 minutes before peak, wrapping past midnight
   const totalMinutes = ((peakHour * 60 - 30) + 1440) % 1440;
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
 
+  // Cancel the previous notification before scheduling a replacement
+  await cancelExistingUrgePredictionNotif();
+
   await AsyncStorage.setItem(URGE_PREDICTION_SCHEDULE_KEY, JSON.stringify({ hour, minute }));
 
-  await Notifications.scheduleNotificationAsync({
+  const newId = await Notifications.scheduleNotificationAsync({
     content: {
       title: `🛡️ Your high-risk window is coming up`,
       body: `This is usually when urges hit hardest. Have your plan ready.`,
@@ -254,4 +267,5 @@ export async function scheduleUrgePredictionNotification(
       minute,
     }) as any,
   });
+  await AsyncStorage.setItem(URGE_PREDICTION_NOTIF_ID_KEY, newId);
 }
