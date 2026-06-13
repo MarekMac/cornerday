@@ -68,7 +68,7 @@ function InnerLayout() {
         backgroundedAtRef.current = null;
         if (elapsed > 2000 && !getImagePickerActive()) {
           const flag = await AsyncStorage.getItem(BIOMETRIC_LOCK_KEY);
-          if (flag === 'true') setLocked(true);
+          if (flag === 'true' && !getImagePickerActive()) setLocked(true);
         }
       }
     });

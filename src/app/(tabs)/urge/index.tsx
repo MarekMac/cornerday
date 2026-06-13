@@ -352,17 +352,21 @@ export default function UrgeScreen() {
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.75,
+        quality: 0.5,
+        exif: false,
       });
       if (result.canceled) return;
-      const src = result.assets[0].uri;
-      const destFile = new File(Paths.document, 'motivation_photo.jpg');
-      if (destFile.exists) destFile.delete();
-      await new File(src).copy(destFile);
-      await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
-      setMotivationPhoto(destFile.uri + '?t=' + Date.now());
+      try {
+        const src = result.assets[0].uri;
+        const destFile = new File(Paths.document, 'motivation_photo.jpg');
+        if (destFile.exists) destFile.delete();
+        await new File(src).copy(destFile);
+        await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
+        setMotivationPhoto(destFile.uri + '?t=' + Date.now());
+      } catch (err) {
+        console.error('[MotivationPhoto] save error:', err);
+        Alert.alert('Could not save photo', 'Please try again.');
+      }
     } finally {
       setTimeout(() => setImagePickerActive(false), 500);
     }
