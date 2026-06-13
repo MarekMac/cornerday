@@ -18,13 +18,12 @@ A mobile app (iOS + Android) that helps people stop sports betting, track money 
 - Navigation: Expo Router
 - Backend/Auth/Database: Supabase (PostgreSQL)
 - Payments/Subscriptions: RevenueCat
-- Ads: Google AdMob (never shown in urge/crisis screens)
 - AI Coach (Phase 2): Claude API
 
 ## Monetization
 - Free tier: streak tracker, loss/payment tracker, urge support, journal, basic check-ins
-- Premium tier (~$4.99–7.99/month): AI coach, detailed analytics, someone in your corner, ad-free
-- Ads: light ads in free tier only — NEVER on urge screen, relapse screen or crisis resources
+- Premium tier (~$4.99–7.99/month): AI coach, detailed analytics, someone in your corner
+- No ads — ever
 
 ## App Structure & Screens
 
