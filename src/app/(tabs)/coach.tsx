@@ -92,12 +92,26 @@ type ChatMessage = {
   pending?: boolean;
 };
 
-const GREETING: ChatMessage = {
-  id: 'greeting',
-  role: 'assistant',
-  content:
-    "Hi! I'm your AI Corner. I already know a bit about you — your reason for quitting, how your recovery is going, and what you're working toward — so you don't have to start from scratch. I'm here any time you need support. How are you doing today?",
-};
+const GREETINGS = [
+  "Hi! I'm your AI Corner. I already know a bit about you — your reason for quitting, how your recovery is going, and what you're working toward — so you don't have to start from scratch. I'm here any time you need support. How are you doing today?",
+  "Hey, good to see you. I'm your AI Corner — and I already know a little about your journey, so we can get straight into it. Whether you're riding a good streak or having a tough moment, I'm here. What's on your mind?",
+  "Hi there. I'm AI Corner, and I've got some context about where you are in your recovery — so no need to explain everything from the start. What would you like to talk about today?",
+  "Welcome back. I'm your AI Corner. I know why you're fighting this, how far you've come, and what you're working toward. That's what I'm here for. How are you feeling right now?",
+  "Hi! I'm your AI Corner — think of me as someone already in your corner, because I know your story. What's going on for you today?",
+  "Hey. I'm here whenever you need me. I already have some background on your recovery, so we can talk about whatever's on your mind without starting from zero. How's today going?",
+  "Good to have you here. I'm AI Corner, and I already know a bit about you — your motivation, your progress, what you're up against. I'm ready to listen. What do you need right now?",
+  "Hi! I'm your AI Corner. I know a little about your journey — the why behind it, how things are going, and what you're aiming for. You don't have to catch me up. Just tell me what's on your mind.",
+  "Hey! I'm AI Corner — your personal support, available any time. I've got some context about where you are in your recovery, so let's just talk. How are you doing today?",
+  "Hi. I'm your AI Corner. I already know the important things — why you started, how far you've come, and who's in your corner. I'm here for the rest. What would you like to talk about?",
+];
+
+function randomGreeting(): ChatMessage {
+  return {
+    id: 'greeting',
+    role: 'assistant',
+    content: GREETINGS[Math.floor(Math.random() * GREETINGS.length)],
+  };
+}
 
 export default function CoachScreen() {
   const { isPremium, isLoadingPurchases, showPaywall } = usePurchases();
@@ -106,7 +120,7 @@ export default function CoachScreen() {
   const s = useMemo(() => makeStyles(c), [c]);
   const hasAccess = isPremium || isAdmin;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [randomGreeting()]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const listRef = useRef<FlatList>(null);
@@ -242,6 +256,10 @@ export default function CoachScreen() {
   useFocusEffect(
     useCallback(() => {
       setRandomStarters([...STARTERS].sort(() => Math.random() - 0.5).slice(0, 5));
+      setMessages(prev => {
+        if (prev.length === 1 && prev[0].id === 'greeting') return [randomGreeting()];
+        return prev;
+      });
     }, []),
   );
 
