@@ -96,7 +96,7 @@ const GREETING: ChatMessage = {
   id: 'greeting',
   role: 'assistant',
   content:
-    "Hi! I'm your AI Corner — here to support you through your recovery. Whether you're dealing with an urge, want to celebrate progress, or just need to talk, I've got you. How are you doing today?",
+    "Hi! I'm your AI Corner. I already know a bit about you — your reason for quitting, how your recovery is going, and what you're working toward — so you don't have to start from scratch. I'm here any time you need support. How are you doing today?",
 };
 
 export default function CoachScreen() {
