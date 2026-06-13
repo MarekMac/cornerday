@@ -117,8 +117,8 @@ export default function DebtDetailScreen() {
   };
 
   const addPayment = async () => {
-    const val = parseFloat(amount);
-    if (!amount || isNaN(val) || val <= 0) {
+    const val = parseFloat(amount.trim());
+    if (!amount.trim() || isNaN(val) || !isFinite(val) || val <= 0) {
       Alert.alert('Invalid amount', 'Please enter a valid amount.');
       return;
     }

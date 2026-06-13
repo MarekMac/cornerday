@@ -78,6 +78,6 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ ok: true, resend: resendBody }), { status: 200 });
   } catch (err) {
     console.error('notify-feedback error:', err);
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 200 });
+    return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500 });
   }
 });

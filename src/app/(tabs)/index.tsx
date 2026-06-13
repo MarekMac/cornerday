@@ -222,7 +222,7 @@ const MOTIVATION_MAP: Record<string, { label: string; emoji: string }> = {
 function getGreeting(name?: string | null) {
   const h = new Date().getHours();
   const time = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
-  const first = name?.split(' ')[0];
+  const first = name?.split(' ')?.[0];
   const trimmed = first && first.length > 12 ? `${first.slice(0, 12)}…` : first;
   return `Good ${time}${trimmed ? `, ${trimmed}` : ''}`;
 }
@@ -962,7 +962,7 @@ export default function HomeScreen() {
     }
 
     setData({
-      displayName: profile?.display_name ?? user.email?.split('@')[0] ?? null,
+      displayName: profile?.display_name ?? user.email?.split('@')?.[0] ?? null,
       motivation: profile?.motivation ?? null,
       quitDate: profile?.quit_timestamp ?? profile?.quit_date ?? null,
       weeklyBet: profile?.weekly_bet ?? null,
