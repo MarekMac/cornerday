@@ -39,6 +39,7 @@ interface Debt {
   total_amount: number;
   category: string;
   created_at: string;
+  target_date: string | null;
 }
 
 interface DebtPayment {
@@ -638,41 +639,6 @@ export default function TrackerIndex() {
                   <View style={[s.progressFill, { width: `${recoveryPct * 100}%` as any }]} />
                 </View>
                 <Text style={s.progressLbl}>{Math.round(recoveryPct * 100)}% recovered</Text>
-                {(() => {
-                  const daysElapsed = days;
-                  const daysRemaining = debtTargetDate ? Math.ceil((debtTargetDate.getTime() - Date.now()) / 86400000) : null;
-                  const requiredPerDay = daysRemaining && daysRemaining > 0 && stillOwed > 0 ? stillOwed / daysRemaining : null;
-                  const actualPerDay = daysElapsed > 0 && totalPaid > 0 ? totalPaid / daysElapsed : null;
-                  const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
-                  return (
-                    <Pressable onPress={openDebtTargetPicker} style={s.pacingFooter}>
-                      {!debtTargetDate ? (
-                        <Text style={s.pacingFooterSet}>📅 Set payoff target date</Text>
-                      ) : (
-                        <View style={s.pacingFooterRow}>
-                          <Text style={s.pacingFooterDate}>
-                            📅 {debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
-                            {daysRemaining !== null && (
-                              <Text style={{ color: daysRemaining <= 0 ? c.error : c.textFaint }}>
-                                {daysRemaining > 0 ? `  ·  ${daysRemaining}d left` : '  ·  Past target'}
-                              </Text>
-                            )}
-                          </Text>
-                          <View style={s.pacingFooterStats}>
-                            {requiredPerDay !== null && (
-                              <Text style={s.pacingFooterStat}>Need {fmt(requiredPerDay, currency)}/day</Text>
-                            )}
-                            {actualPerDay !== null && isAhead !== null && (
-                              <View style={[s.paceBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
-                                <Text style={s.paceBadgeTxt}>{isAhead ? '▲ Ahead' : '▼ Behind'}</Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                      )}
-                    </Pressable>
-                  );
-                })()}
               </>
             )}
           </View>
@@ -827,6 +793,42 @@ export default function TrackerIndex() {
                         <View style={s.debtProgressTrack}>
                           <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct) }]} />
                         </View>
+                        {!isPaidOff && (() => {
+                          const td = debt.target_date ? new Date(debt.target_date) : null;
+                          const daysRemaining = td ? Math.ceil((td.getTime() - Date.now()) / 86400000) : null;
+                          const daysElapsed = Math.max(1, (Date.now() - new Date(debt.created_at).getTime()) / 86400000);
+                          const requiredPerDay = td && daysRemaining && daysRemaining > 0 ? remaining / daysRemaining : null;
+                          const actualPerDay = paid > 0 ? paid / daysElapsed : null;
+                          const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
+                          return (
+                            <View style={s.debtTargetRow}>
+                              {td ? (
+                                <>
+                                  <Text style={s.debtTargetDate}>
+                                    📅 {td.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    {daysRemaining !== null && (
+                                      <Text style={{ color: daysRemaining <= 0 ? c.error : c.textFaint }}>
+                                        {daysRemaining > 0 ? `  ·  ${daysRemaining}d left` : '  ·  Past target'}
+                                      </Text>
+                                    )}
+                                  </Text>
+                                  <View style={s.debtTargetRight}>
+                                    {requiredPerDay !== null && (
+                                      <Text style={s.debtTargetStat}>Need {fmt(requiredPerDay, currency)}/day</Text>
+                                    )}
+                                    {isAhead !== null && (
+                                      <View style={[s.paceBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
+                                        <Text style={s.paceBadgeTxt}>{isAhead ? '▲' : '▼'}</Text>
+                                      </View>
+                                    )}
+                                  </View>
+                                </>
+                              ) : (
+                                <Text style={s.debtTargetUnset}>📅 Set payoff target →</Text>
+                              )}
+                            </View>
+                          );
+                        })()}
                         {!isPaidOff && (
                           <View style={s.swipeHint}>
                             <Text style={s.swipeHintDelete}>← Delete</Text>
@@ -1418,6 +1420,12 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderWidth: 1, borderColor: c.primary,
   },
   quickPayTxt: { fontSize: 12, fontWeight: '700', color: c.primary },
+
+  debtTargetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
+  debtTargetDate: { fontSize: 11, color: c.textMuted, fontWeight: '500', flex: 1 },
+  debtTargetRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  debtTargetStat: { fontSize: 11, color: c.textMuted },
+  debtTargetUnset: { fontSize: 11, color: c.primary, fontWeight: '500' },
 
   swipeHint: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   swipeHintDelete: { fontSize: 10, color: '#e8a89e', fontWeight: '500' },
