@@ -35,13 +35,6 @@ function GoogleLogo() {
   );
 }
 
-function FacebookLogo() {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Path fill="#1877F2" d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-    </Svg>
-  );
-}
 
 export default function SignupScreen() {
   const { colors: c } = useAppTheme();
@@ -71,7 +64,6 @@ export default function SignupScreen() {
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [facebookLoading, setFacebookLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleGoogleSignIn = async () => {
@@ -128,55 +120,6 @@ export default function SignupScreen() {
     }
 
     setGoogleLoading(false);
-  };
-
-  const handleFacebookSignIn = async () => {
-    setFacebookLoading(true);
-    setError('');
-
-    const redirectTo = makeRedirectUri({ scheme: 'cornerday' });
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
-      options: { redirectTo, skipBrowserRedirect: true },
-    });
-
-    if (error || !data.url) {
-      setError('Facebook sign-in failed. Please try again.');
-      setFacebookLoading(false);
-      return;
-    }
-
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-
-    if (result.type === 'success') {
-      const params = new URLSearchParams(
-        result.url.split('#')[1] ?? result.url.split('?')[1] ?? ''
-      );
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-
-      if (accessToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken ?? '',
-        });
-
-        if (!sessionError) {
-          const { data: profile } = await supabase
-            .from('users')
-            .select('motivation')
-            .maybeSingle();
-          if (profile?.motivation) {
-            router.replace('/(tabs)');
-          } else {
-            router.push('/(onboarding)/q1');
-          }
-        }
-      }
-    }
-
-    setFacebookLoading(false);
   };
 
   const handleSubmit = async () => {

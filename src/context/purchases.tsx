@@ -86,7 +86,13 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
         Purchases.configure({ apiKey: REVENUECAT_API_KEY });
 
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) await Purchases.logIn(user.id);
+        if (user) {
+          try {
+            await Purchases.logIn(user.id);
+          } catch (e) {
+            console.warn('[RevenueCat] logIn error:', e);
+          }
+        }
 
         const [info, offeringsResult] = await Promise.all([
           Purchases.getCustomerInfo(),

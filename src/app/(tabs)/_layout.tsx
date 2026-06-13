@@ -167,7 +167,7 @@ export default function TabsLayout() {
           .from('users')
           .select('quit_timestamp, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching')
           .eq('id', user.id)
-          .single(),
+          .maybeSingle(),
         supabase.from('badges').select('badge_type').eq('user_id', user.id),
       ]);
       if (!data) return;

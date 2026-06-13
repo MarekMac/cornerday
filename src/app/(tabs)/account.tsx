@@ -500,7 +500,7 @@ export default function AccountScreen() {
 
   const saveGoal = async () => {
     const val = parseFloat(goalInput);
-    if (goalInput && (isNaN(val) || val <= 0)) {
+    if (goalInput && (isNaN(val) || !isFinite(val) || val <= 0)) {
       Alert.alert('Invalid amount', 'Please enter a valid amount.');
       return;
     }
