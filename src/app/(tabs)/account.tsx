@@ -167,6 +167,18 @@ function formatQuitDate(ts: string | null) {
   return `${date} @ ${time}`;
 }
 
+function formatStreakDual(ms: number): string {
+  const mins  = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const days  = Math.floor(ms / 86400000);
+  const weeks = Math.floor(days / 7);
+  if (weeks >= 1) { const d = days - weeks * 7; return d > 0 ? `${weeks}w ${d}d` : `${weeks}w`; }
+  if (days >= 1)  { const h = hours - days * 24; return h > 0 ? `${days}d ${h}h` : `${days}d`; }
+  if (hours >= 1) { const m = mins - hours * 60; return m > 0 ? `${hours}h ${m}m` : `${hours}h`; }
+  if (mins >= 1) return `${mins}m`;
+  return '< 1m';
+}
+
 export default function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -982,8 +994,8 @@ export default function AccountScreen() {
         'STREAK',
         sep,
         `Started:        ${p?.quit_timestamp ? fmt(p.quit_timestamp) : '—'}`,
-        `Current streak: ${st?.current_streak ?? 0} days`,
-        `Longest streak: ${st?.longest_streak ?? 0} days`,
+        `Current streak: ${p?.quit_timestamp ? formatStreakDual(Math.max(0, Date.now() - new Date(p.quit_timestamp).getTime())) : '< 1m'}`,
+        `Longest streak: ${(st?.longest_streak ?? 0) >= 1 ? formatStreakDual((st.longest_streak) * 86400000) : '< 1m'}`,
         '',
       ];
 
@@ -1118,20 +1130,14 @@ export default function AccountScreen() {
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const streakDisplay = (() => {
-    if (!profile?.quitTimestamp) return { value: '0', unit: 'days' };
+    if (!profile?.quitTimestamp) return { value: '< 1m', unit: '' };
     const ms = Math.max(0, Date.now() - new Date(profile.quitTimestamp).getTime());
-    const days = Math.floor(ms / 86400000);
-    if (days >= 1) return { value: String(days), unit: 'days' };
-    const hours = Math.floor(ms / 3600000);
-    if (hours >= 1) return { value: String(hours), unit: hours === 1 ? 'hour' : 'hours' };
-    const mins = Math.floor(ms / 60000);
-    return { value: String(Math.max(1, mins)), unit: mins <= 1 ? 'min' : 'mins' };
+    return { value: formatStreakDual(ms), unit: '' };
   })();
 
   const longestStreakDisplay = (() => {
     const dbDays = profile?.longestStreak ?? 0;
-    if (dbDays >= 1) return { value: String(dbDays), unit: 'days' };
-    // No full day logged yet — current streak is the longest
+    if (dbDays >= 1) return { value: formatStreakDual(dbDays * 86400000), unit: '' };
     return streakDisplay;
   })();
 
