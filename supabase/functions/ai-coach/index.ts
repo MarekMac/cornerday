@@ -1,7 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const DAILY_LIMIT = 30;
-
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -40,7 +38,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await admin
       .from('users')
-      .select('is_premium, is_admin, display_name, motivation, trigger, goal, quit_date, ai_messages_today, ai_messages_date')
+      .select('is_premium, is_admin, display_name, motivation, trigger, goal, quit_date')
       .eq('id', user.id)
       .single();
 
@@ -48,51 +46,6 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Premium required' }, 403);
     }
 
-    // Daily limit — admins are exempt
-    if (!profile.is_admin) {
-      const today = new Date().toISOString().slice(0, 10);
-      const isToday = profile.ai_messages_date === today;
-      const usedToday = isToday ? (profile.ai_messages_today ?? 0) : 0;
-
-      if (usedToday >= DAILY_LIMIT) {
-        return json({ error: 'Daily limit reached', remaining: 0 }, 429);
-      }
-
-      // Increment before streaming — message is being consumed regardless of stream outcome
-      await admin
-        .from('users')
-        .update({
-          ai_messages_today: usedToday + 1,
-          ai_messages_date: today,
-        })
-        .eq('id', user.id);
-
-      const remaining = DAILY_LIMIT - (usedToday + 1);
-
-      const { messages } = await req.json();
-      if (!Array.isArray(messages) || messages.length === 0) {
-        return json({ error: 'messages required' }, 400);
-      }
-
-      const upstream = await callAnthropic(profile, messages);
-      if (!upstream.ok) {
-        const err = await upstream.text();
-        console.error('Anthropic error:', err);
-        return json({ error: 'AI service error' }, 502);
-      }
-
-      return new Response(upstream.body, {
-        headers: {
-          ...CORS,
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'X-Accel-Buffering': 'no',
-          'X-Messages-Remaining': String(remaining),
-        },
-      });
-    }
-
-    // Admin path — no limit
     const { messages } = await req.json();
     if (!Array.isArray(messages) || messages.length === 0) {
       return json({ error: 'messages required' }, 400);
@@ -111,7 +64,6 @@ Deno.serve(async (req: Request) => {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'X-Accel-Buffering': 'no',
-        'X-Messages-Remaining': '999',
       },
     });
   } catch (err) {

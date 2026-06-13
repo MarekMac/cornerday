@@ -107,7 +107,6 @@ export default function CoachScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [remaining, setRemaining] = useState<number | null>(null);
   const listRef = useRef<FlatList>(null);
 
   const scrollToBottom = useCallback((animated = true) => {
@@ -145,18 +144,10 @@ export default function CoachScreen() {
         body: JSON.stringify({ messages: apiMessages }),
       });
 
-      if (response.status === 429) {
-        setRemaining(0);
-        throw new Error('limit_reached');
-      }
-
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({}));
         throw new Error((errBody as any).error ?? 'Request failed');
       }
-
-      const rem = parseInt(response.headers.get('x-messages-remaining') ?? '-1', 10);
-      if (rem >= 0) setRemaining(rem);
 
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
@@ -196,17 +187,14 @@ export default function CoachScreen() {
           }
         }
       }
-    } catch (err: any) {
-      const isLimit = err?.message === 'limit_reached';
+    } catch (err) {
       console.error('ai-coach fetch error:', err);
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
             ? {
                 ...m,
-                content: isLimit
-                  ? "You've reached your 30 message daily limit. It resets at midnight. I'll be here when it does. 💙"
-                  : "I'm having trouble connecting right now. Please try again in a moment.",
+                content: "I'm having trouble connecting right now. Please try again in a moment.",
                 pending: false,
               }
             : m,
@@ -365,16 +353,6 @@ export default function CoachScreen() {
             ))}
           </ScrollView>
         )}
-        {remaining !== null && remaining <= 10 && remaining > 0 && (
-          <Text style={s.limitWarning}>
-            {remaining} message{remaining === 1 ? '' : 's'} remaining today
-          </Text>
-        )}
-        {remaining === 0 ? (
-          <View style={s.limitReached}>
-            <Text style={s.limitReachedText}>Daily limit reached — resets at midnight 💙</Text>
-          </View>
-        ) : (
         <View style={s.inputBar}>
           <TextInput
             style={s.textInput}
@@ -402,7 +380,6 @@ export default function CoachScreen() {
             )}
           </Pressable>
         </View>
-        )}
       </KeyboardAvoidingView>
     </View>
   );
@@ -528,27 +505,6 @@ const makeStyles = (c: AppColors) =>
       justifyContent: 'center',
     },
     sendBtnDisabled: { backgroundColor: c.borderLight },
-
-    limitWarning: {
-      fontSize: 12,
-      color: c.textMuted,
-      textAlign: 'center',
-      paddingVertical: 4,
-      backgroundColor: c.bgScreen,
-    },
-    limitReached: {
-      paddingVertical: 16,
-      paddingHorizontal: 20,
-      backgroundColor: c.bgCard,
-      borderTopWidth: 1,
-      borderTopColor: c.borderSubtle,
-      alignItems: 'center',
-    },
-    limitReachedText: {
-      fontSize: 14,
-      color: c.textMuted,
-      textAlign: 'center',
-    },
 
     startersRow: {
       borderTopWidth: 1,
