@@ -311,7 +311,7 @@ export default function JournalScreen() {
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('losses').select('id, note, created_at').eq('user_id', user.id).eq('type', 'streak_reset'),
       supabase.from('losses').select('id, type, amount, note, created_at').eq('user_id', user.id).in('type', ['debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
-      supabase.from('users').select('currency').eq('id', user.id).single(),
+      supabase.from('users').select('currency').eq('id', user.id).maybeSingle(),
     ]);
 
     if (profileRes.data?.currency) setCurrency(profileRes.data.currency);

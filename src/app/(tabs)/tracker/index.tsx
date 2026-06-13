@@ -185,7 +185,7 @@ export default function TrackerIndex() {
       supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
-      supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date').eq('id', user.id).single(),
+      supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date').eq('id', user.id).maybeSingle(),
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),

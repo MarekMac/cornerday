@@ -117,7 +117,7 @@ export default function PostDetail() {
           .from('community_posts')
           .select('id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))')
           .eq('id', id)
-          .single(),
+          .maybeSingle(),
         supabase
           .from('community_comments')
           .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
@@ -245,7 +245,7 @@ export default function PostDetail() {
         .from('community_comments')
         .insert({ post_id: post.id, user_id: currentUserId, content: text, is_anonymous: isCommentAnonymous })
         .select('id, user_id, content, created_at, helpful_count, is_anonymous')
-        .single();
+        .maybeSingle();
 
       if (error) {
         Alert.alert('Could not post comment', error.message);

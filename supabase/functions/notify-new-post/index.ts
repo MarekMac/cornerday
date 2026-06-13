@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       .from('users')
       .select('display_name')
       .eq('id', author_id)
-      .single();
+      .maybeSingle();
 
     const authorName = author?.display_name ?? 'Someone you follow';
 

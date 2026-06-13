@@ -46,7 +46,7 @@ Deno.serve(async (req: Request) => {
       .from('community_posts')
       .select('user_id')
       .eq('id', post_id)
-      .single();
+      .maybeSingle();
 
     if (postError || !post) {
       console.error('Could not fetch post:', postError);
@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
       .from('users')
       .select('expo_push_token, display_name')
       .eq('id', post_owner_id)
-      .single();
+      .maybeSingle();
 
     if (ownerError || !owner?.expo_push_token) {
       // Owner has no push token — silently skip
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
       .from('users')
       .select('display_name')
       .eq('id', commenter_id)
-      .single();
+      .maybeSingle();
 
     const commenterName = commenter?.display_name ?? 'Someone';
     const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;

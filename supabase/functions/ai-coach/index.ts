@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
       .from('users')
       .select('is_premium, is_admin, display_name, motivation, trigger, goal, quit_date')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile?.is_premium && !profile?.is_admin) {
       return json({ error: 'Premium required' }, 403);

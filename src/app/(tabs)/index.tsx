@@ -765,7 +765,7 @@ export default function HomeScreen() {
     const today = todayStr();
 
     const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes] = await Promise.all([
-      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).single(),
+      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
@@ -1168,7 +1168,7 @@ export default function HomeScreen() {
       if (data.todayMoodId) {
         await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId);
       } else {
-        const { data: inserted } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').single();
+        const { data: inserted } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
         setData(prev => prev ? { ...prev, todayMoodId: inserted?.id ?? null } : prev);
       }
       const todayKey = new Date().toLocaleDateString();

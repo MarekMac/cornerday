@@ -87,9 +87,9 @@ export default function DebtDetailScreen() {
     if (!user) return;
 
     const [debtRes, paymentsRes, profileRes] = await Promise.all([
-      supabase.from('debts').select('*').eq('id', id).eq('user_id', user.id).single(),
+      supabase.from('debts').select('*').eq('id', id).eq('user_id', user.id).maybeSingle(),
       supabase.from('debt_payments').select('*').eq('debt_id', id).eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('users').select('currency').eq('id', user.id).single(),
+      supabase.from('users').select('currency').eq('id', user.id).maybeSingle(),
     ]);
 
     if (debtRes.data) setDebt(debtRes.data as Debt);

@@ -268,8 +268,8 @@ export default function AccountScreen() {
         .from('users')
         .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
         .eq('id', user.id)
-        .single(),
-      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
+        .maybeSingle(),
+      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
     ]);
     const quitTs = data?.quit_timestamp ?? data?.quit_date;
@@ -306,7 +306,7 @@ export default function AccountScreen() {
       .from('users')
       .select('trusted_contact_name, trusted_contact_phone, recovery_distractions, recovery_mantra')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
     if (contactData?.trusted_contact_name || contactData?.trusted_contact_phone) {
       setTrustedContactName(contactData.trusted_contact_name ?? '');
       setTrustedContactPhone(contactData.trusted_contact_phone ?? '');
@@ -364,7 +364,7 @@ export default function AccountScreen() {
         .from('partner_links')
         .insert({ user_id: user.id })
         .select('id, token, expires_at')
-        .single();
+        .maybeSingle();
       if (!error && data) {
         setPartnerToken(data.token);
         setPartnerLinkId(data.id);
@@ -949,10 +949,10 @@ export default function AccountScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const [profileRes, lossesRes, moodRes, streakRes, badgesRes] = await Promise.all([
-        supabase.from('users').select('display_name, quit_timestamp, motivation, goal, trigger, support_type, weekly_bet, currency').eq('id', user.id).single(),
+        supabase.from('users').select('display_name, quit_timestamp, motivation, goal, trigger, support_type, weekly_bet, currency').eq('id', user.id).maybeSingle(),
         supabase.from('losses').select('type, amount, category, note, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
         supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
-        supabase.from('streaks').select('current_streak, longest_streak, streak_start_date').eq('user_id', user.id).single(),
+        supabase.from('streaks').select('current_streak, longest_streak, streak_start_date').eq('user_id', user.id).maybeSingle(),
         supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       ]);
 

@@ -49,7 +49,7 @@ async function fetchIsAdmin(userId: string): Promise<boolean> {
       .from('users')
       .select('is_admin')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     return data?.is_admin ?? false;
   } catch {
     return false;

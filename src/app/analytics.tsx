@@ -214,8 +214,8 @@ export default function AnalyticsScreen() {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
 
     const [profileRes, streakRes, lossesRes, debtsRes, paymentsRes, urgeRes, moodRes] = await Promise.all([
-      supabase.from('users').select('currency, quit_date, quit_timestamp').eq('id', user.id).single(),
-      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).single(),
+      supabase.from('users').select('currency, quit_date, quit_timestamp').eq('id', user.id).maybeSingle(),
+      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
       supabase.from('debts').select('id, total_amount').eq('user_id', user.id),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),

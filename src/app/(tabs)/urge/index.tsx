@@ -261,7 +261,7 @@ export default function UrgeScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from('users').select('motivation, recovery_distractions, recovery_mantra').eq('id', user.id).single();
+      const { data } = await supabase.from('users').select('motivation, recovery_distractions, recovery_mantra').eq('id', user.id).maybeSingle();
       if (data?.motivation != null) {
         setMotivation(data.motivation);
         await AsyncStorage.setItem(MOTIVATION_CACHE_KEY, data.motivation);
@@ -404,7 +404,7 @@ export default function UrgeScreen() {
       const { data: prefsRow } = await supabase
         .from('users')
         .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
-        .eq('id', user.id).single();
+        .eq('id', user.id).maybeSingle();
       const prefs = {
         notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
         notif_daily_streak:          prefsRow?.notif_daily_streak          ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,

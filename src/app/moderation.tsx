@@ -111,11 +111,11 @@ export default function ModerationScreen() {
     const enriched = await Promise.all(data.map(async (r) => {
       if (r.target_type === 'post') {
         const { data: post } = await supabase
-          .from('community_posts').select('content').eq('id', r.target_id).single();
+          .from('community_posts').select('content').eq('id', r.target_id).maybeSingle();
         return { ...r, content: post?.content ?? '[Post deleted]' };
       } else {
         const { data: comment } = await supabase
-          .from('community_comments').select('content').eq('id', r.target_id).single();
+          .from('community_comments').select('content').eq('id', r.target_id).maybeSingle();
         return { ...r, content: comment?.content ?? '[Comment deleted]' };
       }
     }));
@@ -218,7 +218,7 @@ export default function ModerationScreen() {
     setDetailLoading(true);
 
     const [streakRes, postRes, commentRes, urgeRes, lossRes] = await Promise.all([
-      supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).single(),
+      supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('community_comments').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('urge_journal').select('*', { count: 'exact', head: true }).eq('user_id', user.id),

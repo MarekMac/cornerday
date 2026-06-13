@@ -95,8 +95,8 @@ function InnerLayout() {
         setPendingRoute(seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
       } else if (onboarded === 'true') {
         // Verify user row still exists — catches deleted account with stale JWT
-        const { error: userRowError } = await supabase.from('users').select('id').eq('id', sess.user.id).single();
-        if (userRowError?.code === 'PGRST116') {
+        const { data: userRow } = await supabase.from('users').select('id').eq('id', sess.user.id).maybeSingle();
+        if (!userRow) {
           await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
           await supabase.auth.signOut();
           return;
@@ -104,15 +104,15 @@ function InnerLayout() {
         setPendingRoute('/(tabs)');
       } else {
         // AsyncStorage flag missing (e.g. dev reload cleared storage) — check Supabase
-        const { data: userData, error: userError } = await supabase
+        const { data: userData } = await supabase
           .from('users')
           .select('motivation')
           .eq('id', sess.user.id)
-          .single();
+          .maybeSingle();
         if (userData?.motivation) {
           await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           setPendingRoute('/(tabs)');
-        } else if (userError?.code === 'PGRST116') {
+        } else if (userData === null) {
           // Ghost session: auth JWT still cached but user row was deleted
           await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
           await supabase.auth.signOut();
