@@ -12,6 +12,9 @@ const TYPE_LABEL: Record<string, string> = {
   general: '💬 General Feedback',
 };
 
+const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
+
 Deno.serve(async (req: Request) => {
   try {
     const { type, message, app_version, user_email } = await req.json();
@@ -41,7 +44,7 @@ Deno.serve(async (req: Request) => {
           <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14px">
             <tr>
               <td style="padding:6px 0;color:#888;width:110px">From</td>
-              <td style="padding:6px 0">${user_email ?? '<em>anonymous</em>'}</td>
+              <td style="padding:6px 0">${user_email ? esc(user_email) : '<em>anonymous</em>'}</td>
             </tr>
             <tr>
               <td style="padding:6px 0;color:#888">App version</td>
@@ -52,7 +55,7 @@ Deno.serve(async (req: Request) => {
               <td style="padding:6px 0">${sentAt}</td>
             </tr>
           </table>
-          <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px;font-size:15px;line-height:1.6;white-space:pre-wrap">${message}</div>
+          <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px;font-size:15px;line-height:1.6;white-space:pre-wrap">${esc(message)}</div>
           ${user_email ? `<p style="margin-top:20px;font-size:13px;color:#888">Reply to this email to respond directly to the user.</p>` : ''}
         </div>
       </div>`;

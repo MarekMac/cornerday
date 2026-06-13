@@ -333,8 +333,8 @@ export default function TrackerIndex() {
   };
 
   const saveSaving = async () => {
-    const amount = parseFloat(savingAmount);
-    if (!savingAmount || isNaN(amount) || amount <= 0) {
+    const amount = parseFloat(savingAmount.trim());
+    if (!savingAmount.trim() || isNaN(amount) || !isFinite(amount) || amount <= 0) {
       Alert.alert('Invalid amount', 'Please enter a valid amount.');
       return;
     }
@@ -419,7 +419,7 @@ export default function TrackerIndex() {
 
   const saveGoal = async () => {
     const val = parseFloat(goalInput);
-    if (goalInput && (isNaN(val) || val <= 0)) {
+    if (goalInput && (isNaN(val) || !isFinite(val) || val <= 0)) {
       Alert.alert('Invalid amount', 'Please enter a valid goal amount.');
       return;
     }
