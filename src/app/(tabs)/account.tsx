@@ -1445,7 +1445,7 @@ export default function AccountScreen() {
                     style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
                     onPress={async () => {
                       const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
-                      await Share.share({ message: url, url });
+                      await Share.share({ message: url, url }).catch(() => {});
                     }}>
                     <Ionicons name="share-outline" size={15} color={c.white} />
                     <Text style={s.partnerCopyTxt}>Share link</Text>
