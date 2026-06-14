@@ -369,9 +369,9 @@ export default function AccountScreen() {
   }, []);
 
   const updateShareSetting = async (key: 'share_mood' | 'share_milestones' | 'share_recovery', value: boolean) => {
-    if (!partnerLinkId) return;
     const shortKey = key.replace('share_', '') as 'mood' | 'milestones' | 'recovery';
     setShareSettings(prev => ({ ...prev, [shortKey]: value }));
+    if (!partnerLinkId) return;
     const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
     if (error) {
       setShareSettings(prev => ({ ...prev, [shortKey]: !value }));
@@ -380,9 +380,9 @@ export default function AccountScreen() {
   };
 
   const updateNotifySetting = async (key: 'notify_urge' | 'notify_relapse' | 'notify_milestone', value: boolean) => {
-    if (!partnerLinkId) return;
     const shortKey = key.replace('notify_', '') as 'urge' | 'relapse' | 'milestone';
     setNotifySettings(prev => ({ ...prev, [shortKey]: value }));
+    if (!partnerLinkId) return;
     const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
     if (error) {
       setNotifySettings(prev => ({ ...prev, [shortKey]: !value }));
@@ -390,27 +390,39 @@ export default function AccountScreen() {
     }
   };
 
-  const generatePartnerLink = async () => {
+  const generateAndShare = async () => {
     setPartnerLinkLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      // Delete any existing links first to prevent duplicate rows that would
-      // break the maybeSingle() fetch.
-      await supabase.from('partner_links').delete().eq('user_id', user.id);
-      const { data, error } = await supabase
-        .from('partner_links')
-        .insert({ user_id: user.id })
-        .select('id, token, expires_at')
-        .maybeSingle();
-      if (!error && data) {
-        setPartnerToken(data.token);
-        setPartnerLinkId(data.id);
-        setPartnerExpiresAt(data.expires_at ?? null);
-        setShareSettings({ mood: false, milestones: false, recovery: false });
-        setNotifySettings({ urge: false, relapse: false, milestone: false });
+    let token = partnerToken;
+    if (!token) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('partner_links').delete().eq('user_id', user.id);
+        const { data, error } = await supabase
+          .from('partner_links')
+          .insert({
+            user_id: user.id,
+            share_mood: shareSettings.mood,
+            share_milestones: shareSettings.milestones,
+            share_recovery: shareSettings.recovery,
+            notify_urge: notifySettings.urge,
+            notify_relapse: notifySettings.relapse,
+            notify_milestone: notifySettings.milestone,
+          })
+          .select('id, token, expires_at')
+          .maybeSingle();
+        if (!error && data) {
+          setPartnerToken(data.token);
+          setPartnerLinkId(data.id);
+          setPartnerExpiresAt(data.expires_at ?? null);
+          token = data.token;
+        }
       }
     }
     setPartnerLinkLoading(false);
+    if (token) {
+      const url = `https://marekmac.github.io/cornerday/partner.html?t=${token}`;
+      await Share.share({ message: url, url }).catch(() => {});
+    }
   };
 
   const revokePartnerLink = () => {
@@ -1507,7 +1519,7 @@ export default function AccountScreen() {
         <View style={s.infoCard}>
           <Text style={s.infoCardTitle}>Someone in your corner</Text>
           <Text style={s.partnerDesc}>
-            Share a private link with one trusted person. Anyone with the URL can view the page, so only send it directly — not in a group chat.
+            Share a private link with one trusted person — they'll get a live view of your progress and can send you messages.
           </Text>
           {!isPremiumFromRC ? (
             <>
@@ -1516,14 +1528,14 @@ export default function AccountScreen() {
                 <Text style={s.partnerLockedTxt}>Premium feature</Text>
               </View>
               <Pressable
-                style={({ pressed }) => [s.partnerGenerateBtn, s.partnerLockedBtn, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [s.partnerShareBtn, s.partnerLockedBtn, pressed && { opacity: 0.8 }]}
                 onPress={showPaywall}>
                 <Text style={s.partnerLockedBtnTxt}>Unlock with Premium</Text>
               </Pressable>
             </>
-          ) : partnerToken ? (
+          ) : (
             <>
-              {/* Settings first — configure before sharing */}
+              {/* Settings always visible — configure before sharing, update instantly after */}
               <View style={s.shareSettingsBox}>
                 <Text style={s.shareSettingsTitle}>What they can see</Text>
                 <View style={s.shareSettingRow}>
@@ -1559,9 +1571,9 @@ export default function AccountScreen() {
                 </View>
               </View>
               <View style={[s.shareSettingsBox, { marginTop: 10 }]}>
-                <Text style={s.shareSettingsTitle}>Notify my supporter by email</Text>
-                <Text style={s.partnerDesc}>
-                  They'll receive an email for the events you enable below, once they subscribe via the link.
+                <Text style={s.shareSettingsTitle}>Notify by email</Text>
+                <Text style={[s.partnerDesc, { marginBottom: 8 }]}>
+                  Once they subscribe on the page, they'll get an email for the events you enable.
                 </Text>
                 <View style={s.shareSettingRow}>
                   <Text style={s.shareSettingLabel}>When I'm struggling (urge)</Text>
@@ -1591,45 +1603,51 @@ export default function AccountScreen() {
                   />
                 </View>
               </View>
-              {/* Share button after settings so user configures first */}
-              <View style={s.partnerLinkBox}>
-                <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
-                  {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
-                </Text>
-                <Text style={s.partnerHint}>
-                  Settings update instantly — if your supporter already has the page open, ask them to refresh.
-                </Text>
-                <View style={s.partnerBtnRow}>
+              {/* Primary CTA — generates link on first press, just shares on subsequent */}
+              <Pressable
+                style={({ pressed }) => [s.partnerShareBtn, { marginTop: 16 }, pressed && { opacity: 0.85 }]}
+                onPress={generateAndShare}
+                disabled={partnerLinkLoading}>
+                {partnerLinkLoading
+                  ? <ActivityIndicator color={c.white} size="small" />
+                  : <>
+                      <Ionicons name="share-outline" size={16} color={c.white} />
+                      <Text style={s.partnerShareBtnTxt}>
+                        {partnerToken ? 'Share link again' : 'Share with my supporter'}
+                      </Text>
+                    </>}
+              </Pressable>
+              {/* URL + copy (only once link exists) */}
+              {partnerToken && (
+                <View style={s.partnerUrlRow}>
+                  <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
+                    {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
+                  </Text>
                   <Pressable
-                    style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
+                    hitSlop={8}
                     onPress={async () => {
                       const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
-                      await Share.share({ message: url, url }).catch(() => {});
+                      await Clipboard.setStringAsync(url);
                     }}>
-                    <Ionicons name="share-outline" size={15} color={c.white} />
-                    <Text style={s.partnerCopyTxt}>Share link</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [s.partnerRevokeBtn, pressed && { opacity: 0.7 }]}
-                    onPress={revokePartnerLink}
-                    disabled={partnerLinkLoading}>
-                    <Text style={s.partnerRevokeTxt}>Revoke</Text>
+                    <Ionicons name="copy-outline" size={16} color={c.textMuted} />
                   </Pressable>
                 </View>
-              </View>
+              )}
+              {partnerToken && (
+                <Text style={s.partnerHint}>
+                  Settings save instantly — no need to reshare after changing them.
+                </Text>
+              )}
+              {/* Revoke — demoted to text link */}
+              {partnerToken && (
+                <Pressable
+                  style={s.partnerRevokeLink}
+                  onPress={revokePartnerLink}
+                  disabled={partnerLinkLoading}>
+                  <Text style={s.partnerRevokeLinkTxt}>Revoke supporter access</Text>
+                </Pressable>
+              )}
             </>
-          ) : (
-            <Pressable
-              style={({ pressed }) => [s.partnerGenerateBtn, pressed && { opacity: 0.85 }]}
-              onPress={generatePartnerLink}
-              disabled={partnerLinkLoading}>
-              {partnerLinkLoading
-                ? <ActivityIndicator color={c.white} size="small" />
-                : <>
-                    <Ionicons name="link-outline" size={16} color={c.white} />
-                    <Text style={s.partnerGenerateTxt}>Generate link</Text>
-                  </>}
-            </Pressable>
           )}
         </View>
 
@@ -3151,17 +3169,13 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   // Someone in your corner
   partnerDesc: { fontSize: 13, color: c.textBody, lineHeight: 19, marginBottom: 14 },
-  partnerLinkBox: { backgroundColor: c.bgElement, borderRadius: 10, padding: 12, gap: 10 },
-  partnerLinkUrl: { fontSize: 12, color: c.textMuted },
-  partnerExpiry: { fontSize: 11, color: c.textFaint, marginTop: -4 },
-  partnerHint: { fontSize: 11, color: c.textFaint, lineHeight: 16 },
-  partnerBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  partnerCopyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.primary, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
-  partnerCopyTxt: { fontSize: 13, fontWeight: '600', color: c.white },
-  partnerRevokeBtn: { paddingVertical: 8, paddingHorizontal: 8 },
-  partnerRevokeTxt: { fontSize: 13, color: c.error },
-  partnerGenerateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.primary, borderRadius: 10, paddingVertical: 12 },
-  partnerGenerateTxt: { fontSize: 14, fontWeight: '600', color: c.white },
+  partnerLinkUrl: { fontSize: 12, color: c.textMuted, flex: 1 },
+  partnerHint: { fontSize: 11, color: c.textFaint, lineHeight: 16, marginTop: 6 },
+  partnerShareBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.primary, borderRadius: 10, paddingVertical: 13 },
+  partnerShareBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
+  partnerUrlRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, backgroundColor: c.bgElement, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  partnerRevokeLink: { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
+  partnerRevokeLinkTxt: { fontSize: 12, color: c.error },
   partnerLockedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
   partnerLockedTxt: { fontSize: 12, color: c.textMuted },
   partnerLockedBtn: { backgroundColor: c.bgElement },
