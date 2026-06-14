@@ -609,13 +609,13 @@ async function buildEmailForUser(
   const elapsed   = Math.max(0, now - quitMs);
   const isPremium = forceTier ? forceTier === 'premium' : user.is_premium;
 
-  const [streakRes, moodWeekRes, urgeWeekRes, resetRes, lossRes, paymentRes] = await Promise.all([
+  const [streakRes, moodWeekRes, urgeWeekRes, resetRes, debtsRes, debtPaymentsRes] = await Promise.all([
     supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
     supabase.from('mood_checkins').select('mood').eq('user_id', user.id).gte('created_at', weekAgo),
     supabase.from('urge_journal').select('outcome, trigger').eq('user_id', user.id).gte('created_at', weekAgo),
     supabase.from('losses').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'streak_reset'),
-    supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'loss'),
-    supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'payment'),
+    supabase.from('debts').select('total_amount').eq('user_id', user.id),
+    supabase.from('debt_payments').select('amount').eq('user_id', user.id),
   ]);
 
   const moods         = (moodWeekRes.data ?? []) as { mood: number }[];
@@ -623,8 +623,8 @@ async function buildEmailForUser(
   const urgeWeek      = (urgeWeekRes.data ?? []) as { outcome: string; trigger: string }[];
   const urgesResisted = urgeWeek.filter(u => u.outcome === 'overcame').length;
   const urgesTotal    = urgeWeek.length;
-  const totalDebt     = ((lossRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + Number(r.amount), 0);
-  const totalPaid     = ((paymentRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + Number(r.amount), 0);
+  const totalDebt     = ((debtsRes.data ?? []) as { total_amount: number }[]).reduce((s, r) => s + Number(r.total_amount), 0);
+  const totalPaid     = ((debtPaymentsRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + Number(r.amount), 0);
   const resetCount    = resetRes.count ?? 0;
   const longestStreak = streakRes.data?.longest_streak ?? 0;
   const time          = buildTimeDisplay(quitMs);
@@ -643,8 +643,8 @@ async function buildEmailForUser(
   const [moodLastWeekRes, urgeAllTimeRes, thisWeekPayRes, firstPayRes, checkins30dRes, lastUrgeRes, lastWeekUrgesRes] = await Promise.all([
     supabase.from('mood_checkins').select('mood').eq('user_id', user.id).gte('created_at', twoWkAgo).lt('created_at', weekAgo),
     supabase.from('urge_journal').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('outcome', 'overcame'),
-    supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'payment').gte('created_at', weekAgo),
-    supabase.from('losses').select('created_at').eq('user_id', user.id).eq('type', 'payment').order('created_at', { ascending: true }).limit(1),
+    supabase.from('debt_payments').select('amount').eq('user_id', user.id).gte('created_at', weekAgo),
+    supabase.from('debt_payments').select('created_at').eq('user_id', user.id).order('created_at', { ascending: true }).limit(1),
     supabase.from('mood_checkins').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', thirtyAgo),
     supabase.from('urge_journal').select('created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
     supabase.from('urge_journal').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', twoWkAgo).lt('created_at', weekAgo),

@@ -116,14 +116,12 @@ Deno.serve(async (req: Request) => {
 
     if (link.share_recovery) {
       fetches.push((async () => {
-        const { data: rows } = await sb
-          .from('losses')
-          .select('type, amount')
-          .eq('user_id', link.user_id)
-          .in('type', ['loss', 'payment']);
-        const list = (rows ?? []) as { type: string; amount: number }[];
-        const totalLost = list.filter(r => r.type === 'loss').reduce((s, r) => s + Number(r.amount), 0);
-        const totalPaid = list.filter(r => r.type === 'payment').reduce((s, r) => s + Number(r.amount), 0);
+        const [debtsRes, paymentsRes] = await Promise.all([
+          sb.from('debts').select('total_amount').eq('user_id', link.user_id),
+          sb.from('debt_payments').select('amount').eq('user_id', link.user_id),
+        ]);
+        const totalLost = ((debtsRes.data ?? []) as { total_amount: number }[]).reduce((s, r) => s + Number(r.total_amount), 0);
+        const totalPaid = ((paymentsRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + Number(r.amount), 0);
         result.totalLost = totalLost;
         result.totalPaid = totalPaid;
         result.recoveryPct = totalLost > 0 ? Math.min(Math.round((totalPaid / totalLost) * 100), 100) : null;
