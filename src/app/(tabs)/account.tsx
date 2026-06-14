@@ -269,7 +269,7 @@ export default function AccountScreen() {
   const [partnerLinkId, setPartnerLinkId] = useState<string | null>(null);
   const [partnerExpiresAt, setPartnerExpiresAt] = useState<string | null>(null);
   const [partnerLinkLoading, setPartnerLinkLoading] = useState(false);
-  const [shareSettings, setShareSettings] = useState({ mood: false, milestones: false, recovery: false });
+  const [shareSettings, setShareSettings] = useState({ mood: true, milestones: true, recovery: true });
   const [notifySettings, setNotifySettings] = useState({ urge: false, relapse: false, milestone: false });
 
   const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
@@ -443,7 +443,7 @@ export default function AccountScreen() {
             setPartnerToken(null);
             setPartnerLinkId(null);
             setPartnerExpiresAt(null);
-            setShareSettings({ mood: false, milestones: false, recovery: false });
+            setShareSettings({ mood: true, milestones: true, recovery: true });
             setNotifySettings({ urge: false, relapse: false, milestone: false });
           }
           setPartnerLinkLoading(false);
