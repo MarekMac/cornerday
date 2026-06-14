@@ -1322,6 +1322,7 @@ export default function HomeScreen() {
           notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
         };
         await scheduleAllNotifications(prefs, newQuitTimestamp);
+        notifySupporter('relapse');
         setData(prev => prev ? {
           ...prev,
           quitDate: newQuitTimestamp,
