@@ -133,6 +133,22 @@ const MILESTONE_DESC: Record<string, string> = {
 
 interface CalDay { iso: string; status: 'clean' | 'relapse' | 'inactive' }
 
+interface DebtPacing {
+  id: string;
+  name: string;
+  totalAmount: number;
+  totalPaid: number;
+  remaining: number;
+  pct: number;
+  isPaidOff: boolean;
+  targetDate: Date | null;
+  daysRemaining: number | null;
+  requiredPerDay: number | null;
+  actualPerDay: number | null;
+  isAhead: boolean | null;
+  projDays: number | null;
+}
+
 interface AnalyticsData {
   currency: string;
   quitDate: string | null;
@@ -144,6 +160,7 @@ interface AnalyticsData {
   savingsGoalIcon: string;
   totalDebts: number;
   totalDebtPaid: number;
+  debtsWithPacing: DebtPacing[];
   urgeCount: number;
   urgesOvercome: number;
   urgesByDay: number[];
@@ -201,10 +218,8 @@ export default function AnalyticsScreen() {
   const hasAccess = isPremium || isAdmin;
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [debtTargetDate, setDebtTargetDate] = useState<Date | null>(null);
   const [savingsTargetDate, setSavingsTargetDate] = useState<Date | null>(null);
   const [showTargetModal, setShowTargetModal] = useState(false);
-  const [targetKind, setTargetKind] = useState<'debt' | 'savings'>('debt');
   const [editTargetDate, setEditTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
   const [savingTarget, setSavingTarget] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -224,10 +239,10 @@ export default function AnalyticsScreen() {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
 
     const [profileRes, streakRes, lossesRes, debtsRes, paymentsRes, urgeRes, moodRes] = await Promise.all([
-      supabase.from('users').select('currency, quit_date, quit_timestamp, debt_target_date, savings_target_date').eq('id', user.id).maybeSingle(),
+      supabase.from('users').select('currency, quit_date, quit_timestamp, savings_target_date').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
-      supabase.from('debts').select('id, total_amount').eq('user_id', user.id),
+      supabase.from('debts').select('id, name, total_amount, target_date, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
       supabase.from('urge_journal').select('outcome, created_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', thirtyDaysAgo).order('created_at', { ascending: true }),
@@ -265,8 +280,30 @@ export default function AnalyticsScreen() {
 
     const debtRows = debtsRes.data ?? [];
     const payRows  = paymentsRes.data ?? [];
-    const totalDebts    = debtRows.reduce((s, d) => s + Number(d.total_amount), 0);
-    const totalDebtPaid = payRows.reduce((s, p) => s + Number(p.amount), 0);
+    const totalDebts = debtRows.reduce((s, d) => s + Number(d.total_amount), 0);
+
+    const paidByDebt: Record<string, number> = {};
+    payRows.forEach(p => { paidByDebt[p.debt_id] = (paidByDebt[p.debt_id] ?? 0) + Number(p.amount); });
+    const totalDebtPaid = Object.values(paidByDebt).reduce((s, v) => s + v, 0);
+
+    const debtsWithPacing: DebtPacing[] = debtRows.map(d => {
+      const totalPaid = paidByDebt[d.id] ?? 0;
+      const totalAmount = Number(d.total_amount);
+      const remaining = Math.max(0, totalAmount - totalPaid);
+      const pct = totalAmount > 0 ? Math.min(1, totalPaid / totalAmount) : 0;
+      const isPaidOff = remaining === 0 && totalPaid > 0;
+      const targetDate = d.target_date ? new Date(d.target_date) : null;
+      const daysRemaining = targetDate ? Math.ceil((targetDate.getTime() - Date.now()) / 86400000) : null;
+      const daysElapsed = Math.max(1, (Date.now() - new Date(d.created_at).getTime()) / 86400000);
+      const requiredPerDay = !isPaidOff && daysRemaining && daysRemaining > 0 && remaining > 0
+        ? remaining / daysRemaining : null;
+      const actualPerDay = totalPaid > 0 ? totalPaid / daysElapsed : null;
+      const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
+      const projDays = !isPaidOff && actualPerDay && actualPerDay > 0 && remaining > 0
+        ? Math.ceil(remaining / actualPerDay) : null;
+      return { id: d.id, name: d.name, totalAmount, totalPaid, remaining, pct, isPaidOff,
+               targetDate, daysRemaining, requiredPerDay, actualPerDay, isAhead, projDays };
+    });
 
     const urgeRows     = urgeRes.data ?? [];
     const urgesOvercome = urgeRows.filter(u => u.outcome === 'overcame').length;
@@ -368,7 +405,6 @@ export default function AnalyticsScreen() {
       },
     };
 
-    if (profile?.debt_target_date) setDebtTargetDate(new Date(profile.debt_target_date));
     if (profile?.savings_target_date) setSavingsTargetDate(new Date(profile.savings_target_date));
 
     setData({
@@ -378,7 +414,7 @@ export default function AnalyticsScreen() {
       savingsGoal: goalRaw ? Number(goalRaw) : null,
       savingsGoalFor: goalForRaw ?? '',
       savingsGoalIcon: goalIconRaw ?? '🎯',
-      totalDebts, totalDebtPaid,
+      totalDebts, totalDebtPaid, debtsWithPacing,
       urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByTimeOfDay,
       moodLast30, moodSparkline, checkInDays,
       monthlySavings, weekMoods,
@@ -426,23 +462,19 @@ export default function AnalyticsScreen() {
     );
   };
 
-  const saveTargetDate = async (kind: 'debt' | 'savings', date: Date) => {
+  const saveTargetDate = async (date: Date) => {
     setSavingTarget(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const field = kind === 'debt' ? 'debt_target_date' : 'savings_target_date';
-      await supabase.from('users').update({ [field]: date.toISOString().split('T')[0] }).eq('id', user.id);
-      if (kind === 'debt') setDebtTargetDate(date);
-      else setSavingsTargetDate(date);
+      await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+      setSavingsTargetDate(date);
     }
     setSavingTarget(false);
     setShowTargetModal(false);
   };
 
-  const openTargetPicker = (kind: 'debt' | 'savings') => {
-    const current = kind === 'debt' ? debtTargetDate : savingsTargetDate;
-    const seed = current ?? new Date(Date.now() + 90 * 86400000);
-    setTargetKind(kind);
+  const openTargetPicker = () => {
+    const seed = savingsTargetDate ?? new Date(Date.now() + 90 * 86400000);
     setEditTargetDate(seed);
     if (Platform.OS === 'ios') {
       setShowTargetModal(true);
@@ -453,7 +485,7 @@ export default function AnalyticsScreen() {
         minimumDate: new Date(),
         onValueChange: (_evt: any, d?: Date) => {
           if (!d) return;
-          saveTargetDate(kind, d);
+          saveTargetDate(d);
         },
       });
     }
@@ -989,81 +1021,103 @@ export default function AnalyticsScreen() {
         )}
 
         {/* ── Debt recovery ── */}
-        {data.totalDebts > 0 && (() => {
-          const remaining = Math.max(0, data.totalDebts - data.totalDebtPaid);
-          const daysElapsed = data.currentStreakDays;
-          const daysRemaining = debtTargetDate ? Math.ceil((debtTargetDate.getTime() - Date.now()) / 86400000) : null;
-          const requiredPerDay = daysRemaining && daysRemaining > 0 && remaining > 0 ? remaining / daysRemaining : null;
-          const actualPerDay = daysElapsed > 0 ? data.totalDebtPaid / daysElapsed : null;
-          const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
-          const projDays = actualPerDay && actualPerDay > 0 ? Math.ceil(remaining / actualPerDay) : null;
-          return (
-            <View style={s.card}>
-              <SectionHeader
-                title="🏦 Debt recovery"
-                action={
-                  <Pressable onPress={() => openTargetPicker('debt')} style={s.setTargetBtn}>
-                    <Text style={s.setTargetTxt}>{debtTargetDate ? '✏️ Target' : '+ Set target'}</Text>
-                  </Pressable>
-                }
-              />
-              <View style={s.statsRow}>
-                <StatBox label="Total owed"  value={fmt(data.totalDebts, data.currency)} />
-                <View style={s.statsDivider} />
-                <StatBox label="Paid back"   value={fmt(data.totalDebtPaid, data.currency)} color={c.success} />
-                <View style={s.statsDivider} />
-                <StatBox label="Remaining"   value={fmt(remaining, data.currency)} color={c.error} />
-              </View>
-              {debtPct !== null && (
-                <View style={s.progressBarWrap}>
-                  <View style={s.progressBarBg}>
-                    <View style={[s.progressBarFill, { width: `${Math.round(debtPct * 100)}%` as any }, debtPct >= 1 && s.progressBarDone]} />
-                  </View>
-                  <Text style={s.progressBarPct}>{Math.round(debtPct * 100)}% repaid</Text>
+        {data.debtsWithPacing.length > 0 && (
+          <View style={s.card}>
+            <SectionHeader title="🏦 Debt recovery" />
+            {/* Aggregate summary */}
+            <View style={s.statsRow}>
+              <StatBox label="Total owed"  value={fmt(data.totalDebts, data.currency)} />
+              <View style={s.statsDivider} />
+              <StatBox label="Paid back"   value={fmt(data.totalDebtPaid, data.currency)} color={c.success} />
+              <View style={s.statsDivider} />
+              <StatBox label="Remaining"   value={fmt(Math.max(0, data.totalDebts - data.totalDebtPaid), data.currency)} color={data.totalDebtPaid >= data.totalDebts ? c.success : c.error} />
+            </View>
+            {debtPct !== null && (
+              <View style={s.progressBarWrap}>
+                <View style={s.progressBarBg}>
+                  <View style={[s.progressBarFill, { width: `${Math.round(debtPct * 100)}%` as any }, debtPct >= 1 && s.progressBarDone]} />
                 </View>
-              )}
-              {debtTargetDate && daysRemaining !== null && (
-                <View style={s.pacingCard}>
-                  <View style={s.pacingRow}>
-                    <Text style={s.pacingLabel}>Target date</Text>
-                    <Text style={s.pacingValue}>
-                      {debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
-                      {daysRemaining > 0 ? `  ·  ${daysRemaining}d left` : '  ·  Past target'}
-                    </Text>
-                  </View>
-                  {requiredPerDay !== null && (
-                    <View style={s.pacingRow}>
-                      <Text style={s.pacingLabel}>Need</Text>
-                      <Text style={s.pacingValue}>{fmt(requiredPerDay, data.currency)}/day to hit target</Text>
-                    </View>
-                  )}
-                  {actualPerDay !== null && (
-                    <View style={s.pacingRow}>
-                      <Text style={s.pacingLabel}>Pace</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={s.pacingValue}>{fmt(actualPerDay, data.currency)}/day</Text>
-                        {isAhead !== null && (
-                          <View style={[s.pacingBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
-                            <Text style={s.pacingBadgeTxt}>{isAhead ? '▲ Ahead' : '▼ Behind'}</Text>
+                <Text style={s.progressBarPct}>{Math.round(debtPct * 100)}% repaid across all debts</Text>
+              </View>
+            )}
+            {/* Per-debt breakdown */}
+            {data.debtsWithPacing.map(debt => (
+              <View key={debt.id} style={s.debtItem}>
+                <View style={s.debtItemHeader}>
+                  <Text style={s.debtItemName} numberOfLines={1}>{debt.isPaidOff ? '✓ ' : ''}{debt.name}</Text>
+                  <Text style={[s.debtItemTotal, debt.isPaidOff && { color: c.success }]}>
+                    {fmt(debt.totalAmount, data.currency)}
+                  </Text>
+                </View>
+                <View style={s.debtItemBarBg}>
+                  <View style={[s.debtItemBarFill, {
+                    width: `${Math.round(debt.pct * 100)}%` as any,
+                    backgroundColor: debt.isPaidOff ? c.success : debt.pct >= 0.7 ? c.primaryMid : debt.pct >= 0.3 ? '#e67e22' : c.error,
+                  }]} />
+                </View>
+                <Text style={[s.debtItemPct, debt.isPaidOff && { color: c.success }]}>
+                  {debt.isPaidOff
+                    ? 'Fully paid off 🎉'
+                    : `${Math.round(debt.pct * 100)}% · ${fmt(debt.remaining, data.currency)} left`}
+                </Text>
+                {!debt.isPaidOff && (
+                  <View style={s.debtPacingBox}>
+                    {debt.targetDate ? (
+                      <>
+                        <View style={s.debtPacingRow}>
+                          <Text style={s.debtPacingLbl}>Target</Text>
+                          <Text style={s.debtPacingVal}>
+                            {debt.targetDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {debt.daysRemaining !== null && (
+                              <Text style={{ color: (debt.daysRemaining ?? 1) <= 0 ? c.error : c.textMuted }}>
+                                {(debt.daysRemaining ?? 0) > 0 ? `  ·  ${debt.daysRemaining}d left` : '  ·  Past target'}
+                              </Text>
+                            )}
+                          </Text>
+                        </View>
+                        {debt.requiredPerDay !== null && (
+                          <View style={s.debtPacingRow}>
+                            <Text style={s.debtPacingLbl}>Need</Text>
+                            <Text style={s.debtPacingVal}>{fmt(debt.requiredPerDay, data.currency)}/day</Text>
                           </View>
                         )}
-                      </View>
-                    </View>
-                  )}
-                  {projDays !== null && remaining > 0 && (
-                    <View style={s.pacingRow}>
-                      <Text style={s.pacingLabel}>Projected</Text>
-                      <Text style={s.pacingValue}>
-                        {new Date(Date.now() + projDays * 86400000).toLocaleDateString([], { month: 'short', year: 'numeric' })}
-                        {' '}({projDays} days)
+                        {debt.actualPerDay !== null && (
+                          <View style={s.debtPacingRow}>
+                            <Text style={s.debtPacingLbl}>Pace</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={s.debtPacingVal}>{fmt(debt.actualPerDay, data.currency)}/day</Text>
+                              {debt.isAhead !== null && (
+                                <View style={[s.pacingBadge, { backgroundColor: debt.isAhead ? c.success : c.error }]}>
+                                  <Text style={s.pacingBadgeTxt}>{debt.isAhead ? '▲ Ahead' : '▼ Behind'}</Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        )}
+                        {debt.projDays !== null && (
+                          <View style={s.debtPacingRow}>
+                            <Text style={s.debtPacingLbl}>Projected</Text>
+                            <Text style={s.debtPacingVal}>
+                              {new Date(Date.now() + debt.projDays * 86400000).toLocaleDateString([], { month: 'short', year: 'numeric' })}
+                              {' '}({debt.projDays}d)
+                            </Text>
+                          </View>
+                        )}
+                      </>
+                    ) : (
+                      <Text style={s.debtPacingHint}>
+                        {debt.projDays !== null
+                          ? `📅 Est. payoff at current pace: ${new Date(Date.now() + debt.projDays * 86400000).toLocaleDateString([], { month: 'short', year: 'numeric' })}`
+                          : 'No payments yet'}
                       </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          );
-        })()}
+                    )}
+                  </View>
+                )}
+              </View>
+            ))}
+            <Text style={s.debtTargetHint}>Set target dates per debt in the Loss Tracker</Text>
+          </View>
+        )}
 
         {/* ── Personal insights ── */}
         {insights.length > 0 && (
@@ -1088,9 +1142,7 @@ export default function AnalyticsScreen() {
         <Modal visible={showTargetModal} transparent animationType="slide">
           <View style={s.modalOverlay}>
             <View style={s.modalSheet}>
-              <Text style={s.modalTitle}>
-                {targetKind === 'debt' ? 'Debt payoff target' : 'Savings target date'}
-              </Text>
+              <Text style={s.modalTitle}>Savings target date</Text>
               <DateTimePicker
                 value={editTargetDate}
                 mode="date"
@@ -1106,7 +1158,7 @@ export default function AnalyticsScreen() {
                 <Pressable
                   style={[s.modalBtn, s.modalBtnSave, savingTarget && { opacity: 0.5 }]}
                   disabled={savingTarget}
-                  onPress={() => saveTargetDate(targetKind, editTargetDate)}>
+                  onPress={() => saveTargetDate(editTargetDate)}>
                   <Text style={s.modalBtnSaveTxt}>{savingTarget ? 'Saving…' : 'Save'}</Text>
                 </Pressable>
               </View>
@@ -1303,12 +1355,23 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   setTargetBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: c.bgTeal, borderRadius: 8 },
   setTargetTxt: { fontSize: 12, fontWeight: '600', color: c.primary },
 
-  pacingCard: { marginTop: 12, backgroundColor: c.bgElement, borderRadius: 10, padding: 12, gap: 8 },
-  pacingRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pacingLabel: { fontSize: 12, color: c.textMuted, fontWeight: '500' },
-  pacingValue: { fontSize: 13, color: c.textPrimary, fontWeight: '600' },
   pacingBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   pacingBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#fff' },
+
+  // Per-debt breakdown
+  debtItem:        { borderTopWidth: 1, borderTopColor: c.bgElement, paddingTop: 12, gap: 6 },
+  debtItemHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  debtItemName:    { flex: 1, fontSize: 14, fontWeight: '700', color: c.textPrimary, marginRight: 8 },
+  debtItemTotal:   { fontSize: 13, fontWeight: '600', color: c.textMuted },
+  debtItemBarBg:   { height: 6, backgroundColor: c.bgElement, borderRadius: 3, overflow: 'hidden' },
+  debtItemBarFill: { height: '100%', borderRadius: 3 },
+  debtItemPct:     { fontSize: 11, color: c.textMuted, fontWeight: '500' },
+  debtPacingBox:   { backgroundColor: c.bgInput, borderRadius: 8, padding: 8, gap: 4 },
+  debtPacingRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
+  debtPacingLbl:   { fontSize: 11, color: c.textMuted, fontWeight: '500' },
+  debtPacingVal:   { fontSize: 12, color: c.textPrimary, fontWeight: '600' },
+  debtPacingHint:  { fontSize: 11, color: c.textMuted, fontStyle: 'italic' },
+  debtTargetHint:  { fontSize: 11, color: c.textFaint, textAlign: 'center', marginTop: 4 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet:   { backgroundColor: c.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
