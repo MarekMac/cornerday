@@ -94,16 +94,32 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get('Authorization') ?? '';
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  const { data: { user }, error: authErr } = await sb.auth.getUser(authHeader.replace('Bearer ', ''));
-  if (authErr || !user) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), {
-      status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
-
   const body = await req.json().catch(() => ({}));
   const type: string = body.type ?? '';
   const milestoneLabel: string = body.milestone_label ?? '';
+
+  // Test mode: service role key + test_user_id bypasses user JWT requirement
+  let userId: string | null = null;
+  if (body.test_user_id) {
+    // Verify caller has service role
+    try {
+      const payload = JSON.parse(atob(authHeader.replace('Bearer ', '').split('.')[1]));
+      if (payload.role !== 'service_role') throw new Error('not service role');
+    } catch {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+    userId = body.test_user_id;
+  } else {
+    const { data: { user }, error: authErr } = await sb.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+    userId = user.id;
+  }
 
   if (!['urge', 'relapse', 'milestone'].includes(type)) {
     return new Response(JSON.stringify({ error: 'invalid_type' }), {
@@ -114,7 +130,7 @@ Deno.serve(async (req: Request) => {
   const { data: link } = await sb
     .from('partner_links')
     .select('id, token, supporter_email, notify_urge, notify_relapse, notify_milestone, last_urge_notify_at, urge_notify_count_today, urge_notify_date')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (!link?.supporter_email || !link[`notify_${type}` as keyof typeof link]) {
@@ -146,7 +162,7 @@ Deno.serve(async (req: Request) => {
   const { data: userData } = await sb
     .from('users')
     .select('display_name')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle();
 
   const name = firstName(userData?.display_name ?? null);

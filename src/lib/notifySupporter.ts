@@ -8,8 +8,8 @@ export async function notifySupporter(
 ): Promise<void> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    await fetch(`${FUNCTIONS_URL}/notify-supporter`, {
+    if (!session) { console.warn('[notifySupporter] no session, skipping'); return; }
+    const res = await fetch(`${FUNCTIONS_URL}/notify-supporter`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -17,5 +17,9 @@ export async function notifySupporter(
       },
       body: JSON.stringify({ type, milestone_label: milestoneLabel ?? null }),
     });
-  } catch { /* non-fatal */ }
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.warn(`[notifySupporter] ${type} failed ${res.status}:`, body);
+    }
+  } catch (e) { console.warn('[notifySupporter] error:', e); }
 }
