@@ -1523,33 +1523,7 @@ export default function AccountScreen() {
             </>
           ) : partnerToken ? (
             <>
-              <View style={s.partnerLinkBox}>
-                <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
-                  {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
-                </Text>
-                {partnerExpiresAt && (
-                  <Text style={s.partnerExpiry}>
-                    Expires {new Date(partnerExpiresAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                )}
-                <View style={s.partnerBtnRow}>
-                  <Pressable
-                    style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
-                    onPress={async () => {
-                      const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
-                      await Share.share({ message: url, url }).catch(() => {});
-                    }}>
-                    <Ionicons name="share-outline" size={15} color={c.white} />
-                    <Text style={s.partnerCopyTxt}>Share link</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [s.partnerRevokeBtn, pressed && { opacity: 0.7 }]}
-                    onPress={revokePartnerLink}
-                    disabled={partnerLinkLoading}>
-                    <Text style={s.partnerRevokeTxt}>Revoke</Text>
-                  </Pressable>
-                </View>
-              </View>
+              {/* Settings first — configure before sharing */}
               <View style={s.shareSettingsBox}>
                 <Text style={s.shareSettingsTitle}>What they can see</Text>
                 <View style={s.shareSettingRow}>
@@ -1615,6 +1589,32 @@ export default function AccountScreen() {
                     trackColor={{ true: c.primary, false: c.bgElement }}
                     thumbColor={c.white}
                   />
+                </View>
+              </View>
+              {/* Share button after settings so user configures first */}
+              <View style={s.partnerLinkBox}>
+                <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
+                  {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
+                </Text>
+                <Text style={s.partnerHint}>
+                  Settings update instantly — if your supporter already has the page open, ask them to refresh.
+                </Text>
+                <View style={s.partnerBtnRow}>
+                  <Pressable
+                    style={({ pressed }) => [s.partnerCopyBtn, pressed && { opacity: 0.7 }]}
+                    onPress={async () => {
+                      const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
+                      await Share.share({ message: url, url }).catch(() => {});
+                    }}>
+                    <Ionicons name="share-outline" size={15} color={c.white} />
+                    <Text style={s.partnerCopyTxt}>Share link</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [s.partnerRevokeBtn, pressed && { opacity: 0.7 }]}
+                    onPress={revokePartnerLink}
+                    disabled={partnerLinkLoading}>
+                    <Text style={s.partnerRevokeTxt}>Revoke</Text>
+                  </Pressable>
                 </View>
               </View>
             </>
@@ -3154,6 +3154,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   partnerLinkBox: { backgroundColor: c.bgElement, borderRadius: 10, padding: 12, gap: 10 },
   partnerLinkUrl: { fontSize: 12, color: c.textMuted },
   partnerExpiry: { fontSize: 11, color: c.textFaint, marginTop: -4 },
+  partnerHint: { fontSize: 11, color: c.textFaint, lineHeight: 16 },
   partnerBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   partnerCopyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.primary, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   partnerCopyTxt: { fontSize: 13, fontWeight: '600', color: c.white },

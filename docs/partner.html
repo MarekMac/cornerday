@@ -95,7 +95,7 @@
       const totalHours = Math.floor(ms / 3600000);
       const totalDays  = Math.floor(ms / 86400000);
 
-      if (totalMins < 1)   return { primary: '1', unit: 'minute', detail: null };
+      if (totalMins < 1)   return { primary: '—', unit: 'just getting started', detail: null };
       if (totalHours < 1)  return { primary: String(totalMins), unit: totalMins === 1 ? 'minute' : 'minutes', detail: null };
 
       const mins = totalMins % 60;

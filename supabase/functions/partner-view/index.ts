@@ -58,7 +58,11 @@ Deno.serve(async (req: Request) => {
 
   const parseTs = (s: string | null): number => {
     if (!s) return 0;
-    const iso = s.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+    let iso = s.trim().replace(' ', 'T');
+    // Add colon to bare ±HH offset: "+00" → "+00:00", "-05" → "-05:00"
+    iso = iso.replace(/([+-])(\d{2})$/, '$1$2:00');
+    // Add colon to offset without colon: "+0530" → "+05:30"
+    iso = iso.replace(/([+-])(\d{2})(\d{2})$/, '$1$2:$3');
     const ms = Date.parse(iso);
     return isNaN(ms) ? 0 : ms;
   };
