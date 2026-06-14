@@ -27,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNotification } from '@/lib/notifications';
+import { notifySupporter } from '@/lib/notifySupporter';
 import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -876,6 +877,10 @@ export default function HomeScreen() {
       }
 
       newlyAwarded.forEach(b => earnedBadges.push(b.type));
+
+      // Notify supporter for the highest milestone earned this run (last = most significant)
+      const notifyBadge = toLog[toLog.length - 1];
+      if (notifyBadge) notifySupporter('milestone', notifyBadge.label);
     }
 
     // Update longest streak

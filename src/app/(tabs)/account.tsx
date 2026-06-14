@@ -240,9 +240,11 @@ export default function AccountScreen() {
 
   const [trustedContactName, setTrustedContactName] = useState('');
   const [trustedContactPhone, setTrustedContactPhone] = useState('');
+  const [trustedContactEmail, setTrustedContactEmail] = useState('');
   const [showContactModal, setShowContactModal] = useState(false);
   const [contactNameInput, setContactNameInput] = useState('');
   const [contactPhoneInput, setContactPhoneInput] = useState('');
+  const [contactEmailInput, setContactEmailInput] = useState('');
 
   const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
   const [confirmQuitDate, setConfirmQuitDate] = useState<Date | null>(null);
@@ -268,6 +270,7 @@ export default function AccountScreen() {
   const [partnerExpiresAt, setPartnerExpiresAt] = useState<string | null>(null);
   const [partnerLinkLoading, setPartnerLinkLoading] = useState(false);
   const [shareSettings, setShareSettings] = useState({ mood: false, milestones: false, recovery: false });
+  const [notifySettings, setNotifySettings] = useState({ urge: false, relapse: false, milestone: false });
 
   const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
   const [recoveryMantra, setRecoveryMantra] = useState('');
@@ -325,13 +328,14 @@ export default function AccountScreen() {
     // Trusted contact and recovery plan in a separate query so schema-cache misses never break the profile fetch
     const { data: contactData } = await supabase
       .from('users')
-      .select('trusted_contact_name, trusted_contact_phone, recovery_distractions, recovery_mantra')
+      .select('trusted_contact_name, trusted_contact_phone, trusted_contact_email, recovery_distractions, recovery_mantra')
       .eq('id', user.id)
       .maybeSingle();
     if (contactData?.trusted_contact_name || contactData?.trusted_contact_phone) {
       setTrustedContactName(contactData.trusted_contact_name ?? '');
       setTrustedContactPhone(contactData.trusted_contact_phone ?? '');
     }
+    setTrustedContactEmail(contactData?.trusted_contact_email ?? '');
     if (contactData?.recovery_distractions) {
       setRecoveryDistractions(contactData.recovery_distractions.split(',').filter(Boolean));
     }
@@ -352,7 +356,7 @@ export default function AccountScreen() {
     if (!user) return;
     const { data } = await supabase
       .from('partner_links')
-      .select('id, token, expires_at, share_mood, share_milestones, share_recovery')
+      .select('id, token, expires_at, share_mood, share_milestones, share_recovery, notify_urge, notify_relapse, notify_milestone')
       .eq('user_id', user.id)
       .maybeSingle();
     if (data) {
@@ -360,6 +364,7 @@ export default function AccountScreen() {
       setPartnerLinkId(data.id);
       setPartnerExpiresAt(data.expires_at ?? null);
       setShareSettings({ mood: data.share_mood ?? false, milestones: data.share_milestones ?? false, recovery: data.share_recovery ?? false });
+      setNotifySettings({ urge: data.notify_urge ?? false, relapse: data.notify_relapse ?? false, milestone: data.notify_milestone ?? false });
     }
   }, []);
 
@@ -370,6 +375,17 @@ export default function AccountScreen() {
     const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
     if (error) {
       setShareSettings(prev => ({ ...prev, [shortKey]: !value }));
+      Alert.alert('Could not save setting', error.message);
+    }
+  };
+
+  const updateNotifySetting = async (key: 'notify_urge' | 'notify_relapse' | 'notify_milestone', value: boolean) => {
+    if (!partnerLinkId) return;
+    const shortKey = key.replace('notify_', '') as 'urge' | 'relapse' | 'milestone';
+    setNotifySettings(prev => ({ ...prev, [shortKey]: value }));
+    const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
+    if (error) {
+      setNotifySettings(prev => ({ ...prev, [shortKey]: !value }));
       Alert.alert('Could not save setting', error.message);
     }
   };
@@ -391,6 +407,7 @@ export default function AccountScreen() {
         setPartnerLinkId(data.id);
         setPartnerExpiresAt(data.expires_at ?? null);
         setShareSettings({ mood: false, milestones: false, recovery: false });
+        setNotifySettings({ urge: false, relapse: false, milestone: false });
       }
     }
     setPartnerLinkLoading(false);
@@ -415,6 +432,7 @@ export default function AccountScreen() {
             setPartnerLinkId(null);
             setPartnerExpiresAt(null);
             setShareSettings({ mood: false, milestones: false, recovery: false });
+            setNotifySettings({ urge: false, relapse: false, milestone: false });
           }
           setPartnerLinkLoading(false);
         }},
@@ -576,6 +594,7 @@ export default function AccountScreen() {
   const openContactModal = () => {
     setContactNameInput(trustedContactName);
     setContactPhoneInput(trustedContactPhone);
+    setContactEmailInput(trustedContactEmail);
     setShowContactModal(true);
   };
 
@@ -595,6 +614,7 @@ export default function AccountScreen() {
   const saveContact = async () => {
     const name = contactNameInput.trim();
     const phone = contactPhoneInput.trim();
+    const email = contactEmailInput.trim().toLowerCase();
     if (!name && !phone) {
       await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
       setTrustedContactName('');
@@ -604,11 +624,13 @@ export default function AccountScreen() {
       setTrustedContactName(name);
       setTrustedContactPhone(phone);
     }
+    setTrustedContactEmail(email);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('users').update({
         trusted_contact_name: name || null,
         trusted_contact_phone: phone || null,
+        trusted_contact_email: email || null,
       }).eq('id', user.id);
     }
     setShowContactModal(false);
@@ -1376,7 +1398,7 @@ export default function AccountScreen() {
               <Text style={s.infoItemLabel}>Trusted contact</Text>
               <Text style={[s.infoItemValue, !trustedContactName && s.infoValueEmpty]}>
                 {trustedContactName
-                  ? `${trustedContactName}${trustedContactPhone ? ` · ${trustedContactPhone}` : ''}`
+                  ? `${trustedContactName}${trustedContactPhone ? ` · ${trustedContactPhone}` : ''}${trustedContactEmail ? ` · ${trustedContactEmail}` : ''}`
                   : 'Not set'}
               </Text>
             </View>
@@ -1485,7 +1507,7 @@ export default function AccountScreen() {
         <View style={s.infoCard}>
           <Text style={s.infoCardTitle}>Someone in your corner</Text>
           <Text style={s.partnerDesc}>
-            Share a private link with someone you trust. They'll see your streak and can send you encouragement — no account needed.
+            Share a private link with one trusted person. Anyone with the URL can view the page, so only send it directly — not in a group chat.
           </Text>
           {!isPremiumFromRC ? (
             <>
@@ -1557,6 +1579,39 @@ export default function AccountScreen() {
                   <Switch
                     value={shareSettings.recovery}
                     onValueChange={v => updateShareSetting('share_recovery', v)}
+                    trackColor={{ true: c.primary, false: c.bgElement }}
+                    thumbColor={c.white}
+                  />
+                </View>
+              </View>
+              <View style={[s.shareSettingsBox, { marginTop: 10 }]}>
+                <Text style={s.shareSettingsTitle}>Notify my supporter by email</Text>
+                <Text style={s.partnerDesc}>
+                  They'll receive an email for the events you enable below, once they subscribe via the link.
+                </Text>
+                <View style={s.shareSettingRow}>
+                  <Text style={s.shareSettingLabel}>When I'm struggling (urge)</Text>
+                  <Switch
+                    value={notifySettings.urge}
+                    onValueChange={v => updateNotifySetting('notify_urge', v)}
+                    trackColor={{ true: c.primary, false: c.bgElement }}
+                    thumbColor={c.white}
+                  />
+                </View>
+                <View style={s.shareSettingRow}>
+                  <Text style={s.shareSettingLabel}>When I reset my streak</Text>
+                  <Switch
+                    value={notifySettings.relapse}
+                    onValueChange={v => updateNotifySetting('notify_relapse', v)}
+                    trackColor={{ true: c.primary, false: c.bgElement }}
+                    thumbColor={c.white}
+                  />
+                </View>
+                <View style={s.shareSettingRow}>
+                  <Text style={s.shareSettingLabel}>When I hit a milestone</Text>
+                  <Switch
+                    value={notifySettings.milestone}
+                    onValueChange={v => updateNotifySetting('notify_milestone', v)}
                     trackColor={{ true: c.primary, false: c.bgElement }}
                     thumbColor={c.white}
                   />
@@ -1882,12 +1937,24 @@ export default function AccountScreen() {
             />
             <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Phone number</Text>
             <TextInput
-              style={[s.spendingInput, { flex: 0, marginBottom: 24 }]}
+              style={[s.spendingInput, { flex: 0, marginBottom: 16 }]}
               value={contactPhoneInput}
               onChangeText={setContactPhoneInput}
               placeholder="+1 555 000 0000"
               placeholderTextColor="#bbb"
               keyboardType="phone-pad"
+              autoComplete="off"
+              textContentType="none"
+            />
+            <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Email address</Text>
+            <TextInput
+              style={[s.spendingInput, { flex: 0, marginBottom: 24 }]}
+              value={contactEmailInput}
+              onChangeText={setContactEmailInput}
+              placeholder="their@email.com"
+              placeholderTextColor="#bbb"
+              keyboardType="email-address"
+              autoCapitalize="none"
               autoComplete="off"
               textContentType="none"
             />
@@ -1898,8 +1965,9 @@ export default function AccountScreen() {
                   await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
                   setTrustedContactName('');
                   setTrustedContactPhone('');
+                  setTrustedContactEmail('');
                   const { data: { user } } = await supabase.auth.getUser();
-                  if (user) await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null }).eq('id', user.id);
+                  if (user) await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null, trusted_contact_email: null }).eq('id', user.id);
                   setShowContactModal(false);
                 }}>
                 <Text style={{ color: c.error, fontSize: 13 }}>Remove contact</Text>

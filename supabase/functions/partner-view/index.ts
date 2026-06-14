@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: link } = await sb
     .from('partner_links')
-    .select('id, user_id, expires_at, share_mood, share_milestones, share_recovery')
+    .select('id, user_id, expires_at, share_mood, share_milestones, share_recovery, supporter_email, notify_urge, notify_relapse, notify_milestone')
     .eq('token', token)
     .maybeSingle();
 
@@ -136,21 +136,45 @@ Deno.serve(async (req: Request) => {
 
     await Promise.all(fetches);
 
+    // Tell the partner page whether the user wants supporter notifications
+    // and whether a subscriber email is already on file (boolean only — never expose the address)
+    result.notifyEnabled = !!(link.notify_urge || link.notify_relapse || link.notify_milestone);
+    result.hasSubscriberEmail = !!(link.supporter_email);
+
     return new Response(JSON.stringify(result), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
 
   if (req.method === 'POST') {
-    let message = '';
+    // Email subscription: body has `email` key → save supporter_email
+    let email = '';
     const ct = req.headers.get('content-type') ?? '';
+    let rawBody: Record<string, unknown> = {};
     if (ct.includes('application/json')) {
-      const body = await req.json().catch(() => ({}));
-      message = String(body.message ?? '').trim().slice(0, 200);
-    } else {
+      rawBody = await req.json().catch(() => ({}));
+    }
+    email = String(rawBody.email ?? '').trim().toLowerCase();
+    if (email) {
+      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      if (!emailValid) {
+        return new Response(JSON.stringify({ error: 'invalid_email' }), {
+          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      await sb.from('partner_links').update({ supporter_email: email }).eq('id', link.id);
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Message: body has `message` key (or form-encoded)
+    let message = String(rawBody.message ?? '').trim().slice(0, 200);
+    if (!message && !ct.includes('application/json')) {
       const form = await req.formData().catch(() => new FormData());
       message = String(form.get('message') ?? '').trim().slice(0, 200);
     }
+
     if (message) {
       await sb.from('partner_messages').insert({ link_id: link.id, message });
 

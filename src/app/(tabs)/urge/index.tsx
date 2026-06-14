@@ -37,6 +37,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import { notifySupporter } from '@/lib/notifySupporter';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -390,7 +391,7 @@ export default function UrgeScreen() {
   const motivations = (motivation ?? '').split(',').filter(Boolean)
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
-  const startTimer  = () => { ctxStartTimer(); setTimerPointsEarned(false); };
+  const startTimer  = () => { ctxStartTimer(); setTimerPointsEarned(false); notifySupporter('urge'); };
   const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); setCheckedPlanItems([]); };
   const stopTimer  = () => {
     const elapsed = TIMER_TOTAL - timerSecsLeft;
@@ -422,6 +423,8 @@ export default function UrgeScreen() {
         supabase.from('badges').delete().eq('user_id', user.id),
         AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
       ]);
+      notifySupporter('relapse');
+
       const { data: prefsRow } = await supabase
         .from('users')
         .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
