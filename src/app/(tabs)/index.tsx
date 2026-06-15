@@ -677,6 +677,7 @@ interface HomeData {
   savingsGoalFor: string;
   savingsGoalIcon: string;
   checkinStreak: { current: number; best: number };
+  calendarDays: { iso: string; status: 'clean' | 'relapse' | 'inactive'; mood: number | null }[];
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -943,7 +944,7 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, moodCountRes, paymentCountRes, checkinDatesRes] = await Promise.all([
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, moodCountRes, paymentCountRes, checkinDatesRes, calRelapseRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
@@ -955,7 +956,8 @@ export default function HomeScreen() {
       supabase.from('urge_journal').select('created_at, outcome').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
       supabase.from('mood_checkins').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
-      supabase.from('mood_checkins').select('created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
+      supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
+      supabase.from('losses').select('created_at').eq('user_id', user.id).eq('type', 'streak_reset').gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
     ]);
 
     if (profileRes.error) throw profileRes.error;
@@ -1222,6 +1224,20 @@ export default function HomeScreen() {
       savingsGoalFor: savingsGoalForRaw ?? '',
       savingsGoalIcon: savingsGoalIconRaw ?? '🎯',
       checkinStreak: computeCheckinStreak(checkinDatesRes.data ?? []),
+      calendarDays: (() => {
+        const relapseSet = new Set((calRelapseRes.data ?? []).map((r: { created_at: string }) => new Date(r.created_at).toLocaleDateString('en-CA')));
+        const moodMap: Record<string, number> = {};
+        (checkinDatesRes.data ?? []).forEach((r: { created_at: string; mood: number }) => { moodMap[new Date(r.created_at).toLocaleDateString('en-CA')] = r.mood; });
+        const rawQ = profile?.quit_timestamp ?? profile?.quit_date ?? null;
+        let qLocal: Date | null = null;
+        if (rawQ) { const ms = Date.parse(rawQ.includes('T') ? rawQ : rawQ + 'T00:00:00'); if (!isNaN(ms)) { const qd = new Date(ms); qLocal = new Date(qd.getFullYear(), qd.getMonth(), qd.getDate()); } }
+        const nd = new Date();
+        return Array.from({ length: 30 }, (_, i) => {
+          const d = new Date(nd.getFullYear(), nd.getMonth(), nd.getDate() - (29 - i));
+          const iso = d.toLocaleDateString('en-CA');
+          return { iso, status: (!qLocal || d < qLocal) ? 'inactive' as const : relapseSet.has(iso) ? 'relapse' as const : 'clean' as const, mood: moodMap[iso] ?? null };
+        });
+      })(),
       todayMood: moodRes.data?.mood ?? null,
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
@@ -1967,6 +1983,61 @@ export default function HomeScreen() {
               </View>
               <Ionicons name="chevron-forward" size={16} color={c.textFaint} />
             </Pressable>
+          );
+        })()}
+
+        {/* Recovery calendar heatmap */}
+        {(() => {
+          const days = data.calendarDays;
+          if (days.length === 0) return null;
+          const dotColor = (day: typeof days[0] | null): string => {
+            if (!day) return 'transparent';
+            if (day.status === 'inactive') return c.bgElement;
+            if (day.status === 'relapse') return '#e07070';
+            if (day.mood === 5) return c.primary;
+            if (day.mood === 4) return c.primaryMid;
+            if (day.mood === 3) return c.primaryLight;
+            if (day.mood !== null) return '#a8d8d0';
+            return c.primaryLight;
+          };
+          // Arrange into week columns (Sun→Sat going down each column)
+          const firstDate = new Date(days[0].iso + 'T00:00:00');
+          const startDow = firstDate.getDay();
+          const padded: (typeof days[0] | null)[] = [...Array(startDow).fill(null), ...days];
+          const calWeeks: (typeof days[0] | null)[][] = [];
+          for (let i = 0; i < padded.length; i += 7) {
+            const chunk = padded.slice(i, i + 7);
+            while (chunk.length < 7) chunk.push(null);
+            calWeeks.push(chunk);
+          }
+          const cleanCount = days.filter(d => d.status === 'clean').length;
+          const relapseCount = days.filter(d => d.status === 'relapse').length;
+          return (
+            <View style={s.homCalCard}>
+              <View style={s.homCalHeader}>
+                <Text style={s.homCalTitle}>Recovery calendar</Text>
+                <Text style={s.homCalSub}>{cleanCount} clean · {relapseCount > 0 ? `${relapseCount} slip${relapseCount > 1 ? 's' : ''}` : 'no slips'} · last 30 days</Text>
+              </View>
+              <View style={s.homCalDayLabels}>
+                {['S','M','T','W','T','F','S'].map((d, i) => (
+                  <Text key={i} style={s.homCalDayLabel}>{d}</Text>
+                ))}
+              </View>
+              <View style={s.homCalGrid}>
+                {calWeeks.map((week, wi) => (
+                  <View key={wi} style={s.homCalCol}>
+                    {week.map((day, di) => (
+                      <View key={di} style={[s.homCalDot, { backgroundColor: dotColor(day) }]} />
+                    ))}
+                  </View>
+                ))}
+              </View>
+              <View style={s.homCalLegend}>
+                <View style={s.homCalLegendItem}><View style={[s.homCalLegendDot, { backgroundColor: c.primary }]} /><Text style={s.homCalLegendTxt}>Clean</Text></View>
+                <View style={s.homCalLegendItem}><View style={[s.homCalLegendDot, { backgroundColor: '#e07070' }]} /><Text style={s.homCalLegendTxt}>Slip</Text></View>
+                <View style={s.homCalLegendItem}><View style={[s.homCalLegendDot, { backgroundColor: c.bgElement }]} /><Text style={s.homCalLegendTxt}>Before start</Text></View>
+              </View>
+            </View>
           );
         })()}
 
@@ -2737,6 +2808,21 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   weekStripDotToday: { backgroundColor: c.bgTeal },
   weekStripEmoji: { fontSize: 18 },
   weekStripEmpty: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.borderLight },
+
+  // Recovery calendar heatmap
+  homCalCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 14, gap: 10 },
+  homCalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  homCalTitle: { fontSize: 13, fontWeight: '700', color: c.textPrimary },
+  homCalSub: { fontSize: 11, color: c.textFaint },
+  homCalDayLabels: { flexDirection: 'row', gap: 3 },
+  homCalDayLabel: { flex: 1, fontSize: 9, color: c.textFaint, textAlign: 'center', fontWeight: '600' },
+  homCalGrid: { flexDirection: 'column', gap: 3 },
+  homCalCol: { flexDirection: 'row', gap: 3 },
+  homCalDot: { flex: 1, aspectRatio: 1, borderRadius: 3 },
+  homCalLegend: { flexDirection: 'row', gap: 14, marginTop: 2 },
+  homCalLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  homCalLegendDot: { width: 8, height: 8, borderRadius: 2 },
+  homCalLegendTxt: { fontSize: 10, color: c.textFaint },
 
   pressed: { opacity: 0.7 },
 
