@@ -32,6 +32,7 @@ import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICO
 import { supabase } from '@/lib/supabase';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
+import { SkeletonBox } from '@/components/skeleton';
 
 type MainTab = 'debts' | 'saving';
 
@@ -187,6 +188,8 @@ export default function TrackerIndex() {
   const [showSavingsTargetModal, setShowSavingsTargetModal] = useState(false);
   const [editTargetDate, setEditTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
   const [savingTargetDate, setSavingTargetDate] = useState(false);
+  type DebtSort = 'default' | 'progress' | 'due';
+  const [debtSort, setDebtSort] = useState<DebtSort>('default');
 
   // Swipe refs — one per debt card
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
@@ -581,7 +584,6 @@ export default function TrackerIndex() {
     }
   };
 
-  // Sort: unpaid first (by remaining desc), paid-off last
   const sortedDebts = [...debts].sort((a, b) => {
     const paidA = paidByDebt[a.id] ?? 0;
     const paidB = paidByDebt[b.id] ?? 0;
@@ -590,11 +592,36 @@ export default function TrackerIndex() {
     const doneA = remA === 0 && paidA > 0;
     const doneB = remB === 0 && paidB > 0;
     if (doneA !== doneB) return doneA ? 1 : -1;
-    return remB - remA;
+    if (debtSort === 'default') return remB - remA;
+    if (debtSort === 'progress') {
+      const pctA = Number(a.total_amount) > 0 ? paidA / Number(a.total_amount) : 0;
+      const pctB = Number(b.total_amount) > 0 ? paidB / Number(b.total_amount) : 0;
+      return pctB - pctA;
+    }
+    if (debtSort === 'due') {
+      const dueA = a.target_date ? new Date(a.target_date).getTime() : Infinity;
+      const dueB = b.target_date ? new Date(b.target_date).getTime() : Infinity;
+      return dueA - dueB;
+    }
+    return 0;
   });
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>;
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonBox height={140} radius={0} />
+        <View style={{ padding: 16, gap: 12 }}>
+          <SkeletonBox height={90} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <SkeletonBox height={50} />
+            <SkeletonBox height={50} />
+            <SkeletonBox height={50} />
+          </View>
+          <SkeletonBox height={120} />
+          <SkeletonBox height={120} />
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -732,6 +759,16 @@ export default function TrackerIndex() {
                 <Ionicons name="add-circle-outline" size={18} color={c.error} />
                 <Text style={[s.addBtnTxt, { color: c.error }]}>Add a debt</Text>
               </Pressable>
+
+              {debts.length > 1 && (
+                <View style={s.sortRow}>
+                  {([['default', 'Largest first'], ['progress', 'Almost done'], ['due', 'Due soonest']] as [DebtSort, string][]).map(([mode, label]) => (
+                    <Pressable key={mode} style={[s.sortChip, debtSort === mode && s.sortChipActive]} onPress={() => setDebtSort(mode)}>
+                      <Text style={[s.sortChipTxt, debtSort === mode && s.sortChipTxtActive]}>{label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
 
               {debts.length === 0 ? (
                 <View style={s.emptyCard}>
@@ -1394,6 +1431,12 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderWidth: 1.5, borderColor: c.primary,
   },
   addBtnTxt: { fontSize: 15, fontWeight: '700', color: c.primary },
+
+  sortRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  sortChip: { flex: 1, paddingVertical: 8, borderRadius: 10, backgroundColor: c.bgElement, alignItems: 'center' },
+  sortChipActive: { backgroundColor: c.primary },
+  sortChipTxt: { fontSize: 12, fontWeight: '600', color: c.textFaint },
+  sortChipTxtActive: { color: '#fff' },
 
   emptyCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 24, alignItems: 'center' },
   emptyTxt: { fontSize: 14, color: c.textFaint, textAlign: 'center', lineHeight: 22 },

@@ -37,6 +37,7 @@ import { usePurchases } from '@/context/purchases';
 import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
+import { SkeletonBox } from '@/components/skeleton';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 
@@ -1476,8 +1477,18 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={s.loadingContainer}>
-        <ActivityIndicator size="large" color={c.primary} />
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonBox height={220} radius={0} />
+        <View style={{ padding: 16, gap: 12 }}>
+          <SkeletonBox height={160} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <SkeletonBox height={70} />
+            <SkeletonBox height={70} />
+            <SkeletonBox height={70} />
+          </View>
+          <SkeletonBox height={90} />
+          <SkeletonBox height={140} />
+        </View>
       </View>
     );
   }
@@ -1761,6 +1772,21 @@ export default function HomeScreen() {
             <Text style={s.quickActionLabel}>Analytics</Text>
           </Pressable>
         </View>
+
+        {/* On this day */}
+        {streakDays >= 30 && (() => {
+          const lines: string[] = [];
+          if (streakDays >= 365) lines.push(`A year ago you were on day ${streakDays - 365} — look how far you've come.`);
+          if (streakDays >= 60) lines.push(`Two months ago you were on day ${streakDays - 60}.`);
+          else if (streakDays >= 30) lines.push(`A month ago you were on day ${streakDays - 30}.`);
+          if (lines.length === 0) return null;
+          return (
+            <View style={s.onThisDayCard}>
+              <Text style={s.onThisDayTitle}>On this day</Text>
+              {lines.map((l, i) => <Text key={i} style={s.onThisDayBody}>{l}</Text>)}
+            </View>
+          );
+        })()}
 
         {/* Mood — combined check-in + week strip */}
         <View style={s.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
@@ -2525,6 +2551,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   cardTitle: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
 
   // Mood
+  onThisDayCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 6 },
+  onThisDayTitle: { fontSize: 13, fontWeight: '700', color: c.primary, textTransform: 'uppercase', letterSpacing: 0.6 },
+  onThisDayBody: { fontSize: 14, color: c.textBody, lineHeight: 20 },
+
   moodCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12 },
   moodInnerDivider: { height: 1, backgroundColor: c.borderLight, marginHorizontal: -12, marginVertical: 18 },
   moodCardTitle: { fontSize: 12, fontWeight: '600', color: c.textMuted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 },

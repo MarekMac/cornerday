@@ -33,7 +33,7 @@ import { useTimer } from '@/lib/TimerContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PICKER_TILE_W = Math.floor((SCREEN_W - 88 - 10) / 2);
-const TIMER_TOTAL = 20 * 60;
+
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -206,6 +206,7 @@ export default function UrgeScreen() {
   const [recoveryPlan, setRecoveryPlan] = useState<{ distractions: string[]; mantra: string | null }>({ distractions: [], mantra: null });
   const [checkedPlanItems, setCheckedPlanItems] = useState<string[]>([]);
   const [checklistCount, setChecklistCount] = useState(0);
+  const [urgeInsight, setUrgeInsight] = useState<{ day: string; tod: string } | null>(null);
 
   // Inline log (replaces modal)
   const [logExpanded, setLogExpanded] = useState(false);
@@ -234,8 +235,9 @@ export default function UrgeScreen() {
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
   const [pickerVisible, setPickerVisible] = useState<'games' | 'exercises' | null>(null);
   const [activeDistraction, setActiveDistraction] = useState<typeof DISTRACTIONS[0] | null>(null);
-  const { timerRunning, timerSecsLeft, timerDone, timerDisplay, timerPct, startTimer: ctxStartTimer, resetTimer } = useTimer();
+  const { timerRunning, timerSecsLeft, timerTotal, timerDone, timerDisplay, timerPct, startTimer: ctxStartTimer, resetTimer } = useTimer();
   const [timerPointsEarned, setTimerPointsEarned] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(20 * 60);
   const scrollRef = useRef<ScrollView>(null);
 
   const isMounted = useRef(true);
@@ -278,6 +280,37 @@ export default function UrgeScreen() {
         distractions: data?.recovery_distractions ? data.recovery_distractions.split(',').filter(Boolean) : [],
         mantra: data?.recovery_mantra ?? null,
       });
+
+      try {
+        const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
+        const { data: urgeRows } = await supabase
+          .from('urge_journal')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .gte('created_at', ninetyDaysAgo);
+        if ((urgeRows?.length ?? 0) >= 5) {
+          const dayCount = [0,0,0,0,0,0,0];
+          const todCount = [0,0,0,0];
+          (urgeRows ?? []).forEach((r: { created_at: string }) => {
+            const d = new Date(r.created_at);
+            dayCount[d.getDay()]++;
+            const h = d.getHours();
+            if (h >= 5 && h < 12) todCount[0]++;
+            else if (h >= 12 && h < 18) todCount[1]++;
+            else if (h >= 18 && h < 23) todCount[2]++;
+            else todCount[3]++;
+          });
+          const dayNames = ['Sundays','Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays'];
+          const todNames = ['mornings','afternoons','evenings','late nights'];
+          const topDay = dayCount.indexOf(Math.max(...dayCount));
+          const topTod = todCount.indexOf(Math.max(...todCount));
+          setUrgeInsight({ day: dayNames[topDay], tod: todNames[topTod] });
+        } else {
+          setUrgeInsight(null);
+        }
+      } catch {
+        // silently skip insight
+      }
     } catch {
       // silently keep cached data
     }
@@ -403,10 +436,10 @@ export default function UrgeScreen() {
   const motivations = (motivation ?? '').split(',').filter(Boolean)
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
-  const startTimer  = () => { ctxStartTimer(); setTimerPointsEarned(false); notifySupporter('urge'); };
-  const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); setCheckedPlanItems([]); };
+  const startTimer  = () => { ctxStartTimer(timerDuration); setTimerPointsEarned(false); notifySupporter('urge'); };
+  const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); setCheckedPlanItems([]); setTimerDuration(20 * 60); };
   const stopTimer  = () => {
-    const elapsed = TIMER_TOTAL - timerSecsLeft;
+    const elapsed = timerTotal - timerSecsLeft;
     resetTimer();
     setTimerPointsEarned(false);
     setCheckedPlanItems([]);
@@ -489,19 +522,35 @@ export default function UrgeScreen() {
                   : "I'm feeling the urge right now"}
             </Text>
             {!timerRunning && !timerDone && (
-              <Text style={s.urgeBtnSub}>Tap to start your 20-minute urge timer</Text>
+              <Text style={s.urgeBtnSub}>{`Tap to start your ${timerDuration / 60}-minute urge timer`}</Text>
             )}
           </Pressable>
+
+          {/* Duration picker — shown before timer starts */}
+          {!timerRunning && !timerDone && (
+            <View style={s.durationRow}>
+              {([10, 20, 30] as const).map(mins => (
+                <Pressable
+                  key={mins}
+                  style={[s.durationChip, timerDuration === mins * 60 && s.durationChipActive]}
+                  onPress={() => setTimerDuration(mins * 60)}>
+                  <Text style={[s.durationChipTxt, timerDuration === mins * 60 && s.durationChipTxtActive]}>
+                    {mins} min
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           {/* Urge delay timer */}
           <View style={[s.timerCard, timerDone && s.timerCardDone]}>
             <View style={s.timerTop}>
               <View style={{ flex: 1 }}>
                 <Text style={[s.timerTitle, timerDone && { color: '#27ae60' }]}>
-                  {timerDone ? 'You made it! 🎉' : timerRunning ? 'Holding on...' : 'Hold on for 20 minutes'}
+                  {timerDone ? 'You made it! 🎉' : timerRunning ? 'Holding on...' : `Hold on for ${timerDuration / 60} minutes`}
                 </Text>
                 <Text style={s.timerSub}>
-                  {timerDone ? 'The urge has passed. That took strength.' : 'Most urges fade within 20 minutes'}
+                  {timerDone ? 'The urge has passed. That took strength.' : `Most urges fade within ${timerDuration / 60} minutes`}
                 </Text>
               </View>
               <Text style={[s.timerDigits, timerDone && { color: '#27ae60' }]}>{timerDisplay}</Text>
@@ -661,6 +710,16 @@ export default function UrgeScreen() {
             <Text style={s.logNowBtnTxt}>✍️  Log this moment</Text>
             <Text style={s.logNowBtnSub}>Record a trigger, urge, or slip in your journal</Text>
           </Pressable>
+
+          {/* Urge pattern insight */}
+          {urgeInsight && (
+            <View style={s.insightCard}>
+              <Text style={s.insightTitle}>📊 Your urge pattern</Text>
+              <Text style={s.insightBody}>
+                You tend to feel urges most on {urgeInsight.day} {urgeInsight.tod}. Consider planning ahead for those moments.
+              </Text>
+            </View>
+          )}
 
           {/* Your why */}
           <View style={s.whyCard}>
@@ -1516,6 +1575,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   planChipCheckBoxActive: { backgroundColor: c.primary, borderColor: c.primary },
   planChipCheck: { fontSize: 10, color: c.white, fontWeight: '800' },
+  durationRow: { flexDirection: 'row', gap: 10, justifyContent: 'center', marginTop: -4, marginBottom: 4 },
+  durationChip: { paddingHorizontal: 22, paddingVertical: 10, borderRadius: 20, backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: c.borderSubtle },
+  durationChipActive: { backgroundColor: c.bgTeal, borderColor: c.primary },
+  durationChipTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
+  durationChipTxtActive: { color: c.primary },
+  insightCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: c.bgTealMid },
+  insightTitle: { fontSize: 13, fontWeight: '700', color: c.primary, marginBottom: 6 },
+  insightBody: { fontSize: 13, color: c.textBody, lineHeight: 19 },
   planEmptyCard: {
     backgroundColor: c.bgCard, borderRadius: 16, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 12,

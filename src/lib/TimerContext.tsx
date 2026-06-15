@@ -1,20 +1,22 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 
-export const TIMER_TOTAL = 20 * 60;
+export const DEFAULT_TIMER_TOTAL = 20 * 60;
 
 interface TimerContextValue {
   timerRunning: boolean;
   timerSecsLeft: number;
+  timerTotal: number;
   timerDone: boolean;
   timerDisplay: string;
   timerPct: number;
-  startTimer: () => void;
+  startTimer: (totalSecs?: number) => void;
   resetTimer: () => void;
 }
 
 const TimerContext = createContext<TimerContextValue>({
   timerRunning: false,
-  timerSecsLeft: TIMER_TOTAL,
+  timerSecsLeft: DEFAULT_TIMER_TOTAL,
+  timerTotal: DEFAULT_TIMER_TOTAL,
   timerDone: false,
   timerDisplay: '20:00',
   timerPct: 0,
@@ -23,8 +25,9 @@ const TimerContext = createContext<TimerContextValue>({
 });
 
 export function TimerProvider({ children }: { children: React.ReactNode }) {
+  const [timerTotal, setTimerTotal] = useState(DEFAULT_TIMER_TOTAL);
   const [timerRunning, setTimerRunning] = useState(false);
-  const [timerSecsLeft, setTimerSecsLeft] = useState(TIMER_TOTAL);
+  const [timerSecsLeft, setTimerSecsLeft] = useState(DEFAULT_TIMER_TOTAL);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -41,17 +44,24 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [timerRunning]);
 
-  const startTimer = () => { setTimerSecsLeft(TIMER_TOTAL); setTimerRunning(true); };
-  const resetTimer = () => { setTimerRunning(false); setTimerSecsLeft(TIMER_TOTAL); };
+  const startTimer = (totalSecs = DEFAULT_TIMER_TOTAL) => {
+    setTimerTotal(totalSecs);
+    setTimerSecsLeft(totalSecs);
+    setTimerRunning(true);
+  };
+  const resetTimer = () => {
+    setTimerRunning(false);
+    setTimerSecsLeft(timerTotal);
+  };
 
   const timerDone = !timerRunning && timerSecsLeft === 0;
-  const timerPct = ((TIMER_TOTAL - timerSecsLeft) / TIMER_TOTAL) * 100;
+  const timerPct = ((timerTotal - timerSecsLeft) / timerTotal) * 100;
   const mins = Math.floor(timerSecsLeft / 60);
   const secs = timerSecsLeft % 60;
   const timerDisplay = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 
   return (
-    <TimerContext.Provider value={{ timerRunning, timerSecsLeft, timerDone, timerDisplay, timerPct, startTimer, resetTimer }}>
+    <TimerContext.Provider value={{ timerRunning, timerSecsLeft, timerTotal, timerDone, timerDisplay, timerPct, startTimer, resetTimer }}>
       {children}
     </TimerContext.Provider>
   );

@@ -305,7 +305,7 @@ function EntryCard({ entry, currency, c }: { entry: FeedEntry; currency: string;
   return null;
 }
 
-type FilterKind = 'all' | 'urge' | 'milestone' | 'reset';
+type FilterKind = 'all' | 'urge' | 'payment' | 'milestone' | 'reset';
 type FilterOutcome = 'all' | 'overcame' | 'slipped';
 
 export default function JournalScreen() {
@@ -366,6 +366,7 @@ export default function JournalScreen() {
       if (filterOutcome !== 'all' && e.outcome !== filterOutcome) return false;
       return true;
     }
+    if (filterKind === 'payment') return e.kind === 'payment' || e.kind === 'saving' || e.kind === 'debt_paid_off';
     if (filterKind === 'milestone') return e.kind === 'milestone_earned';
     if (filterKind === 'reset') return e.kind === 'streak_reset';
     return true;
@@ -437,13 +438,13 @@ export default function JournalScreen() {
           ListHeaderComponent={
             <View style={s.filterWrap}>
               <View style={s.filterRow}>
-                {(['all', 'urge', 'milestone', 'reset'] as FilterKind[]).map(k => (
+                {(['all', 'urge', 'payment', 'milestone', 'reset'] as FilterKind[]).map(k => (
                   <Pressable
                     key={k}
                     style={[s.filterChip, filterKind === k && s.filterChipActive]}
                     onPress={() => { setFilterKind(k); if (k !== 'urge') setFilterOutcome('all'); }}>
                     <Text style={[s.filterChipTxt, filterKind === k && s.filterChipTxtActive]}>
-                      {k === 'all' ? 'All' : k === 'urge' ? 'Urges' : k === 'milestone' ? 'Milestones' : 'Resets'}
+                      {k === 'all' ? 'All' : k === 'urge' ? 'Urges' : k === 'payment' ? 'Payments' : k === 'milestone' ? 'Milestones' : 'Resets'}
                     </Text>
                   </Pressable>
                 ))}
