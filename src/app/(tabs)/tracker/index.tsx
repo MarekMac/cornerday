@@ -195,10 +195,13 @@ export default function TrackerIndex() {
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
   // Prevent useFocusEffect from duplicating the initial useEffect fetch
   const initialFetchDone = useRef(false);
+  const fetchingRef = useRef(false);
 
   const fetchAll = useCallback(async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { fetchingRef.current = false; return; }
 
     const [debtsRes, paymentsRes, savingsRes, profileRes, rawGoal, rawFor, rawIcon] = await Promise.all([
       supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -225,12 +228,12 @@ export default function TrackerIndex() {
     setSavingsGoalIcon(rawIcon ?? '🎯');
   }, []);
 
-  useEffect(() => { fetchAll().finally(() => { setLoading(false); initialFetchDone.current = true; }); }, [fetchAll]);
+  useEffect(() => { fetchAll().finally(() => { setLoading(false); initialFetchDone.current = true; fetchingRef.current = false; }); }, [fetchAll]);
   useFocusEffect(useCallback(() => { if (initialFetchDone.current) fetchAll(); }, [fetchAll]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchAll();
+    await fetchAll().finally(() => { fetchingRef.current = false; });
     setRefreshing(false);
   }, [fetchAll]);
 

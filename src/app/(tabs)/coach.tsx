@@ -224,14 +224,14 @@ export default function CoachScreen() {
       }
     } catch (err) {
       console.error('ai-coach fetch error:', err);
+      const isTimeout = err instanceof Error && err.name === 'AbortError';
+      const errMsg = isTimeout
+        ? "The response took too long. Please try again."
+        : "I'm having trouble connecting right now. Please try again in a moment.";
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
-            ? {
-                ...m,
-                content: "I'm having trouble connecting right now. Please try again in a moment.",
-                pending: false,
-              }
+            ? { ...m, content: errMsg, pending: false }
             : m,
         ),
       );
@@ -245,7 +245,7 @@ export default function CoachScreen() {
       );
       scrollToBottom();
     }
-  }, [isStreaming, messages, scrollToBottom]);
+  }, [isStreaming, messages, scrollToBottom, hasAccess, showPaywall]);
 
   const sendMessage = useCallback(() => {
     const text = input.trim();

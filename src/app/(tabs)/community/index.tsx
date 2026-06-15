@@ -100,6 +100,12 @@ export default function CommunityFeed() {
   const reactingRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
+    // Use cached session first so currentUserIdRef is set before useFocusEffect runs
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      currentUserIdRef.current = session.user.id;
+    });
+
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       currentUserIdRef.current = user.id;

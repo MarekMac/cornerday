@@ -899,7 +899,8 @@ export default function HomeScreen() {
       fetchData();
     }
     prevNextMilestone.current = next;
-  }, [tick]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, fetchData]);
 
   const randomQuote = useCallback(() => {
     setQuoteIndex(i => {
