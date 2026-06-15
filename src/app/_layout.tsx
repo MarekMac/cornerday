@@ -26,15 +26,16 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Session } from '@supabase/supabase-js';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY, AI_CHECKIN_NOTIF_ID_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { UserProvider } from '@/context/user';
-import { PurchasesProvider } from '@/context/purchases';
+import { PurchasesProvider, usePurchases } from '@/context/purchases';
 import { AppThemeProvider, useAppTheme } from '@/context/theme';
 import { Paywall } from '@/components/Paywall';
 
 function InnerLayout() {
   const { colorScheme } = useAppTheme();
+  const { isPremium } = usePurchases();
   const router = useRouter();
   const navigationState = useRootNavigationState();
   const [session, setSession] = useState<Session | null>(null);
@@ -58,6 +59,39 @@ function InnerLayout() {
   useEffect(() => {
     if (locked) authenticate();
   }, [locked, authenticate]);
+
+  // Schedule 48h check-in notification; reschedule on every app open
+  useEffect(() => {
+    if (!session) return;
+    const schedule = async () => {
+      const prevId = await AsyncStorage.getItem(AI_CHECKIN_NOTIF_ID_KEY);
+      if (prevId) await Notifications.cancelScheduledNotificationAsync(prevId).catch(() => {});
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Haven't seen you in a few days 👋",
+          body: "How are you holding up? CornerDay is here whenever you need it.",
+          data: { type: 'ai_checkin' },
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 72 * 60 * 60, repeats: false },
+      }).catch(() => null);
+      if (id) await AsyncStorage.setItem(AI_CHECKIN_NOTIF_ID_KEY, id);
+    };
+    schedule();
+  }, [session]);
+
+  // Handle tap on check-in notification — premium goes to AI coach, free goes to mood check-in
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      if (response.notification.request.content.data?.type === 'ai_checkin') {
+        if (isPremium) {
+          router.push('/(tabs)/coach?checkin=true' as any);
+        } else {
+          router.push('/(tabs)?checkin=true' as any);
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [router, isPremium]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state: AppStateStatus) => {

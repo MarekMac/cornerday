@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -105,11 +105,13 @@ const GREETINGS = [
   "Hi. I'm your AI Corner. I already know the important things — why you started, how far you've come, and who's in your corner. I'm here for the rest. What would you like to talk about?",
 ];
 
-function randomGreeting(): ChatMessage {
+const CHECKIN_GREETING = "You haven't checked in for a few days — how are you doing? I'm here whenever you need to talk.";
+
+function randomGreeting(checkin = false): ChatMessage {
   return {
     id: 'greeting',
     role: 'assistant',
-    content: GREETINGS[Math.floor(Math.random() * GREETINGS.length)],
+    content: checkin ? CHECKIN_GREETING : GREETINGS[Math.floor(Math.random() * GREETINGS.length)],
   };
 }
 
@@ -119,8 +121,10 @@ export default function CoachScreen() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
   const hasAccess = isPremium || isAdmin;
+  const params = useLocalSearchParams<{ checkin?: string }>();
+  const isCheckin = params.checkin === 'true';
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [randomGreeting()]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [randomGreeting(isCheckin)]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const listRef = useRef<FlatList>(null);
@@ -257,10 +261,10 @@ export default function CoachScreen() {
     useCallback(() => {
       setRandomStarters([...STARTERS].sort(() => Math.random() - 0.5).slice(0, 5));
       setMessages(prev => {
-        if (prev.length === 1 && prev[0].id === 'greeting') return [randomGreeting()];
+        if (prev.length === 1 && prev[0].id === 'greeting') return [randomGreeting(isCheckin)];
         return prev;
       });
-    }, []),
+    }, [isCheckin]),
   );
 
   const renderMessage = useCallback(

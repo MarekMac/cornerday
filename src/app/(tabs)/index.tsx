@@ -1,6 +1,6 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -798,6 +798,7 @@ function MilestoneCelebrationModal({
 export default function HomeScreen() {
   const { colors: c, colorScheme } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
+  const { checkin } = useLocalSearchParams<{ checkin?: string }>();
   const cc = colorScheme === 'dark' ? {
     gradient:        ['#062e2e', '#0F6E6E', '#1a9a9a'] as const,
     brand:           'rgba(255,255,255,0.7)',
@@ -858,6 +859,15 @@ export default function HomeScreen() {
   const fetchingRef = useRef(false);
   const moodScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [moodCardY, setMoodCardY] = useState(0);
+
+  // Auto-scroll to mood check-in when arriving from 3-day check-in notification
+  useEffect(() => {
+    if (checkin === 'true' && moodCardY > 0) {
+      const t = setTimeout(() => bodyScrollRef.current?.scrollTo({ y: moodCardY, animated: true }), 500);
+      return () => clearTimeout(t);
+    }
+  }, [checkin, moodCardY]);
+
   const [badgeMsgIndex, setBadgeMsgIndex] = useState(0);
   const [editingMood, setEditingMood] = useState(false);
   const [moodNote, setMoodNote] = useState('');
