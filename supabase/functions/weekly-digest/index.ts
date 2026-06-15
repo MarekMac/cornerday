@@ -462,20 +462,22 @@ function buildPremiumHtml(p: {
       </tr></table>` : ''}
       ${monthlyRate !== null ? `
       <div style="background:#ede8e0;border-radius:8px;padding:10px 12px;margin-top:10px;">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="font-size:12px;color:#777;">Monthly avg payment</td>
-            <td align="right" style="font-size:13px;font-weight:700;color:#0F6E6E;">${fmtCurrency(monthlyRate, currency)}/mo</td>
-          </tr>
-          ${debtFreeDate ? `
-          <tr><td colspan="2" style="padding-top:6px;border-top:1px solid #d8cfc4;margin-top:4px;">
-            <table width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="font-size:12px;color:#a0522d;">&#x1F3C1; Debt-free by</td>
-              <td align="right" style="font-size:13px;font-weight:700;color:#a0522d;">${debtFreeDate} <span style="font-size:11px;font-weight:400;color:#888;">(${debtFreeLabel})</span></td>
-            </tr></table>
-          </td></tr>` : ''}
-        </table>
-      </div>` : (totalDebt > 0 && totalPaid === 0 ? `<div style="font-size:12px;color:#888;margin-top:10px;">Log your first payment to unlock your debt-free projection.</div>` : '')}
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="font-size:12px;color:#777;">Monthly avg payment</td>
+          <td align="right" style="font-size:13px;font-weight:700;color:#0F6E6E;">${fmtCurrency(monthlyRate, currency)}/mo</td>
+        </tr></table>
+      </div>
+      ${debtFreeDate && debtPct !== null ? `
+      <div style="background:#0F6E6E;border-radius:10px;padding:14px 16px;margin-top:8px;text-align:center;">
+        <div style="font-size:10px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">&#x1F3C1; Projected debt-free</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.2;">${debtFreeDate}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;">${debtFreeLabel} from now at current pace</div>
+        <div style="background:rgba(255,255,255,0.25);border-radius:4px;height:6px;margin-top:12px;overflow:hidden;">
+          <div style="background:#fff;height:100%;width:${debtPct}%;border-radius:4px;"></div>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:5px;">${debtPct}% repaid so far</div>
+      </div>` : ''}
+      ` : (totalDebt > 0 && totalPaid === 0 ? `<div style="font-size:12px;color:#888;margin-top:10px;">Log your first payment to unlock your debt-free projection.</div>` : '')}
     </td></tr>` : '';
 
   // Top trigger callout

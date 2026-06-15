@@ -147,6 +147,7 @@ interface DebtPacing {
   actualPerDay: number | null;
   isAhead: boolean | null;
   projDays: number | null;
+  createdAt: Date;
 }
 
 interface AnalyticsData {
@@ -302,7 +303,8 @@ export default function AnalyticsScreen() {
       const projDays = !isPaidOff && actualPerDay && actualPerDay > 0 && remaining > 0
         ? Math.ceil(remaining / actualPerDay) : null;
       return { id: d.id, name: d.name, totalAmount, totalPaid, remaining, pct, isPaidOff,
-               targetDate, daysRemaining, requiredPerDay, actualPerDay, isAhead, projDays };
+               targetDate, daysRemaining, requiredPerDay, actualPerDay, isAhead, projDays,
+               createdAt: new Date(d.created_at) };
     });
 
     const urgeRows     = urgeRes.data ?? [];
@@ -1040,6 +1042,26 @@ export default function AnalyticsScreen() {
                 <Text style={s.progressBarPct}>{Math.round(debtPct * 100)}% repaid across all debts</Text>
               </View>
             )}
+            {/* Aggregate debt-free projection */}
+            {(() => {
+              const active = data.debtsWithPacing.filter(d => !d.isPaidOff && (d.actualPerDay ?? 0) > 0);
+              if (active.length === 0) return null;
+              const totalRemaining = active.reduce((sum, d) => sum + d.remaining, 0);
+              const combinedRate = active.reduce((sum, d) => sum + (d.actualPerDay ?? 0), 0);
+              if (combinedRate <= 0 || totalRemaining <= 0) return null;
+              const projDays = Math.ceil(totalRemaining / combinedRate);
+              const projDate = new Date(Date.now() + projDays * 86400000);
+              return (
+                <View style={s.debtFreeCard}>
+                  <Text style={s.debtFreeEmoji}>🏁</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.debtFreeLabel}>Projected debt-free</Text>
+                    <Text style={s.debtFreeDate}>{projDate.toLocaleDateString([], { month: 'long', year: 'numeric' })}</Text>
+                    <Text style={s.debtFreeSub}>~{fmtDuration(projDays)} at current pace · {fmt(combinedRate * 30, data.currency)}/mo avg</Text>
+                  </View>
+                </View>
+              );
+            })()}
             {/* Per-debt breakdown */}
             {data.debtsWithPacing.map(debt => (
               <View key={debt.id} style={s.debtItem}>
@@ -1113,6 +1135,28 @@ export default function AnalyticsScreen() {
                     )}
                   </View>
                 )}
+                {/* Payoff timeline chart */}
+                {!debt.isPaidOff && debt.projDays !== null && (() => {
+                  const startMs = debt.createdAt.getTime();
+                  const projMs = Date.now() + debt.projDays * 86400000;
+                  const spanMs = projMs - startMs;
+                  if (spanMs <= 0) return null;
+                  const elapsedPct = Math.min(97, Math.max(3, Math.round(((Date.now() - startMs) / spanMs) * 100)));
+                  return (
+                    <View style={s.debtTimeline}>
+                      <Text style={s.debtTimelineTitle}>Payoff timeline</Text>
+                      <View style={s.debtTimelineTrack}>
+                        <View style={{ flex: elapsedPct, backgroundColor: c.primaryMid, borderRadius: 3 }} />
+                        <View style={{ flex: 100 - elapsedPct, backgroundColor: c.bgElement, borderRadius: 3 }} />
+                      </View>
+                      <View style={s.debtTimelineDates}>
+                        <Text style={s.debtTimelineDateL}>{debt.createdAt.toLocaleDateString([], { month: 'short', year: '2-digit' })}</Text>
+                        <Text style={s.debtTimelineDateC}>Today</Text>
+                        <Text style={s.debtTimelineDateR}>{new Date(projMs).toLocaleDateString([], { month: 'short', year: '2-digit' })}</Text>
+                      </View>
+                    </View>
+                  );
+                })()}
               </View>
             ))}
             <Text style={s.debtTargetHint}>Set target dates per debt in the Loss Tracker</Text>
@@ -1381,4 +1425,20 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   modalBtnSave: { backgroundColor: c.primary },
   modalBtnCancel: { fontSize: 15, fontWeight: '600', color: c.textSecondary },
   modalBtnSaveTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  // Aggregate debt-free projection
+  debtFreeCard:  { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#f0fff4', borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: '#27ae60' },
+  debtFreeEmoji: { fontSize: 26 },
+  debtFreeLabel: { fontSize: 11, fontWeight: '700', color: '#27ae60', textTransform: 'uppercase', letterSpacing: 0.8 },
+  debtFreeDate:  { fontSize: 18, fontWeight: '900', color: '#27ae60', marginTop: 2 },
+  debtFreeSub:   { fontSize: 11, color: '#5a8a6a', marginTop: 2 },
+
+  // Per-debt payoff timeline chart
+  debtTimeline:      { gap: 5, paddingTop: 2 },
+  debtTimelineTitle: { fontSize: 11, fontWeight: '600', color: c.textMuted },
+  debtTimelineTrack: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', gap: 1 },
+  debtTimelineDates: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  debtTimelineDateL: { fontSize: 10, color: c.textFaint },
+  debtTimelineDateC: { fontSize: 10, color: c.primary, fontWeight: '700' },
+  debtTimelineDateR: { fontSize: 10, color: c.textFaint },
 });
