@@ -106,9 +106,11 @@ export default function SignupScreen() {
           return;
         }
 
+        const { data: { user: authUser } } = await supabase.auth.getUser();
         const { data: profile, error: profileErr } = await supabase
           .from('users')
           .select('id')
+          .eq('id', authUser?.id ?? '')
           .maybeSingle();
 
         if (profileErr) {
@@ -142,9 +144,11 @@ export default function SignupScreen() {
         setLoading(false);
         return;
       }
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       const { data: profile, error: profileErr } = await supabase
         .from('users')
         .select('id')
+        .eq('id', authUser?.id ?? '')
         .maybeSingle();
       if (profileErr) {
         setError('Sign-in succeeded but we could not load your profile. Please try again.');
@@ -171,9 +175,11 @@ export default function SignupScreen() {
             setLoading(false);
             return;
           }
+          const { data: { user: authUser } } = await supabase.auth.getUser();
           const { data: profile, error: profileErr } = await supabase
             .from('users')
             .select('id')
+            .eq('id', authUser?.id ?? '')
             .maybeSingle();
           if (profileErr) {
             setError('Sign-in succeeded but we could not load your profile. Please try again.');
