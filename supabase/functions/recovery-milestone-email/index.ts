@@ -148,22 +148,25 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ ok: true, mode: 'direct', milestone: m.badge }), { status: 200 });
   }
 
-  // Fetch all loss/payment records
-  const { data: lossData, error } = await supabase
-    .from('losses')
-    .select('user_id, type, amount')
-    .in('type', ['loss', 'payment']);
+  // Fetch debts and payments from current schema
+  const [debtsRes, paymentsRes] = await Promise.all([
+    supabase.from('debts').select('user_id, total_amount'),
+    supabase.from('debt_payments').select('user_id, amount'),
+  ]);
 
-  if (error) {
-    return new Response(JSON.stringify({ error: 'failed to fetch losses' }), { status: 500 });
+  if (debtsRes.error || paymentsRes.error) {
+    return new Response(JSON.stringify({ error: 'failed to fetch debt data' }), { status: 500 });
   }
 
   // Aggregate per user
   const userStats: Record<string, { totalLost: number; totalPaid: number }> = {};
-  for (const row of lossData ?? []) {
+  for (const row of debtsRes.data ?? []) {
     if (!userStats[row.user_id]) userStats[row.user_id] = { totalLost: 0, totalPaid: 0 };
-    if (row.type === 'loss')    userStats[row.user_id].totalLost += Number(row.amount);
-    if (row.type === 'payment') userStats[row.user_id].totalPaid += Number(row.amount);
+    userStats[row.user_id].totalLost += Number(row.total_amount);
+  }
+  for (const row of paymentsRes.data ?? []) {
+    if (!userStats[row.user_id]) userStats[row.user_id] = { totalLost: 0, totalPaid: 0 };
+    userStats[row.user_id].totalPaid += Number(row.amount);
   }
 
   let sent = 0, skipped = 0, failed = 0;

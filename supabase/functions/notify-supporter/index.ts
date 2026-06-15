@@ -18,7 +18,7 @@ function firstName(displayName: string | null): string {
 }
 
 function partnerUrl(token: string): string {
-  return `https://marekmac.github.io/cornerday/partner.html?t=${encodeURIComponent(token)}`;
+  return `https://cornerday.app/partner?t=${encodeURIComponent(token)}`;
 }
 
 function ctaButton(url: string, label: string): string {
