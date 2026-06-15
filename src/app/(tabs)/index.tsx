@@ -633,6 +633,29 @@ function SavingsGoalCard({ goal, totalPaid, goalFor, goalIcon, currency }: {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
+function computeCheckinStreak(rows: { created_at: string }[]): { current: number; best: number } {
+  const unique = [...new Set(rows.map(r => new Date(r.created_at).toLocaleDateString('en-CA')))]
+    .sort().reverse();
+  if (unique.length === 0) return { current: 0, best: 0 };
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const yesterStr = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+  let current = 0;
+  if (unique[0] === todayStr || unique[0] === yesterStr) {
+    let d = new Date(unique[0] + 'T00:00:00');
+    for (const dateStr of unique) {
+      if (dateStr === d.toLocaleDateString('en-CA')) { current++; d = new Date(d.getTime() - 86400000); }
+      else break;
+    }
+  }
+  let best = 0, run = 1;
+  for (let i = 1; i < unique.length; i++) {
+    const diff = Math.round((new Date(unique[i - 1] + 'T00:00:00').getTime() - new Date(unique[i] + 'T00:00:00').getTime()) / 86400000);
+    if (diff === 1) { run++; } else { best = Math.max(best, run); run = 1; }
+  }
+  best = Math.max(best, run);
+  return { current, best };
+}
+
 interface HomeData {
   displayName: string | null;
   motivation: string | null;
@@ -653,6 +676,7 @@ interface HomeData {
   savingsGoal: number | null;
   savingsGoalFor: string;
   savingsGoalIcon: string;
+  checkinStreak: { current: number; best: number };
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -919,7 +943,7 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, moodCountRes, paymentCountRes] = await Promise.all([
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, moodCountRes, paymentCountRes, checkinDatesRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
@@ -931,6 +955,7 @@ export default function HomeScreen() {
       supabase.from('urge_journal').select('created_at, outcome').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
       supabase.from('mood_checkins').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
+      supabase.from('mood_checkins').select('created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
     ]);
 
     if (profileRes.error) throw profileRes.error;
@@ -1196,6 +1221,7 @@ export default function HomeScreen() {
       savingsGoal: savingsGoalAmount,
       savingsGoalFor: savingsGoalForRaw ?? '',
       savingsGoalIcon: savingsGoalIconRaw ?? '🎯',
+      checkinStreak: computeCheckinStreak(checkinDatesRes.data ?? []),
       todayMood: moodRes.data?.mood ?? null,
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
@@ -1524,14 +1550,7 @@ export default function HomeScreen() {
   const motivations = (data.motivation ?? '').split(',').filter(Boolean).map(
     m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' }
   );
-  const moodStreak = (() => {
-    let count = 0;
-    for (let i = data.weekMoods.length - 1; i >= 0; i--) {
-      if (data.weekMoods[i].mood !== null) count++;
-      else break;
-    }
-    return count;
-  })();
+  const checkinStreak = data.checkinStreak.current;
   const daysToPersonalBest = data.longestStreak > 0 && streakDays < data.longestStreak
     ? data.longestStreak - streakDays
     : null;
@@ -1812,13 +1831,18 @@ export default function HomeScreen() {
                   <Text style={s.moodEditBtnTxt}>Edit</Text>
                 </Pressable>
               </View>
-              {moodStreak >= 2 && (
-                <Text style={s.moodStreakTxt}>🗓 {moodStreak}-day check-in streak</Text>
+              {checkinStreak >= 2 && (
+                <Text style={s.moodStreakTxt}>🔥 {checkinStreak}-day check-in streak{data.checkinStreak.best > checkinStreak ? ` · best ${data.checkinStreak.best}d` : checkinStreak >= data.checkinStreak.best && checkinStreak >= 7 ? ' · personal best!' : ''}</Text>
               )}
             </View>
           ) : (
             <>
-              <Text style={s.moodCardTitle}>How are you feeling today?</Text>
+              <View style={s.moodCardTitleRow}>
+                <Text style={s.moodCardTitle}>How are you feeling today?</Text>
+                {checkinStreak >= 2 && (
+                  <Text style={s.moodStreakBadge}>🔥 {checkinStreak}d</Text>
+                )}
+              </View>
               {moodSubmitting ? (
                 <ActivityIndicator color={c.primary} style={{ marginTop: 8 }} />
               ) : (
@@ -2565,7 +2589,9 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   moodCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12 },
   moodInnerDivider: { height: 1, backgroundColor: c.borderLight, marginHorizontal: -12, marginVertical: 18 },
-  moodCardTitle: { fontSize: 12, fontWeight: '600', color: c.textMuted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 },
+  moodCardTitleRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  moodCardTitle:     { fontSize: 12, fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  moodStreakBadge:   { fontSize: 12, fontWeight: '700', color: c.primary },
   moodRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12 },
   moodBtn: { padding: 4 },
   moodEmoji: { fontSize: 26 },

@@ -38,6 +38,29 @@ function fmtCompact(amount: number, currency = 'USD') {
   return `${s}${Math.round(amount)}`;
 }
 
+function computeCheckinStreak(rows: { created_at: string }[]): { current: number; best: number } {
+  const unique = [...new Set(rows.map(r => new Date(r.created_at).toLocaleDateString('en-CA')))]
+    .sort().reverse();
+  if (unique.length === 0) return { current: 0, best: 0 };
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const yesterStr = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+  let current = 0;
+  if (unique[0] === todayStr || unique[0] === yesterStr) {
+    let d = new Date(unique[0] + 'T00:00:00');
+    for (const dateStr of unique) {
+      if (dateStr === d.toLocaleDateString('en-CA')) { current++; d = new Date(d.getTime() - 86400000); }
+      else break;
+    }
+  }
+  let best = 0, run = 1;
+  for (let i = 1; i < unique.length; i++) {
+    const diff = Math.round((new Date(unique[i - 1] + 'T00:00:00').getTime() - new Date(unique[i] + 'T00:00:00').getTime()) / 86400000);
+    if (diff === 1) { run++; } else { best = Math.max(best, run); run = 1; }
+  }
+  best = Math.max(best, run);
+  return { current, best };
+}
+
 function parseQuitDate(quitDate: string): Date {
   if (/^\d{4}-\d{2}-\d{2}$/.test(quitDate)) {
     const [y, m, d] = quitDate.split('-').map(Number);
@@ -169,6 +192,7 @@ interface AnalyticsData {
   moodLast30: { date: string; mood: number }[];
   moodSparkline: (number | null)[];
   checkInDays: number;
+  checkinStreak: { current: number; best: number };
   monthlySavings: { month: string; amount: number }[];
   weekMoods: { date: string; mood: number | null }[];
   relapseCount: number;
@@ -239,7 +263,7 @@ export default function AnalyticsScreen() {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
 
-    const [profileRes, streakRes, lossesRes, debtsRes, paymentsRes, urgeRes, moodRes] = await Promise.all([
+    const [profileRes, streakRes, lossesRes, debtsRes, paymentsRes, urgeRes, moodRes, checkinDatesRes] = await Promise.all([
       supabase.from('users').select('currency, quit_date, quit_timestamp, savings_target_date').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
@@ -247,6 +271,7 @@ export default function AnalyticsScreen() {
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
       supabase.from('urge_journal').select('outcome, created_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', thirtyDaysAgo).order('created_at', { ascending: true }),
+      supabase.from('mood_checkins').select('created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
     ]);
 
     const [goalRaw, goalForRaw, goalIconRaw] = await Promise.all([
@@ -419,6 +444,7 @@ export default function AnalyticsScreen() {
       totalDebts, totalDebtPaid, debtsWithPacing,
       urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByTimeOfDay,
       moodLast30, moodSparkline, checkInDays,
+      checkinStreak: computeCheckinStreak(checkinDatesRes.data ?? []),
       monthlySavings, weekMoods,
       relapseCount: currentRelapseCount, dailySavingsRate, streakHistory,
       calendarDays, weekSummary,
@@ -939,6 +965,20 @@ export default function AnalyticsScreen() {
           <View style={s.progressBarBg}>
             <View style={[s.progressBarFill, { width: `${Math.round((data.checkInDays / 30) * 100)}%` as any }]} />
           </View>
+          {(data.checkinStreak.current > 0 || data.checkinStreak.best > 0) && (
+            <View style={s.checkinStreakRow}>
+              {data.checkinStreak.current > 0 && (
+                <View style={s.checkinStreakChip}>
+                  <Text style={s.checkinStreakChipTxt}>🔥 {data.checkinStreak.current}-day streak</Text>
+                </View>
+              )}
+              {data.checkinStreak.best > 0 && (
+                <View style={[s.checkinStreakChip, s.checkinStreakChipBest]}>
+                  <Text style={[s.checkinStreakChipTxt, s.checkinStreakChipTxtBest]}>🏅 Best: {data.checkinStreak.best}d</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* ── Savings ── */}
@@ -1337,9 +1377,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   sparklineRow:      { flexDirection: 'row', alignItems: 'flex-end', height: 38, gap: 2 },
   sparklineBar:      { flex: 1, justifyContent: 'flex-end' },
   sparklineBarFill:  { width: '100%', borderRadius: 2 },
-  checkInRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  checkInLabel:      { fontSize: 12, color: c.textBody, fontWeight: '500' },
-  checkInValue:      { fontSize: 12, color: c.primary, fontWeight: '700' },
+  checkInRow:           { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  checkInLabel:         { fontSize: 12, color: c.textBody, fontWeight: '500' },
+  checkInValue:         { fontSize: 12, color: c.primary, fontWeight: '700' },
+  checkinStreakRow:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  checkinStreakChip:     { backgroundColor: c.bgTealDeep, borderRadius: 20, paddingVertical: 5, paddingHorizontal: 12 },
+  checkinStreakChipBest: { backgroundColor: c.bgElement },
+  checkinStreakChipTxt:  { fontSize: 12, fontWeight: '700', color: c.primary },
+  checkinStreakChipTxtBest: { color: c.textMuted },
   chartCaption:      { fontSize: 11, color: c.textDisabled, textAlign: 'center' },
 
   urgeDayWrap:        { gap: 8, backgroundColor: c.bgInput, borderRadius: 12, padding: 12 },

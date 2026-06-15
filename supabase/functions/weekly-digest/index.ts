@@ -145,6 +145,23 @@ function parseWeeklyBet(raw: string | null): number | null {
   return isNaN(num) ? null : num;
 }
 
+function computeCheckinStreak(rows: { created_at: string }[]): number {
+  const unique = [...new Set(rows.map(r => new Date(r.created_at).toISOString().slice(0, 10)))]
+    .sort().reverse();
+  if (unique.length === 0) return 0;
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const yesterStr = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+  if (unique[0] !== todayStr && unique[0] !== yesterStr) return 0;
+  let count = 0;
+  let d = new Date(unique[0] + 'T00:00:00Z');
+  for (const dateStr of unique) {
+    if (dateStr === d.toISOString().slice(0, 10)) { count++; d = new Date(d.getTime() - 86_400_000); }
+    else break;
+  }
+  return count;
+}
+
 function topTrigger(entries: { trigger: string }[]): string | null {
   if (!entries.length) return null;
   const counts: Record<string, number> = {};
@@ -304,6 +321,7 @@ function buildPremiumHtml(p: {
   longestStreak: number; resetCount: number;
   quitTs: string | null; quitDate: string | null;
   elapsed: number;
+  checkinStreak: number;
 }): string {
   const {
     firstName, whyLabel, time,
@@ -311,7 +329,7 @@ function buildPremiumHtml(p: {
     urgesResisted, urgesTotal, lastWeekUrgesTotal, urgesAllTime,
     lastUrgeDate, topTriggerThisWeek,
     totalPaid, totalDebt, thisWeekPayments, firstPaymentDate, currency,
-    weeklyBet, longestStreak, resetCount, quitTs, quitDate, elapsed,
+    weeklyBet, longestStreak, resetCount, quitTs, quitDate, elapsed, checkinStreak,
   } = p;
 
   const mood      = moodLabel(moodAvg);
@@ -535,7 +553,12 @@ function buildPremiumHtml(p: {
         <div style="font-size:12px;color:#5a8a8a;margin-top:3px;">Mood this week${moodAvg !== null ? ` (${moodAvg.toFixed(1)}/5)` : ''}</div>
       </td>
       <td style="${GAP}"></td>
-      ${statCell(String(resetCount), 'resets', resetLabel)}
+      <td width="48%" style="${STAT}">
+        <div style="font-size:26px;font-weight:900;color:#0F6E6E;line-height:1.15;margin-bottom:4px;">${moodCheckins}</div>
+        <div style="font-size:13px;font-weight:700;color:#0F6E6E;">check-in${moodCheckins !== 1 ? 's' : ''}</div>
+        <div style="font-size:12px;color:#5a8a8a;margin-top:3px;">This week</div>
+        ${checkinStreak >= 2 ? `<div style="font-size:12px;font-weight:700;color:#0F6E6E;margin-top:6px;border-top:1px solid #d0eded;padding-top:6px;">&#x1F525; ${checkinStreak}-day streak</div>` : ''}
+      </td>
     </tr>
 
     <!-- Urges row -->
@@ -636,7 +659,7 @@ async function buildEmailForUser(
   }
 
   // Premium-only queries
-  const [moodLastWeekRes, urgeAllTimeRes, thisWeekPayRes, firstPayRes, checkins30dRes, lastUrgeRes, lastWeekUrgesRes] = await Promise.all([
+  const [moodLastWeekRes, urgeAllTimeRes, thisWeekPayRes, firstPayRes, checkins30dRes, lastUrgeRes, lastWeekUrgesRes, checkinDatesRes] = await Promise.all([
     supabase.from('mood_checkins').select('mood').eq('user_id', user.id).gte('created_at', twoWkAgo).lt('created_at', weekAgo),
     supabase.from('urge_journal').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('outcome', 'overcame'),
     supabase.from('debt_payments').select('amount').eq('user_id', user.id).gte('created_at', weekAgo),
@@ -644,6 +667,7 @@ async function buildEmailForUser(
     supabase.from('mood_checkins').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', thirtyAgo),
     supabase.from('urge_journal').select('created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
     supabase.from('urge_journal').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', twoWkAgo).lt('created_at', weekAgo),
+    supabase.from('mood_checkins').select('created_at').eq('user_id', user.id).gte('created_at', new Date(now - 90 * 86_400_000).toISOString()).order('created_at', { ascending: false }),
   ]);
 
   const lastWeekMoods      = (moodLastWeekRes.data ?? []) as { mood: number }[];
@@ -655,6 +679,7 @@ async function buildEmailForUser(
   const checkins30d        = checkins30dRes.count ?? 0;
   const lastUrgeDate       = (lastUrgeRes.data ?? [])[0]?.created_at ?? null;
   const lastWeekUrgesTotal = lastWeekUrgesRes.count ?? 0;
+  const checkinStreak = computeCheckinStreak((checkinDatesRes.data ?? []) as { created_at: string }[]);
 
   return {
     html: buildPremiumHtml({
@@ -664,7 +689,7 @@ async function buildEmailForUser(
       topTriggerThisWeek: topTrigger(urgeWeek),
       totalPaid, totalDebt, thisWeekPayments, firstPaymentDate,
       currency, weeklyBet, longestStreak, resetCount,
-      quitTs: user.quit_timestamp, quitDate: user.quit_date, elapsed,
+      quitTs: user.quit_timestamp, quitDate: user.quit_date, elapsed, checkinStreak,
     }),
     subject: `Your full weekly report — ${time.subjectLabel} clean`,
   };
