@@ -1013,6 +1013,14 @@ export default function HomeScreen() {
     if (newDebtBadges.length > 0) {
       await supabase.from('badges').upsert(newDebtBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       newDebtBadges.forEach(b => earnedBadges.push(b.badge_type));
+      const newlyPaidDebt = debtItems.filter(d => d.earned && !dedupeGuard.has(`debt_${d.id}`)).pop();
+      if (newlyPaidDebt) {
+        setCelebrationBadge({
+          emoji: '🏦', label: `${newlyPaidDebt.name} paid off`,
+          celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
+          msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
+        });
+      }
     }
 
     // Activity badges
@@ -1055,6 +1063,11 @@ export default function HomeScreen() {
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_set' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: 0, category: 'Milestone', note: '📍 Goal Setter badge earned' });
       earnedBadges.push('goal_set');
+      setCelebrationBadge({
+        emoji: '📍', label: 'Goal Setter',
+        celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
+        msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
+      });
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       if (notifStatus === 'granted') {
         await Notifications.scheduleNotificationAsync({
@@ -1072,6 +1085,11 @@ export default function HomeScreen() {
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_reached' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: savingsGoalAmount, category: 'Milestone', note: '🎊 Savings goal reached' });
       earnedBadges.push('goal_reached');
+      setCelebrationBadge({
+        emoji: '🎊', label: 'Goal Met',
+        celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
+        msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
+      });
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       if (notifStatus === 'granted') {
         await Notifications.scheduleNotificationAsync({
@@ -1095,6 +1113,11 @@ export default function HomeScreen() {
       await supabase.from('losses').insert({
         user_id: user.id, type: 'milestone_earned', amount: 0,
         category: 'Milestone', note: '🛡️ Safe Zone — prevention checklist completed',
+      });
+      setCelebrationBadge({
+        emoji: '🛡️', label: 'Safe Zone',
+        celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
+        msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
       });
       const { status } = await Notifications.getPermissionsAsync();
       if (status === 'granted') {
