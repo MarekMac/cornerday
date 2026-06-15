@@ -161,7 +161,7 @@ export default function CommunityFeed() {
   };
 
   const load = useCallback(async (tag: FilterTag, sort: SortBy = 'new', isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    if (!isRefresh) { setLoading(true); reactingRef.current = {}; }
     try {
       if (tag === 'Following') {
         const uid = currentUserIdRef.current;

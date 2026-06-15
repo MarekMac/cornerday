@@ -31,7 +31,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as StoreReview from 'expo-store-review';
 import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { setImagePickerActive } from '@/lib/image-picker-active';
@@ -221,6 +220,8 @@ export default function AccountScreen() {
   const [exportLoading, setExportLoading] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
   const emailCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const linkCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showSpendingModal, setShowSpendingModal] = useState(false);
 
@@ -1629,8 +1630,11 @@ export default function AccountScreen() {
                     onPress={async () => {
                       const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
                       await Clipboard.setStringAsync(url);
+                      setLinkCopied(true);
+                      if (linkCopyTimerRef.current) clearTimeout(linkCopyTimerRef.current);
+                      linkCopyTimerRef.current = setTimeout(() => setLinkCopied(false), 2000);
                     }}>
-                    <Ionicons name="copy-outline" size={16} color={c.textMuted} />
+                    <Ionicons name={linkCopied ? 'checkmark' : 'copy-outline'} size={16} color={linkCopied ? c.primary : c.textMuted} />
                   </Pressable>
                 </View>
               )}
@@ -1763,15 +1767,11 @@ export default function AccountScreen() {
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={async () => {
-              if (await StoreReview.isAvailableAsync()) {
-                await StoreReview.requestReview();
-              } else {
-                const url = Platform.OS === 'ios'
-                  ? 'https://apps.apple.com/app/id6748937702'
-                  : 'market://details?id=com.cornerday.app';
-                Linking.openURL(url);
-              }
+            onPress={() => {
+              const url = Platform.OS === 'ios'
+                ? 'https://apps.apple.com/app/id6748937702'
+                : 'market://details?id=com.cornerday.app';
+              Linking.openURL(url);
             }}>
             <View style={s.menuIconWrap}>
               <Ionicons name="star-outline" size={17} color={c.primary} />

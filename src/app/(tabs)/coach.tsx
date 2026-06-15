@@ -154,6 +154,8 @@ export default function CoachScreen() {
     const isFirstTurn = apiMessages.length === 1;
 
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    const abortController = new AbortController();
+    const streamTimeout = setTimeout(() => abortController.abort(), 30_000);
     try {
       const [{ data: { session } }, checklistRaw] = await Promise.all([
         supabase.auth.getSession(),
@@ -168,6 +170,7 @@ export default function CoachScreen() {
 
       const response = await fetch(`${FUNCTIONS_URL}/ai-coach`, {
         method: 'POST',
+        signal: abortController.signal,
         headers: {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
@@ -232,6 +235,7 @@ export default function CoachScreen() {
         ),
       );
     } finally {
+      clearTimeout(streamTimeout);
       reader?.cancel().catch(() => {});
       setIsStreaming(false);
       // Clear pending flag if the stream ended before any text arrived

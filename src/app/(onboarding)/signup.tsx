@@ -139,9 +139,9 @@ export default function SignupScreen() {
       }
       const { data: profile } = await supabase
         .from('users')
-        .select('motivation')
+        .select('id')
         .maybeSingle();
-      if (profile?.motivation) {
+      if (profile !== null) {
         router.replace('/(tabs)');
       } else {
         router.push('/(onboarding)/q1');
@@ -163,9 +163,9 @@ export default function SignupScreen() {
           }
           const { data: profile } = await supabase
             .from('users')
-            .select('motivation')
+            .select('id')
             .maybeSingle();
-          if (profile?.motivation) {
+          if (profile !== null) {
             router.replace('/(tabs)');
           } else {
             router.push('/(onboarding)/q1');

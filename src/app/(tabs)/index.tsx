@@ -842,6 +842,7 @@ export default function HomeScreen() {
   const { isPremium } = usePurchases();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [moodSubmitting, setMoodSubmitting] = useState(false);
   const [relapseLoading, setRelapseLoading] = useState(false);
@@ -1210,6 +1211,8 @@ export default function HomeScreen() {
         });
       })(),
     });
+    } catch {
+      setLoadError(true);
     } finally {
       fetchingRef.current = false;
     }
@@ -1479,7 +1482,24 @@ export default function HomeScreen() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <View style={[s.loadingContainer, { gap: 16 }]}>
+        {loadError ? (
+          <>
+            <Text style={{ fontSize: 15, color: c.textBody, textAlign: 'center' }}>
+              Couldn't load your data. Check your connection.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [{ backgroundColor: c.primary, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12 }, pressed && { opacity: 0.8 }]}
+              onPress={() => { setLoadError(false); setLoading(true); fetchData().finally(() => setLoading(false)); }}>
+              <Text style={{ color: c.white, fontWeight: '700', fontSize: 15 }}>Try again</Text>
+            </Pressable>
+          </>
+        ) : null}
+      </View>
+    );
+  }
 
   const { next, remainingMs, progress } = getMilestone(streakMs);
   const motivations = (data.motivation ?? '').split(',').filter(Boolean).map(
@@ -1836,6 +1856,15 @@ export default function HomeScreen() {
               );
             })}
           </View>
+          {(() => {
+            const logged = data.weekMoods.filter(d => d.mood !== null);
+            if (logged.length < 2) return null;
+            const avg = logged.reduce((s, d) => s + d.mood!, 0) / logged.length;
+            const avgEmoji = MOODS[Math.round(avg) - 1];
+            return (
+              <Text style={s.moodAvgTxt}>This week: {avgEmoji} avg mood</Text>
+            );
+          })()}
         </View>
 
 
@@ -2047,6 +2076,11 @@ export default function HomeScreen() {
             <Text style={s.confirmBody}>
               This will start your streak from today.{'\n'}It's okay — every restart is still progress.
             </Text>
+            <Pressable
+              style={s.confirmSupportBtn}
+              onPress={() => { setRelapseConfirmVisible(false); router.push('/(tabs)/urge' as any); }}>
+              <Text style={s.confirmSupportTxt}>Get urge support first</Text>
+            </Pressable>
             <View style={s.confirmActions}>
               <Pressable style={s.confirmCancel} onPress={() => setRelapseConfirmVisible(false)}>
                 <Text style={s.confirmCancelTxt}>Cancel</Text>
@@ -2506,6 +2540,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   moodEditBtnTxt: { fontSize: 12, color: c.primary, fontWeight: '700' },
   moodDoneWrap: { gap: 6 },
   moodStreakTxt: { fontSize: 12, color: c.primary, fontWeight: '600', opacity: 0.85 },
+  moodAvgTxt: { fontSize: 12, color: c.textFaint, textAlign: 'center', marginTop: 10 },
   moodBtnSelected: { backgroundColor: c.bgTeal, borderRadius: 8 },
   moodInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   moodInputInline: {
@@ -2685,7 +2720,9 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
   confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
-  confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  confirmSupportBtn: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgTeal, marginTop: 16 },
+  confirmSupportTxt: { fontSize: 15, fontWeight: '700', color: c.primary },
+  confirmActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
   confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
   confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
   confirmReset: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },

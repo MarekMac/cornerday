@@ -37,7 +37,7 @@ const TIMER_TOTAL = 20 * 60;
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
+import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
@@ -205,6 +205,7 @@ export default function UrgeScreen() {
   const [loading, setLoading] = useState(true);
   const [recoveryPlan, setRecoveryPlan] = useState<{ distractions: string[]; mantra: string | null }>({ distractions: [], mantra: null });
   const [checkedPlanItems, setCheckedPlanItems] = useState<string[]>([]);
+  const [checklistCount, setChecklistCount] = useState(0);
 
   // Inline log (replaces modal)
   const [logExpanded, setLogExpanded] = useState(false);
@@ -285,6 +286,14 @@ export default function UrgeScreen() {
   useFocusEffect(useCallback(() => {
     fetchMotivation();
     setCheckedPlanItems([]);
+    AsyncStorage.getItem(CHECKLIST_KEY).then(raw => {
+      try {
+        const data = raw ? JSON.parse(raw) : {};
+        setChecklistCount(Object.values(data).filter(Boolean).length);
+      } catch {
+        setChecklistCount(0);
+      }
+    });
   }, [fetchMotivation]));
 
   const awardTimerPoint = async () => {
@@ -574,7 +583,43 @@ export default function UrgeScreen() {
           <View style={s.iconSeparator} />
           </View>
 
-          {/* Recovery plan — only while timer is active */}
+          {/* Checklist progress button */}
+          <Pressable
+            style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.8 }]}
+            onPress={() => router.push('/(tabs)/urge/checklist' as any)}>
+            <Text style={s.checklistBtnIcon}>✅</Text>
+            <View style={s.checklistBtnText}>
+              <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
+              <Text style={s.checklistBtnSub}>
+                {checklistCount >= CHECKLIST_TOTAL
+                  ? 'All habits set up — you\'re prepared!'
+                  : `${checklistCount}/${CHECKLIST_TOTAL} prevention habits set up`}
+              </Text>
+            </View>
+            <Text style={s.checklistBtnChevron}>›</Text>
+          </Pressable>
+
+          {/* Recovery plan — always visible as compact card; interactive when timer is active */}
+          {!timerRunning && (recoveryPlan.distractions.length > 0 || recoveryPlan.mantra) && (
+            <View style={[s.planCard, { opacity: 0.85 }]}>
+              <Text style={s.planCardTitle}>Your distraction plan</Text>
+              {!!recoveryPlan.mantra && (
+                <View style={s.planMantraBox}>
+                  <Text style={s.planMantraTxt}>"{recoveryPlan.mantra}"</Text>
+                </View>
+              )}
+              {recoveryPlan.distractions.length > 0 && (
+                <Text style={{ fontSize: 12, color: c.textMuted, marginTop: 6 }}>
+                  {recoveryPlan.distractions.slice(0, 4).map(key =>
+                    PLAN_DISTRACTION_OPTIONS.find(o => o.key === key)?.emoji ?? ''
+                  ).join('  ')}
+                  {recoveryPlan.distractions.length > 4 ? ` +${recoveryPlan.distractions.length - 4} more` : ''}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* Recovery plan — interactive only while timer is active */}
           {timerRunning && (recoveryPlan.distractions.length > 0 || recoveryPlan.mantra) && (
             <View style={s.planCard}>
               <Text style={s.planCardTitle}>Your distraction plan</Text>
