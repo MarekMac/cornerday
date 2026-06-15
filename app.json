@@ -51,7 +51,13 @@
       "@react-native-community/datetimepicker",
       "expo-sharing",
       "expo-image",
-      "expo-contacts"
+      "expo-contacts",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-5720390815287437~4576547556"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

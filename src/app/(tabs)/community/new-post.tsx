@@ -18,6 +18,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COMMUNITY_TAGS, CommunityTag, TAG_COLORS } from '@/constants/community';
 import { supabase } from '@/lib/supabase';
+import { showInterstitialIfReady } from '@/lib/ads';
+import { usePurchases } from '@/context/purchases';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
@@ -28,6 +30,7 @@ export default function NewPost() {
   const s = useMemo(() => makeStyles(c), [c]);
   const params = useLocalSearchParams<{ initialContent?: string; initialTag?: string }>();
 
+  const { isPremium } = usePurchases();
   const [content, setContent] = useState('');
   const [tag, setTag] = useState<CommunityTag | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -91,6 +94,7 @@ export default function NewPost() {
     });
     setSubmitting(false);
     if (error) { Alert.alert('Error', 'Could not post. Please try again.'); return; }
+    showInterstitialIfReady(isPremium);
     router.back();
   };
 

@@ -1,4 +1,6 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { showInterstitialIfReady } from '@/lib/ads';
+import { usePurchases } from '@/context/purchases';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -156,6 +158,8 @@ export default function TrackerIndex() {
   const [savingAmount, setSavingAmount] = useState('');
   const [savingNote, setSavingNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const { isPremium } = usePurchases();
 
   // Quick pay modal
   const [quickPayDebt, setQuickPayDebt] = useState<Debt | null>(null);
@@ -551,6 +555,7 @@ export default function TrackerIndex() {
           Alert.alert('Could not save payment', payError.message);
           return;
         }
+        showInterstitialIfReady(isPremium);
         if (isPayingOff) {
           const { status: notifStatus } = await Notifications.getPermissionsAsync();
           if (notifStatus === 'granted') {

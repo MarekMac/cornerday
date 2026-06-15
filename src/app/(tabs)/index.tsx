@@ -32,6 +32,8 @@ import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNotification } from '@/lib/notifications';
 import { notifySupporter } from '@/lib/notifySupporter';
+import { showInterstitialIfReady } from '@/lib/ads';
+import { usePurchases } from '@/context/purchases';
 import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -836,6 +838,7 @@ export default function HomeScreen() {
     progressFill:    '#0F6E6E',
   };
   const { avatarUrl } = useUser();
+  const { isPremium } = usePurchases();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1366,6 +1369,7 @@ export default function HomeScreen() {
       } else {
         const { data: inserted } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
         setData(prev => prev ? { ...prev, todayMoodId: inserted?.id ?? null } : prev);
+        showInterstitialIfReady(isPremium);
       }
       const todayKey = new Date().toLocaleDateString();
       setData(prev => {

@@ -28,6 +28,7 @@ import { Session } from '@supabase/supabase-js';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import MobileAds from 'react-native-google-mobile-ads';
 import { UserProvider } from '@/context/user';
 import { PurchasesProvider } from '@/context/purchases';
 import { AppThemeProvider, useAppTheme } from '@/context/theme';
@@ -58,6 +59,10 @@ function InnerLayout() {
   useEffect(() => {
     if (locked) authenticate();
   }, [locked, authenticate]);
+
+  useEffect(() => {
+    MobileAds().initialize().catch(() => {});
+  }, []);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state: AppStateStatus) => {
