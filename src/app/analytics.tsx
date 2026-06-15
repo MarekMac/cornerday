@@ -411,7 +411,7 @@ export default function AnalyticsScreen() {
       currency, quitDate,
       longestStreak: streakRes.data?.longest_streak ?? 0,
       currentStreakDays, totalSavings,
-      savingsGoal: goalRaw ? Number(goalRaw) : null,
+      savingsGoal: (() => { const n = goalRaw ? Number(goalRaw) : null; return n !== null && !isNaN(n) ? n : null; })(),
       savingsGoalFor: goalForRaw ?? '',
       savingsGoalIcon: goalIconRaw ?? '🎯',
       totalDebts, totalDebtPaid, debtsWithPacing,

@@ -24,12 +24,6 @@ const MILESTONES: Milestone[] = [
   { pct: 100, badge: 'recovery_100pct', emoji: '&#x1F48E;', heading: 'Debt cleared.',           message: 'You paid it all back. Every single amount. That\'s not just financial recovery — that\'s a complete transformation.' },
 ];
 
-function jwtRole(h: string): string | null {
-  try {
-    const t = h.startsWith('Bearer ') ? h.slice(7) : h;
-    return JSON.parse(atob(t.split('.')[1])).role ?? null;
-  } catch { return null; }
-}
 
 function fmtAmount(amount: number): string {
   return Math.round(amount).toLocaleString('en');
@@ -116,7 +110,7 @@ function buildHtml(firstName: string, m: Milestone, totalPaid: number, totalLost
 
 Deno.serve(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
-  if (jwtRole(auth) !== 'service_role') {
+  if (auth !== `Bearer ${SERVICE_ROLE_KEY}`) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 

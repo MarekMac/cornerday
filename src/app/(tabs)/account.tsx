@@ -476,7 +476,7 @@ export default function AccountScreen() {
       AsyncStorage.getItem(NOTIF_STREAK_HOUR_KEY),
       AsyncStorage.getItem(NOTIF_CHECKIN_HOUR_KEY),
     ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour]) => {
-      if (rawGoal) setSavingsGoal(Number(rawGoal));
+      if (rawGoal) { const n = Number(rawGoal); if (!isNaN(n)) setSavingsGoal(n); }
       if (rawFor) setSavingsGoalFor(rawFor);
       if (rawIcon) setSavingsGoalIcon(rawIcon);
       if (rawContact) {
@@ -486,8 +486,8 @@ export default function AccountScreen() {
           setTrustedContactPhone(contact.phone ?? '');
         } catch { /* corrupted storage — ignore */ }
       }
-      if (rawStreakHour) setNotifStreakHour(Number(rawStreakHour));
-      if (rawCheckinHour) setNotifCheckinHour(Number(rawCheckinHour));
+      if (rawStreakHour) { const n = Number(rawStreakHour); if (!isNaN(n)) setNotifStreakHour(n); }
+      if (rawCheckinHour) { const n = Number(rawCheckinHour); if (!isNaN(n)) setNotifCheckinHour(n); }
     });
     return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
   }, [fetchProfile, loadPartnerLink]);
@@ -871,7 +871,7 @@ export default function AccountScreen() {
       await Promise.all([
         supabase.from('streaks').update({ streak_start_date: dateOnly, current_streak: 0 }).eq('user_id', user.id),
         supabase.from('badges').delete().eq('user_id', user.id),
-        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
+        AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]),
       ]);
       await supabase.from('losses').insert({
         user_id: user.id, type: 'quit_date_changed', amount: 0,

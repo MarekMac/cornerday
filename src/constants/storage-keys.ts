@@ -3,7 +3,7 @@ export const ONBOARDING_STEP_KEY = 'cornerday_onboarding_step';
 export const ONBOARDING_DATA_KEY = 'cornerday_onboarding_data';
 export const SEEN_WELCOME_KEY = 'cornerday_seen_welcome';
 export const CHECKLIST_KEY = 'cornerday_prevention_checklist';
-export const CHECKLIST_TOTAL = 13;
+export { CHECKLIST_TOTAL } from './checklist-data';
 export const CHECKLIST_BADGE_SENT_KEY = 'cornerday_checklist_badge_sent';
 export const GOAL_SET_BADGE_SENT_KEY = 'cornerday_goal_set_badge_sent';
 export const GOAL_REACHED_BADGE_SENT_KEY = 'cornerday_goal_reached_badge_sent';

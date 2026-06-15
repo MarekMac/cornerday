@@ -101,11 +101,9 @@ Deno.serve(async (req: Request) => {
   // Test mode: service role key + test_user_id bypasses user JWT requirement
   let userId: string | null = null;
   if (body.test_user_id) {
-    // Verify caller has service role
-    try {
-      const payload = JSON.parse(atob(authHeader.replace('Bearer ', '').split('.')[1]));
-      if (payload.role !== 'service_role') throw new Error('not service role');
-    } catch {
+    // Verify caller holds the actual service role key (full token comparison, not payload decoding)
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    if (!serviceRoleKey || authHeader !== `Bearer ${serviceRoleKey}`) {
       return new Response(JSON.stringify({ error: 'unauthorized' }), {
         status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
       });

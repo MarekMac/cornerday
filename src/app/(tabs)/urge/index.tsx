@@ -37,7 +37,7 @@ const PICKER_TILE_W = Math.floor((SCREEN_W - 88 - 10) / 2);
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL } from '@/constants/storage-keys';
+import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
@@ -474,7 +474,7 @@ export default function UrgeScreen() {
         supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
         supabase.from('badges').delete().eq('user_id', user.id),
-        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
+        AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]),
       ]);
       notifySupporter('relapse');
 

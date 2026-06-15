@@ -34,7 +34,7 @@ import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNo
 import { notifySupporter } from '@/lib/notifySupporter';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
@@ -1078,9 +1078,9 @@ export default function HomeScreen() {
     const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
     if (savingsGoalAmount && !goalSetBadgeSent) {
-      await AsyncStorage.setItem(GOAL_SET_BADGE_SENT_KEY, '1');
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_set' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: 0, category: 'Milestone', note: '📍 Goal Setter badge earned' });
+      await AsyncStorage.setItem(GOAL_SET_BADGE_SENT_KEY, '1');
       earnedBadges.push('goal_set');
       setCelebrationBadge({
         emoji: '📍', label: 'Goal Setter',
@@ -1100,9 +1100,9 @@ export default function HomeScreen() {
       }
     }
     if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !goalReachedBadgeSent) {
-      await AsyncStorage.setItem(GOAL_REACHED_BADGE_SENT_KEY, '1');
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_reached' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: savingsGoalAmount, category: 'Milestone', note: '🎊 Savings goal reached' });
+      await AsyncStorage.setItem(GOAL_REACHED_BADGE_SENT_KEY, '1');
       earnedBadges.push('goal_reached');
       setCelebrationBadge({
         emoji: '🎊', label: 'Goal Met',
@@ -1128,11 +1128,11 @@ export default function HomeScreen() {
     const checklistChecked = Object.values(checklistData).filter(Boolean).length;
     const checklistCompleted = checklistChecked >= CHECKLIST_TOTAL;
     if (checklistCompleted && !checklistBadgeSent) {
-      await AsyncStorage.setItem(CHECKLIST_BADGE_SENT_KEY, '1');
       await supabase.from('losses').insert({
         user_id: user.id, type: 'milestone_earned', amount: 0,
         category: 'Milestone', note: '🛡️ Safe Zone — prevention checklist completed',
       });
+      await AsyncStorage.setItem(CHECKLIST_BADGE_SENT_KEY, '1');
       setCelebrationBadge({
         emoji: '🛡️', label: 'Safe Zone',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
@@ -1393,7 +1393,7 @@ export default function HomeScreen() {
         setData(prev => prev ? { ...prev, todayMoodId: inserted?.id ?? null } : prev);
         showInterstitialIfReady(isPremium);
       }
-      const todayKey = new Date().toLocaleDateString();
+      const todayKey = todayStr();
       setData(prev => {
         if (!prev) return prev;
         const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood, note: noteVal } : d);
@@ -1415,7 +1415,7 @@ export default function HomeScreen() {
       setMoodSubmitting(false);
       return;
     }
-    const todayKey = new Date().toLocaleDateString();
+    const todayKey = todayStr();
     setData(prev => {
       if (!prev) return prev;
       const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood: null, note: null } : d);
@@ -1452,8 +1452,8 @@ export default function HomeScreen() {
           Alert.alert('Could not reset streak', dbError.message);
           return;
         }
-        // Clear AsyncStorage badge flags so goal/checklist badges can be re-earned after a relapse
-        await AsyncStorage.multiRemove([CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]);
+        // Clear AsyncStorage badge/notification flags so everything resets cleanly after a relapse
+        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]);
         // Reschedule notifications against the new quit timestamp
         const { data: prefsRow } = await supabase
           .from('users')

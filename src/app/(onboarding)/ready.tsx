@@ -7,7 +7,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Line, Path, Polygon, Polyline } from 'react-native-svg';
 
-import { ONBOARDED_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY } from '@/constants/storage-keys';
 import { AppColors } from '@/constants/theme';
 import { useOnboarding } from '@/context/onboarding';
 import { useAppTheme } from '@/context/theme';
@@ -163,7 +163,7 @@ export default function ReadyScreen() {
 
       if (wantsNotifs === true) await requestNotificationPermissions();
       clearProgress();
-      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, CHECKLIST_KEY]);
+      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY]);
       await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
       router.replace('/(tabs)');
     } catch {

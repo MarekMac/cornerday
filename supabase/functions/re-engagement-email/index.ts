@@ -8,12 +8,6 @@ const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@corn
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
 
-function jwtRole(h: string): string | null {
-  try {
-    const t = h.startsWith('Bearer ') ? h.slice(7) : h;
-    return JSON.parse(atob(t.split('.')[1])).role ?? null;
-  } catch { return null; }
-}
 
 function motivationLabel(key: string | null): string {
   const map: Record<string, string> = {
@@ -85,7 +79,7 @@ function buildHtml(firstName: string, whyLabel: string, streak: number): string 
 
 Deno.serve(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
-  if (jwtRole(auth) !== 'service_role') {
+  if (auth !== `Bearer ${SERVICE_ROLE_KEY}`) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 

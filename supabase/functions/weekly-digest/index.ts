@@ -8,12 +8,6 @@ const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@corn
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
 
-function jwtRole(authHeader: string): string | null {
-  try {
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-    return JSON.parse(atob(token.split('.')[1])).role ?? null;
-  } catch { return null; }
-}
 
 interface UserRow {
   id: string;
@@ -678,7 +672,7 @@ async function buildEmailForUser(
 
 Deno.serve(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
-  if (jwtRole(auth) !== 'service_role') {
+  if (auth !== `Bearer ${SERVICE_ROLE_KEY}`) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 

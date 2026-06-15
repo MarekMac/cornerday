@@ -223,7 +223,8 @@ export default function TrackerIndex() {
       setDebtTargetDate(profileRes.data.debt_target_date ? new Date(profileRes.data.debt_target_date) : null);
       setSavingsTargetDate(profileRes.data.savings_target_date ? new Date(profileRes.data.savings_target_date) : null);
     }
-    setSavingsGoal(rawGoal ? Number(rawGoal) : null);
+    const _rawGoalN = rawGoal ? Number(rawGoal) : null;
+    setSavingsGoal(_rawGoalN !== null && !isNaN(_rawGoalN) ? _rawGoalN : null);
     setSavingsGoalFor(rawFor ?? '');
     setSavingsGoalIcon(rawIcon ?? '🎯');
   }, []);
