@@ -19,6 +19,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { avatarColor, REACTION_EMOJIS, streakBadge, TAG_COLORS, timeAgo } from '@/constants/community';
 import { supabase } from '@/lib/supabase';
+import { showInterstitialIfReady } from '@/lib/ads';
+import { usePurchases } from '@/context/purchases';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
@@ -50,6 +52,7 @@ type ActionTarget = { kind: 'post'; id: string } | { kind: 'comment'; id: string
 export default function PostDetail() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
+  const { isPremium } = usePurchases();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -496,7 +499,7 @@ export default function PostDetail() {
       <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
-            <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
+            <Pressable onPress={() => { showInterstitialIfReady(isPremium); router.back(); }} style={s.backBtn} hitSlop={8}>
               <Ionicons name="arrow-back" size={22} color={c.white} />
             </Pressable>
             <Text style={s.headerTitle}>Story</Text>
