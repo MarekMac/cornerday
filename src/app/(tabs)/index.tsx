@@ -2394,7 +2394,7 @@ export default function HomeScreen() {
             setCelebrationBadge(null);
             openShareCard({ emoji: b.emoji, label: b.label });
           }}
-          onClose={() => setCelebrationBadge(null)}
+          onClose={() => { showInterstitialIfReady(isPremium, 0.4); setCelebrationBadge(null); }}
         />
       )}
 

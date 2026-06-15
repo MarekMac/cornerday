@@ -26,10 +26,11 @@ function preload() {
 
 preload();
 
-export function showInterstitialIfReady(isPremium: boolean): void {
+export function showInterstitialIfReady(isPremium: boolean, probability = 1): void {
   if (isPremium) return;
   if (!loaded) return;
   if (Date.now() - lastShown < MIN_INTERVAL_MS) return;
+  if (Math.random() > probability) return;
   lastShown = Date.now();
   loaded = false;
   ad.show().catch(() => {});

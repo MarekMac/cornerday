@@ -24,6 +24,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { setImagePickerActive } from '@/lib/image-picker-active';
+import { showInterstitialIfReady } from '@/lib/ads';
+import { usePurchases } from '@/context/purchases';
 import { type GameKey, GAMES, renderGame } from '@/lib/games';
 import { GAME_SCORE_FMT, useGameBests } from '@/lib/useGameBests';
 import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
@@ -223,6 +225,7 @@ export default function UrgeScreen() {
   const [slipReset, setSlipReset] = useState(false);
 
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
+  const { isPremium } = usePurchases();
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const { personalBests, globalBests, handleScore } = useGameBests();
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
@@ -1008,7 +1011,7 @@ export default function UrgeScreen() {
                   )}
                 </View>
               </View>
-              <Pressable style={s.gameCloseBtn} onPress={() => setActiveGame(null)}>
+              <Pressable style={s.gameCloseBtn} onPress={() => { showInterstitialIfReady(isPremium, 0.4); setActiveGame(null); }}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
               </Pressable>
             </View>
@@ -1031,7 +1034,7 @@ export default function UrgeScreen() {
                 <Text style={{ fontSize: 20 }}>{EXERCISES.find(e => e.key === activeExercise)?.emoji}</Text>
                 <Text style={s.gameOverlayTitle}>{EXERCISES.find(e => e.key === activeExercise)?.title}</Text>
               </View>
-              <Pressable style={s.gameCloseBtn} onPress={() => setActiveExercise(null)}>
+              <Pressable style={s.gameCloseBtn} onPress={() => { showInterstitialIfReady(isPremium, 0.4); setActiveExercise(null); }}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
               </Pressable>
             </View>
