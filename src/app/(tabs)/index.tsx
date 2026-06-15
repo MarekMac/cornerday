@@ -1904,8 +1904,8 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Badge detail modal */}
-      <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => setSelectedBadge(null)}>
-        <Pressable style={s.modalOverlay} onPress={() => setSelectedBadge(null)}>
+      <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => { showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
+        <Pressable style={s.modalOverlay} onPress={() => { showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {selectedBadge && (() => {
               const earned = data.earnedBadges.includes(selectedBadge.type);

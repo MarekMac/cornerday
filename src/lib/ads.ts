@@ -26,7 +26,7 @@ function preload() {
 
 preload();
 
-export function showInterstitialIfReady(isPremium: boolean, probability = 1): void {
+export function showInterstitialIfReady(isPremium: boolean, probability = 0.4): void {
   if (isPremium) return;
   if (!loaded) return;
   if (Date.now() - lastShown < MIN_INTERVAL_MS) return;
