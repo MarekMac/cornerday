@@ -932,6 +932,8 @@ export default function HomeScreen() {
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
     ]);
 
+    if (profileRes.error) throw profileRes.error;
+
     const profile = profileRes.data;
     const badgeRows = badgesRes.data ?? [];
     const earnedBadges = badgeRows.map(b => b.badge_type);
@@ -1070,7 +1072,8 @@ export default function HomeScreen() {
       AsyncStorage.getItem(GOAL_SET_BADGE_SENT_KEY),
       AsyncStorage.getItem(GOAL_REACHED_BADGE_SENT_KEY),
     ]);
-    const savingsGoalAmount = savingsGoalRaw ? Number(savingsGoalRaw) : null;
+    const _rawGoal = savingsGoalRaw ? Number(savingsGoalRaw) : null;
+    const savingsGoalAmount = _rawGoal !== null && !isNaN(_rawGoal) ? _rawGoal : null;
     const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
     if (savingsGoalAmount && !goalSetBadgeSent) {
@@ -1196,18 +1199,19 @@ export default function HomeScreen() {
       todayMoodNote: moodRes.data?.note ?? null,
       todayMoodId: moodRes.data?.id ?? null,
       weekMoods: (() => {
+        const isoDay = (d: Date) =>
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const rows = weekMoodRes.data ?? [];
         const byDate: Record<string, { mood: number; note: string | null }> = {};
         rows.forEach(r => {
           const rd = new Date(r.created_at);
-          const key = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate()).toLocaleDateString();
-          byDate[key] = { mood: r.mood, note: r.note ?? null };
+          byDate[isoDay(rd)] = { mood: r.mood, note: r.note ?? null };
         });
         const today = new Date();
         return Array.from({ length: 7 }, (_, i) => {
           const d = new Date(today);
           d.setDate(today.getDate() - (6 - i));
-          const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toLocaleDateString();
+          const key = isoDay(d);
           return { date: key, mood: byDate[key]?.mood ?? null, note: byDate[key]?.note ?? null };
         });
       })(),

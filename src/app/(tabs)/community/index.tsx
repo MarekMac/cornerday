@@ -151,6 +151,7 @@ export default function CommunityFeed() {
     const countMap: Record<string, Record<string, number>> = {};
 
     for (const r of (data ?? []) as { post_id: string; emoji: string; user_id: string }[]) {
+      if (!r.post_id || !r.emoji) continue;
       if (uid && r.user_id === uid) userMap[r.post_id] = r.emoji;
       if (!countMap[r.post_id]) countMap[r.post_id] = {};
       countMap[r.post_id][r.emoji] = (countMap[r.post_id][r.emoji] ?? 0) + 1;

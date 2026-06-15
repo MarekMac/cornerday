@@ -106,11 +106,16 @@ export default function SignupScreen() {
           return;
         }
 
-        const { data: profile } = await supabase
+        const { data: profile, error: profileErr } = await supabase
           .from('users')
           .select('id')
           .maybeSingle();
 
+        if (profileErr) {
+          setError('Sign-in succeeded but we could not load your profile. Please try again.');
+          setGoogleLoading(false);
+          return;
+        }
         if (profile !== null) {
           router.replace('/(tabs)');
         } else {
@@ -137,10 +142,15 @@ export default function SignupScreen() {
         setLoading(false);
         return;
       }
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from('users')
         .select('id')
         .maybeSingle();
+      if (profileErr) {
+        setError('Sign-in succeeded but we could not load your profile. Please try again.');
+        setLoading(false);
+        return;
+      }
       if (profile !== null) {
         router.replace('/(tabs)');
       } else {
@@ -161,10 +171,15 @@ export default function SignupScreen() {
             setLoading(false);
             return;
           }
-          const { data: profile } = await supabase
+          const { data: profile, error: profileErr } = await supabase
             .from('users')
             .select('id')
             .maybeSingle();
+          if (profileErr) {
+            setError('Sign-in succeeded but we could not load your profile. Please try again.');
+            setLoading(false);
+            return;
+          }
           if (profile !== null) {
             router.replace('/(tabs)');
           } else {

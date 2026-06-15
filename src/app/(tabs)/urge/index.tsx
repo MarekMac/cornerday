@@ -251,7 +251,7 @@ export default function UrgeScreen() {
   // Award a point when the timer completes
   useEffect(() => {
     if (timerDone && !timerPointsEarned) {
-      awardTimerPoint();
+      awardTimerPoint(timerTotal);
     }
   }, [timerDone]);
 
@@ -270,8 +270,9 @@ export default function UrgeScreen() {
     // Refresh from network in the background; update cache on success
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !isMounted.current) return;
       const { data } = await supabase.from('users').select('motivation, recovery_distractions, recovery_mantra').eq('id', user.id).maybeSingle();
+      if (!isMounted.current) return;
       if (data?.motivation != null) {
         setMotivation(data.motivation);
         await AsyncStorage.setItem(MOTIVATION_CACHE_KEY, data.motivation);
@@ -288,6 +289,7 @@ export default function UrgeScreen() {
           .select('created_at')
           .eq('user_id', user.id)
           .gte('created_at', ninetyDaysAgo);
+        if (!isMounted.current) return;
         if ((urgeRows?.length ?? 0) >= 5) {
           const dayCount = [0,0,0,0,0,0,0];
           const todCount = [0,0,0,0];
@@ -329,12 +331,13 @@ export default function UrgeScreen() {
     });
   }, [fetchMotivation]));
 
-  const awardTimerPoint = async () => {
+  const awardTimerPoint = async (totalSecs: number) => {
     setTimerPointsEarned(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const today = new Date().toISOString().split('T')[0];
-    const key = `urge_timer_${today}`;
+    const now = new Date();
+    const localDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const key = `urge_timer_${localDay}`;
     const already = await AsyncStorage.getItem(key);
     if (already) return;
     await AsyncStorage.setItem(key, '1');
@@ -342,7 +345,7 @@ export default function UrgeScreen() {
       user_id: user.id,
       trigger: 'timer_completed',
       outcome: 'overcame',
-      note: 'Completed 20-minute urge timer',
+      note: `Completed ${Math.round(totalSecs / 60)}-minute urge timer`,
     });
   };
 
@@ -386,6 +389,7 @@ export default function UrgeScreen() {
     }
     setSaving(false);
     setSaved(true);
+    if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
     closeLogTimeoutRef.current = setTimeout(() => { if (isMounted.current) closeLog(); }, 1500);
   };
 

@@ -135,6 +135,7 @@ export default function CoachScreen() {
 
   const sendText = useCallback(async (text: string) => {
     if (!text || isStreaming) return;
+    if (!hasAccess) { showPaywall(); return; }
 
     // Build the API message history before mutating state
     const apiMessages = messages

@@ -197,6 +197,7 @@ export async function scheduleAllNotifications(
       try { parsed = JSON.parse(saved); } catch {}
       if (!parsed || typeof parsed.hour !== 'number' || typeof parsed.minute !== 'number') {
         await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY);
+        await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
         return;
       }
       const { hour, minute } = parsed;

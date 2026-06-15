@@ -587,15 +587,17 @@ export default function TrackerIndex() {
   const sortedDebts = [...debts].sort((a, b) => {
     const paidA = paidByDebt[a.id] ?? 0;
     const paidB = paidByDebt[b.id] ?? 0;
-    const remA = Math.max(0, Number(a.total_amount) - paidA);
-    const remB = Math.max(0, Number(b.total_amount) - paidB);
+    const totalA = Number(a.total_amount) || 0;
+    const totalB = Number(b.total_amount) || 0;
+    const remA = Math.max(0, totalA - paidA);
+    const remB = Math.max(0, totalB - paidB);
     const doneA = remA === 0 && paidA > 0;
     const doneB = remB === 0 && paidB > 0;
     if (doneA !== doneB) return doneA ? 1 : -1;
     if (debtSort === 'default') return remB - remA;
     if (debtSort === 'progress') {
-      const pctA = Number(a.total_amount) > 0 ? paidA / Number(a.total_amount) : 0;
-      const pctB = Number(b.total_amount) > 0 ? paidB / Number(b.total_amount) : 0;
+      const pctA = totalA > 0 ? paidA / totalA : 0;
+      const pctB = totalB > 0 ? paidB / totalB : 0;
       return pctB - pctA;
     }
     if (debtSort === 'due') {
