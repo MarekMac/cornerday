@@ -1217,10 +1217,7 @@ export default function HomeScreen() {
       const uri = await captureRef(shareCardRef, { format: 'png', quality: 1, result: 'tmpfile' });
       await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your streak' });
     } catch {
-      const label = streakDays >= 1
-        ? `${streakDays} day${streakDays !== 1 ? 's' : ''}`
-        : `${streakValue} ${streakUnit}`;
-      await Share.share({ message: `${label} free from gambling! 💪\n\nThe day you turn it around starts today. #CornerDay` });
+      await Share.share({ message: `${formatStreakFull(streakMs)} free from gambling! 💪\n\nThe day you turn it around starts today. #CornerDay` });
     } finally {
       setCapturingShare(false);
     }
@@ -1228,8 +1225,7 @@ export default function HomeScreen() {
 
   const postToCommunity = () => {
     if (!selectedBadge) return;
-    const label = streakDays >= 1 ? `${streakDays} day${streakDays !== 1 ? 's' : ''}` : `${streakValue} ${streakUnit}`;
-    const content = `Just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji} ${label} free from gambling and counting. 💪`;
+    const content = `Just hit my ${selectedBadge.label} milestone! ${selectedBadge.emoji} ${formatStreakFull(streakMs)} free from gambling and counting. 💪`;
     setSelectedBadge(null);
     router.push({ pathname: '/(tabs)/community/new-post', params: { initialContent: content, initialTag: '#Milestone' } } as any);
   };
@@ -2169,10 +2165,7 @@ export default function HomeScreen() {
                   </View>
                 ) : (
                   <View style={s.shareCardCenter}>
-                    <Text style={[s.shareCardNum, { color: cc.bigText }]}>{streakDays >= 1 ? streakDays : streakValue}</Text>
-                    <Text style={[s.shareCardUnit, { color: cc.unit }]}>
-                      {streakDays >= 1 ? (streakDays === 1 ? 'DAY' : 'DAYS') : streakUnit.toUpperCase()}
-                    </Text>
+                    <Text style={[s.shareCardStreakLabel, { color: cc.bigText }]}>{formatStreakFull(streakMs)}</Text>
                     <Text style={[s.shareCardSub, { color: cc.sub }]}>free from gambling</Text>
                     {shareCardBadge && (
                       <View style={[s.shareCardPill, { backgroundColor: cc.pillBg }]}>
@@ -2190,9 +2183,9 @@ export default function HomeScreen() {
 
                 <View style={[s.shareCardDivider, { backgroundColor: cc.divider }]} />
 
-                {!shareCardLocked && !shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakDays > 0 && (
+                {!shareCardLocked && !shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakMs > 0 && (
                   <Text style={[s.shareCardStat, { color: cc.stat }]}>
-                    💰 {fmt(weeklyToDaily(data.weeklyBet) * streakDays, data.currency)} not spent
+                    💰 {fmt(weeklyToDaily(data.weeklyBet) * (streakMs / 86400000), data.currency)} not spent
                   </Text>
                 )}
 
@@ -2235,7 +2228,7 @@ export default function HomeScreen() {
                     style={({ pressed }) => [s.shareCardCommunityBtn, pressed && { opacity: 0.85 }]}
                     onPress={() => {
                       setShowShareCard(false);
-                      const label = streakDays >= 1 ? `${streakDays} day${streakDays !== 1 ? 's' : ''}` : `${streakValue} ${streakUnit}`;
+                      const label = formatStreakFull(streakMs);
                       const content = shareCardBadge
                         ? `Just hit my ${shareCardBadge.label} milestone! ${shareCardBadge.emoji} ${label} free from gambling and counting. 💪`
                         : `${label} free from gambling! 💪 ${shareTagline}`;
@@ -2569,6 +2562,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardCenter: { alignItems: 'center', gap: 4 },
   shareCardNum: { fontSize: 80, fontWeight: '900', color: '#fff', lineHeight: 84 },
   shareCardUnit: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.8)', letterSpacing: 3 },
+  shareCardStreakLabel: { fontSize: 36, fontWeight: '900', color: '#fff', lineHeight: 42, textAlign: 'center' },
   shareCardSub: { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
   shareCardAchievementEmoji: { fontSize: 72, lineHeight: 80 },
   shareCardAchievementLabel: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 1, textAlign: 'center', marginTop: 8 },
