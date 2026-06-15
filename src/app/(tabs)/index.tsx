@@ -970,9 +970,8 @@ export default function HomeScreen() {
       }
 
       newlyAwarded.forEach(b => earnedBadges.push(b.type));
-      const newBadgesWithDays = newlyAwarded.filter(b => b.days > 0);
-      if (newBadgesWithDays.length > 0) {
-        const b = newBadgesWithDays[newBadgesWithDays.length - 1];
+      if (newlyAwarded.length > 0) {
+        const b = newlyAwarded[newlyAwarded.length - 1];
         setCelebrationBadge({
           emoji: b.emoji,
           label: b.label,
