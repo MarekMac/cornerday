@@ -475,9 +475,13 @@ export default function TrackerIndex() {
     // Persist savings target date to DB
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('users').update({
+      const { error: dateErr } = await supabase.from('users').update({
         savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
       }).eq('id', user.id);
+      if (dateErr) {
+        Alert.alert('Could not save target date', dateErr.message);
+        return;
+      }
       setSavingsTargetDate(goalTargetDateInput);
     }
     closeGoalModal();
@@ -487,7 +491,12 @@ export default function TrackerIndex() {
     setSavingTargetDate(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('users').update({ debt_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+      const { error } = await supabase.from('users').update({ debt_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+      if (error) {
+        Alert.alert('Could not save target date', error.message);
+        setSavingTargetDate(false);
+        return;
+      }
       setDebtTargetDate(date);
     }
     setSavingTargetDate(false);
@@ -992,7 +1001,10 @@ export default function TrackerIndex() {
                     <Pressable onPress={async e => {
                       e.stopPropagation();
                       const { data: { user } } = await supabase.auth.getUser();
-                      if (user) await supabase.from('users').update({ debt_target_date: null }).eq('id', user.id);
+                      if (user) {
+                        const { error } = await supabase.from('users').update({ debt_target_date: null }).eq('id', user.id);
+                        if (error) { Alert.alert('Could not clear date', error.message); return; }
+                      }
                       setDebtTargetDate(null);
                     }} hitSlop={10}>
                       <Ionicons name="close-circle" size={16} color={c.textFaint} />

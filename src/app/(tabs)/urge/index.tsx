@@ -768,12 +768,12 @@ export default function UrgeScreen() {
             </Text>
             <Pressable
               style={({ pressed }) => [s.crisisBtn, pressed && { opacity: 0.85 }]}
-              onPress={() => Linking.openURL('tel:18005224700')}>
+              onPress={() => Linking.openURL('tel:18005224700').catch(() => Alert.alert('Cannot open phone', 'Please dial 1-800-522-4700 manually.'))}>
               <Text style={s.crisisBtnTxt}>📞  1-800-522-4700</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [pressed && { opacity: 0.7 }]}
-              onPress={() => Linking.openURL('sms:741741?body=HOME')}>
+              onPress={() => Linking.openURL('sms:741741?body=HOME').catch(() => Alert.alert('Cannot open messages', 'Please text HOME to 741741 manually.'))}>
               <Text style={s.crisisNote}>💬  Text HOME to 741741 — Crisis Text Line</Text>
             </Pressable>
           </View>
@@ -1085,9 +1085,12 @@ export default function UrgeScreen() {
                       setActiveDistraction(null);
                       if (Platform.OS === 'android') {
                         Linking.openURL('intent:#Intent;action=android.intent.action.MUSIC_PLAYER;end')
-                          .catch(() => Linking.openURL('spotify://').catch(() => {}));
+                          .catch(() => Linking.openURL('spotify://')
+                            .catch(() => Alert.alert('No music app found', 'Open your music app manually.')));
                       } else {
-                        Linking.openURL('music://').catch(() => Linking.openURL('spotify://').catch(() => {}));
+                        Linking.openURL('music://')
+                          .catch(() => Linking.openURL('spotify://')
+                            .catch(() => Alert.alert('No music app found', 'Open your music app manually.')));
                       }
                     }}>
                     <Text style={s.distractionCallBtnTxt}>🎵  Open music app</Text>

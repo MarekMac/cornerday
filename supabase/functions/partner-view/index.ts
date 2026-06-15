@@ -178,7 +178,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (message) {
-      await sb.from('partner_messages').insert({ link_id: link.id, message });
+      const { error: insertErr } = await sb.from('partner_messages').insert({ link_id: link.id, message });
+      if (insertErr) {
+        return new Response(JSON.stringify({ error: 'Failed to save message' }), {
+          status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
 
       // Push notification — non-fatal if token missing or push fails
       try {
