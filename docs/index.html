@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CornerDay — The day you turn it around starts today</title>
+  <meta name="description" content="CornerDay helps you stop sports betting, track money lost and repaid, and stay accountable — without shame.">
+  <meta property="og:title" content="CornerDay">
+  <meta property="og:description" content="The day you turn it around starts today.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://cornerday.app">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal-dark: #0F6E6E;
+      --teal-mid:  #1a9a9a;
+      --teal-light:#a8d8d0;
+      --accent:    #e6f7f7;
+      --warm:      #f5ece4;
+      --text:      #1a2e2e;
+      --muted:     #5a7a7a;
+      --card:      #ffffff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text);
+      background: #fff;
+      line-height: 1.6;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #0F6E6E 0%, #1a9a9a 55%, #a8d8d0 100%);
+      padding: 64px 24px 80px;
+      text-align: center;
+      color: #fff;
+    }
+
+    .logo-mark {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.18);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(8px);
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 6vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .hero .tagline {
+      font-size: clamp(15px, 3vw, 18px);
+      color: rgba(255,255,255,0.82);
+      max-width: 480px;
+      margin: 0 auto 32px;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .store-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.35);
+      border-radius: 12px;
+      padding: 10px 20px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background .2s;
+    }
+    .store-badge:hover { background: rgba(255,255,255,0.25); }
+    .store-badge .icon { font-size: 22px; }
+    .store-badge .sub { font-size: 10px; font-weight: 400; opacity: .75; display: block; }
+    .store-badge .label { font-size: 15px; font-weight: 700; display: block; }
+
+    .coming-soon {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 99px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Features ── */
+    .section {
+      padding: 64px 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--teal-dark);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-size: clamp(22px, 4vw, 30px);
+      font-weight: 800;
+      text-align: center;
+      color: var(--text);
+      margin-bottom: 48px;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--accent);
+      border-radius: 18px;
+      padding: 24px;
+    }
+
+    .feature-emoji {
+      font-size: 32px;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .feature-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── How it works ── */
+    .how-section {
+      background: var(--warm);
+      padding: 64px 24px;
+    }
+
+    .how-inner {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 0;
+    }
+
+    .step {
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal-dark), var(--teal-mid));
+      color: #fff;
+      font-size: 15px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .step-desc  { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+    /* ── Promise ── */
+    .promise-section {
+      padding: 64px 24px;
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .promise-section blockquote {
+      font-size: clamp(18px, 3.5vw, 24px);
+      font-weight: 700;
+      color: var(--teal-dark);
+      line-height: 1.5;
+      font-style: italic;
+      margin-bottom: 16px;
+    }
+
+    .promise-section p {
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    /* ── CTA ── */
+    .cta-section {
+      background: linear-gradient(135deg, #0F6E6E 0%, #1a9a9a 100%);
+      padding: 64px 24px;
+      text-align: center;
+      color: #fff;
+    }
+
+    .cta-section h2 {
+      font-size: clamp(22px, 4vw, 30px);
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .cta-section p {
+      font-size: 16px;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 32px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      background: #0a2828;
+      color: rgba(255,255,255,0.5);
+      padding: 32px 24px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    footer a {
+      color: var(--teal-light);
+      text-decoration: none;
+      margin: 0 10px;
+    }
+    footer a:hover { text-decoration: underline; }
+
+    .footer-logo {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .footer-links {
+      margin-bottom: 16px;
+    }
+
+    .divider {
+      width: 40px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--teal-dark), var(--teal-mid));
+      border-radius: 2px;
+      margin: 0 auto 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="logo-mark">🏁</div>
+    <h1>CornerDay</h1>
+    <p class="tagline">The day you turn it around starts today.</p>
+    <div class="badge-row">
+      <span class="coming-soon">📱 Coming soon to iOS &amp; Android</span>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section">
+    <p class="section-label">What it does</p>
+    <h2 class="section-title">Everything you need to stop, and stay stopped.</h2>
+    <div class="features">
+      <div class="feature-card">
+        <span class="feature-emoji">🔥</span>
+        <div class="feature-title">Streak tracker</div>
+        <div class="feature-desc">Count every hour, day, and week clean. Watch milestones build. Your streak is always front and centre.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-emoji">💸</span>
+        <div class="feature-title">Loss &amp; recovery tracker</div>
+        <div class="feature-desc">Log what you lost and what you've paid back. Watch the gap close over time — honestly.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-emoji">🧠</span>
+        <div class="feature-title">Urge support</div>
+        <div class="feature-desc">When the urge hits, open CornerDay. Breathing exercises, distractions, crisis line — all in one tap.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-emoji">❤️</span>
+        <div class="feature-title">Someone in your corner</div>
+        <div class="feature-desc">Share your progress with a trusted person. They see your streak and can send encouragement — no account needed on their end.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-emoji">🤖</span>
+        <div class="feature-title">AI Coach</div>
+        <div class="feature-desc">Chat with an AI trained on your recovery context. Available 24/7, always judgement-free. Premium feature.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-emoji">📊</span>
+        <div class="feature-title">Analytics</div>
+        <div class="feature-desc">Mood trends, urge patterns, savings trajectory. Understand your recovery with data, not guesswork.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <div class="how-section">
+    <div class="how-inner">
+      <p class="section-label" style="text-align:center">How it works</p>
+      <h2 class="section-title" style="text-align:center;margin-bottom:40px">Three steps to get started</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Tell us your why</div>
+            <div class="step-desc">Family, finances, mental health — your reason for quitting becomes your anchor, shown to you every day.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-title">Set your quit date</div>
+            <div class="step-desc">That's day one. Your streak starts counting from the moment you decide.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-title">Check in daily</div>
+            <div class="step-desc">Log your mood, log your repayments, use urge support when you need it. The app meets you where you are.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Promise -->
+  <section class="promise-section">
+    <div class="divider"></div>
+    <blockquote>"No shame. No lectures. Just honest tracking and the tools to keep going."</blockquote>
+    <p>CornerDay is built for people who've decided they're done — and need something in their pocket when it gets hard.</p>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Ready to start your streak?</h2>
+    <p>CornerDay is coming soon to iOS and Android.</p>
+    <span class="coming-soon" style="border-color:rgba(255,255,255,0.4)">📱 Coming soon</span>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-logo">CornerDay</div>
+    <div class="footer-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/partner">Supporter Portal</a>
+    </div>
+    <div>© 2026 CornerDay. Built for recovery, not for profit.</div>
+  </footer>
+
+</body>
+</html>
