@@ -1,0 +1,19 @@
+name: Deploy landing page
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler pages deploy docs/ --project-name cornerday --branch master
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: bd4f82d3b053636b956c1d5601d7c2cf
