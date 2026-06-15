@@ -1703,7 +1703,10 @@ export default function HomeScreen() {
         {/* Your why */}
         {motivations.length > 0 && (
           <View style={s.whyAnchorCard}>
-            <Text style={s.whyAnchorLabel}>Your why</Text>
+            <View style={s.whyAnchorHeader}>
+              <Text style={s.whyAnchorLabelIcon}>❤️</Text>
+              <Text style={s.whyAnchorLabel}>Your why</Text>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
               {motivations.map((m, i) => (
                 <View key={i} style={s.whyAnchorChip}>
@@ -2396,29 +2399,34 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   // Your why anchor
   whyAnchorCard: {
-    backgroundColor: c.bgCard,
+    backgroundColor: c.bgTeal,
     borderRadius: 14,
-    paddingVertical: 10,
+    paddingVertical: 14,
     paddingLeft: 14,
     paddingRight: 0,
     overflow: 'hidden',
+    borderLeftWidth: 4,
+    borderLeftColor: c.primary,
   },
+  whyAnchorHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10,
+  },
+  whyAnchorLabelIcon: { fontSize: 14 },
   whyAnchorLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: c.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    color: c.primary,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 8,
+    letterSpacing: 0.8,
   },
   whyAnchorRow: { flexDirection: 'row', gap: 8, paddingRight: 16, alignItems: 'center' },
   whyAnchorChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: c.bgElement, borderRadius: 20,
-    paddingVertical: 6, paddingHorizontal: 12,
+    backgroundColor: c.bgTealMid, borderRadius: 20,
+    paddingVertical: 7, paddingHorizontal: 13,
   },
-  whyAnchorEmoji: { fontSize: 16 },
-  whyAnchorText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
+  whyAnchorEmoji: { fontSize: 18 },
+  whyAnchorText: { fontSize: 13, fontWeight: '700', color: c.primary },
 
   // Relapse
   relapseCard: {
