@@ -28,7 +28,6 @@ import { Session } from '@supabase/supabase-js';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
-import MobileAds from 'react-native-google-mobile-ads';
 import { UserProvider } from '@/context/user';
 import { PurchasesProvider } from '@/context/purchases';
 import { AppThemeProvider, useAppTheme } from '@/context/theme';
@@ -59,10 +58,6 @@ function InnerLayout() {
   useEffect(() => {
     if (locked) authenticate();
   }, [locked, authenticate]);
-
-  useEffect(() => {
-    MobileAds().initialize().catch(() => {});
-  }, []);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state: AppStateStatus) => {
@@ -112,19 +107,18 @@ function InnerLayout() {
         // AsyncStorage flag missing (e.g. dev reload cleared storage) — check Supabase
         const { data: userData } = await supabase
           .from('users')
-          .select('motivation')
+          .select('id')
           .eq('id', sess.user.id)
           .maybeSingle();
-        if (userData?.motivation) {
+        if (userData !== null) {
+          // Row exists — user completed signup flow (questions may have been skipped)
           await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           setPendingRoute('/(tabs)');
-        } else if (userData === null) {
+        } else {
           // Ghost session: auth JWT still cached but user row was deleted
           await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
           await supabase.auth.signOut();
           return;
-        } else {
-          setPendingRoute(`/(onboarding)/${savedStep ?? 'q1'}`);
         }
       }
 
