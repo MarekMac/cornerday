@@ -41,7 +41,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         return prev - 1;
       });
     }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
   }, [timerRunning]);
 
   const startTimer = (totalSecs = DEFAULT_TIMER_TOTAL) => {

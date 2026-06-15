@@ -1181,7 +1181,7 @@ export default function HomeScreen() {
     }
 
     setData({
-      displayName: profile?.display_name ?? user.email?.split('@')?.[0] ?? null,
+      displayName: profile?.display_name || user.email?.split('@')?.[0] || null,
       motivation: profile?.motivation ?? null,
       quitDate: profile?.quit_timestamp ?? profile?.quit_date ?? null,
       weeklyBet: profile?.weekly_bet ?? null,
@@ -1311,8 +1311,11 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     randomQuote();
-    await fetchData();
-    setRefreshing(false);
+    try {
+      await fetchData();
+    } finally {
+      setRefreshing(false);
+    }
   }, [fetchData, randomQuote]);
 
   const openShareCard = (

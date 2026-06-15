@@ -340,13 +340,17 @@ export default function UrgeScreen() {
     const key = `urge_timer_${localDay}`;
     const already = await AsyncStorage.getItem(key);
     if (already) return;
-    await AsyncStorage.setItem(key, '1');
-    await supabase.from('urge_journal').insert({
+    const { error } = await supabase.from('urge_journal').insert({
       user_id: user.id,
       trigger: 'timer_completed',
       outcome: 'overcame',
       note: `Completed ${Math.round(totalSecs / 60)}-minute urge timer`,
     });
+    if (!error) {
+      await AsyncStorage.setItem(key, '1');
+    } else {
+      console.warn('awardTimerPoint insert failed:', error.message);
+    }
   };
 
   const openLog = (presetOutcome: 'overcame' | 'slipped') => {

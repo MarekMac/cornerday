@@ -233,8 +233,12 @@ export default function TrackerIndex() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchAll().finally(() => { fetchingRef.current = false; });
-    setRefreshing(false);
+    try {
+      await fetchAll();
+    } finally {
+      fetchingRef.current = false;
+      setRefreshing(false);
+    }
   }, [fetchAll]);
 
   const paidByDebt: Record<string, number> = {};
