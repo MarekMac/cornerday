@@ -1422,9 +1422,9 @@ export default function AccountScreen() {
           </View>
         </View>
 
-        {/* Your profile — recovery + profile + goals combined */}
+        {/* Your journey */}
         <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>Your profile</Text>
+          <Text style={s.infoCardTitle}>Your journey</Text>
           {quitFormatted && (
             <>
               <Pressable
@@ -1442,6 +1442,35 @@ export default function AccountScreen() {
               <View style={s.infoDivider} />
             </>
           )}
+          {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map((field, idx, arr) => {
+            const config = FIELD_CONFIG[field];
+            const raw = field === 'motivation' ? profile?.motivation
+              : field === 'trigger' ? profile?.trigger
+              : field === 'goal' ? profile?.goal
+              : profile?.supportType;
+            const display = getDisplayLabel(config.options, raw ?? null);
+            return (
+              <View key={field}>
+                <Pressable
+                  onPress={() => openFieldModal(field)}
+                  style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+                  <View style={s.infoItemMain}>
+                    <Text style={s.infoItemLabel}>{config.label}</Text>
+                    <Text style={[s.infoItemValue, !display && s.infoValueEmpty]}>
+                      {display ?? 'Not set'}
+                    </Text>
+                  </View>
+                  <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
+                </Pressable>
+                {idx < arr.length - 1 && <View style={s.infoDivider} />}
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Goals & finances */}
+        <View style={s.infoCard}>
+          <Text style={s.infoCardTitle}>Goals & finances</Text>
           <Pressable
             onPress={openSpendingModal}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
@@ -1474,6 +1503,38 @@ export default function AccountScreen() {
           </Pressable>
           <View style={s.infoDivider} />
           <Pressable
+            onPress={() => openGoalTargetPicker('savings')}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Savings target date</Text>
+              <Text style={[s.infoItemValue, !savingsTargetDate && s.infoValueEmpty]}>
+                {savingsTargetDate
+                  ? savingsTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
+                  : 'Not set'}
+              </Text>
+            </View>
+            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
+          </Pressable>
+          <View style={s.infoDivider} />
+          <Pressable
+            onPress={() => openGoalTargetPicker('debt')}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Debt payoff target date</Text>
+              <Text style={[s.infoItemValue, !debtTargetDate && s.infoValueEmpty]}>
+                {debtTargetDate
+                  ? debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
+                  : 'Not set'}
+              </Text>
+            </View>
+            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
+          </Pressable>
+        </View>
+
+        {/* Your plan */}
+        <View style={s.infoCard}>
+          <Text style={s.infoCardTitle}>Your plan</Text>
+          <Pressable
             onPress={openContactModal}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
             <View style={s.infoItemMain}>
@@ -1500,58 +1561,6 @@ export default function AccountScreen() {
               ) : null}
               <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
             </View>
-          </Pressable>
-          <View style={s.infoDivider} />
-          {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map((field) => {
-            const config = FIELD_CONFIG[field];
-            const raw = field === 'motivation' ? profile?.motivation
-              : field === 'trigger' ? profile?.trigger
-              : field === 'goal' ? profile?.goal
-              : profile?.supportType;
-            const display = getDisplayLabel(config.options, raw ?? null);
-            return (
-              <View key={field}>
-                <Pressable
-                  onPress={() => openFieldModal(field)}
-                  style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-                  <View style={s.infoItemMain}>
-                    <Text style={s.infoItemLabel}>{config.label}</Text>
-                    <Text style={[s.infoItemValue, !display && s.infoValueEmpty]}>
-                      {display ?? 'Not set'}
-                    </Text>
-                  </View>
-                  <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
-                </Pressable>
-                <View style={s.infoDivider} />
-              </View>
-            );
-          })}
-          <Pressable
-            onPress={() => openGoalTargetPicker('debt')}
-            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-            <View style={s.infoItemMain}>
-              <Text style={s.infoItemLabel}>Debt payoff target date</Text>
-              <Text style={[s.infoItemValue, !debtTargetDate && s.infoValueEmpty]}>
-                {debtTargetDate
-                  ? debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
-                  : 'Not set'}
-              </Text>
-            </View>
-            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
-          </Pressable>
-          <View style={s.infoDivider} />
-          <Pressable
-            onPress={() => openGoalTargetPicker('savings')}
-            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-            <View style={s.infoItemMain}>
-              <Text style={s.infoItemLabel}>Savings goal target date</Text>
-              <Text style={[s.infoItemValue, !savingsTargetDate && s.infoValueEmpty]}>
-                {savingsTargetDate
-                  ? savingsTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
-                  : 'Not set'}
-              </Text>
-            </View>
-            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
           <View style={s.infoDivider} />
           <Pressable
