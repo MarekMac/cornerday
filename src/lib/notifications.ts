@@ -89,7 +89,11 @@ export async function scheduleAllNotifications(
   earnedBadgeTypes: string[] = [],
   timeOverrides: { streakHour?: number; checkinHour?: number } = {},
 ) {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (_e) {
+    // cancellation can fail if permissions were revoked — continue scheduling anyway
+  }
   await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
   if (!quitTimestamp) return;
 

@@ -1007,7 +1007,8 @@ export default function AccountScreen() {
           if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
         }
         await supabase.from('users').delete().eq('id', user.id);
-        try { await supabase.functions.invoke('delete-account'); } catch {}
+        const { error: deleteAuthErr } = await supabase.functions.invoke('delete-account');
+        if (deleteAuthErr) console.warn('[deleteAccount] auth user not removed:', deleteAuthErr);
         await AsyncStorage.multiRemove([
           ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
           MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY,

@@ -205,7 +205,9 @@ export default function TabsLayout() {
     try {
       sub = Notifications.addNotificationResponseReceivedListener(response => {
         const screen = response.notification.request.content.data?.screen as string | undefined;
-        if (screen) router.push(screen as any);
+        if (screen) {
+          try { router.push(screen as any); } catch (_e) {}
+        }
       });
     } catch (_e) {}
     return () => sub?.remove();

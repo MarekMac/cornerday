@@ -102,6 +102,10 @@ Deno.serve(async (req: Request) => {
     });
 
     const expoBody = await expoRes.json();
+    if (!expoRes.ok) {
+      console.error('Expo push API error:', JSON.stringify(expoBody));
+      return new Response(JSON.stringify({ ok: false, error: 'push_api_error', expo: expoBody }), { status: 200 });
+    }
     console.log('Expo push response:', JSON.stringify(expoBody));
 
     return new Response(JSON.stringify({ ok: true, expo: expoBody }), { status: 200 });

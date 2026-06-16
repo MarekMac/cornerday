@@ -106,11 +106,16 @@ export default function SignupScreen() {
           return;
         }
 
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const { data: { user: authUser }, error: getUserErr } = await supabase.auth.getUser();
+        if (getUserErr || !authUser) {
+          setError('Sign-in succeeded but could not verify your account. Please try again.');
+          setGoogleLoading(false);
+          return;
+        }
         const { data: profile, error: profileErr } = await supabase
           .from('users')
           .select('id')
-          .eq('id', authUser?.id ?? '')
+          .eq('id', authUser.id)
           .maybeSingle();
 
         if (profileErr) {
@@ -144,11 +149,16 @@ export default function SignupScreen() {
         setLoading(false);
         return;
       }
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser }, error: getUserErr } = await supabase.auth.getUser();
+      if (getUserErr || !authUser) {
+        setError('Sign-in succeeded but could not verify your account. Please try again.');
+        setLoading(false);
+        return;
+      }
       const { data: profile, error: profileErr } = await supabase
         .from('users')
         .select('id')
-        .eq('id', authUser?.id ?? '')
+        .eq('id', authUser.id)
         .maybeSingle();
       if (profileErr) {
         setError('Sign-in succeeded but we could not load your profile. Please try again.');
@@ -175,11 +185,16 @@ export default function SignupScreen() {
             setLoading(false);
             return;
           }
-          const { data: { user: authUser } } = await supabase.auth.getUser();
+          const { data: { user: authUser }, error: getUserErr2 } = await supabase.auth.getUser();
+          if (getUserErr2 || !authUser) {
+            setError('Sign-in succeeded but could not verify your account. Please try again.');
+            setLoading(false);
+            return;
+          }
           const { data: profile, error: profileErr } = await supabase
             .from('users')
             .select('id')
-            .eq('id', authUser?.id ?? '')
+            .eq('id', authUser.id)
             .maybeSingle();
           if (profileErr) {
             setError('Sign-in succeeded but we could not load your profile. Please try again.');

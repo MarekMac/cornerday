@@ -963,6 +963,9 @@ export default function HomeScreen() {
     ]);
 
     if (profileRes.error) throw profileRes.error;
+    if (streakRes.error) console.warn('[home] streakRes error:', streakRes.error.message);
+    if (badgesRes.error) console.warn('[home] badgesRes error:', badgesRes.error.message);
+    if (moodRes.error) console.warn('[home] moodRes error:', moodRes.error.message);
 
     const profile = profileRes.data;
     const badgeRows = badgesRes.data ?? [];
