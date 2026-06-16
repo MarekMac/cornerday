@@ -94,6 +94,18 @@ function fmtDuration(days: number): string {
   return mo > 0 ? `${y}y ${mo}mo` : `${y}y`;
 }
 
+function fmtDurationMs(ms: number): string {
+  const days = Math.floor(ms / 86400000);
+  const hrs  = Math.floor((ms % 86400000) / 3600000);
+  if (days === 0 && hrs === 0) return '< 1h';
+  if (days === 0) return `${hrs}h`;
+  if (days < 7) return hrs > 0 ? `${days}d ${hrs}h` : `${days}d`;
+  if (days < 30) { const w = Math.floor(days / 7), d = days % 7; return d > 0 ? `${w}w ${d}d` : `${w}w`; }
+  if (days < 365) { const m = Math.floor(days / 30), w = Math.floor((days % 30) / 7); return w > 0 ? `${m}mo ${w}w` : `${m}mo`; }
+  const y = Math.floor(days / 365), mo = Math.floor((days % 365) / 30);
+  return mo > 0 ? `${y}y ${mo}mo` : `${y}y`;
+}
+
 const MOODS     = ['😞', '😕', '😐', '🙂', '😄'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_SHORT  = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -127,32 +139,6 @@ const MILESTONES = [
   { days: 3650,  label: '10 Years',  emoji: '🎖️' },
 ];
 
-const MILESTONE_DESC: Record<string, string> = {
-  '1 Hour':    "The first hour is the hardest. You've already made the most important decision.",
-  '3 Hours':   "Cravings rarely last longer than 20 minutes. You've already beaten several.",
-  '6 Hours':   'Half a day. Your body and mind are already beginning to recalibrate.',
-  '12 Hours':  "Twelve hours clean. The battle you're winning right now is the most important one.",
-  '1 Day':     'The hardest step is always the first. Every single hour has counted.',
-  '3 Days':    'Three days in — the acute phase is easing and your resolve is real.',
-  '1 Week':    "Urge cravings peak in the first few days — you're already past the worst of it.",
-  '10 Days':   'Double digits. Your daily routine is starting to reshape around better habits.',
-  '2 Weeks':   'Two full weeks. The psychological grip is loosening, one day at a time.',
-  '3 Weeks':   "Science says it takes 21 days to start a new habit. You're right at the turning point.",
-  '1 Month':   "Your brain's reward system begins to reset around 30 days. Real change is happening.",
-  '45 Days':   'Six weeks clean. Your confidence and self-trust are quietly but steadily growing.',
-  '2 Months':  'Sleep quality, mood and focus noticeably improve around this point. People notice.',
-  '3 Months':  'A full quarter of the year. Your mind and body have had real time to heal.',
-  '4 Months':  "Four months in — you've built something real and solid. Keep protecting it.",
-  '5 Months':  'Five months. Financial pressure is easing and your relationships are rebuilding.',
-  '6 Months':  "Research shows 6 months is when new habits become deeply wired. You're rewriting who you are.",
-  '9 Months':  "Nine months — nearly a year. You're living proof that lasting change is possible.",
-  '1 Year':    'One full year. You have proven to yourself — and everyone — that this is completely possible.',
-  '18 Months': "Eighteen months. Relapse rates drop sharply after this point. You've done the hardest part.",
-  '2 Years':   "Two full years. The life you're building now is the one you always deserved.",
-  '3 Years':   'Three years. At this point, recovery is woven into who you are.',
-  '5 Years':   'Five years clean. This is what long-term recovery looks like.',
-  '10 Years':  'A decade free. You are an inspiration to everyone on this journey.',
-};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -191,6 +177,7 @@ interface AnalyticsData {
   urgesOvercome: number;
   urgesByDay: number[];
   urgesByTimeOfDay: number[];
+  topTriggers: { trigger: string; count: number; overcame: number }[];
   moodLast30: { date: string; mood: number }[];
   moodSparkline: (number | null)[];
   checkInDays: number;
@@ -199,11 +186,13 @@ interface AnalyticsData {
   weekMoods: { date: string; mood: number | null }[];
   relapseCount: number;
   dailySavingsRate: number;
+  avgWeeklySpend: number;
+  savingsDaysSpan: number;
   streakHistory: number[];
   calendarDays: CalDay[];
   weekSummary: {
-    thisWeek: { urges: number; moodAvg: number | null; checkIns: number };
-    lastWeek: { urges: number; moodAvg: number | null; checkIns: number };
+    thisWeek: { urges: number; moodAvg: number | null; checkIns: number; savings: number };
+    lastWeek: { urges: number; moodAvg: number | null; checkIns: number; savings: number };
   };
 }
 
@@ -274,7 +263,7 @@ export default function AnalyticsScreen() {
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
       supabase.from('debts').select('id, name, total_amount, target_date, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
-      supabase.from('urge_journal').select('outcome, created_at').eq('user_id', user.id),
+      supabase.from('urge_journal').select('outcome, trigger, created_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', thirtyDaysAgo).order('created_at', { ascending: true }),
       supabase.from('mood_checkins').select('created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
     ]);
@@ -295,6 +284,21 @@ export default function AnalyticsScreen() {
     const savingRows  = lossRows.filter(r => r.type === 'saving');
     const relapseRows = lossRows.filter(r => r.type === 'streak_reset');
     const totalSavings = savingRows.reduce((s, r) => s + Number(r.amount), 0);
+
+    const firstSavingMs = savingRows.length > 0
+      ? Math.min(...savingRows.map(r => new Date(r.created_at).getTime()))
+      : 0;
+    const savingsDaysSpan = firstSavingMs > 0
+      ? Math.max(1, (Date.now() - firstSavingMs) / 86400000)
+      : 0;
+
+    const gamblingLossRows = lossRows.filter(r => r.type === 'loss');
+    const totalLost = gamblingLossRows.reduce((s, r) => s + Number(r.amount), 0);
+    const firstLossMs = gamblingLossRows.length > 0
+      ? Math.min(...gamblingLossRows.map(r => new Date(r.created_at).getTime()))
+      : 0;
+    const spanWeeks = firstLossMs > 0 ? Math.max(1, (Date.now() - firstLossMs) / (7 * 86400000)) : 0;
+    const avgWeeklySpend = spanWeeks > 0 ? totalLost / spanWeeks : 0;
 
     const monthMap: Record<string, number> = {};
     savingRows.forEach(r => {
@@ -337,8 +341,19 @@ export default function AnalyticsScreen() {
                createdAt: new Date(d.created_at) };
     });
 
-    const urgeRows     = urgeRes.data ?? [];
+    const urgeRows      = urgeRes.data ?? [];
     const urgesOvercome = urgeRows.filter(u => u.outcome === 'overcame').length;
+    const triggerMap: Record<string, { count: number; overcame: number }> = {};
+    urgeRows.forEach(u => {
+      const t = (u.trigger as string | null)?.trim() || 'Other';
+      if (!triggerMap[t]) triggerMap[t] = { count: 0, overcame: 0 };
+      triggerMap[t].count++;
+      if (u.outcome === 'overcame') triggerMap[t].overcame++;
+    });
+    const topTriggers = Object.entries(triggerMap)
+      .map(([trigger, v]) => ({ trigger, ...v }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
     const urgesByDay   = [0, 0, 0, 0, 0, 0, 0];
     urgeRows.forEach(u => { urgesByDay[new Date(u.created_at).getDay()]++; });
 
@@ -429,11 +444,13 @@ export default function AnalyticsScreen() {
         urges: urgeRows.filter(u => new Date(u.created_at) >= startOfThisWeek).length,
         moodAvg: thisWkMoods.length > 0 ? thisWkMoods.reduce((s, m) => s + m, 0) / thisWkMoods.length : null,
         checkIns: new Set(moodRows.filter(r => new Date(r.created_at) >= startOfThisWeek).map(ciKey)).size,
+        savings: savingRows.filter(r => new Date(r.created_at) >= startOfThisWeek).reduce((s, r) => s + Number(r.amount), 0),
       },
       lastWeek: {
         urges: urgeRows.filter(u => { const d = new Date(u.created_at); return d >= startOfLastWeek && d < startOfThisWeek; }).length,
         moodAvg: lastWkMoods.length > 0 ? lastWkMoods.reduce((s, m) => s + m, 0) / lastWkMoods.length : null,
         checkIns: new Set(moodRows.filter(r => { const d = new Date(r.created_at); return d >= startOfLastWeek && d < startOfThisWeek; }).map(ciKey)).size,
+        savings: savingRows.filter(r => { const d = new Date(r.created_at); return d >= startOfLastWeek && d < startOfThisWeek; }).reduce((s, r) => s + Number(r.amount), 0),
       },
     };
 
@@ -447,11 +464,11 @@ export default function AnalyticsScreen() {
       savingsGoalFor: goalForRaw ?? '',
       savingsGoalIcon: goalIconRaw ?? '🎯',
       totalDebts, totalDebtPaid, debtsWithPacing,
-      urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByTimeOfDay,
+      urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByTimeOfDay, topTriggers,
       moodLast30, moodSparkline, checkInDays,
       checkinStreak: computeCheckinStreak(checkinDatesRes.data ?? []),
       monthlySavings, weekMoods,
-      relapseCount: currentRelapseCount, dailySavingsRate, streakHistory,
+      relapseCount: currentRelapseCount, dailySavingsRate, avgWeeklySpend, savingsDaysSpan, streakHistory,
       calendarDays, weekSummary,
     });
     } catch (e) {
@@ -491,6 +508,7 @@ export default function AnalyticsScreen() {
               urgeCount: 0, urgesOvercome: 0,
               urgesByDay: [0, 0, 0, 0, 0, 0, 0],
               urgesByTimeOfDay: [0, 0, 0, 0],
+              topTriggers: [],
             } : prev);
             setResettingUrges(false);
           },
@@ -625,23 +643,21 @@ export default function AnalyticsScreen() {
   const urgeResistPct = data.urgeCount > 0 ? Math.round((data.urgesOvercome / data.urgeCount) * 100) : null;
 
   const elapsedMs         = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
-  const currentStreakFloat = elapsedMs / 86400000;
-  const nextMilestone     = MILESTONES.find(m => m.days > currentStreakFloat) ?? null;
-  const nextMilestoneIdx  = nextMilestone ? MILESTONES.indexOf(nextMilestone) : -1;
-  const prevMilestoneDays = nextMilestoneIdx > 0 ? MILESTONES[nextMilestoneIdx - 1].days : 0;
-  const milestonePct      = nextMilestone
-    ? Math.min(1, (currentStreakFloat - prevMilestoneDays) / (nextMilestone.days - prevMilestoneDays)) : 1;
 
   const maxUrgeCount    = Math.max(...data.urgesByDay);
   const maxUrgeDay      = data.urgesByDay.indexOf(maxUrgeCount);
   const daysToGoal      = goalPct !== null && data.dailySavingsRate > 0 && goalPct < 1
     ? Math.ceil((data.savingsGoal! - data.totalSavings) / data.dailySavingsRate) : null;
   const maxMonthSaving   = Math.max(0, ...data.monthlySavings.map(m => m.amount));
-  const maxStreakHistory = Math.max(1, ...data.streakHistory);
+  const trueDailyRate    = data.savingsDaysSpan > 0 ? data.totalSavings / data.savingsDaysSpan : 0;
+  const weeklySpendRate  = data.avgWeeklySpend > 0 ? data.avgWeeklySpend : trueDailyRate * 7;
   const isStreakImproving = data.streakHistory.length >= 3 &&
     data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
 
   const [heroNum, heroLabel, heroNum2, heroLabel2] = heroTime(elapsedMs);
+  const bestEverMs = (data.quitDate && data.currentStreakDays >= data.longestStreak)
+    ? elapsedMs
+    : data.longestStreak * 86400000;
 
   // Calendar grid — arrange 60 days into week columns
   const firstIso  = data.calendarDays[0]?.iso;
@@ -666,10 +682,11 @@ export default function AnalyticsScreen() {
   const cleanDaysCount = data.calendarDays.filter(d => d.status === 'clean').length;
 
   // Week summary deltas
-  const wkUrgesDelta = data.weekSummary.thisWeek.urges - data.weekSummary.lastWeek.urges;
-  const wkMoodDelta  = data.weekSummary.thisWeek.moodAvg !== null && data.weekSummary.lastWeek.moodAvg !== null
+  const wkUrgesDelta   = data.weekSummary.thisWeek.urges - data.weekSummary.lastWeek.urges;
+  const wkMoodDelta    = data.weekSummary.thisWeek.moodAvg !== null && data.weekSummary.lastWeek.moodAvg !== null
     ? +(data.weekSummary.thisWeek.moodAvg - data.weekSummary.lastWeek.moodAvg).toFixed(1) : null;
-  const wkCiDelta    = data.weekSummary.thisWeek.checkIns - data.weekSummary.lastWeek.checkIns;
+  const wkCiDelta      = data.weekSummary.thisWeek.checkIns - data.weekSummary.lastWeek.checkIns;
+  const wkSavingsDelta = data.weekSummary.thisWeek.savings - data.weekSummary.lastWeek.savings;
 
   // Time of day
   const maxTodCount = Math.max(1, ...data.urgesByTimeOfDay);
@@ -678,18 +695,42 @@ export default function AnalyticsScreen() {
   const insights: { emoji: string; text: string; bg: string; tc: string }[] = [];
   if (data.currentStreakDays > 0 && data.currentStreakDays >= data.longestStreak)
     insights.push({ emoji: '🏆', text: 'This is your longest streak ever!', bg: '#fef3c7', tc: '#92400e' });
-  if (urgeResistPct !== null && urgeResistPct >= 70)
-    insights.push({ emoji: '💪', text: `${urgeResistPct}% urge resistance — keep it up`, bg: '#dcfce7', tc: '#166534' });
-  if (avgMoodVal !== null && avgMoodVal >= 3.5)
-    insights.push({ emoji: '😊', text: `Average mood ${avgMoodVal.toFixed(1)}/5 — you're doing well`, bg: '#eff6ff', tc: '#1d4ed8' });
+  if (urgeResistPct !== null && data.urgeCount >= 3)
+    insights.push({ emoji: '💪', text: `${urgeResistPct}% urge resistance — ${data.urgesOvercome} of ${data.urgeCount} beaten`, bg: '#dcfce7', tc: '#166534' });
+  if (maxUrgeCount >= 2)
+    insights.push({ emoji: '📅', text: `${DAY_LABELS[maxUrgeDay]}s are your most challenging day`, bg: '#fef2f2', tc: '#b91c1c' });
+  if (maxTodCount >= 2)
+    insights.push({ emoji: '🕐', text: `${TOD_LABELS[hardestTod]} (${TOD_TIMES[hardestTod]}) is your highest-risk window`, bg: '#fff7ed', tc: '#9a3412' });
+  if (data.moodLast30.length >= 6) {
+    const mid = Math.floor(data.moodLast30.length / 2);
+    const earlyAvg  = data.moodLast30.slice(0, mid).reduce((a, r) => a + r.mood, 0) / mid;
+    const recentAvg = data.moodLast30.slice(mid).reduce((a, r) => a + r.mood, 0) / (data.moodLast30.length - mid);
+    if (recentAvg - earlyAvg >= 0.5)
+      insights.push({ emoji: '📈', text: 'Your mood has been climbing — recovery is working', bg: '#f0fdf4', tc: '#166534' });
+    else if (earlyAvg - recentAvg >= 0.5)
+      insights.push({ emoji: '📉', text: 'Your mood has dipped lately — lean on your support plan', bg: '#fff7ed', tc: '#9a3412' });
+    else if (avgMoodVal !== null && avgMoodVal >= 3.5)
+      insights.push({ emoji: '😊', text: `Average mood ${avgMoodVal.toFixed(1)}/5 — you're doing well`, bg: '#eff6ff', tc: '#1d4ed8' });
+  }
   if (data.relapseCount === 0 && data.currentStreakDays >= 7)
     insights.push({ emoji: '🌟', text: 'Clean run — no relapses on record', bg: '#f0fdf4', tc: '#166534' });
-  if (maxUrgeCount > 0)
-    insights.push({ emoji: '📅', text: `${DAY_LABELS[maxUrgeDay]}s are your most challenging day`, bg: '#fef2f2', tc: '#b91c1c' });
+  if (data.weekSummary.lastWeek.urges > 2 && data.weekSummary.thisWeek.urges < data.weekSummary.lastWeek.urges)
+    insights.push({ emoji: '📉', text: `Fewer urges this week vs last (${data.weekSummary.thisWeek.urges} vs ${data.weekSummary.lastWeek.urges})`, bg: '#f0fdf4', tc: '#166534' });
   if (data.dailySavingsRate > 0)
     insights.push({ emoji: '💰', text: `Saving ${fmt(data.dailySavingsRate, data.currency)} per clean day`, bg: '#e6f7f7', tc: '#0F6E6E' });
   if (isStreakImproving)
     insights.push({ emoji: '📈', text: 'Your streaks are getting longer over time', bg: '#f0fdf4', tc: '#166534' });
+  if (data.checkinStreak.current >= 7)
+    insights.push({ emoji: '🔥', text: `${data.checkinStreak.current}-day check-in streak — showing up every single day`, bg: '#fef9c3', tc: '#92400e' });
+  if (data.dailySavingsRate > 0 && data.totalSavings > 0)
+    insights.push({ emoji: '💸', text: `On track to save ${fmt(data.dailySavingsRate * 30, data.currency)} this month`, bg: '#e6f7f7', tc: '#0F6E6E' });
+  if (cleanDaysCount >= 52)
+    insights.push({ emoji: '🗓️', text: `${cleanDaysCount} of your last 60 days were clean — remarkable`, bg: '#f0fdf4', tc: '#15803d' });
+  const aheadDebt = data.debtsWithPacing.find(d => !d.isPaidOff && d.isAhead === true);
+  if (aheadDebt)
+    insights.push({ emoji: '🏦', text: `Ahead of schedule on "${aheadDebt.name}" — great pacing`, bg: '#f0fdf4', tc: '#166534' });
+  if (wkCiDelta > 0)
+    insights.push({ emoji: '📆', text: `${wkCiDelta} more check-in${wkCiDelta > 1 ? 's' : ''} this week than last — building momentum`, bg: '#eff6ff', tc: '#1d4ed8' });
 
   return (
     <View style={s.root}>
@@ -718,244 +759,59 @@ export default function AnalyticsScreen() {
             {data.quitDate ? `Since ${parseQuitDate(data.quitDate).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
             {data.relapseCount === 0 ? '  ·  No relapses 🌟' : `  ·  ${data.relapseCount} relapse${data.relapseCount !== 1 ? 's' : ''}`}
           </Text>
-          <View style={s.heroDivider} />
-          <View style={s.heroStatsRow}>
-            <View style={s.heroStat}>
-              <Text style={s.heroStatValue}>{fmtCompact(data.totalSavings, data.currency)}</Text>
-              <Text style={s.heroStatLabel}>saved</Text>
-            </View>
-            <View style={s.heroStatDivider} />
-            <View style={s.heroStat}>
-              <Text style={s.heroStatValue}>{data.urgesOvercome}</Text>
-              <Text style={s.heroStatLabel}>urges beat</Text>
-            </View>
-            <View style={s.heroStatDivider} />
-            <View style={s.heroStat}>
-              <Text style={s.heroStatValue}>{fmtDuration(data.longestStreak)}</Text>
-              <Text style={s.heroStatLabel}>best ever</Text>
-            </View>
-          </View>
         </LinearGradient>
 
-        {/* ── Milestones ── */}
-        {nextMilestone ? (
-          <View style={s.card}>
-            <SectionHeader title="🏅 Next milestone" />
-            <View style={s.msDetailCard}>
-              <View style={s.msDetailHeader}>
-                <Text style={s.msDetailEmoji}>{nextMilestone.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.msDetailTitle}>{nextMilestone.label}</Text>
-                  <Text style={s.msDetailStatus}>
-                    {Math.round(milestonePct * 100)}%  ·  {(() => {
-                      const daysLeft = Math.max(0, nextMilestone.days - currentStreakFloat);
-                      if (daysLeft < 1 / 24) return '< 1 hour to go';
-                      if (daysLeft < 1) return `${Math.round(daysLeft * 24)}h to go`;
-                      return `${Math.ceil(daysLeft)} day${Math.ceil(daysLeft) !== 1 ? 's' : ''} to go`;
-                    })()}
-                  </Text>
-                </View>
-              </View>
-              <View style={s.progressBarBg}>
-                <View style={[s.progressBarFill, { width: `${Math.round(milestonePct * 100)}%` as any }]} />
-              </View>
-              <Text style={s.msDesc}>{MILESTONE_DESC[nextMilestone.label]}</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={s.card}>
-            <View style={s.msAllEarned}>
-              <Text style={s.msAllEarnedText}>👑 You've earned every badge. Incredible commitment.</Text>
-            </View>
-          </View>
-        )}
-
-        {/* ── 60-day clean calendar ── */}
+        {/* ── Your insights ── */}
         <View style={s.card}>
-          <SectionHeader
-            title="🗓️ Clean days"
-            subtitle={`${cleanDaysCount} of last 60 days clean${data.relapseCount > 0 ? `  ·  ${data.relapseCount} relapse${data.relapseCount !== 1 ? 's' : ''}` : '  ·  No relapses 🌟'}`}
-          />
-          <View style={s.calWrap}>
-            <View style={s.calMonthRow}>
-              {calWeeks.map((_, wi) => (
-                <View key={wi} style={s.calCol}>
-                  <Text style={s.calMonthLabel}>{calMonthLabels[wi]}</Text>
+          <SectionHeader title="💡 Your insights" />
+          {insights.length === 0 ? (
+            <Text style={s.insightEmpty}>Keep going — patterns will appear as you check in more.</Text>
+          ) : (
+            <View style={s.insightGap}>
+              {insights.slice(0, 5).map((item, i) => (
+                <View key={i} style={[s.insightChip, { backgroundColor: item.bg }]}>
+                  <View style={[s.insightAccent, { backgroundColor: item.tc }]} />
+                  <Text style={s.insightEmoji}>{item.emoji}</Text>
+                  <Text style={[s.insightText, { color: item.tc }]}>{item.text}</Text>
                 </View>
               ))}
             </View>
-            <View style={s.calGrid}>
-              {calWeeks.map((week, wi) => (
-                <View key={wi} style={s.calCol}>
-                  {week.map((day, di) => (
-                    <View
-                      key={di}
-                      style={[
-                        s.calDot,
-                        day === null       ? s.calDotNull     :
-                        day.status === 'clean'   ? s.calDotClean   :
-                        day.status === 'relapse' ? s.calDotRelapse :
-                        s.calDotInactive,
-                      ]}
-                    />
-                  ))}
-                </View>
-              ))}
-            </View>
-          </View>
-          <View style={s.calLegend}>
-            <View style={s.calLegendItem}><View style={[s.calDot, s.calDotClean]} /><Text style={s.calLegendTxt}>Clean</Text></View>
-            <View style={s.calLegendItem}><View style={[s.calDot, s.calDotRelapse]} /><Text style={s.calLegendTxt}>Relapse</Text></View>
-            <View style={s.calLegendItem}><View style={[s.calDot, s.calDotInactive]} /><Text style={s.calLegendTxt}>Before start</Text></View>
-          </View>
+          )}
         </View>
 
         {/* ── Weekly summary ── */}
         <View style={s.card}>
           <SectionHeader title="📊 This week vs last week" />
-          <View style={s.wkRow}>
+          <View style={s.wkGrid}>
             <View style={s.wkBlock}>
-              <Text style={s.wkBlockLabel}>🧠 Urges</Text>
+              <Text style={s.wkBlockLabel}>Urges</Text>
               <Text style={s.wkBlockVal}>{data.weekSummary.thisWeek.urges}</Text>
-              {data.weekSummary.lastWeek.urges > 0 || data.weekSummary.thisWeek.urges > 0 ? (
-                <Text style={[s.wkDelta,
-                  wkUrgesDelta === 0 ? s.wkDeltaNeutral :
-                  wkUrgesDelta < 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
-                  {wkUrgesDelta === 0 ? 'same' : `${wkUrgesDelta > 0 ? '+' : ''}${wkUrgesDelta} vs last wk`}
-                </Text>
-              ) : <Text style={s.wkDeltaNeutral}>no data yet</Text>}
-            </View>
-            <View style={s.wkDivider} />
-            <View style={s.wkBlock}>
-              <Text style={s.wkBlockLabel}>😊 Mood avg</Text>
-              <Text style={s.wkBlockVal}>
-                {data.weekSummary.thisWeek.moodAvg !== null ? data.weekSummary.thisWeek.moodAvg.toFixed(1) : '—'}
+              <Text style={[s.wkDelta, wkUrgesDelta === 0 ? s.wkDeltaNeutral : wkUrgesDelta < 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
+                {wkUrgesDelta === 0 ? '— same' : `${wkUrgesDelta > 0 ? '↑' : '↓'} ${Math.abs(wkUrgesDelta)} vs last wk`}
               </Text>
-              {wkMoodDelta !== null ? (
-                <Text style={[s.wkDelta,
-                  wkMoodDelta === 0 ? s.wkDeltaNeutral :
-                  wkMoodDelta > 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
-                  {wkMoodDelta === 0 ? 'same' : `${wkMoodDelta > 0 ? '+' : ''}${wkMoodDelta} vs last wk`}
-                </Text>
-              ) : <Text style={s.wkDeltaNeutral}>no data yet</Text>}
             </View>
-            <View style={s.wkDivider} />
             <View style={s.wkBlock}>
-              <Text style={s.wkBlockLabel}>📅 Check-ins</Text>
+              <Text style={s.wkBlockLabel}>Mood avg</Text>
+              <Text style={s.wkBlockVal}>{data.weekSummary.thisWeek.moodAvg !== null ? data.weekSummary.thisWeek.moodAvg.toFixed(1) : '—'}</Text>
+              <Text style={[s.wkDelta, wkMoodDelta === null ? s.wkDeltaNeutral : wkMoodDelta === 0 ? s.wkDeltaNeutral : wkMoodDelta > 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
+                {wkMoodDelta === null ? '— no data' : wkMoodDelta === 0 ? '— same' : `${wkMoodDelta > 0 ? '↑' : '↓'} ${Math.abs(wkMoodDelta)} vs last wk`}
+              </Text>
+            </View>
+            <View style={s.wkBlock}>
+              <Text style={s.wkBlockLabel}>Check-ins</Text>
               <Text style={s.wkBlockVal}>{data.weekSummary.thisWeek.checkIns}</Text>
-              {data.weekSummary.lastWeek.checkIns > 0 || data.weekSummary.thisWeek.checkIns > 0 ? (
-                <Text style={[s.wkDelta,
-                  wkCiDelta === 0 ? s.wkDeltaNeutral :
-                  wkCiDelta > 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
-                  {wkCiDelta === 0 ? 'same' : `${wkCiDelta > 0 ? '+' : ''}${wkCiDelta} vs last wk`}
-                </Text>
-              ) : <Text style={s.wkDeltaNeutral}>no data yet</Text>}
+              <Text style={[s.wkDelta, wkCiDelta === 0 ? s.wkDeltaNeutral : wkCiDelta > 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
+                {wkCiDelta === 0 ? '— same' : `${wkCiDelta > 0 ? '↑' : '↓'} ${Math.abs(wkCiDelta)} vs last wk`}
+              </Text>
+            </View>
+            <View style={s.wkBlock}>
+              <Text style={s.wkBlockLabel}>Saved</Text>
+              <Text style={s.wkBlockVal}>{fmtCompact(data.weekSummary.thisWeek.savings, data.currency)}</Text>
+              <Text style={[s.wkDelta, wkSavingsDelta === 0 ? s.wkDeltaNeutral : wkSavingsDelta > 0 ? s.wkDeltaGood : s.wkDeltaBad]}>
+                {wkSavingsDelta === 0 ? '— same' : `${wkSavingsDelta > 0 ? '↑' : '↓'} ${fmtCompact(Math.abs(wkSavingsDelta), data.currency)} vs last wk`}
+              </Text>
             </View>
           </View>
-        </View>
-
-        {/* ── Streak history ── */}
-        {data.streakHistory.length > 1 && (
-          <View style={s.card}>
-            <SectionHeader title="📈 Streak history" subtitle={isStreakImproving ? 'Getting longer over time ↑' : undefined} />
-            <View style={s.streakHistChart}>
-              {data.streakHistory.slice(-8).map((days, i, arr) => {
-                const isCurrent = i === arr.length - 1;
-                const barH = Math.max(6, (days / maxStreakHistory) * 64);
-                return (
-                  <View key={i} style={s.streakHistItem}>
-                    <Text style={[s.streakHistDays, isCurrent && { color: c.primary }]}>{fmtDuration(days)}</Text>
-                    <View style={s.streakHistBarBg}>
-                      <View style={[s.streakHistBarFill, { height: barH }, isCurrent ? s.streakHistBarCurrent : s.streakHistBarPast]} />
-                    </View>
-                    <Text style={[s.streakHistLabel, isCurrent && { color: c.primary, fontWeight: '700' }]}>
-                      {isCurrent ? 'now' : `#${i + 1}`}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            {isStreakImproving && (
-              <Text style={s.streakHistInsight}>💪 Each attempt you go further — keep building</Text>
-            )}
-          </View>
-        )}
-
-        {/* ── Urge resistance ── */}
-        <View style={s.card}>
-          <SectionHeader
-            title="🧠 Urge resistance"
-            action={
-              data.urgeCount > 0 ? (
-                <Pressable
-                  onPress={confirmResetUrges}
-                  style={({ pressed }) => [s.resetLink, pressed && { opacity: 0.5 }]}
-                  disabled={resettingUrges}>
-                  <Text style={s.resetLinkTxt}>{resettingUrges ? 'Resetting…' : 'Reset logs'}</Text>
-                </Pressable>
-              ) : undefined
-            }
-          />
-          <View style={s.statsRow}>
-            <StatBox label="Total logged" value={`${data.urgeCount}`} />
-            <View style={s.statsDivider} />
-            <StatBox label="Overcame" value={`${data.urgesOvercome}`} color={c.success} />
-            <View style={s.statsDivider} />
-            <StatBox
-              label="Success rate"
-              value={urgeResistPct !== null ? `${urgeResistPct}%` : '—'}
-              color={urgeResistPct !== null && urgeResistPct >= 70 ? c.success : c.textMuted}
-            />
-          </View>
-          {data.urgeCount > 0 && (
-            <View style={s.progressBarBg}>
-              <View style={[s.progressBarFill, { width: `${urgeResistPct ?? 0}%` as any }]} />
-            </View>
-          )}
-          {maxUrgeCount > 0 ? (
-            <View style={s.urgeDayWrap}>
-              <Text style={s.urgeDayTitle}>By day of week</Text>
-              <View style={s.urgeDayChart}>
-                {data.urgesByDay.map((count, i) => {
-                  const barH = count > 0 ? Math.max(4, (count / maxUrgeCount) * 44) : 4;
-                  const isHardest = count === maxUrgeCount && count > 0;
-                  return (
-                    <View key={i} style={s.urgeDayItem}>
-                      <Text style={s.urgeDayCount}>{count > 0 ? count : ''}</Text>
-                      <View style={s.urgeDayBarBg}>
-                        <View style={[s.urgeDayBarFill, { height: barH }, isHardest && s.urgeDayBarHardest]} />
-                      </View>
-                      <Text style={[s.urgeDayLabel, isHardest && s.urgeDayLabelHardest]}>{DAY_SHORT[i]}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-              <Text style={s.urgeDayInsight}>💡 {DAY_LABELS[maxUrgeDay]}s are your most challenging day</Text>
-            </View>
-          ) : (
-            <Text style={s.urgeDayInsight}>✨ No urges logged yet — keep it up!</Text>
-          )}
-          {data.urgeCount > 0 && (
-            <View style={s.urgeTodWrap}>
-              <Text style={s.urgeDayTitle}>By time of day</Text>
-              {data.urgesByTimeOfDay.map((count, i) => {
-                const barW = count > 0 ? Math.max(4, (count / maxTodCount) * 100) : 4;
-                const isHardest = i === hardestTod && count > 0;
-                return (
-                  <View key={i} style={s.urgeTodRow}>
-                    <Text style={[s.urgeTodLabel, isHardest && s.urgeTodLabelHardest]}>{TOD_LABELS[i]}</Text>
-                    <View style={s.urgeTodBarBg}>
-                      <View style={[s.urgeTodBarFill, { width: `${barW}%` as any }, isHardest && s.urgeTodBarHardest]} />
-                    </View>
-                    <Text style={[s.urgeTodCount, isHardest && s.urgeTodCountHardest]}>{count}</Text>
-                  </View>
-                );
-              })}
-              {data.urgesByTimeOfDay[hardestTod] > 0 && (
-                <Text style={s.urgeDayInsight}>💡 {TOD_LABELS[hardestTod]}s ({TOD_TIMES[hardestTod]}) are your peak risk time</Text>
-              )}
-            </View>
-          )}
         </View>
 
         {/* ── Mood ── */}
@@ -994,24 +850,78 @@ export default function AnalyticsScreen() {
             </>
           )}
           <View style={s.checkInRow}>
-            <Text style={s.checkInLabel}>Check-in consistency</Text>
-            <Text style={s.checkInValue}>{data.checkInDays}/30 days this month</Text>
+            <Text style={s.checkInLabel}>Check-ins this month</Text>
+            <Text style={s.checkInValue}>
+              {data.checkInDays}/30{data.checkinStreak.current > 0 ? `  ·  🔥 ${data.checkinStreak.current}d streak` : ''}
+            </Text>
           </View>
           <View style={s.progressBarBg}>
             <View style={[s.progressBarFill, { width: `${Math.round((data.checkInDays / 30) * 100)}%` as any }]} />
           </View>
-          {(data.checkinStreak.current > 0 || data.checkinStreak.best > 0) && (
-            <View style={s.checkinStreakRow}>
-              {data.checkinStreak.current > 0 && (
-                <View style={s.checkinStreakChip}>
-                  <Text style={s.checkinStreakChipTxt}>🔥 {data.checkinStreak.current}-day streak</Text>
-                </View>
-              )}
-              {data.checkinStreak.best > 0 && (
-                <View style={[s.checkinStreakChip, s.checkinStreakChipBest]}>
-                  <Text style={[s.checkinStreakChipTxt, s.checkinStreakChipTxtBest]}>🏅 Best: {data.checkinStreak.best}d</Text>
-                </View>
-              )}
+        </View>
+
+        {/* ── Urge resistance ── */}
+        <View style={s.card}>
+          <SectionHeader
+            title="🧠 Urge resistance"
+            action={
+              data.urgeCount > 0 ? (
+                <Pressable
+                  onPress={confirmResetUrges}
+                  style={({ pressed }) => [s.resetLink, pressed && { opacity: 0.5 }]}
+                  disabled={resettingUrges}>
+                  <Text style={s.resetLinkTxt}>{resettingUrges ? 'Resetting…' : 'Reset logs'}</Text>
+                </Pressable>
+              ) : undefined
+            }
+          />
+          <View style={s.statsRow}>
+            <StatBox label="Total logged" value={`${data.urgeCount}`} />
+            <View style={s.statsDivider} />
+            <StatBox label="Overcame" value={`${data.urgesOvercome}`} color={c.success} />
+            <View style={s.statsDivider} />
+            <StatBox
+              label="Success rate"
+              value={urgeResistPct !== null ? `${urgeResistPct}%` : '—'}
+              color={urgeResistPct !== null && urgeResistPct >= 70 ? c.success : c.textMuted}
+            />
+          </View>
+          {maxUrgeCount > 0 ? (
+            <View style={s.urgeDayWrap}>
+              <View style={s.urgeDayChart}>
+                {data.urgesByDay.map((count, i) => {
+                  const barH = count > 0 ? Math.max(4, (count / maxUrgeCount) * 44) : 4;
+                  const isHardest = count === maxUrgeCount && count > 0;
+                  return (
+                    <View key={i} style={s.urgeDayItem}>
+                      <Text style={s.urgeDayCount}>{count > 0 ? count : ''}</Text>
+                      <View style={s.urgeDayBarBg}>
+                        <View style={[s.urgeDayBarFill, { height: barH }, isHardest && s.urgeDayBarHardest]} />
+                      </View>
+                      <Text style={[s.urgeDayLabel, isHardest && s.urgeDayLabelHardest]}>{DAY_SHORT[i]}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <Text style={s.urgeDayInsight}>✨ No urges logged yet — keep it up!</Text>
+          )}
+          {data.urgeCount > 0 && (
+            <View style={s.urgeTodWrap}>
+              {data.urgesByTimeOfDay.map((count, i) => {
+                const barW = count > 0 ? Math.max(4, (count / maxTodCount) * 100) : 4;
+                const isHardest = i === hardestTod && count > 0;
+                return (
+                  <View key={i} style={s.urgeTodRow}>
+                    <Text style={[s.urgeTodLabel, isHardest && s.urgeTodLabelHardest]}>{TOD_LABELS[i]}</Text>
+                    <View style={s.urgeTodBarBg}>
+                      <View style={[s.urgeTodBarFill, { width: `${barW}%` as any }, isHardest && s.urgeTodBarHardest]} />
+                    </View>
+                    <Text style={[s.urgeTodCount, isHardest && s.urgeTodCountHardest]}>{count}</Text>
+                  </View>
+                );
+              })}
             </View>
           )}
         </View>
@@ -1071,31 +981,30 @@ export default function AnalyticsScreen() {
               </View>
             </>
           )}
-        </View>
-
-        {/* ── Money not spent projections ── */}
-        {data.dailySavingsRate > 0 && (
-          <View style={s.card}>
-            <SectionHeader
-              title="💸 Money not spent"
-              subtitle={`${fmt(data.totalSavings, data.currency)} saved since day one`}
-            />
-            <View style={s.projGrid}>
-              {([
-                { label: 'Tomorrow',   days: 1 },
-                { label: 'This week',  days: 7 },
-                { label: 'This month', days: 30 },
-                { label: 'This year',  days: 365 },
-              ] as const).map(p => (
-                <View key={p.label} style={s.projBox}>
-                  <Text style={s.projValue}>+{fmtCompact(data.dailySavingsRate * p.days, data.currency)}</Text>
-                  <Text style={s.projLabel}>{p.label}</Text>
-                </View>
-              ))}
+          {weeklySpendRate > 0 && (
+            <View style={s.projSection}>
+              <Text style={s.projSectionTitle}>📈 Projected from savings rate</Text>
+              <View style={s.projGrid}>
+                {([
+                  { label: 'This week',  weeks: 1 },
+                  { label: 'This month', weeks: 4.3 },
+                  { label: '3 months',   weeks: 13 },
+                  { label: 'This year',  weeks: 52 },
+                ] as const).map(p => (
+                  <View key={p.label} style={s.projBox}>
+                    <Text style={s.projValue}>+{fmtCompact(weeklySpendRate * p.weeks, data.currency)}</Text>
+                    <Text style={s.projLabel}>{p.label}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={s.projCaption}>
+                {data.avgWeeklySpend > 0
+                  ? `Based on your avg ${fmtCompact(data.avgWeeklySpend, data.currency)}/week gambling spend`
+                  : `Based on your avg ${fmtCompact(trueDailyRate, data.currency)}/day savings rate`}
+              </Text>
             </View>
-            <Text style={s.projCaption}>Projected at your {fmt(data.dailySavingsRate, data.currency)}/day rate</Text>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* ── Debt recovery ── */}
         {data.debtsWithPacing.length > 0 && (
@@ -1238,18 +1147,24 @@ export default function AnalyticsScreen() {
           </View>
         )}
 
-        {/* ── Personal insights ── */}
-        {insights.length > 0 && (
+        {/* ── Triggers breakdown ── */}
+        {data.topTriggers.length > 0 && (
           <View style={s.card}>
-            <SectionHeader title="✨ Your insights" />
-            <View style={s.insightsWrap}>
-              {insights.map((ins, i) => (
-                <View key={i} style={[s.insightChip, { backgroundColor: ins.bg }]}>
-                  <Text style={s.insightEmoji}>{ins.emoji}</Text>
-                  <Text style={[s.insightText, { color: ins.tc }]}>{ins.text}</Text>
+            <SectionHeader title="⚡ Your triggers" subtitle={`${data.urgeCount} urge${data.urgeCount !== 1 ? 's' : ''} logged`} />
+            {data.topTriggers.map((item, i) => {
+              const pct = item.count > 0 ? Math.round((item.overcame / item.count) * 100) : 0;
+              return (
+                <View key={i} style={s.triggerRow}>
+                  <View style={s.triggerLabelRow}>
+                    <Text style={s.triggerName}>{item.trigger}</Text>
+                    <Text style={s.triggerMeta}>{item.count}× · {pct}% beaten</Text>
+                  </View>
+                  <View style={s.progressBarBg}>
+                    <View style={[s.progressBarFill, { width: `${pct}%` as any }, pct >= 70 ? s.progressBarDone : undefined]} />
+                  </View>
                 </View>
-              ))}
-            </View>
+              );
+            })}
           </View>
         )}
 
@@ -1324,11 +1239,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     shadowColor: c.primary, shadowOpacity: 0.3, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 6,
   },
-  heroNumRow:       { flexDirection: 'row', alignItems: 'flex-end', gap: 20 },
-  heroDualCol:      { alignItems: 'center', gap: 2 },
-  heroDualNum:      { fontSize: 60, fontWeight: '800', color: c.white, lineHeight: 66 },
-  heroDualNumSmall: { fontSize: 44, lineHeight: 50 },
-  heroDualLabel:    { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  heroNumRow:       { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroDualCol:      { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
+  heroDualNum:      { fontSize: 58, fontWeight: '800', color: c.white, lineHeight: 64 },
+  heroDualNumSmall: { fontSize: 42, lineHeight: 48 },
+  heroDualLabel:    { fontSize: 20, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
   heroSubLabel:     { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   heroDate:         { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
   heroDivider:      { width: '80%', height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
@@ -1339,29 +1254,28 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   heroStatDivider:  { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.2)' },
 
   body:        { flex: 1 },
-  bodyContent: { padding: 16, gap: 12 },
-  card:        { backgroundColor: c.bgCard, borderRadius: 16, padding: 16, gap: 14 },
+  bodyContent: { padding: 16, gap: 14 },
+  card:        { backgroundColor: c.bgCard, borderRadius: 16, padding: 20, gap: 16 },
 
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   sectionHeader:    { gap: 2, flex: 1 },
-  sectionTitle:     { fontSize: 15, fontWeight: '700', color: c.textPrimary },
-  sectionSub:       { fontSize: 12, color: c.textMuted },
+  sectionTitle:     { fontSize: 15, fontWeight: '700', color: c.textPrimary, letterSpacing: 0.1 },
+  sectionSub:       { fontSize: 12, color: c.textMuted, marginTop: 2 },
 
   statsRow:    { flexDirection: 'row', alignItems: 'center' },
-  statsDivider:{ width: 1, height: 40, backgroundColor: c.borderSubtle, marginHorizontal: 12 },
-  statBox:     { flex: 1, alignItems: 'center', gap: 2 },
-  statValue:   { fontSize: 20, fontWeight: '800', color: c.textPrimary },
+  statsDivider:{ width: StyleSheet.hairlineWidth, height: 36, backgroundColor: c.borderSubtle, marginHorizontal: 10 },
+  statBox:     { flex: 1, alignItems: 'center', gap: 3 },
+  statValue:   { fontSize: 22, fontWeight: '800', color: c.textPrimary },
   statLabel:   { fontSize: 11, color: c.textMuted, textAlign: 'center' },
   statSub:     { fontSize: 10, color: c.success, textAlign: 'center' },
 
-  msDetailCard:        { backgroundColor: c.bgTealDeep, borderRadius: 12, padding: 14, gap: 10, borderWidth: 1, borderColor: c.borderTeal },
-  msDetailHeader:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  msDetailEmoji:       { fontSize: 32 },
-  msDetailTitle:       { fontSize: 15, fontWeight: '700', color: c.textPrimary },
-  msDetailStatus:      { fontSize: 13, color: c.textMuted, marginTop: 2 },
-  msDesc:              { fontSize: 13, color: c.textBody, lineHeight: 20, fontStyle: 'italic' },
-  msAllEarned:         { alignItems: 'center', paddingVertical: 8 },
-  msAllEarnedText:     { fontSize: 14, fontWeight: '600', color: c.success, textAlign: 'center' },
+  insightGap:   { gap: 8 },
+  insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 12 },
+  insightAccent:{ width: 3, alignSelf: 'stretch', borderRadius: 2 },
+  insightEmoji: { fontSize: 16 },
+  insightText:  { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 19 },
+  insightEmpty: { fontSize: 13, color: c.textMuted, fontStyle: 'italic' },
+
 
   // 60-day calendar
   calWrap:       { gap: 2 },
@@ -1379,26 +1293,15 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   calLegendTxt:  { fontSize: 11, color: c.textMuted },
 
   // Weekly summary
-  wkRow:         { flexDirection: 'row', alignItems: 'flex-start' },
-  wkDivider:     { width: 1, backgroundColor: c.borderSubtle, alignSelf: 'stretch', marginHorizontal: 8 },
-  wkBlock:       { flex: 1, alignItems: 'center', gap: 4 },
-  wkBlockLabel:  { fontSize: 11, color: c.textMuted, fontWeight: '500', textAlign: 'center' },
+  wkGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  wkBlock:       { width: '47%', alignItems: 'center', gap: 4, backgroundColor: c.bgInput, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 8 },
+  wkBlockLabel:  { fontSize: 11, color: c.textMuted, fontWeight: '600', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.5 },
   wkBlockVal:    { fontSize: 26, fontWeight: '800', color: c.textPrimary },
   wkDelta:       { fontSize: 11, fontWeight: '600', textAlign: 'center' },
   wkDeltaGood:   { color: c.success },
   wkDeltaBad:    { color: c.error },
   wkDeltaNeutral:{ color: c.textFaint },
 
-  // Streak history
-  streakHistChart:      { flexDirection: 'row', alignItems: 'flex-end', height: 92, gap: 6 },
-  streakHistItem:       { flex: 1, alignItems: 'center', gap: 4 },
-  streakHistDays:       { fontSize: 9, color: c.textMuted, fontWeight: '600', textAlign: 'center' },
-  streakHistBarBg:      { width: '100%', height: 64, justifyContent: 'flex-end', backgroundColor: c.bgElement, borderRadius: 6, overflow: 'hidden' },
-  streakHistBarFill:    { width: '100%', borderRadius: 6 },
-  streakHistBarPast:    { backgroundColor: c.primaryLight },
-  streakHistBarCurrent: { backgroundColor: c.primary },
-  streakHistLabel:      { fontSize: 9, color: c.textFaint, textAlign: 'center' },
-  streakHistInsight:    { fontSize: 12, color: c.success, textAlign: 'center' },
 
   resetLink:    { paddingLeft: 8, paddingTop: 2 },
   resetLinkTxt: { fontSize: 12, color: c.error, fontWeight: '600' },
@@ -1417,15 +1320,9 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   checkInRow:           { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   checkInLabel:         { fontSize: 12, color: c.textBody, fontWeight: '500' },
   checkInValue:         { fontSize: 12, color: c.primary, fontWeight: '700' },
-  checkinStreakRow:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  checkinStreakChip:     { backgroundColor: c.bgTealDeep, borderRadius: 20, paddingVertical: 5, paddingHorizontal: 12 },
-  checkinStreakChipBest: { backgroundColor: c.bgElement },
-  checkinStreakChipTxt:  { fontSize: 12, fontWeight: '700', color: c.primary },
-  checkinStreakChipTxtBest: { color: c.textMuted },
-  chartCaption:      { fontSize: 11, color: c.textDisabled, textAlign: 'center' },
+  chartCaption:      { fontSize: 11, color: c.textFaint, textAlign: 'center', marginTop: -4 },
 
-  urgeDayWrap:        { gap: 8, backgroundColor: c.bgInput, borderRadius: 12, padding: 12 },
-  urgeDayTitle:       { fontSize: 12, fontWeight: '600', color: c.textMuted },
+  urgeDayWrap:        { gap: 10, marginTop: 16, marginBottom: 8 },
   urgeDayChart:       { flexDirection: 'row', alignItems: 'flex-end', height: 68, gap: 4 },
   urgeDayItem:        { flex: 1, alignItems: 'center', gap: 4 },
   urgeDayCount:       { fontSize: 10, color: c.textMuted, height: 14 },
@@ -1436,7 +1333,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   urgeDayLabelHardest:{ color: c.error, fontWeight: '700' },
   urgeDayInsight:     { fontSize: 12, color: c.textMuted, textAlign: 'center', marginTop: 2 },
 
-  urgeTodWrap:         { gap: 8, backgroundColor: c.bgInput, borderRadius: 12, padding: 12 },
+  urgeTodWrap:         { gap: 10 },
   urgeTodRow:          { flexDirection: 'row', alignItems: 'center', gap: 8 },
   urgeTodLabel:        { fontSize: 12, color: c.textMuted, width: 74, fontWeight: '500' },
   urgeTodLabelHardest: { color: c.error, fontWeight: '700' },
@@ -1447,14 +1344,20 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   urgeTodCountHardest: { color: c.error },
 
   progressBarWrap: { gap: 6 },
-  progressBarBg:   { height: 8, backgroundColor: c.bgElement, borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: c.primaryMid, borderRadius: 4 },
+  progressBarBg:   { height: 10, backgroundColor: c.bgElement, borderRadius: 5, overflow: 'hidden' },
+  progressBarFill: { height: '100%', backgroundColor: c.primaryMid, borderRadius: 5 },
   progressBarDone: { backgroundColor: c.success },
   progressBarPct:  { fontSize: 11, color: c.textMuted, textAlign: 'right' },
+
+  triggerRow:      { gap: 6 },
+  triggerLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  triggerName:     { fontSize: 14, fontWeight: '600', color: c.textPrimary, flex: 1 },
+  triggerMeta:     { fontSize: 12, color: c.textMuted, fontWeight: '500' },
+
   goalBarLabel:    {},
   goalBarLabelTxt: { fontSize: 12, color: c.textBody, fontWeight: '600' },
 
-  savingsRateBox:   { backgroundColor: c.bgTealDeep, borderRadius: 10, padding: 12, gap: 4 },
+  savingsRateBox:   { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderSubtle, paddingTop: 14, gap: 4 },
   savingsRateRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   savingsRateLabel: { fontSize: 13, color: c.textBody, fontWeight: '500' },
   savingsRateValue: { fontSize: 15, fontWeight: '800', color: c.primary },
@@ -1467,16 +1370,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   monthBarFillCurrent: { backgroundColor: c.primary },
   monthBarLabel:    { fontSize: 10, color: c.textFaint, textAlign: 'center' },
 
+  projSection:      { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderSubtle, paddingTop: 14, gap: 10 },
+  projSectionTitle: { fontSize: 13, fontWeight: '700', color: c.textPrimary },
   projGrid:    { flexDirection: 'row', gap: 8 },
   projBox:     { flex: 1, alignItems: 'center', gap: 4, backgroundColor: c.bgTealDeep, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 4 },
   projValue:   { fontSize: 14, fontWeight: '800', color: c.success },
   projLabel:   { fontSize: 10, color: c.textBody, fontWeight: '500', textAlign: 'center' },
   projCaption: { fontSize: 11, color: c.textDisabled, textAlign: 'center' },
 
-  insightsWrap: { gap: 8 },
-  insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
-  insightEmoji: { fontSize: 18 },
-  insightText:  { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
 
   setTargetBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: c.bgTeal, borderRadius: 8 },
   setTargetTxt: { fontSize: 12, fontWeight: '600', color: c.primary },
@@ -1492,7 +1393,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   debtItemBarBg:   { height: 6, backgroundColor: c.bgElement, borderRadius: 3, overflow: 'hidden' },
   debtItemBarFill: { height: '100%', borderRadius: 3 },
   debtItemPct:     { fontSize: 11, color: c.textMuted, fontWeight: '500' },
-  debtPacingBox:   { backgroundColor: c.bgInput, borderRadius: 8, padding: 8, gap: 4 },
+  debtPacingBox:   { gap: 6, paddingTop: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bgElement },
   debtPacingRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
   debtPacingLbl:   { fontSize: 11, color: c.textMuted, fontWeight: '500' },
   debtPacingVal:   { fontSize: 12, color: c.textPrimary, fontWeight: '600' },
