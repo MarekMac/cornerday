@@ -69,20 +69,20 @@ function parseQuitDate(quitDate: string): Date {
   return new Date(quitDate);
 }
 
-function heroTime(ms: number): [string, string] {
+function heroTime(ms: number): [string, string, string | null, string | null] {
   const mins   = Math.floor(ms / 60000);
   const hrs    = Math.floor(ms / 3600000);
   const days   = Math.floor(ms / 86400000);
   const weeks  = Math.floor(days / 7);
   const months = Math.floor(days / 30);
   const years  = Math.floor(days / 365);
-  if (years  >= 1) return [String(years),  years  === 1 ? 'year'  : 'years'];
-  if (months >= 1) return [String(months), months === 1 ? 'month' : 'months'];
-  if (weeks  >= 1) return [String(weeks),  weeks  === 1 ? 'week'  : 'weeks'];
-  if (days   >= 1) return [String(days),   days   === 1 ? 'day'   : 'days'];
-  if (hrs    >= 1) return [String(hrs),    hrs    === 1 ? 'hr'    : 'hrs'];
-  if (mins   >= 1) return [String(mins),   'min'];
-  return ['< 1', 'min'];
+  if (years  >= 1) { const rem = Math.floor((days % 365) / 30); return [String(years), years === 1 ? 'year' : 'years', rem > 0 ? String(rem) : null, rem > 0 ? (rem === 1 ? 'month' : 'months') : null]; }
+  if (months >= 1) { const rem = Math.floor((days % 30) / 7);   return [String(months), months === 1 ? 'month' : 'months', rem > 0 ? String(rem) : null, rem > 0 ? (rem === 1 ? 'week' : 'weeks') : null]; }
+  if (weeks  >= 1) { const rem = days % 7;                       return [String(weeks), weeks === 1 ? 'week' : 'weeks', rem > 0 ? String(rem) : null, rem > 0 ? (rem === 1 ? 'day' : 'days') : null]; }
+  if (days   >= 1) { const rem = Math.floor((ms % 86400000) / 3600000); return [String(days), days === 1 ? 'day' : 'days', String(rem), rem === 1 ? 'hr' : 'hrs']; }
+  if (hrs    >= 1) { const rem = Math.floor((ms % 3600000) / 60000);    return [String(hrs), hrs === 1 ? 'hr' : 'hrs', rem > 0 ? String(rem) : null, rem > 0 ? 'min' : null]; }
+  if (mins   >= 1) return [String(mins), 'min', null, null];
+  return ['< 1', 'min', null, null];
 }
 
 function fmtDuration(days: number): string {
@@ -641,7 +641,7 @@ export default function AnalyticsScreen() {
   const isStreakImproving = data.streakHistory.length >= 3 &&
     data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
 
-  const [heroNum, heroLabel] = heroTime(elapsedMs);
+  const [heroNum, heroLabel, heroNum2, heroLabel2] = heroTime(elapsedMs);
 
   // Calendar grid — arrange 60 days into week columns
   const firstIso  = data.calendarDays[0]?.iso;
@@ -701,9 +701,17 @@ export default function AnalyticsScreen() {
 
         {/* ── Hero ── */}
         <LinearGradient colors={['#0b5252', '#0F6E6E', '#1a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.heroCard}>
-          <View style={s.heroDualCol}>
-            <Text style={s.heroDualNum}>{heroNum}</Text>
-            <Text style={s.heroDualLabel}>{heroLabel}</Text>
+          <View style={s.heroNumRow}>
+            <View style={s.heroDualCol}>
+              <Text style={[s.heroDualNum, heroNum2 && s.heroDualNumSmall]}>{heroNum}</Text>
+              <Text style={s.heroDualLabel}>{heroLabel}</Text>
+            </View>
+            {heroNum2 && (
+              <View style={s.heroDualCol}>
+                <Text style={[s.heroDualNum, s.heroDualNumSmall]}>{heroNum2}</Text>
+                <Text style={s.heroDualLabel}>{heroLabel2}</Text>
+              </View>
+            )}
           </View>
           <Text style={s.heroSubLabel}>without gambling</Text>
           <Text style={s.heroDate}>
@@ -1316,8 +1324,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     shadowColor: c.primary, shadowOpacity: 0.3, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 6,
   },
+  heroNumRow:       { flexDirection: 'row', alignItems: 'flex-end', gap: 20 },
   heroDualCol:      { alignItems: 'center', gap: 2 },
   heroDualNum:      { fontSize: 60, fontWeight: '800', color: c.white, lineHeight: 66 },
+  heroDualNumSmall: { fontSize: 44, lineHeight: 50 },
   heroDualLabel:    { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
   heroSubLabel:     { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   heroDate:         { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
