@@ -1994,11 +1994,8 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
             style={s.whyAnchorCard}>
             <View style={s.whyAnchorHeader}>
-              <Text style={s.whyAnchorLabelIcon}>❤️</Text>
-              <View>
-                <Text style={s.whyAnchorLabel}>Your why</Text>
-                <Text style={s.whyAnchorSub}>What you're fighting for</Text>
-              </View>
+              <Text style={s.whyAnchorLabel}>Your why</Text>
+              <Text style={s.whyAnchorSub}>What you're fighting for</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
               {motivations.map((m, i) => (
@@ -2836,9 +2833,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     overflow: 'hidden',
   },
   whyAnchorHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14, paddingRight: 16,
+    flexDirection: 'column', marginBottom: 14, paddingRight: 16,
   },
-  whyAnchorLabelIcon: { fontSize: 26 },
   whyAnchorLabel: {
     fontSize: 16,
     fontWeight: '700',
