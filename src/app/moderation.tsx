@@ -250,6 +250,7 @@ export default function ModerationScreen() {
 
   const submitBan = async () => {
     if (!banFormUser) return;
+    if (!banReason.trim()) return;
     setBanSubmitting(true);
     const ms = BAN_DURATION_MS[banDuration];
     const expiresAt = ms ? new Date(Date.now() + ms).toISOString() : null;
@@ -772,9 +773,9 @@ export default function ModerationScreen() {
                 <Text style={s.deleteModalCancelTxt}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [s.modalActionBtn, s.modalActionBan, banSubmitting && s.btnDisabled, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [s.modalActionBtn, s.modalActionBan, (banSubmitting || !banReason.trim()) && s.btnDisabled, pressed && { opacity: 0.8 }]}
                 onPress={submitBan}
-                disabled={banSubmitting}>
+                disabled={banSubmitting || !banReason.trim()}>
                 {banSubmitting
                   ? <ActivityIndicator size="small" color={c.white} />
                   : <Text style={s.modalActionBtnTxt}>Ban user</Text>}
