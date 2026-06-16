@@ -383,7 +383,7 @@ function formatBest(days: number, ms: number) {
   const isCurrentBest = totalDays === days;
 
   if (isCurrentBest) {
-    if (totalDays === 0 && hours === 0) return `${mins}m`;
+    if (totalDays === 0 && hours === 0) return mins > 0 ? `${mins}m` : 'just started';
     if (totalDays === 0) return `${hours}h ${mins}m`;
     if (totalDays < 7) return `${totalDays}d ${hours}h`;
     if (totalDays < 30) return `${weeks}w ${totalDays % 7}d`;
@@ -581,7 +581,9 @@ function LiveCounter({ quitDate }: { quitDate: string | null }) {
           ? `${plural(days, 'day')}${hours > 0 ? `, ${plural(hours, 'hour')}` : ''}`
           : hours > 0
             ? `${plural(hours, 'hour')}${mins > 0 ? `, ${plural(mins, 'minute')}` : ''}`
-            : `${plural(mins, 'minute')}, ${plural(secs, 'second')}`;
+            : mins > 0
+              ? `${plural(mins, 'minute')}, ${plural(secs, 'second')}`
+              : secs > 0 ? `${plural(secs, 'second')}` : 'just started';
 
   return <Text style={s.liveCounter}>{label}</Text>;
 }
