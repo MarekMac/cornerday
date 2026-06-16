@@ -28,6 +28,7 @@ import { useUser } from '@/context/user';
 import Svg, { Circle } from 'react-native-svg';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import PreferencesIllustration from '@/components/PreferencesIllustration';
 import * as Notifications from 'expo-notifications';
 import * as StoreReview from 'expo-store-review';
 import { supabase } from '@/lib/supabase';
@@ -2596,7 +2597,9 @@ export default function HomeScreen() {
       <Modal visible={showProfileNudge} transparent animationType="fade" onRequestClose={dismissProfileNudge}>
         <Pressable style={s.confirmOverlay} onPress={dismissProfileNudge}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            <Text style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>✨</Text>
+            <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 32 }}>
+              <PreferencesIllustration width={220} height={150} />
+            </View>
             <Text style={[s.confirmTitle, { textAlign: 'center' }]}>Make CornerDay yours</Text>
             <Text style={[s.confirmMsg, { textAlign: 'center', marginTop: 8 }]}>
               Add your goal, support type and a trusted contact in the{' '}
