@@ -31,7 +31,9 @@
         "RECEIVE_BOOT_COMPLETED",
         "READ_CONTACTS",
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
       ]
     },
     "web": {
@@ -54,11 +56,18 @@
       "@react-native-community/datetimepicker",
       "expo-sharing",
       "expo-image",
-      "expo-contacts",
+      "expo-contacts"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "85956181-34e1-4957-a48b-faefd588895f"
+      }
+    },
+    "owner": "marekmac"
   }
 }
