@@ -157,7 +157,9 @@ export default function CommunityFeed() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[community] realtime error:', err.message);
+      });
     return () => { supabase.removeChannel(channel); };
   }, []);
 

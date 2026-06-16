@@ -399,7 +399,7 @@ export default function TrackerIndex() {
 
   const saveSaving = async () => {
     const amount = parseFloat(savingAmount.trim());
-    if (!savingAmount.trim() || isNaN(amount) || !isFinite(amount) || amount <= 0) {
+    if (!savingAmount.trim() || isNaN(amount) || !isFinite(amount) || amount <= 0 || amount > 999_999_999) {
       Alert.alert('Invalid amount', 'Please enter a valid amount.');
       return;
     }
@@ -439,7 +439,8 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('losses').delete().eq('id', deleteSavingTarget.id);
+        const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSavingTarget.id);
+        if (delErr) { Alert.alert('Could not delete saving', delErr.message); return; }
         await supabase.from('losses').insert({
           user_id: user.id, type: 'saving_deleted', amount: deleteSavingTarget.amount,
           category: 'Saving', note: deleteSavingTarget.note,
@@ -467,7 +468,7 @@ export default function TrackerIndex() {
 
   const saveSession = async () => {
     const amount = parseFloat(sessionAmount.trim());
-    if (!sessionAmount.trim() || isNaN(amount) || !isFinite(amount) || amount <= 0) {
+    if (!sessionAmount.trim() || isNaN(amount) || !isFinite(amount) || amount <= 0 || amount > 999_999_999) {
       Alert.alert('Invalid amount', 'Please enter a valid amount.');
       return;
     }
@@ -494,7 +495,8 @@ export default function TrackerIndex() {
     if (!deleteSessionTarget) return;
     setDeleting(true);
     try {
-      await supabase.from('losses').delete().eq('id', deleteSessionTarget.id);
+      const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSessionTarget.id);
+      if (delErr) { Alert.alert('Could not delete session', delErr.message); return; }
       setDeleteSessionTarget(null);
       await fetchAll();
     } finally {
@@ -536,7 +538,7 @@ export default function TrackerIndex() {
 
   const saveGoal = async () => {
     const val = parseFloat(goalInput);
-    if (goalInput && (isNaN(val) || !isFinite(val) || val <= 0)) {
+    if (goalInput && (isNaN(val) || !isFinite(val) || val <= 0 || val > 999_999_999)) {
       Alert.alert('Invalid amount', 'Please enter a valid goal amount.');
       return;
     }
@@ -638,7 +640,7 @@ export default function TrackerIndex() {
   const saveQuickPay = async () => {
     if (!quickPayDebt) return;
     const val = parseFloat(quickPayAmount);
-    if (!quickPayAmount || isNaN(val) || val <= 0) {
+    if (!quickPayAmount || isNaN(val) || !isFinite(val) || val <= 0 || val > 999_999_999) {
       Alert.alert('Invalid amount', 'Please enter a valid amount.');
       return;
     }
