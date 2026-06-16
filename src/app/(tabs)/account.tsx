@@ -4,6 +4,7 @@ import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
+import { setHapticsEnabled as setGlobalHaptics } from '@/lib/haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -505,7 +506,7 @@ export default function AccountScreen() {
       }
       if (rawStreakHour) { const n = Number(rawStreakHour); if (!isNaN(n)) setNotifStreakHour(n); }
       if (rawCheckinHour) { const n = Number(rawCheckinHour); if (!isNaN(n)) setNotifCheckinHour(n); }
-      if (rawHaptics !== null) setHapticsEnabled(rawHaptics !== 'false');
+      if (rawHaptics !== null) { const v = rawHaptics !== 'false'; setHapticsEnabled(v); setGlobalHaptics(v); }
     });
     return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
   }, [fetchProfile, loadPartnerLink]);
@@ -1172,6 +1173,7 @@ export default function AccountScreen() {
 
   const handleHapticsToggle = async (value: boolean) => {
     setHapticsEnabled(value);
+    setGlobalHaptics(value);
     await AsyncStorage.setItem(HAPTICS_KEY, String(value));
     if (value) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   };
@@ -1693,21 +1695,6 @@ export default function AccountScreen() {
               <Ionicons name="notifications-outline" size={17} color={c.primary} />
             </View>
             <Text style={s.menuRowLabel}>Notifications</Text>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-          </Pressable>
-          <View style={s.menuDivider} />
-          <Pressable
-            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={() => setNotifModalVisible(true)}>
-            <View style={s.menuIconWrap}>
-              <Ionicons name="time-outline" size={17} color={c.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.menuRowLabel}>Reminder time</Text>
-              <Text style={s.notifDesc}>
-                {`Streak ${notifStreakHour % 12 || 12}${notifStreakHour < 12 ? 'am' : 'pm'} · Check-in ${notifCheckinHour % 12 || 12}${notifCheckinHour < 12 ? 'am' : 'pm'}`}
-              </Text>
-            </View>
             <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />

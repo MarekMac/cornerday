@@ -40,6 +40,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { notifySupporter } from '@/lib/notifySupporter';
+import { hapticMedium } from '@/lib/haptics';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -444,7 +445,7 @@ export default function UrgeScreen() {
   const motivations = (motivation ?? '').split(',').filter(Boolean)
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
-  const startTimer  = () => { ctxStartTimer(timerDuration); setTimerPointsEarned(false); notifySupporter('urge'); };
+  const startTimer  = () => { hapticMedium(); ctxStartTimer(timerDuration); setTimerPointsEarned(false); notifySupporter('urge'); };
   const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); setCheckedPlanItems([]); setTimerDuration(20 * 60); };
   const stopTimer  = () => {
     const elapsed = timerTotal - timerSecsLeft;

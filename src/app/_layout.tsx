@@ -5,6 +5,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { AppState, AppStateStatus, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
+import { initHaptics } from '@/lib/haptics';
 import { getImagePickerActive } from '@/lib/image-picker-active';
 
 // Suppress the dev-only "GO_BACK not handled" overlay — this warning is
@@ -55,6 +56,8 @@ function InnerLayout() {
       if (result.success) setLocked(false);
     } catch {}
   }, []);
+
+  useEffect(() => { initHaptics(); }, []);
 
   useEffect(() => {
     if (locked) authenticate();

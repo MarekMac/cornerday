@@ -34,6 +34,7 @@ import * as StoreReview from 'expo-store-review';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNotification } from '@/lib/notifications';
 import { notifySupporter } from '@/lib/notifySupporter';
+import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
 import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY } from '@/constants/storage-keys';
@@ -1479,6 +1480,7 @@ export default function HomeScreen() {
           const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood, note: noteVal } : d);
           return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods };
         });
+        hapticMedium();
         setEditingMood(false);
         setMoodNote('');
         setEditMoodValue(null);
@@ -1511,7 +1513,7 @@ export default function HomeScreen() {
     }
   };
 
-  const handleRelapse = () => setRelapseConfirmVisible(true);
+  const handleRelapse = () => { haptic(); setRelapseConfirmVisible(true); };
 
   const doRelapse = async () => {
     setRelapseLoading(true);
@@ -1909,7 +1911,7 @@ export default function HomeScreen() {
                     {MOODS.map((emoji, i) => (
                       <Pressable
                         key={i}
-                        onPress={() => setEditMoodValue(i + 1)}
+                        onPress={() => { haptic(); setEditMoodValue(i + 1); }}
                         style={({ pressed }) => [s.moodBtn, pressed && s.pressed,
                           editMoodValue === i + 1 && s.moodBtnSelected]}>
                         <Text style={s.moodEmoji}>{emoji}</Text>
