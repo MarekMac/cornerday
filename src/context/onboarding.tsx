@@ -37,12 +37,13 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoaded(true));
   }, []);
 
+  useEffect(() => {
+    if (!isLoaded) return;
+    AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(data)).catch(() => {});
+  }, [data, isLoaded]);
+
   const setField = useCallback((field: keyof OnboardingData, value: string | null) => {
-    setData(prev => {
-      const next = { ...prev, [field]: value ?? undefined };
-      AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(next));
-      return next;
-    });
+    setData(prev => ({ ...prev, [field]: value ?? undefined }));
   }, []);
 
   const saveStep = useCallback((step: string) => {

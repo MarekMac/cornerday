@@ -273,6 +273,7 @@ export default function AccountScreen() {
   const [partnerLinkLoading, setPartnerLinkLoading] = useState(false);
   const [shareSettings, setShareSettings] = useState({ mood: true, milestones: true, recovery: true });
   const [notifySettings, setNotifySettings] = useState({ urge: false, relapse: false, milestone: false });
+  const partnerSettingInFlight = useRef<Set<string>>(new Set());
 
   const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
   const [recoveryMantra, setRecoveryMantra] = useState('');
@@ -371,24 +372,36 @@ export default function AccountScreen() {
   }, []);
 
   const updateShareSetting = async (key: 'share_mood' | 'share_milestones' | 'share_recovery', value: boolean) => {
+    if (partnerSettingInFlight.current.has(key)) return;
     const shortKey = key.replace('share_', '') as 'mood' | 'milestones' | 'recovery';
     setShareSettings(prev => ({ ...prev, [shortKey]: value }));
     if (!partnerLinkId) return;
-    const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
-    if (error) {
-      setShareSettings(prev => ({ ...prev, [shortKey]: !value }));
-      Alert.alert('Could not save setting', error.message);
+    partnerSettingInFlight.current.add(key);
+    try {
+      const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
+      if (error) {
+        setShareSettings(prev => ({ ...prev, [shortKey]: !value }));
+        Alert.alert('Could not save setting', error.message);
+      }
+    } finally {
+      partnerSettingInFlight.current.delete(key);
     }
   };
 
   const updateNotifySetting = async (key: 'notify_urge' | 'notify_relapse' | 'notify_milestone', value: boolean) => {
+    if (partnerSettingInFlight.current.has(key)) return;
     const shortKey = key.replace('notify_', '') as 'urge' | 'relapse' | 'milestone';
     setNotifySettings(prev => ({ ...prev, [shortKey]: value }));
     if (!partnerLinkId) return;
-    const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
-    if (error) {
-      setNotifySettings(prev => ({ ...prev, [shortKey]: !value }));
-      Alert.alert('Could not save setting', error.message);
+    partnerSettingInFlight.current.add(key);
+    try {
+      const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
+      if (error) {
+        setNotifySettings(prev => ({ ...prev, [shortKey]: !value }));
+        Alert.alert('Could not save setting', error.message);
+      }
+    } finally {
+      partnerSettingInFlight.current.delete(key);
     }
   };
 
@@ -1017,7 +1030,7 @@ export default function AccountScreen() {
         ]);
       }
     } finally {
-      await supabase.auth.signOut();
+      try { await supabase.auth.signOut(); } catch (_e) {}
       setSigningOut(false);
     }
   };

@@ -1431,48 +1431,53 @@ export default function HomeScreen() {
   const handleMood = async (mood: number, note?: string) => {
     if (!data) return;
     setMoodSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const noteVal = note?.trim() || null;
-      if (data.todayMoodId) {
-        await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId);
-      } else {
-        const { data: inserted } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
-        setData(prev => prev ? { ...prev, todayMoodId: inserted?.id ?? null } : prev);
-        showInterstitialIfReady(isPremium);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const noteVal = note?.trim() || null;
+        if (data.todayMoodId) {
+          await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId);
+        } else {
+          const { data: inserted } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
+          setData(prev => prev ? { ...prev, todayMoodId: inserted?.id ?? null } : prev);
+          showInterstitialIfReady(isPremium);
+        }
+        const todayKey = todayStr();
+        setData(prev => {
+          if (!prev) return prev;
+          const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood, note: noteVal } : d);
+          return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods };
+        });
+        setEditingMood(false);
+        setMoodNote('');
+        setEditMoodValue(null);
       }
-      const todayKey = todayStr();
-      setData(prev => {
-        if (!prev) return prev;
-        const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood, note: noteVal } : d);
-        return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods };
-      });
-      setEditingMood(false);
-      setMoodNote('');
-      setEditMoodValue(null);
+    } finally {
+      setMoodSubmitting(false);
     }
-    setMoodSubmitting(false);
   };
 
   const handleClearMood = async () => {
     if (!data?.todayMoodId) return;
     setMoodSubmitting(true);
-    const { error } = await supabase.from('mood_checkins').delete().eq('id', data.todayMoodId);
-    if (error) {
-      Alert.alert('Could not clear mood', error.message);
+    try {
+      const { error } = await supabase.from('mood_checkins').delete().eq('id', data.todayMoodId);
+      if (error) {
+        Alert.alert('Could not clear mood', error.message);
+        return;
+      }
+      const todayKey = todayStr();
+      setData(prev => {
+        if (!prev) return prev;
+        const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood: null, note: null } : d);
+        return { ...prev, todayMood: null, todayMoodNote: null, todayMoodId: null, weekMoods };
+      });
+      setEditingMood(false);
+      setMoodNote('');
+      setEditMoodValue(null);
+    } finally {
       setMoodSubmitting(false);
-      return;
     }
-    const todayKey = todayStr();
-    setData(prev => {
-      if (!prev) return prev;
-      const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood: null, note: null } : d);
-      return { ...prev, todayMood: null, todayMoodNote: null, todayMoodId: null, weekMoods };
-    });
-    setEditingMood(false);
-    setMoodNote('');
-    setEditMoodValue(null);
-    setMoodSubmitting(false);
   };
 
   const handleRelapse = () => setRelapseConfirmVisible(true);
