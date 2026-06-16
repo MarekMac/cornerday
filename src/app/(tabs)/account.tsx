@@ -1583,6 +1583,15 @@ export default function AccountScreen() {
             </View>
             <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
+          <View style={s.infoDivider} />
+          <Pressable
+            onPress={() => router.push('/(tabs)/urge/checklist')}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Prevention checklist</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={15} color={c.textFaint} />
+          </Pressable>
         </View>
 
         {/* Someone in your corner */}
@@ -1771,16 +1780,6 @@ export default function AccountScreen() {
         {/* Support */}
         <View style={s.menuCard}>
           <Text style={s.menuCardTitle}>Support</Text>
-          <Pressable
-            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={() => router.push('/(tabs)/urge/checklist')}>
-            <View style={s.menuIconWrap}>
-              <Ionicons name="checkmark-done-outline" size={17} color={c.primary} />
-            </View>
-            <Text style={s.menuRowLabel}>Prevention checklist</Text>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-          </Pressable>
-          <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={handleExport}
