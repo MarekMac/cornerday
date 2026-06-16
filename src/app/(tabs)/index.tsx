@@ -1626,7 +1626,7 @@ export default function HomeScreen() {
                 <Text style={s.greeting} numberOfLines={1}>{getGreeting(data.displayName)}</Text>
                 <Text style={s.quote} numberOfLines={2}>"{QUOTES[quoteIndex]}"</Text>
               </View>
-              <Pressable onPress={() => router.push('/(tabs)/account' as any)} hitSlop={10} accessibilityLabel="Account and settings" accessibilityRole="button" style={{ marginTop: 6, marginRight: 6 }}>
+              <Pressable onPress={() => router.push('/(tabs)/account' as any)} hitSlop={10} accessibilityLabel="Account and settings" accessibilityRole="button" style={{ marginTop: 6, marginRight: 2 }}>
                 {avatarUrl ? (
                   <Image source={{ uri: avatarUrl }} style={s.headerAvatar} />
                 ) : (
