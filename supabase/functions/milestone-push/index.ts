@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const WEBHOOK_SECRET   = Deno.env.get('WEBHOOK_SECRET')!;
 
 interface MilestoneDef {
   days: number;
@@ -56,7 +57,7 @@ function parseQuitMs(ts: string | null, date: string | null): number {
 
 Deno.serve(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
-  if (auth !== `Bearer ${SERVICE_ROLE_KEY}`) {
+  if (auth !== `Bearer ${WEBHOOK_SECRET}`) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 
