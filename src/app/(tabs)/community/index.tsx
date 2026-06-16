@@ -98,12 +98,15 @@ export default function CommunityFeed() {
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [reportPostId, setReportPostId] = useState<string | null>(null);
   const [reportingInFeed, setReportingInFeed] = useState(false);
+  const [newPostsCount, setNewPostsCount] = useState(0);
 
   const currentUserIdRef = useRef<string | null>(null);
   const postsRef = useRef<Post[]>([]);
   const activeFetch = useRef(false);
   const sortByRef = useRef<SortBy>('new');
+  const activeTagRef = useRef<FilterTag>('All');
   const reactingRef = useRef<Record<string, boolean>>({});
+  const flatListRef = useRef<FlatList<Post>>(null);
 
   useEffect(() => {
     // Use cached session first so currentUserIdRef is set before useFocusEffect runs
@@ -140,6 +143,24 @@ export default function CommunityFeed() {
     });
   }, []);
 
+  // Live feed — subscribe to new posts and show a banner when others post
+  useEffect(() => {
+    const channel = supabase
+      .channel('community_feed_live')
+      .on(
+        'postgres_changes' as any,
+        { event: 'INSERT', schema: 'public', table: 'community_posts' },
+        (payload: any) => {
+          if (payload.new?.user_id === currentUserIdRef.current) return;
+          if (activeTagRef.current === 'All' && sortByRef.current === 'new') {
+            setNewPostsCount(prev => prev + 1);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   const dismissGuidelines = async () => {
     await AsyncStorage.setItem(COMMUNITY_GUIDELINES_SEEN_KEY, 'true');
     setGuidelinesVisible(false);
@@ -148,6 +169,7 @@ export default function CommunityFeed() {
   const changeSort = (sort: SortBy) => {
     sortByRef.current = sort;
     setSortBy(sort);
+    setNewPostsCount(0);
     load(activeTag, sort);
   };
 
@@ -302,6 +324,7 @@ export default function CommunityFeed() {
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
+    setNewPostsCount(0);
     load(activeTag, sortByRef.current, true);
     const uid = currentUserIdRef.current;
     if (uid) {
@@ -317,7 +340,9 @@ export default function CommunityFeed() {
   }, [activeTag, load]));
 
   const changeTag = (tag: FilterTag) => {
+    activeTagRef.current = tag;
     setActiveTag(tag);
+    setNewPostsCount(0);
     load(tag, sortByRef.current);
   };
 
@@ -631,12 +656,13 @@ export default function CommunityFeed() {
           </View>
         ) : (
           <FlatList
+            ref={flatListRef}
             data={posts}
             keyExtractor={i => i.id}
             renderItem={renderPost}
             contentContainerStyle={s.list}
             refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); load(activeTag, sortByRef.current, true); }}
+            onRefresh={() => { setRefreshing(true); setNewPostsCount(0); load(activeTag, sortByRef.current, true); }}
             onEndReached={loadMore}
             onEndReachedThreshold={0.3}
             ListFooterComponent={
@@ -684,6 +710,25 @@ export default function CommunityFeed() {
               </View>
             )}
           />
+        )}
+
+        {newPostsCount > 0 && (
+          <Pressable
+            style={s.newPostsBanner}
+            onPress={() => {
+              setNewPostsCount(0);
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+              load('All', 'new', true);
+              activeTagRef.current = 'All';
+              setActiveTag('All');
+            }}
+            accessibilityLabel={`${newPostsCount} new ${newPostsCount === 1 ? 'post' : 'posts'}, tap to refresh`}
+            accessibilityRole="button"
+          >
+            <Text style={s.newPostsBannerTxt}>
+              ↑ {newPostsCount} new {newPostsCount === 1 ? 'post' : 'posts'}
+            </Text>
+          </Pressable>
         )}
 
         <Pressable
@@ -837,6 +882,22 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   list: { padding: 16, gap: 12, paddingBottom: 100 },
   loadingMore: { paddingVertical: 16 },
+  newPostsBanner: {
+    position: 'absolute',
+    top: 12,
+    alignSelf: 'center',
+    backgroundColor: c.primary,
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  newPostsBannerTxt: { color: '#fff', fontSize: 13, fontWeight: '700' },
   loadMoreErr: { paddingVertical: 16, alignItems: 'center', gap: 8 },
   loadMoreErrText: { fontSize: 13, color: c.textMuted },
   loadMoreRetry: { paddingHorizontal: 20, paddingVertical: 8, backgroundColor: c.primary, borderRadius: 16 },
