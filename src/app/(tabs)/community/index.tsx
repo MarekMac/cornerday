@@ -95,6 +95,7 @@ export default function CommunityFeed() {
   const [profileUser, setProfileUser] = useState<{ userId: string; displayName: string; streak: number } | null>(null);
 
   const [loadError, setLoadError] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
   const [reportPostId, setReportPostId] = useState<string | null>(null);
   const [reportingInFeed, setReportingInFeed] = useState(false);
 
@@ -267,6 +268,7 @@ export default function CommunityFeed() {
     if (activeTag === 'Saved' || activeTag === 'Following') return;
     activeFetch.current = true;
     setLoadingMore(true);
+    setLoadMoreError(false);
     try {
       const offset = postsRef.current.length;
       const sort = sortByRef.current;
@@ -281,7 +283,11 @@ export default function CommunityFeed() {
         q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
       } else if (activeTag !== 'All') q = q.eq('tag', activeTag);
       const { data, error } = await q;
-      if (error) console.warn('[community] loadMore error:', error.message);
+      if (error) {
+        console.warn('[community] loadMore error:', error.message);
+        setLoadMoreError(true);
+        return;
+      }
       const items = (data as Post[]) ?? [];
       const next = [...postsRef.current, ...items];
       postsRef.current = next;
@@ -633,7 +639,17 @@ export default function CommunityFeed() {
             onRefresh={() => { setRefreshing(true); load(activeTag, sortByRef.current, true); }}
             onEndReached={loadMore}
             onEndReachedThreshold={0.3}
-            ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color={c.primary} /> : null}
+            ListFooterComponent={
+              loadingMore ? <ActivityIndicator style={s.loadingMore} color={c.primary} /> :
+              loadMoreError ? (
+                <View style={s.loadMoreErr}>
+                  <Text style={s.loadMoreErrText}>Couldn't load more posts.</Text>
+                  <Pressable onPress={loadMore} style={s.loadMoreRetry}>
+                    <Text style={s.loadMoreRetryText}>Try again</Text>
+                  </Pressable>
+                </View>
+              ) : null
+            }
             ListEmptyComponent={loadError ? (
               <View style={s.empty}>
                 <Text style={s.emptyEmoji}>⚠️</Text>
@@ -821,6 +837,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   list: { padding: 16, gap: 12, paddingBottom: 100 },
   loadingMore: { paddingVertical: 16 },
+  loadMoreErr: { paddingVertical: 16, alignItems: 'center', gap: 8 },
+  loadMoreErrText: { fontSize: 13, color: c.textMuted },
+  loadMoreRetry: { paddingHorizontal: 20, paddingVertical: 8, backgroundColor: c.primary, borderRadius: 16 },
+  loadMoreRetryText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 
   fab: {
     position: 'absolute', bottom: 29, right: 25,

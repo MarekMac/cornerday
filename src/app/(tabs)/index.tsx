@@ -29,12 +29,13 @@ import Svg, { Circle } from 'react-native-svg';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import * as StoreReview from 'expo-store-review';
 import { supabase } from '@/lib/supabase';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNotification } from '@/lib/notifications';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
@@ -2572,7 +2573,17 @@ export default function HomeScreen() {
             setCelebrationBadge(null);
             openShareCard({ emoji: b.emoji, label: b.label });
           }}
-          onClose={() => { showInterstitialIfReady(isPremium, 0.4); setCelebrationBadge(null); }}
+          onClose={async () => {
+            showInterstitialIfReady(isPremium, 0.4);
+            setCelebrationBadge(null);
+            try {
+              const alreadyAsked = await AsyncStorage.getItem(STORE_REVIEW_ASKED_KEY);
+              if (!alreadyAsked && await StoreReview.hasAction()) {
+                await AsyncStorage.setItem(STORE_REVIEW_ASKED_KEY, '1');
+                await StoreReview.requestReview();
+              }
+            } catch (_e) {}
+          }}
         />
       )}
 
