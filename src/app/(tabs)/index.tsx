@@ -35,7 +35,7 @@ import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNo
 import { notifySupporter } from '@/lib/notifySupporter';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
@@ -897,11 +897,23 @@ export default function HomeScreen() {
     }
   }, [checkin, moodCardY]);
 
+  useEffect(() => {
+    AsyncStorage.getItem(PROFILE_NUDGE_SHOWN_KEY).then(v => {
+      if (!v) setShowProfileNudge(true);
+    });
+  }, []);
+
+  const dismissProfileNudge = useCallback(() => {
+    setShowProfileNudge(false);
+    AsyncStorage.setItem(PROFILE_NUDGE_SHOWN_KEY, '1');
+  }, []);
+
   const [badgeMsgIndex, setBadgeMsgIndex] = useState(0);
   const [editingMood, setEditingMood] = useState(false);
   const [moodNote, setMoodNote] = useState('');
   const [editMoodValue, setEditMoodValue] = useState<number | null>(null);
   const [partnerMsg, setPartnerMsg] = useState<{ id: string; message: string } | null>(null);
+  const [showProfileNudge, setShowProfileNudge] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
   const [capturingShare, setCapturingShare] = useState(false);
   const [shareCardBadge, setShareCardBadge] = useState<{ emoji: string; label: string } | null>(null);
@@ -2577,6 +2589,33 @@ export default function HomeScreen() {
         </Pressable>
       </Modal>
 
+      {/* ── Profile nudge (shown once after onboarding) ── */}
+      <Modal visible={showProfileNudge} transparent animationType="fade" onRequestClose={dismissProfileNudge}>
+        <Pressable style={s.confirmOverlay} onPress={dismissProfileNudge}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <Text style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>✨</Text>
+            <Text style={[s.confirmTitle, { textAlign: 'center' }]}>Make CornerDay yours</Text>
+            <Text style={[s.confirmMsg, { textAlign: 'center', marginTop: 8 }]}>
+              Add your goal, support type and a trusted contact in the{' '}
+              <Text style={{ fontWeight: '700', color: c.primary }}>Account tab</Text>
+              {' '}for better recovery stats and more personalised AI conversations.
+            </Text>
+            <View style={[s.modalActions, { marginTop: 20 }]}>
+              <Pressable
+                style={({ pressed }) => [s.continueBtn, pressed && { opacity: 0.8 }]}
+                onPress={() => { dismissProfileNudge(); router.push('/(tabs)/account'); }}>
+                <Text style={s.continueBtnTxt}>Go to Account</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]}
+                onPress={dismissProfileNudge}>
+                <Text style={s.modalCloseTxt}>Got it, maybe later</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── Milestone celebration ── */}
       {celebrationBadge && (
         <MilestoneCelebrationModal
@@ -2900,7 +2939,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  confirmMsg: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21 },
   confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  continueBtn: { backgroundColor: c.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  continueBtnTxt: { color: c.white, fontSize: 15, fontWeight: '700' },
   confirmSupportBtn: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgTeal, marginTop: 16 },
   confirmSupportTxt: { fontSize: 15, fontWeight: '700', color: c.primary },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 10 },

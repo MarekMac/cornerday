@@ -57,7 +57,7 @@ export default function Q1Screen() {
           <Ionicons name="chevron-back" size={24} color={c.primary} />
         </Pressable>
         <View style={s.progressWrapper}>
-          <ProgressBar current={1} total={5} />
+          <ProgressBar current={1} total={3} />
         </View>
       </View>
 

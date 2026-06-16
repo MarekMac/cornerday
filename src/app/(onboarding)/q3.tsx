@@ -98,16 +98,16 @@ export default function Q3Screen() {
     setField('weeklyBet', value);
     setField('currency', currency);
     setField('quitDate', userChangedDate ? quitDate.toISOString() : null);
-    saveStep('q4');
-    router.push('/(onboarding)/q4');
+    saveStep('ready');
+    router.push('/(onboarding)/ready');
   };
 
   const handleSkip = () => {
     setField('weeklyBet', null);
     setField('currency', currency);
     setField('quitDate', null);
-    saveStep('q4');
-    router.push('/(onboarding)/q4');
+    saveStep('ready');
+    router.push('/(onboarding)/ready');
   };
 
   const handleChipPress = (value: string) => {
@@ -122,7 +122,7 @@ export default function Q3Screen() {
           <Ionicons name="chevron-back" size={24} color={c.primary} />
         </Pressable>
         <View style={s.progressWrapper}>
-          <ProgressBar current={3} total={5} />
+          <ProgressBar current={3} total={3} />
         </View>
       </View>
 

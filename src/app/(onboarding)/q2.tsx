@@ -37,7 +37,7 @@ export default function Q2Screen() {
   return (
     <QuestionScreen
       step={2}
-      total={5}
+      total={3}
       title="What is your biggest trigger?"
       subtitle="Knowing your trigger helps you prepare for tough moments."
       options={OPTIONS}
