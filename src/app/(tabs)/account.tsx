@@ -1667,16 +1667,6 @@ export default function AccountScreen() {
         {/* Settings */}
         <View style={s.menuCard}>
           <Text style={s.menuCardTitle}>Settings</Text>
-          <Pressable
-            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={() => setNotifModalVisible(true)}>
-            <View style={s.menuIconWrap}>
-              <Ionicons name="notifications-outline" size={17} color={c.primary} />
-            </View>
-            <Text style={s.menuRowLabel}>Notifications</Text>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-          </Pressable>
-          <View style={s.menuDivider} />
           <View style={s.menuRow}>
             <View style={s.menuIconWrap}>
               <Ionicons name="moon-outline" size={17} color={c.primary} />
@@ -1698,6 +1688,31 @@ export default function AccountScreen() {
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => setNotifModalVisible(true)}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="notifications-outline" size={17} color={c.primary} />
+            </View>
+            <Text style={s.menuRowLabel}>Notifications</Text>
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+          </Pressable>
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => setNotifModalVisible(true)}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="time-outline" size={17} color={c.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.menuRowLabel}>Reminder time</Text>
+              <Text style={s.notifDesc}>
+                {`Streak ${notifStreakHour % 12 || 12}${notifStreakHour < 12 ? 'am' : 'pm'} · Check-in ${notifCheckinHour % 12 || 12}${notifCheckinHour < 12 ? 'am' : 'pm'}`}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+          </Pressable>
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => setShowCurrencyModal(true)}>
             <View style={s.menuIconWrap}>
               <Ionicons name="cash-outline" size={17} color={c.primary} />
@@ -1706,11 +1721,14 @@ export default function AccountScreen() {
             <Text style={s.menuRowValue}>{profile?.currency ?? 'USD'}</Text>
           </Pressable>
           <View style={s.menuDivider} />
-          <View style={s.menuRow}>
+          <View style={[s.menuRow, { paddingVertical: 10 }]}>
             <View style={s.menuIconWrap}>
               <Ionicons name="phone-portrait-outline" size={17} color={c.primary} />
             </View>
-            <Text style={s.menuRowLabel}>Haptics</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.menuRowLabel}>Haptics</Text>
+              <Text style={s.notifDesc}>Vibration feedback for taps and interactions</Text>
+            </View>
             <Switch
               value={hapticsEnabled}
               onValueChange={handleHapticsToggle}
