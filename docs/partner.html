@@ -82,6 +82,8 @@
   <footer>CornerDay &middot; "The day you turn it around starts today"</footer>
   <script>
     const API = 'https://cdgsiotlocurwnqxebrh.supabase.co/functions/v1/partner-view';
+    const ANON = 'SUPABASE_ANON_KEY_PLACEHOLDER';
+    const AUTH = { 'Authorization': 'Bearer ' + ANON };
     const token = new URLSearchParams(location.search).get('t') || '';
     const card = document.getElementById('card');
 
@@ -227,7 +229,7 @@
       btn.disabled = true; btn.textContent = 'Sending…';
       try {
         const r = await fetch(API + '?t=' + encodeURIComponent(token), {
-          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({message: msg})
+          method: 'POST', headers: {...AUTH, 'Content-Type':'application/json'}, body: JSON.stringify({message: msg})
         });
         if (r.ok) {
           document.getElementById('form-area').outerHTML =
@@ -248,7 +250,7 @@
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
         const r = await fetch(API + '?t=' + encodeURIComponent(token), {
-          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email})
+          method: 'POST', headers: {...AUTH, 'Content-Type':'application/json'}, body: JSON.stringify({email})
         });
         if (r.ok) {
           document.getElementById('notify-section').innerHTML =
@@ -283,7 +285,7 @@
     (async () => {
       if (!token) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">Invalid link.</div>'; return; }
       try {
-        const r = await fetch(API + '?t=' + encodeURIComponent(token));
+        const r = await fetch(API + '?t=' + encodeURIComponent(token), { headers: AUTH });
         if (r.status === 404) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link is invalid or has been revoked.</div>'; return; }
         if (r.status === 410) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link has expired. Ask them to generate a new one in the app.</div>'; return; }
         const data = await r.json();

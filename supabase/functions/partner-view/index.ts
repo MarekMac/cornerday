@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
 
     const fetches: Promise<void>[] = [];
 
-    if (link.share_mood) {
+    if (link.share_mood !== false) {
       fetches.push((async () => {
         const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
         const { data: moods } = await sb
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
       })());
     }
 
-    if (link.share_milestones) {
+    if (link.share_milestones !== false) {
       fetches.push((async () => {
         const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
         const [badgeCountRes, latestRes, urgeRes] = await Promise.all([
@@ -114,14 +114,15 @@ Deno.serve(async (req: Request) => {
       })());
     }
 
-    if (link.share_recovery) {
+    if (link.share_recovery !== false) {
       fetches.push((async () => {
-        const [debtsRes, paymentsRes] = await Promise.all([
-          sb.from('debts').select('total_amount').eq('user_id', link.user_id),
-          sb.from('debt_payments').select('amount').eq('user_id', link.user_id),
-        ]);
-        const totalLost = ((debtsRes.data ?? []) as { total_amount: number }[]).reduce((s, r) => s + Number(r.total_amount), 0);
-        const totalPaid = ((paymentsRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + Number(r.amount), 0);
+        const { data: lossRows } = await sb
+          .from('losses')
+          .select('type, amount')
+          .eq('user_id', link.user_id);
+        const rows = (lossRows ?? []) as { type: string; amount: number }[];
+        const totalLost = rows.filter(r => r.type === 'loss').reduce((s, r) => s + Number(r.amount), 0);
+        const totalPaid = rows.filter(r => r.type === 'payment').reduce((s, r) => s + Number(r.amount), 0);
         result.totalLost = totalLost;
         result.totalPaid = totalPaid;
         result.recoveryPct = totalLost > 0 ? Math.min(Math.round((totalPaid / totalLost) * 100), 100) : null;

@@ -366,7 +366,7 @@ export default function AccountScreen() {
       setPartnerToken(data.token);
       setPartnerLinkId(data.id);
       setPartnerExpiresAt(data.expires_at ?? null);
-      setShareSettings({ mood: data.share_mood ?? false, milestones: data.share_milestones ?? false, recovery: data.share_recovery ?? false });
+      setShareSettings({ mood: data.share_mood ?? true, milestones: data.share_milestones ?? true, recovery: data.share_recovery ?? true });
       setNotifySettings({ urge: data.notify_urge ?? false, relapse: data.notify_relapse ?? false, milestone: data.notify_milestone ?? false });
     }
   }, []);
@@ -435,7 +435,7 @@ export default function AccountScreen() {
     }
     setPartnerLinkLoading(false);
     if (token) {
-      const url = `https://marekmac.github.io/cornerday/partner.html?t=${token}`;
+      const url = `https://cornerday.app/partner.html?t=${token}`;
       await Share.share({ message: url, url }).catch(() => {});
     }
   };
@@ -1222,15 +1222,34 @@ export default function AccountScreen() {
   const quitFormatted = formatQuitDate(profile?.quitTimestamp ?? null);
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
+  const formatDual = (ms: number): string => {
+    if (ms <= 0) return '< 1min';
+    const totalMins = Math.floor(ms / 60000);
+    const totalHrs  = Math.floor(ms / 3600000);
+    const totalDays = Math.floor(ms / 86400000);
+    const years  = Math.floor(totalDays / 365);
+    const months = Math.floor((totalDays % 365) / 30);
+    const days   = (totalDays % 365) % 30;
+    const hrs    = totalHrs % 24;
+    const mins   = totalMins % 60;
+    const parts: string[] = [];
+    if (years  > 0) parts.push(`${years}y`);
+    if (months > 0) parts.push(`${months}mo`);
+    if (days   > 0) parts.push(`${days}d`);
+    if (hrs    > 0) parts.push(`${hrs}h`);
+    if (mins   > 0) parts.push(`${mins}min`);
+    return parts.slice(0, 2).join(' ') || '< 1min';
+  };
+
   const streakDisplay = (() => {
-    if (!profile?.quitTimestamp) return { value: '< 1m', unit: '' };
+    if (!profile?.quitTimestamp) return { value: '—' };
     const ms = Math.max(0, Date.now() - new Date(profile.quitTimestamp).getTime());
-    return { value: formatStreakDual(ms), unit: '' };
+    return { value: formatDual(ms) };
   })();
 
   const longestStreakDisplay = (() => {
     const dbDays = profile?.longestStreak ?? 0;
-    if (dbDays >= 1) return { value: formatStreakDual(dbDays * 86400000), unit: '' };
+    if (dbDays >= 1) return { value: formatDual(dbDays * 86400000) };
     return streakDisplay;
   })();
 
@@ -1241,136 +1260,145 @@ export default function AccountScreen() {
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Account</Text>
           </View>
+          <View style={s.heroProfile}>
+            <Pressable onPress={handleAvatarPress} style={({ pressed }) => [s.heroAvatar, pressed && { opacity: 0.8 }]}>
+              {profile?.avatarUrl
+                ? <Image source={{ uri: profile.avatarUrl }} style={s.heroAvatarImg} />
+                : <Text style={s.heroAvatarTxt}>{initials}</Text>}
+              {uploadingAvatar && (
+                <View style={s.avatarOverlay}>
+                  <ActivityIndicator color={c.white} />
+                </View>
+              )}
+              <View style={s.heroAvatarBadge}>
+                <Text style={s.avatarEditBadgeTxt}>✎</Text>
+              </View>
+            </Pressable>
+            <View style={s.heroInfo}>
+              {editingName ? (
+                <View style={s.heroNameEditRow}>
+                  <TextInput
+                    style={s.heroNameInput}
+                    value={nameInput}
+                    onChangeText={setNameInput}
+                    placeholder="Your name"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    autoFocus
+                    maxLength={40}
+                    returnKeyType="done"
+                    onSubmitEditing={saveName}
+                  />
+                  <Pressable onPress={() => setNameInput(generateUsername())} style={({ pressed }) => [s.heroShuffleBtn, pressed && { opacity: 0.6 }]} hitSlop={6}>
+                    <Ionicons name="shuffle-outline" size={15} color="rgba(255,255,255,0.8)" />
+                  </Pressable>
+                  <Pressable onPress={saveName} disabled={savingName} style={({ pressed }) => [s.heroSaveBtn, pressed && { opacity: 0.7 }]}>
+                    {savingName ? <ActivityIndicator size="small" color={c.white} /> : <Text style={s.heroSaveBtnTxt}>Save</Text>}
+                  </Pressable>
+                  <Pressable onPress={() => setEditingName(false)} hitSlop={8}>
+                    <Text style={s.heroCancelTxt}>✕</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  style={s.heroNameRow}
+                  onPress={() => { setNameInput(profile?.displayName ?? profile?.email?.split('@')[0] ?? ''); setEditingName(true); }}>
+                  <Text style={s.heroName} numberOfLines={1}>{profile?.displayName ?? profile?.email?.split('@')[0] ?? 'Anonymous'}</Text>
+                  <View style={s.heroEditChip}><Text style={s.heroEditChipTxt}>Edit</Text></View>
+                </Pressable>
+              )}
+              <Pressable
+                onPress={async () => {
+                  if (!profile?.email) return;
+                  await Clipboard.setStringAsync(profile.email);
+                  setEmailCopied(true);
+                  if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current);
+                  emailCopyTimerRef.current = setTimeout(() => setEmailCopied(false), 2000);
+                }}
+                style={s.heroEmailRow}>
+                <Text style={s.heroEmail} numberOfLines={1}>{profile?.email}</Text>
+                <Ionicons name={emailCopied ? 'checkmark' : 'copy-outline'} size={12} color="rgba(255,255,255,0.45)" />
+              </Pressable>
+              <View style={s.heroBadgeRow}>
+                {isAdmin ? (
+                  <Text style={s.heroBadge}>👑 Admin</Text>
+                ) : isPremiumFromRC ? (
+                  <>
+                    <Text style={s.heroBadge}>✨ Premium</Text>
+                    {renewalDate ? <Text style={s.heroRenewal}>· Renews {renewalDate}</Text> : null}
+                  </>
+                ) : (
+                  <>
+                    <Text style={s.heroBadgeFree}>Free plan</Text>
+                    {restoringPurchases
+                      ? <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" style={{ marginLeft: 8 }} />
+                      : <Pressable onPress={async () => { setRestoringPurchases(true); await restorePurchases(); setRestoringPurchases(false); }}>
+                          <Text style={s.heroRestore}>· Restore</Text>
+                        </Pressable>}
+                  </>
+                )}
+              </View>
+            </View>
+            <View>
+              {!isAdmin && (isPremiumFromRC ? (
+                <Pressable
+                  style={({ pressed }) => [s.heroActionBtn, pressed && { opacity: 0.7 }]}
+                  onPress={() => Linking.openURL(Platform.OS === 'ios' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions')}>
+                  <Text style={s.heroActionBtnTxt}>Manage</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [s.heroActionBtn, s.heroUpgradeBtn, pressed && { opacity: 0.85 }]}
+                  onPress={showPaywall}>
+                  <Text style={s.heroUpgradeBtnTxt}>Upgrade</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
         </SafeAreaView>
       </LinearGradient>
 
       <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
 
-        {/* Profile card */}
-        <View style={s.profileCard}>
-          <Pressable onPress={handleAvatarPress} style={({ pressed }) => [s.avatar, pressed && { opacity: 0.8 }]}>
-            {profile?.avatarUrl
-              ? <Image source={{ uri: profile.avatarUrl }} style={s.avatarImg} />
-              : <Text style={s.avatarTxt}>{initials}</Text>}
-            {uploadingAvatar && (
-              <View style={s.avatarOverlay}>
-                <ActivityIndicator color={c.white} />
-              </View>
-            )}
-            <View style={s.avatarEditBadge}>
-              <Text style={s.avatarEditBadgeTxt}>✎</Text>
-            </View>
-          </Pressable>
-          {editingName ? (
-            <View style={s.nameEditRow}>
-              <TextInput
-                style={s.nameInput}
-                value={nameInput}
-                onChangeText={setNameInput}
-                placeholder="Your name"
-                placeholderTextColor={c.textFaint}
-                autoFocus
-                maxLength={40}
-                returnKeyType="done"
-                onSubmitEditing={saveName}
-              />
-              <Pressable onPress={() => setNameInput(generateUsername())} style={({ pressed }) => [s.nameShuffleBtn, pressed && { opacity: 0.6 }]} hitSlop={6}>
-                <Ionicons name="shuffle-outline" size={16} color={c.primary} />
-              </Pressable>
-              <Pressable onPress={saveName} disabled={savingName} style={({ pressed }) => [s.nameSaveBtn, pressed && { opacity: 0.7 }]}>
-                {savingName
-                  ? <ActivityIndicator size="small" color={c.white} />
-                  : <Text style={s.nameSaveTxt}>Save</Text>}
-              </Pressable>
-              <Pressable onPress={() => setEditingName(false)} style={({ pressed }) => [s.nameCancelBtn, pressed && { opacity: 0.7 }]}>
-                <Text style={s.nameCancelTxt}>Cancel</Text>
-              </Pressable>
-            </View>
-          ) : (
+        {/* Admin section */}
+        {isAdmin && (
+          <View style={s.menuCard}>
+            <Text style={s.menuCardTitle}>Administration</Text>
             <Pressable
-              style={s.nameRow}
-              onPress={() => { setNameInput(profile?.displayName ?? profile?.email?.split('@')[0] ?? ''); setEditingName(true); }}>
-              <Text style={s.displayName}>{profile?.displayName ?? profile?.email?.split('@')[0] ?? 'Anonymous'}</Text>
-              <View style={s.nameEditHint}><Text style={s.nameEditHintTxt}>Edit</Text></View>
-            </Pressable>
-          )}
-          <Pressable
-            onPress={async () => {
-              if (!profile?.email) return;
-              await Clipboard.setStringAsync(profile.email);
-              setEmailCopied(true);
-              if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current);
-              emailCopyTimerRef.current = setTimeout(() => setEmailCopied(false), 2000);
-            }}
-            style={s.emailRow}>
-            <Text style={s.email}>{profile?.email}</Text>
-            <Ionicons
-              name={emailCopied ? 'checkmark' : 'copy-outline'}
-              size={13}
-              color={emailCopied ? c.primary : c.textFaint}
-            />
-          </Pressable>
-          <View style={s.profileSubRow}>
-            {isAdmin ? (
-              <View style={s.profileSubLeft}>
-                <Text style={s.profileAdminBadge}>👑 Admin</Text>
+              style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+              onPress={() => router.push('/moderation')}>
+              <View style={s.menuIconWrap}>
+                <Ionicons name="shield-outline" size={17} color={c.primary} />
               </View>
-            ) : isPremiumFromRC ? (
-              <>
-                <View style={s.profileSubLeft}>
-                  <Text style={s.profileSubBadge}>✨ Premium</Text>
-                  {renewalDate ? <Text style={s.profileSubMeta}>Renews {renewalDate}</Text> : null}
-                </View>
-                <Pressable
-                  style={({ pressed }) => [s.profileSubBtn, pressed && { opacity: 0.7 }]}
-                  onPress={() => Linking.openURL(Platform.OS === 'ios' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions')}>
-                  <Text style={s.profileSubBtnTxt}>Manage</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <View style={s.profileSubLeft}>
-                  <Text style={s.profileSubFree}>Free plan</Text>
-                  {restoringPurchases
-                    ? <ActivityIndicator size="small" color={c.primary} style={{ marginTop: 2 }} />
-                    : <Pressable onPress={async () => { setRestoringPurchases(true); await restorePurchases(); setRestoringPurchases(false); }}>
-                        <Text style={s.profileSubRestore}>Already purchased? Restore</Text>
-                      </Pressable>}
-                </View>
-                <Pressable
-                  style={({ pressed }) => [s.profileUpgradeBtn, pressed && { opacity: 0.85 }]}
-                  onPress={showPaywall}>
-                  <Text style={s.profileUpgradeBtnTxt}>Upgrade</Text>
-                </Pressable>
-              </>
-            )}
+              <Text style={s.menuRowLabel}>Admin Panel</Text>
+              <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+            </Pressable>
           </View>
-        </View>
+        )}
 
         {/* Stats */}
         <View style={s.statsCard}>
           <View style={s.statCol}>
+            <Text style={s.statIcon}>🔥</Text>
             <Text style={s.statValue}>{streakDisplay.value}</Text>
             <Text style={s.statLabel}>Current streak</Text>
-            <Text style={s.statUnit}>{streakDisplay.unit}</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.statCol}>
+            <Text style={s.statIcon}>🏆</Text>
             <Text style={s.statValue}>{longestStreakDisplay.value}</Text>
-            <Text style={s.statLabel}>Longest streak</Text>
-            <Text style={s.statUnit}>{longestStreakDisplay.unit}</Text>
+            <Text style={s.statLabel}>Best streak</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.statCol}>
+            <Text style={s.statIcon}>🌟</Text>
             <Text style={s.statValue}>{profile?.milestonesEarned ?? 0}</Text>
             <Text style={s.statLabel}>Milestones</Text>
-            <Text style={s.statUnit}>earned</Text>
           </View>
         </View>
 
-        {/* Your recovery */}
+        {/* Your profile — recovery + profile + goals combined */}
         <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>Your recovery</Text>
+          <Text style={s.infoCardTitle}>Your profile</Text>
           {quitFormatted && (
             <>
               <Pressable
@@ -1447,12 +1475,8 @@ export default function AccountScreen() {
               <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
             </View>
           </Pressable>
-        </View>
-
-        {/* Recovery profile */}
-        <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>Recovery profile</Text>
-          {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map((field, idx) => {
+          <View style={s.infoDivider} />
+          {(['motivation', 'trigger', 'goal', 'support'] as FieldKey[]).map((field) => {
             const config = FIELD_CONFIG[field];
             const raw = field === 'motivation' ? profile?.motivation
               : field === 'trigger' ? profile?.trigger
@@ -1461,7 +1485,6 @@ export default function AccountScreen() {
             const display = getDisplayLabel(config.options, raw ?? null);
             return (
               <View key={field}>
-                {idx > 0 && <View style={s.infoDivider} />}
                 <Pressable
                   onPress={() => openFieldModal(field)}
                   style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
@@ -1473,14 +1496,10 @@ export default function AccountScreen() {
                   </View>
                   <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
                 </Pressable>
+                <View style={s.infoDivider} />
               </View>
             );
           })}
-        </View>
-
-        {/* Goals & Targets */}
-        <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>Goals &amp; Targets</Text>
           <Pressable
             onPress={() => openGoalTargetPicker('debt')}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
@@ -1508,26 +1527,26 @@ export default function AccountScreen() {
             </View>
             <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
-        </View>
-
-        {/* Recovery plan */}
-        <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>My distraction plan</Text>
-          <Text style={s.partnerDesc}>
-            What will you do when an urge hits? Your plan appears on the Support screen when you need it most.
-          </Text>
+          <View style={s.infoDivider} />
           <Pressable
-            style={({ pressed }) => [s.planEditBtn, pressed && { opacity: 0.85 }]}
             onPress={() => {
               setPlanDistractionsInput([...recoveryDistractions]);
               setPlanMantraInput(recoveryMantra);
               setPlanOptionsExpanded(false);
               setShowRecoveryPlanModal(true);
-            }}>
-            <Ionicons name="pencil-outline" size={15} color={c.white} />
-            <Text style={s.planEditBtnTxt}>
-              {recoveryDistractions.length > 0 || recoveryMantra ? 'Edit plan' : 'Build my plan'}
-            </Text>
+            }}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Distraction plan</Text>
+              <Text style={[s.infoItemValue, recoveryDistractions.length === 0 && !recoveryMantra && s.infoValueEmpty]}>
+                {recoveryDistractions.length > 0 || recoveryMantra
+                  ? recoveryDistractions.length > 0
+                    ? `${recoveryDistractions.length} distraction${recoveryDistractions.length !== 1 ? 's' : ''} set`
+                    : 'Mantra set'
+                  : 'Not set'}
+              </Text>
+            </View>
+            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
         </View>
 
@@ -1551,77 +1570,53 @@ export default function AccountScreen() {
             </>
           ) : (
             <>
-              {/* Settings always visible — configure before sharing, update instantly after */}
-              <View style={s.shareSettingsBox}>
-                <Text style={s.shareSettingsTitle}>What they can see</Text>
-                <View style={s.shareSettingRow}>
-                  <Text style={s.shareSettingLabel}>Streak</Text>
-                  <Text style={s.shareAlwaysTxt}>Always shown</Text>
-                </View>
-                <View style={s.shareSettingRow}>
-                  <Text style={s.shareSettingLabel}>Mood this week</Text>
-                  <Switch
-                    value={shareSettings.mood}
-                    onValueChange={v => updateShareSetting('share_mood', v)}
-                    trackColor={{ true: c.primary, false: c.bgElement }}
-                    thumbColor={c.white}
-                  />
-                </View>
-                <View style={s.shareSettingRow}>
-                  <Text style={s.shareSettingLabel}>Milestones earned</Text>
-                  <Switch
-                    value={shareSettings.milestones}
-                    onValueChange={v => updateShareSetting('share_milestones', v)}
-                    trackColor={{ true: c.primary, false: c.bgElement }}
-                    thumbColor={c.white}
-                  />
-                </View>
-                <View style={s.shareSettingRow}>
-                  <Text style={s.shareSettingLabel}>Recovery progress</Text>
-                  <Switch
-                    value={shareSettings.recovery}
-                    onValueChange={v => updateShareSetting('share_recovery', v)}
-                    trackColor={{ true: c.primary, false: c.bgElement }}
-                    thumbColor={c.white}
-                  />
+              {/* What you share — pill chips */}
+              <View style={s.shareNotifyRow}>
+                <Text style={s.shareCollapseLabel}>What you share</Text>
+                <View style={s.shareNotifyChips}>
+                  {([
+                    { key: 'mood' as const,       label: 'Mood',       field: 'share_mood' as const },
+                    { key: 'milestones' as const, label: 'Milestones', field: 'share_milestones' as const },
+                    { key: 'recovery' as const,   label: 'Recovery',   field: 'share_recovery' as const },
+                  ]).map(item => (
+                    <Pressable
+                      key={item.key}
+                      style={[s.shareNotifyChip, shareSettings[item.key] && s.shareNotifyChipOn]}
+                      onPress={() => updateShareSetting(item.field, !shareSettings[item.key])}>
+                      <Text style={[s.shareNotifyChipTxt, shareSettings[item.key] && s.shareNotifyChipTxtOn]}>
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
               </View>
-              <View style={[s.shareSettingsBox, { marginTop: 10 }]}>
-                <Text style={s.shareSettingsTitle}>Notify by email</Text>
-                <Text style={[s.partnerDesc, { marginBottom: 8 }]}>
-                  Once they subscribe on the page, they'll get an email for the events you enable.
-                </Text>
-                <View style={s.shareSettingRow}>
-                  <Text style={s.shareSettingLabel}>When I'm struggling (urge)</Text>
-                  <Switch
-                    value={notifySettings.urge}
-                    onValueChange={v => updateNotifySetting('notify_urge', v)}
-                    trackColor={{ true: c.primary, false: c.bgElement }}
-                    thumbColor={c.white}
-                  />
-                </View>
-                <View style={s.shareSettingRow}>
-                  <Text style={s.shareSettingLabel}>When I reset my streak</Text>
-                  <Switch
-                    value={notifySettings.relapse}
-                    onValueChange={v => updateNotifySetting('notify_relapse', v)}
-                    trackColor={{ true: c.primary, false: c.bgElement }}
-                    thumbColor={c.white}
-                  />
-                </View>
-                <View style={s.shareSettingRow}>
-                  <Text style={s.shareSettingLabel}>When I hit a milestone</Text>
-                  <Switch
-                    value={notifySettings.milestone}
-                    onValueChange={v => updateNotifySetting('notify_milestone', v)}
-                    trackColor={{ true: c.primary, false: c.bgElement }}
-                    thumbColor={c.white}
-                  />
+              <Text style={s.shareHint}>Your streak is always shown. Tap a chip to hide a section — changes apply instantly, no need to reshare.</Text>
+
+              {/* Notify by email — pill chips */}
+              <View style={s.shareNotifyRow}>
+                <Text style={s.shareCollapseLabel}>Notify by email</Text>
+                <View style={s.shareNotifyChips}>
+                  {([
+                    { key: 'urge' as const,      label: 'Urge',      field: 'notify_urge' as const },
+                    { key: 'relapse' as const,   label: 'Relapse',   field: 'notify_relapse' as const },
+                    { key: 'milestone' as const, label: 'Milestone', field: 'notify_milestone' as const },
+                  ]).map(item => (
+                    <Pressable
+                      key={item.key}
+                      style={[s.shareNotifyChip, notifySettings[item.key] && s.shareNotifyChipOn]}
+                      onPress={() => updateNotifySetting(item.field, !notifySettings[item.key])}>
+                      <Text style={[s.shareNotifyChipTxt, notifySettings[item.key] && s.shareNotifyChipTxtOn]}>
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
               </View>
+              <Text style={s.shareHint}>Your supporter subscribes on the page using their email. You choose which events they're notified about.</Text>
+
               {/* Primary CTA — generates link on first press, just shares on subsequent */}
               <Pressable
-                style={({ pressed }) => [s.partnerShareBtn, { marginTop: 16 }, pressed && { opacity: 0.85 }]}
+                style={({ pressed }) => [s.partnerShareBtn, { marginTop: 14 }, pressed && { opacity: 0.85 }]}
                 onPress={generateAndShare}
                 disabled={partnerLinkLoading}>
                 {partnerLinkLoading
@@ -1633,58 +1628,17 @@ export default function AccountScreen() {
                       </Text>
                     </>}
               </Pressable>
-              {/* URL + copy (only once link exists) */}
-              {partnerToken && (
-                <View style={s.partnerUrlRow}>
-                  <Text style={s.partnerLinkUrl} numberOfLines={1} ellipsizeMode="middle">
-                    {`https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`}
-                  </Text>
-                  <Pressable
-                    hitSlop={8}
-                    onPress={async () => {
-                      const url = `https://marekmac.github.io/cornerday/partner.html?t=${partnerToken}`;
-                      await Clipboard.setStringAsync(url);
-                      setLinkCopied(true);
-                      if (linkCopyTimerRef.current) clearTimeout(linkCopyTimerRef.current);
-                      linkCopyTimerRef.current = setTimeout(() => setLinkCopied(false), 2000);
-                    }}>
-                    <Ionicons name={linkCopied ? 'checkmark' : 'copy-outline'} size={16} color={linkCopied ? c.primary : c.textMuted} />
-                  </Pressable>
-                </View>
-              )}
-              {partnerToken && (
-                <Text style={s.partnerHint}>
-                  Settings save instantly — no need to reshare after changing them.
-                </Text>
-              )}
-              {/* Revoke — demoted to text link */}
               {partnerToken && (
                 <Pressable
                   style={s.partnerRevokeLink}
                   onPress={revokePartnerLink}
                   disabled={partnerLinkLoading}>
-                  <Text style={s.partnerRevokeLinkTxt}>Revoke supporter access</Text>
+                  <Text style={s.partnerRevokeLinkTxt}>Revoke to cut off access completely</Text>
                 </Pressable>
               )}
             </>
           )}
         </View>
-
-        {/* Admin section */}
-        {isAdmin && (
-          <View style={s.menuCard}>
-            <Text style={s.menuCardTitle}>Administration</Text>
-            <Pressable
-              style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-              onPress={() => router.push('/moderation')}>
-              <View style={s.menuIconWrap}>
-                <Ionicons name="shield-outline" size={17} color={c.primary} />
-              </View>
-              <Text style={s.menuRowLabel}>Admin Panel</Text>
-              <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-            </Pressable>
-          </View>
-        )}
 
         {/* Settings */}
         <View style={s.menuCard}>
@@ -1741,6 +1695,40 @@ export default function AccountScreen() {
             <Text style={s.menuRowLabel}>Prevention checklist</Text>
             <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
+          <View style={s.menuDivider} />
+          <View style={[s.menuRow, { paddingVertical: 10 }]}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="finger-print-outline" size={17} color={c.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={s.menuRowLabel}>Biometric lock</Text>
+                {!isPremiumFromRC && (
+                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={s.notifDesc}>
+                {biometricAvailable
+                  ? 'Fingerprint or face unlock on reopen'
+                  : 'Set up biometrics on your device first'}
+              </Text>
+            </View>
+            {isPremiumFromRC ? (
+              <Switch
+                value={biometricEnabled}
+                onValueChange={handleBiometricToggle}
+                disabled={!biometricAvailable}
+                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+                thumbColor={biometricEnabled ? '#0F6E6E' : '#bbb'}
+              />
+            ) : (
+              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                <Text style={{ fontSize: 12, color: c.primary, fontWeight: '600' }}>Upgrade</Text>
+              </Pressable>
+            )}
+          </View>
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
@@ -1815,47 +1803,6 @@ export default function AccountScreen() {
           </Pressable>
         </View>
 
-        {/* Security */}
-        <View style={s.menuCard}>
-          <Text style={s.menuCardTitle}>Security</Text>
-          <View style={[s.notifRow, { paddingHorizontal: 16, borderBottomWidth: 0 }]}>
-            <View style={s.notifText}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={s.notifLabel}>Biometric lock</Text>
-                {!isPremiumFromRC && (
-                  <View style={{ backgroundColor: '#0F6E6E', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={s.notifDesc}>
-                {biometricAvailable
-                  ? 'Require fingerprint or face unlock when reopening the app'
-                  : 'Set up fingerprint or face ID on your device to use this feature'}
-              </Text>
-            </View>
-            {isPremiumFromRC ? (
-              <Switch
-                value={biometricEnabled}
-                onValueChange={handleBiometricToggle}
-                disabled={!biometricAvailable}
-                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-                thumbColor={biometricEnabled ? '#0F6E6E' : '#bbb'}
-              />
-            ) : (
-              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 12, color: '#0F6E6E', fontWeight: '600' }}>Upgrade</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-
-        {/* Footer */}
-        <View style={s.footerNote}>
-          <Text style={s.footerVersion}>CornerDay v{appVersion}</Text>
-          <Text style={s.footerTagline}>Every day you hold on is a victory.</Text>
-        </View>
-
         {/* Danger zone */}
         <View style={s.dangerCard}>
           <Text style={s.menuCardTitle}>Account</Text>
@@ -1884,7 +1831,11 @@ export default function AccountScreen() {
           </Pressable>
         </View>
 
-        <View style={{ height: 32 }} />
+        {/* Footer */}
+        <View style={s.footerNote}>
+          <Text style={s.footerVersion}>CornerDay v{appVersion}</Text>
+          <Text style={s.footerTagline}>Every day you hold on is a victory.</Text>
+        </View>
       </ScrollView>
 
       {/* Savings goal modal */}
@@ -2844,9 +2795,52 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: c.bgScreen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: { paddingBottom: 16 },
+  header: { paddingBottom: 24 },
   headerContent: { paddingHorizontal: 20, paddingTop: 12 },
   headerTitle: { fontSize: 22, fontWeight: '700', color: c.white },
+
+  // Hero profile (merged into header)
+  heroProfile: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, gap: 14 },
+  heroAvatar: {
+    width: 62, height: 62, borderRadius: 31,
+    backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)',
+  },
+  heroAvatarImg: { width: 62, height: 62, borderRadius: 31 },
+  heroAvatarTxt: { fontSize: 26, fontWeight: '700', color: c.white },
+  heroAvatarBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)',
+  },
+  heroInfo: { flex: 1, gap: 3 },
+  heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heroName: { fontSize: 17, fontWeight: '700', color: c.white, flexShrink: 1 },
+  heroEditChip: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.18)' },
+  heroEditChipTxt: { fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+  heroNameEditRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  heroNameInput: {
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    fontSize: 14, color: c.white, minWidth: 110,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  heroShuffleBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  heroSaveBtn: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.25)' },
+  heroSaveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 12 },
+  heroCancelTxt: { fontSize: 16, color: 'rgba(255,255,255,0.6)', paddingHorizontal: 4 },
+  heroEmailRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  heroEmail: { fontSize: 12, color: 'rgba(255,255,255,0.6)', flexShrink: 1 },
+  heroBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  heroBadge: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.9)' },
+  heroBadgeFree: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.65)' },
+  heroRenewal: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  heroRestore: { fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600' },
+  heroActionBtn: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  heroUpgradeBtn: { backgroundColor: 'rgba(255,255,255,0.95)', borderColor: 'transparent' },
+  heroActionBtnTxt: { fontSize: 13, fontWeight: '700', color: c.white },
+  heroUpgradeBtnTxt: { fontSize: 13, fontWeight: '700', color: c.primary },
 
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
@@ -2959,10 +2953,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
   },
   statCol: { flex: 1, alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 22, fontWeight: '800', color: c.primary },
-  statLabel: { fontSize: 12, color: c.textMuted, fontWeight: '600' },
-  statUnit: { fontSize: 11, color: c.textFaint },
-  statDivider: { width: 1, height: 48, backgroundColor: c.borderSubtle, marginHorizontal: 8 },
+  statIcon: { fontSize: 20, marginBottom: 2 },
+  statValue: { fontSize: 20, fontWeight: '800', color: c.primary },
+  statLabel: { fontSize: 11, color: c.textMuted, fontWeight: '600' },
+  statDivider: { width: 1, height: 52, backgroundColor: c.borderSubtle, marginHorizontal: 8 },
 
   exportBtn: {
     backgroundColor: c.bgCard, borderRadius: 14, padding: 16,
@@ -3204,6 +3198,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareSettingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
   shareSettingLabel: { fontSize: 14, color: c.textBody },
   shareAlwaysTxt: { fontSize: 12, color: c.textFaint },
+  shareCollapseLabel: { fontSize: 13, fontWeight: '600', color: c.textBody },
+  shareNotifyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9, borderTopWidth: 1, borderTopColor: c.bgElement },
+  shareNotifyChips: { flexDirection: 'row', gap: 5 },
+  shareNotifyChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: c.bgElement },
+  shareNotifyChipOn: { backgroundColor: c.primary },
+  shareNotifyChipTxt: { fontSize: 12, fontWeight: '500', color: c.textMuted },
+  shareNotifyChipTxtOn: { color: c.white },
+  shareHint: { fontSize: 11, color: c.textFaint, lineHeight: 16, marginTop: 5, marginBottom: 2 },
 
   // Recovery plan card
   planSummary: { gap: 10, marginBottom: 14 },
