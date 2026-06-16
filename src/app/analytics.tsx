@@ -81,10 +81,12 @@ function heroTime(ms: number): [string, string] {
   if (weeks  >= 1) return [String(weeks),  weeks  === 1 ? 'week'  : 'weeks'];
   if (days   >= 1) return [String(days),   days   === 1 ? 'day'   : 'days'];
   if (hrs    >= 1) return [String(hrs),    hrs    === 1 ? 'hr'    : 'hrs'];
-  return [String(Math.max(0, mins)), 'min'];
+  if (mins   >= 1) return [String(mins),   'min'];
+  return ['< 1', 'min'];
 }
 
 function fmtDuration(days: number): string {
+  if (days === 0) return '< 1d';
   if (days < 7) return `${days}d`;
   if (days < 30) { const w = Math.floor(days / 7), d = days % 7; return d > 0 ? `${w}w ${d}d` : `${w}w`; }
   if (days < 365) { const m = Math.floor(days / 30), w = Math.floor((days % 30) / 7); return w > 0 ? `${m}mo ${w}w` : `${m}mo`; }

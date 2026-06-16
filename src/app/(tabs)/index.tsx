@@ -396,7 +396,7 @@ function formatBest(days: number, ms: number) {
 
   if (isCurrentBest) {
     if (totalDays === 0 && hours === 0) return mins > 0 ? `${mins}m` : 'just started';
-    if (totalDays === 0) return `${hours}h ${mins}m`;
+    if (totalDays === 0) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
     if (totalDays < 7) return `${totalDays}d ${hours}h`;
     if (totalDays < 30) return `${weeks}w ${totalDays % 7}d`;
     if (totalDays < 365) return `${months}mo ${totalDays % 30}d`;
@@ -1611,8 +1611,8 @@ export default function HomeScreen() {
     m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' }
   );
   const checkinStreak = data.checkinStreak.current;
-  const daysToPersonalBest = data.longestStreak > 0 && streakDays < data.longestStreak
-    ? data.longestStreak - streakDays
+  const msToPersonalBest = data.longestStreak > 0 && streakMs < data.longestStreak * 86400000
+    ? Math.max(0, data.longestStreak * 86400000 - streakMs)
     : null;
 
   return (
@@ -1658,9 +1658,9 @@ export default function HomeScreen() {
                     </Text>
                 }
                 <Text style={s.longestTxt}>Best: {formatBest(data.longestStreak, streakMs)}</Text>
-                {daysToPersonalBest !== null && (
+                {msToPersonalBest !== null && (
                   <Text style={s.personalBestTxt}>
-                    {fmtCountdown(daysToPersonalBest * 86400000)} to beat your best
+                    {fmtCountdown(msToPersonalBest)} to beat your best
                   </Text>
                 )}
                 {!!data.quitDate && (
