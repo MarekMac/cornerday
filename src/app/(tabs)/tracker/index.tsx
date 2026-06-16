@@ -754,7 +754,7 @@ export default function TrackerIndex() {
               <View style={s.summaryEmpty}>
                 <Text style={s.summaryEmptyIcon}>💳</Text>
                 <Text style={s.summaryEmptyTitle}>No debts tracked yet</Text>
-                <Text style={s.summaryEmptyBody}>Add a debt below to start tracking your recovery progress.</Text>
+                <Text style={s.summaryEmptyBody}>Add debts in the Debts tab below to start tracking your recovery progress here.</Text>
               </View>
             ) : (
               <>
@@ -880,8 +880,21 @@ export default function TrackerIndex() {
               )}
 
               {debts.length === 0 ? (
-                <View style={s.emptyCard}>
-                  <Text style={s.emptyTxt}>No debts added yet.{'\n'}Tap "Add a debt" to start tracking what you owe.</Text>
+                <View style={[s.sessionInfoCard, { borderLeftColor: '#c0392b' }]}>
+                  <View style={s.sessionInfoHeader}>
+                    <Text style={s.sessionInfoIcon}>💳</Text>
+                    <Text style={s.sessionInfoTitle}>Track what you owe</Text>
+                  </View>
+                  <Text style={s.sessionInfoBody}>
+                    Add every debt you built up from gambling — bank loans, money borrowed from family or friends, credit cards.
+                  </Text>
+                  <Text style={s.sessionInfoBody}>
+                    For each debt you can log repayments, set a payoff target date, and watch your recovery progress grow.
+                  </Text>
+                  <View style={s.sessionInfoTip}>
+                    <Ionicons name="information-circle-outline" size={15} color="#c0392b" />
+                    <Text style={[s.sessionInfoTipTxt, { color: '#c0392b' }]}>Only you can see your debt amounts.</Text>
+                  </View>
                 </View>
               ) : (
                 sortedDebts.map(debt => {
@@ -1005,8 +1018,21 @@ export default function TrackerIndex() {
               </Pressable>
 
               {savings.length === 0 ? (
-                <View style={s.emptyCard}>
-                  <Text style={s.emptyTxt}>No savings logged yet.{'\n'}Tap "Log a saving" to record money you've set aside.</Text>
+                <View style={[s.sessionInfoCard, { borderLeftColor: c.primary }]}>
+                  <View style={s.sessionInfoHeader}>
+                    <Text style={s.sessionInfoIcon}>💰</Text>
+                    <Text style={s.sessionInfoTitle}>Build your savings</Text>
+                  </View>
+                  <Text style={s.sessionInfoBody}>
+                    Every time you set money aside — even a small amount — log it here. It's proof that stopping gambling is already working.
+                  </Text>
+                  <Text style={s.sessionInfoBody}>
+                    Set a savings goal and target date to stay motivated. The tracker will show your progress towards it automatically.
+                  </Text>
+                  <View style={s.sessionInfoTip}>
+                    <Ionicons name="information-circle-outline" size={15} color={c.primary} />
+                    <Text style={[s.sessionInfoTipTxt, { color: c.primary }]}>Your savings are private and only visible to you.</Text>
+                  </View>
                 </View>
               ) : (
                 <>
