@@ -249,6 +249,7 @@ export default function AnalyticsScreen() {
   const [savingTarget, setSavingTarget] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [resettingUrges, setResettingUrges] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -257,8 +258,10 @@ export default function AnalyticsScreen() {
   }, []);
 
   const fetchData = useCallback(async () => {
+    setFetchError(false);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    try {
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
@@ -449,6 +452,10 @@ export default function AnalyticsScreen() {
       relapseCount: currentRelapseCount, dailySavingsRate, streakHistory,
       calendarDays, weekSummary,
     });
+    } catch (e) {
+      console.warn('[analytics] fetchData error:', e);
+      setFetchError(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -534,6 +541,24 @@ export default function AnalyticsScreen() {
   );
 
   if (loading) return <View style={s.loadingWrap}><ActivityIndicator color={c.primary} size="large" /></View>;
+
+  if (fetchError && !data) {
+    return (
+      <View style={s.root}>
+        {renderHeader()}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
+          <Text style={{ fontSize: 40 }}>⚠️</Text>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: c.textPrimary, textAlign: 'center' }}>Couldn't load analytics</Text>
+          <Text style={{ fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 }}>Check your connection and try again.</Text>
+          <Pressable
+            style={({ pressed }) => [{ marginTop: 8, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: c.primary, borderRadius: 20 }, pressed && { opacity: 0.8 }]}
+            onPress={() => fetchData().finally(() => setLoading(false))}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Retry</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (isLoadingPurchases) {
     return (

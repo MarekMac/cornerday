@@ -129,6 +129,13 @@ export function Paywall() {
 
           {/* Plan selector */}
           <Text style={s.planLabel}>Choose your plan</Text>
+          {sorted.length === 0 && (
+            <View style={s.plansUnavailable}>
+              <Text style={s.plansUnavailableEmoji}>📡</Text>
+              <Text style={s.plansUnavailableTitle}>Plans couldn't load</Text>
+              <Text style={s.plansUnavailableBody}>Check your internet connection and reopen this screen.</Text>
+            </View>
+          )}
           <View style={s.planRow}>
             {sorted.length > 0 ? sorted.map((pkg, i) => {
               const isAnnual = pkg.packageType === PACKAGE_TYPE.ANNUAL;
@@ -269,6 +276,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   featureDesc: { fontSize: 13, color: c.textMuted, lineHeight: 18 },
 
   planLabel: { fontSize: 13, fontWeight: '600', color: c.textMuted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  plansUnavailable: { alignItems: 'center', padding: 20, gap: 6, marginBottom: 8 },
+  plansUnavailableEmoji: { fontSize: 32 },
+  plansUnavailableTitle: { fontSize: 15, fontWeight: '700', color: c.textBody },
+  plansUnavailableBody: { fontSize: 13, color: c.textMuted, textAlign: 'center' },
   planRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   planCard: {
     flex: 1, borderRadius: 16, padding: 16,

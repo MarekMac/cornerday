@@ -86,6 +86,18 @@ export default function NewPost() {
       Alert.alert('Posting restricted', lines.join('\n'));
       return;
     }
+    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+    const { count: recentCount } = await supabase
+      .from('community_posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', oneHourAgo);
+    if ((recentCount ?? 0) >= 3) {
+      setSubmitting(false);
+      Alert.alert('Slow down', 'You can post up to 3 stories per hour. Try again shortly.');
+      return;
+    }
+
     const { error } = await supabase.from('community_posts').insert({
       user_id: user.id,
       content: content.trim(),

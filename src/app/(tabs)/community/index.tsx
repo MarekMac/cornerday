@@ -5,6 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   FlatList,
   Modal,
@@ -93,6 +94,10 @@ export default function CommunityFeed() {
   const [followedUsers, setFollowedUsers] = useState<Record<string, boolean>>({});
   const [profileUser, setProfileUser] = useState<{ userId: string; displayName: string; streak: number } | null>(null);
 
+  const [loadError, setLoadError] = useState(false);
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportingInFeed, setReportingInFeed] = useState(false);
+
   const currentUserIdRef = useRef<string | null>(null);
   const postsRef = useRef<Post[]>([]);
   const activeFetch = useRef(false);
@@ -169,6 +174,7 @@ export default function CommunityFeed() {
 
   const load = useCallback(async (tag: FilterTag, sort: SortBy = 'new', isRefresh = false) => {
     if (!isRefresh) { setLoading(true); reactingRef.current = {}; }
+    setLoadError(false);
     try {
       if (tag === 'Following') {
         const uid = currentUserIdRef.current;
@@ -238,12 +244,18 @@ export default function CommunityFeed() {
       } else if (tag !== 'All') q = q.eq('tag', tag);
 
       const { data, error } = await q;
-      if (error) console.warn('[community] feed load error:', error.message);
+      if (error) {
+        console.warn('[community] feed load error:', error.message);
+        setLoadError(true);
+      }
       const items = (data as Post[]) ?? [];
       postsRef.current = items;
       setPosts(items);
       setHasMore(items.length === PAGE_SIZE);
       fetchReactions(items.map(p => p.id), true);
+    } catch (e) {
+      console.warn('[community] load exception:', e);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -383,6 +395,27 @@ export default function CommunityFeed() {
     }
   };
 
+  const reportPost = (postId: string) => {
+    Alert.alert('Report story', 'Why are you reporting this?', [
+      { text: 'Spam', onPress: () => submitReport(postId, 'Spam') },
+      { text: 'Harmful content', onPress: () => submitReport(postId, 'Harmful content') },
+      { text: 'Misinformation', onPress: () => submitReport(postId, 'Misinformation') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const submitReport = async (postId: string, reason: string) => {
+    const uid = currentUserIdRef.current;
+    if (!uid || reportingInFeed) return;
+    setReportingInFeed(true);
+    const { error } = await supabase.from('community_reports').insert({
+      target_type: 'post', target_id: postId, reporter_id: uid, reason,
+    });
+    setReportingInFeed(false);
+    if (error) { Alert.alert('Could not submit report', error.message); return; }
+    Alert.alert('Reported', 'Thank you — we will review this shortly.');
+  };
+
   const handleAuthorPress = (item: Post) => {
     if (item.is_anonymous) return;
     if (item.user_id === currentUserIdRef.current) return;
@@ -470,17 +503,27 @@ export default function CommunityFeed() {
             <Text style={s.stat}>💬 {item.comments_count}</Text>
           </View>
 
-          <Pressable
-            style={s.bookmarkBtn}
-            onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id); }}
-            hitSlop={8}
-          >
-            <Ionicons
-              name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-              size={18}
-              color={isBookmarked ? c.primary : c.textFaint}
-            />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {!isAnon && item.user_id !== currentUserIdRef.current && (
+              <Pressable
+                onPress={(e) => { e.stopPropagation(); reportPost(item.id); }}
+                hitSlop={8}
+              >
+                <Ionicons name="flag-outline" size={16} color={c.textFaint} />
+              </Pressable>
+            )}
+            <Pressable
+              style={s.bookmarkBtn}
+              onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id); }}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                size={18}
+                color={isBookmarked ? c.primary : c.textFaint}
+              />
+            </Pressable>
+          </View>
         </View>
       </Pressable>
     );
@@ -591,7 +634,18 @@ export default function CommunityFeed() {
             onEndReached={loadMore}
             onEndReachedThreshold={0.3}
             ListFooterComponent={loadingMore ? <ActivityIndicator style={s.loadingMore} color={c.primary} /> : null}
-            ListEmptyComponent={
+            ListEmptyComponent={loadError ? (
+              <View style={s.empty}>
+                <Text style={s.emptyEmoji}>⚠️</Text>
+                <Text style={s.emptyTitle}>Couldn't load posts</Text>
+                <Text style={s.emptyBody}>Check your connection and try again.</Text>
+                <Pressable
+                  style={s.retryBtn}
+                  onPress={() => load(activeTag, sortByRef.current)}>
+                  <Text style={s.retryBtnTxt}>Retry</Text>
+                </Pressable>
+              </View>
+            ) : (
               <View style={s.empty}>
                 <Text style={s.emptyEmoji}>{activeTag === 'Saved' ? '🔖' : activeTag === 'Following' ? '👥' : '🌱'}</Text>
                 <Text style={s.emptyTitle}>
@@ -612,7 +666,7 @@ export default function CommunityFeed() {
                     : 'This community is just getting started.\nShare your story and inspire someone today.'}
                 </Text>
               </View>
-            }
+            )}
           />
         )}
 
@@ -822,6 +876,9 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   emptyEmoji: { fontSize: 48, marginBottom: 4 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: c.textSecondary, textAlign: 'center' },
   emptySubtitle: { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 },
+  emptyBody: { fontSize: 14, color: c.textMuted, textAlign: 'center', marginTop: 6 },
+  retryBtn: { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: c.primary, borderRadius: 20 },
+  retryBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
   glOverlay: {
     flex: 1, backgroundColor: c.overlay,
