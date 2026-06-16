@@ -1850,16 +1850,6 @@ export default function AccountScreen() {
           )}
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={() => setResetDataModalVisible(true)}>
-            <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
-              <Ionicons name="refresh-outline" size={17} color={c.error} />
-            </View>
-            <Text style={[s.menuRowLabel, { color: c.error }]}>Reset data</Text>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-          </Pressable>
-          <View style={s.menuDivider} />
-          <Pressable
-            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={confirmSignOut}
             disabled={signingOut}>
             <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
@@ -1868,6 +1858,16 @@ export default function AccountScreen() {
             {signingOut
               ? <ActivityIndicator color={c.error} size="small" style={{ flex: 1 }} />
               : <Text style={[s.menuRowLabel, s.dangerRowLabel]}>Sign out</Text>}
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+          </Pressable>
+          <View style={s.menuDivider} />
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => setResetDataModalVisible(true)}>
+            <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
+              <Ionicons name="refresh-outline" size={17} color={c.error} />
+            </View>
+            <Text style={[s.menuRowLabel, { color: c.error }]}>Reset data</Text>
             <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />
@@ -3222,12 +3222,12 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   // Settings / support menu cards
   menuCard: { backgroundColor: c.bgCard, borderRadius: 14, overflow: 'hidden' },
   menuCardTitle: { fontSize: 12, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
-  menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13 },
+  menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 15 },
   menuIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   menuIconWrapRed: { backgroundColor: c.bgErrorMid },
   menuRowLabel: { flex: 1, fontSize: 15, color: c.textPrimary, fontWeight: '500' },
   menuRowValue: { fontSize: 14, color: c.textMuted, fontWeight: '500', marginRight: 4 },
-  menuDivider: { height: 1, backgroundColor: c.borderSubtle, marginLeft: 62 },
+  menuDivider: { height: 1, backgroundColor: c.borderSubtle, marginHorizontal: 16 },
 
   // Theme segment control (appearance row)
   themeSegment: { flexDirection: 'row', backgroundColor: c.bgElement, borderRadius: 8, padding: 2 },
