@@ -2525,12 +2525,6 @@ export default function HomeScreen() {
 
                 <View style={[s.shareCardDivider, { backgroundColor: cc.divider }]} />
 
-                {!shareCardLocked && !shareCardHideTime && data && weeklyToDaily(data.weeklyBet) > 0 && streakMs > 0 && (
-                  <Text style={[s.shareCardStat, { color: cc.stat }]}>
-                    💰 {fmt(weeklyToDaily(data.weeklyBet) * (streakMs / 86400000), data.currency)} not spent
-                  </Text>
-                )}
-
                 {shareCardDetails.length > 0 && (
                   <View style={[s.shareCardDetailBox, { backgroundColor: cc.detailBg }]}>
                     {shareCardDetails.map((d, i) => (
@@ -3001,7 +2995,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardPillTxt: { fontSize: 13, color: '#fff', fontWeight: '600' },
   shareCardDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 24 },
   shareCardNext: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600', textAlign: 'center', marginBottom: 8 },
-  shareCardStat: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '600', textAlign: 'center', marginBottom: 20 },
   shareCardBottom: { alignItems: 'center', gap: 6 },
   shareCardTagline: { fontSize: 12, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic', textAlign: 'center' },
   shareCardHashtag: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
