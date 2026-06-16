@@ -1414,10 +1414,15 @@ export default function HomeScreen() {
     setShowShareCard(true);
   };
 
+  const STREAK_CARD_EMOJIS = ['✨', '🌟', '💫', '⚡', '🦋', '🌊', '🎯', '💪', '🌈', '🔑', '🕊️', '🌸', '🦅', '👑', '🔥', '💎', '🏆', '🌱'];
   const shareStreak = () => {
     if (!data) return;
-    const bestBadge = [...BADGE_DEFS].reverse().find(b => data.earnedBadges.includes(b.type)) ?? null;
-    openShareCard(bestBadge ? { emoji: bestBadge.emoji, label: bestBadge.label } : null);
+    const decorEmoji = STREAK_CARD_EMOJIS[Math.floor(Math.random() * STREAK_CARD_EMOJIS.length)];
+    const details: Array<{ label: string; value: string; highlight?: boolean }> = [];
+    if (data.quitDate) {
+      details.push({ label: 'Started', value: new Date(parseQuitDate(data.quitDate)).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
+    }
+    openShareCard({ emoji: decorEmoji, label: '' }, false, details);
   };
 
   const shareMilestone = () => {
@@ -2507,13 +2512,34 @@ export default function HomeScreen() {
                   </View>
                 ) : (
                   <View style={s.shareCardCenter}>
-                    <Text style={[s.shareCardStreakLabel, { color: cc.bigText }]}>{formatStreakFull(streakMs)}</Text>
-                    <Text style={[s.shareCardSub, { color: cc.sub }]}>free from gambling</Text>
-                    {shareCardBadge && (
-                      <View style={[s.shareCardPill, { backgroundColor: cc.pillBg }]}>
-                        <Text style={[s.shareCardPillTxt, { color: cc.pillTxt }]}>{shareCardBadge.emoji} {shareCardBadge.label} milestone</Text>
-                      </View>
-                    )}
+                    {(() => {
+                      const totalDays = Math.floor(streakMs / 86400000);
+                      const totalHrs  = Math.floor(streakMs / 3600000);
+                      const totalMins = Math.floor(streakMs / 60000);
+                      let num: string, unit: string, extra: string | null = null;
+                      if (totalDays >= 1) {
+                        num  = String(totalDays);
+                        unit = totalDays === 1 ? 'DAY' : 'DAYS';
+                        const h = totalHrs - totalDays * 24;
+                        if (h > 0) extra = `and ${h} ${h === 1 ? 'hour' : 'hours'}`;
+                      } else if (totalHrs >= 1) {
+                        num  = String(totalHrs);
+                        unit = totalHrs === 1 ? 'HOUR' : 'HOURS';
+                        const m = totalMins - totalHrs * 60;
+                        if (m > 0) extra = `and ${m} min`;
+                      } else {
+                        num  = String(Math.max(1, totalMins));
+                        unit = totalMins === 1 ? 'MINUTE' : 'MINUTES';
+                      }
+                      return (
+                        <>
+                          <Text style={[s.shareCardNum, { color: cc.bigText }]}>{num}</Text>
+                          <Text style={[s.shareCardUnit, { color: cc.unit }]}>{unit}</Text>
+                          {extra && <Text style={[s.shareCardStreakExtra, { color: cc.sub }]}>{extra}</Text>}
+                          <Text style={[s.shareCardSub, { color: cc.sub, marginTop: 8 }]}>free from gambling</Text>
+                        </>
+                      );
+                    })()}
                   </View>
                 )}
 
@@ -2984,7 +3010,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardCenter: { alignItems: 'center', gap: 4 },
   shareCardNum: { fontSize: 80, fontWeight: '900', color: '#fff', lineHeight: 84 },
   shareCardUnit: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.8)', letterSpacing: 3 },
-  shareCardStreakLabel: { fontSize: 36, fontWeight: '900', color: '#fff', lineHeight: 42, textAlign: 'center' },
+  shareCardStreakExtra: { fontSize: 15, color: 'rgba(255,255,255,0.6)', marginTop: 2, textAlign: 'center' },
   shareCardSub: { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
   shareCardAchievementEmoji: { fontSize: 72, lineHeight: 80 },
   shareCardAchievementLabel: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 1, textAlign: 'center', marginTop: 8 },
