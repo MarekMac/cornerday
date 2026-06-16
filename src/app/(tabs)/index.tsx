@@ -1988,10 +1988,17 @@ export default function HomeScreen() {
 
         {/* Your why */}
         {motivations.length > 0 && (
-          <View style={s.whyAnchorCard}>
+          <LinearGradient
+            colors={['#0a3d3d', '#0F6E6E', '#1a9a9a']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.whyAnchorCard}>
             <View style={s.whyAnchorHeader}>
               <Text style={s.whyAnchorLabelIcon}>❤️</Text>
-              <Text style={s.whyAnchorLabel}>Your why</Text>
+              <View>
+                <Text style={s.whyAnchorLabel}>Your why</Text>
+                <Text style={s.whyAnchorSub}>What you're fighting for</Text>
+              </View>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
               {motivations.map((m, i) => (
@@ -2001,7 +2008,7 @@ export default function HomeScreen() {
                 </View>
               ))}
             </ScrollView>
-          </View>
+          </LinearGradient>
         )}
 
         {/* Urge prediction card — only visible 1h before and after peak */}
@@ -2821,34 +2828,39 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   // Your why anchor
   whyAnchorCard: {
-    backgroundColor: c.bgTeal,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingLeft: 14,
+    borderRadius: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
+    paddingLeft: 16,
     paddingRight: 0,
     overflow: 'hidden',
-    borderLeftWidth: 4,
-    borderLeftColor: c.primary,
   },
   whyAnchorHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14, paddingRight: 16,
   },
-  whyAnchorLabelIcon: { fontSize: 14 },
+  whyAnchorLabelIcon: { fontSize: 26 },
   whyAnchorLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.1,
+  },
+  whyAnchorSub: {
     fontSize: 12,
-    fontWeight: '800',
-    color: c.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 2,
   },
   whyAnchorRow: { flexDirection: 'row', gap: 8, paddingRight: 16, alignItems: 'center' },
   whyAnchorChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: c.bgTealMid, borderRadius: 20,
-    paddingVertical: 7, paddingHorizontal: 13,
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 24,
+    paddingVertical: 9, paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
-  whyAnchorEmoji: { fontSize: 18 },
-  whyAnchorText: { fontSize: 13, fontWeight: '700', color: c.primary },
+  whyAnchorEmoji: { fontSize: 17 },
+  whyAnchorText: { fontSize: 13, fontWeight: '600', color: '#ffffff' },
 
   // Relapse
   relapseCard: {
