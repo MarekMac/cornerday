@@ -1644,25 +1644,26 @@ export default function HomeScreen() {
                 <View style={s.streakTitleRow}>
                   <Text style={s.streakTitle}>Current streak</Text>
                   <Pressable onPress={shareStreak} hitSlop={8}>
-                    <Ionicons name="share-outline" size={15} color="rgba(255,255,255,0.65)" />
+                    <Ionicons name="share-outline" size={15} color="rgba(255,255,255,0.5)" />
                   </Pressable>
                 </View>
                 <LiveCounter quitDate={data.quitDate} />
-                <View style={s.separator} />
-                {next < 1 && data.quitDate
-                  ? <SubDayCountdown quitDate={data.quitDate} nextDays={next} style={s.milestoneTxt} />
-                  : <Text style={s.milestoneTxt}>
-                      {remainingMs <= 0
-                        ? `🎉 ${milestoneLabel(next)} — milestone reached!`
-                        : `${fmtCountdown(remainingMs)} to reach ${milestoneLabel(next)}`}
-                    </Text>
-                }
-                <Text style={s.longestTxt}>Best: {formatBest(data.longestStreak, streakMs)}</Text>
-                {msToPersonalBest !== null && (
-                  <Text style={s.personalBestTxt}>
-                    {fmtCountdown(msToPersonalBest)} to beat your best
-                  </Text>
-                )}
+                <View style={s.milestonePill}>
+                  {next < 1 && data.quitDate
+                    ? <SubDayCountdown quitDate={data.quitDate} nextDays={next} style={s.milestoneTxt} />
+                    : <Text style={s.milestoneTxt}>
+                        {remainingMs <= 0
+                          ? `🎉 ${milestoneLabel(next)} reached!`
+                          : `${fmtCountdown(remainingMs)} to ${milestoneLabel(next)}`}
+                      </Text>
+                  }
+                </View>
+                <View style={s.streakMetaRow}>
+                  <Text style={s.longestTxt}>Best: {formatBest(data.longestStreak, streakMs)}</Text>
+                  {msToPersonalBest !== null && (
+                    <Text style={s.personalBestTxt}>· {fmtCountdown(msToPersonalBest)} to beat</Text>
+                  )}
+                </View>
                 {!!data.quitDate && (
                   <Text style={s.startedTxt}>{formatStartDate(data.quitDate)}</Text>
                 )}
@@ -2696,20 +2697,30 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   streakCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 18,
     padding: 16,
     gap: 16,
   },
-  streakRight: { flex: 1, gap: 6 },
+  streakRight: { flex: 1, gap: 8 },
   streakTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  streakTitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  streakTitle: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.9 },
   separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  milestoneTxt: { fontSize: 13, color: c.white, fontWeight: '500' },
-  liveCounter: { fontSize: 14, fontWeight: '700', color: c.white, fontVariant: ['tabular-nums'] },
-  longestTxt: { fontSize: 12, color: 'rgba(255,255,255,0.65)' },
-  personalBestTxt: { fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
-  startedTxt: { fontSize: 11, color: 'rgba(255,255,255,0.55)' },
+  milestonePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  milestoneTxt: { fontSize: 11, color: '#ffffff', fontWeight: '600' },
+  liveCounter: { fontSize: 20, fontWeight: '800', color: c.white, fontVariant: ['tabular-nums'], lineHeight: 24 },
+  streakMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  longestTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  personalBestTxt: { fontSize: 11, color: 'rgba(168,216,208,0.9)', fontWeight: '600' },
+  startedTxt: { fontSize: 10, color: 'rgba(255,255,255,0.38)' },
   resetLink: { marginTop: 2 },
   resetLinkTxt: { fontSize: 11, color: '#ff8a80', fontWeight: '600' },
 
