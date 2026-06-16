@@ -8,6 +8,7 @@ import {
   FlatList,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -437,7 +438,7 @@ export default function JournalScreen() {
           contentContainerStyle={s.list}
           ListHeaderComponent={
             <View style={s.filterWrap}>
-              <View style={s.filterRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
                 {(['all', 'urge', 'payment', 'milestone', 'reset'] as FilterKind[]).map(k => (
                   <Pressable
                     key={k}
@@ -448,9 +449,9 @@ export default function JournalScreen() {
                     </Text>
                   </Pressable>
                 ))}
-              </View>
+              </ScrollView>
               {filterKind === 'urge' && (
-                <View style={s.filterRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
                   {(['all', 'overcame', 'slipped'] as FilterOutcome[]).map(o => (
                     <Pressable
                       key={o}
@@ -461,7 +462,7 @@ export default function JournalScreen() {
                       </Text>
                     </Pressable>
                   ))}
-                </View>
+                </ScrollView>
               )}
               {filteredFeed.length === 0 && (
                 <View style={s.filterEmpty}>
@@ -518,8 +519,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: c.white },
 
   list: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
-  filterWrap: { paddingTop: 12, paddingBottom: 4, gap: 8 },
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  filterWrap: { paddingTop: 12, paddingBottom: 4, gap: 8, marginHorizontal: -16 },
+  filterRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingRight: 24 },
   filterChip: { borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: c.bgElement },
   filterChipSub: { backgroundColor: c.bgElement },
   filterChipActive: { backgroundColor: c.primary },
