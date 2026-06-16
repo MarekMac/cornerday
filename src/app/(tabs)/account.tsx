@@ -254,6 +254,7 @@ export default function AccountScreen() {
   const [confirmQuitDate, setConfirmQuitDate] = useState<Date | null>(null);
   const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
   const [signOutVisible, setSignOutVisible] = useState(false);
+  const [revokePartnerVisible, setRevokePartnerVisible] = useState(false);
   const [resetDataModalVisible, setResetDataModalVisible] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [pendingReset, setPendingReset] = useState<{ title: string; body: string; onConfirm: () => void } | null>(null);
@@ -444,31 +445,25 @@ export default function AccountScreen() {
     }
   };
 
-  const revokePartnerLink = () => {
-    Alert.alert(
-      'Revoke link?',
-      'Your partner will no longer be able to view your progress or send messages.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Revoke', style: 'destructive', onPress: async () => {
-          setPartnerLinkLoading(true);
-          if (partnerLinkId) {
-            const { error } = await supabase.from('partner_links').delete().eq('id', partnerLinkId);
-            if (error) {
-              Alert.alert('Could not revoke link', error.message);
-              setPartnerLinkLoading(false);
-              return;
-            }
-            setPartnerToken(null);
-            setPartnerLinkId(null);
-            setPartnerExpiresAt(null);
-            setShareSettings({ mood: true, milestones: true, recovery: true });
-            setNotifySettings({ urge: false, relapse: false, milestone: false });
-          }
-          setPartnerLinkLoading(false);
-        }},
-      ]
-    );
+  const revokePartnerLink = () => setRevokePartnerVisible(true);
+
+  const executeRevokePartnerLink = async () => {
+    setRevokePartnerVisible(false);
+    setPartnerLinkLoading(true);
+    if (partnerLinkId) {
+      const { error } = await supabase.from('partner_links').delete().eq('id', partnerLinkId);
+      if (error) {
+        Alert.alert('Could not revoke link', error.message);
+        setPartnerLinkLoading(false);
+        return;
+      }
+      setPartnerToken(null);
+      setPartnerLinkId(null);
+      setPartnerExpiresAt(null);
+      setShareSettings({ mood: true, milestones: true, recovery: true });
+      setNotifySettings({ urge: false, relapse: false, milestone: false });
+    }
+    setPartnerLinkLoading(false);
   };
 
   useEffect(() => {
@@ -2392,6 +2387,31 @@ export default function AccountScreen() {
                 onPress={() => { if (confirmQuitDate) { saveQuitDate(confirmQuitDate); } setConfirmQuitDate(null); }}
                 disabled={saving}>
                 <Text style={s.confirmSaveTxt}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Revoke partner link */}
+      <Modal visible={revokePartnerVisible} transparent animationType="fade" onRequestClose={() => setRevokePartnerVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setRevokePartnerVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={s.confirmIconCircle}>
+                <Ionicons name="link-outline" size={26} color={c.error} />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Revoke link?</Text>
+            <Text style={s.confirmBody}>
+              Your partner will lose access to your progress and won't be able to send you messages.
+            </Text>
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setRevokePartnerVisible(false)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable style={s.confirmDelete} onPress={executeRevokePartnerLink}>
+                <Text style={s.confirmDeleteTxt}>Revoke</Text>
               </Pressable>
             </View>
           </Pressable>
