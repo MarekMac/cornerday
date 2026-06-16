@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { haptic } from '@/lib/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -352,6 +353,7 @@ export default function CommunityFeed() {
   const toggleFeedReaction = async (postId: string, emoji: string) => {
     const uid = currentUserIdRef.current;
     if (!uid || reactingRef.current[postId]) return;
+    haptic();
     reactingRef.current[postId] = true;
     const current = userReactions[postId];
     const prevReactions = userReactions;
@@ -400,6 +402,7 @@ export default function CommunityFeed() {
   const toggleBookmark = async (postId: string) => {
     const uid = currentUserIdRef.current;
     if (!uid) return;
+    haptic();
     const isBookmarked = userBookmarks[postId] ?? false;
     setUserBookmarks(prev => ({ ...prev, [postId]: !isBookmarked }));
     if (isBookmarked) {
@@ -416,6 +419,7 @@ export default function CommunityFeed() {
   const toggleFollow = async (userId: string) => {
     const uid = currentUserIdRef.current;
     if (!uid || uid === userId) return;
+    haptic();
     const isFollowing = followedUsers[userId] ?? false;
     setFollowedUsers(prev => ({ ...prev, [userId]: !isFollowing }));
     if (isFollowing) {

@@ -1,4 +1,5 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
+import { hapticMedium } from '@/lib/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -106,6 +107,7 @@ export default function NewPost() {
     });
     setSubmitting(false);
     if (error) { Alert.alert('Error', 'Could not post. Please try again.'); return; }
+    hapticMedium();
     showInterstitialIfReady(isPremium);
     router.back();
   };

@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -344,6 +345,7 @@ export default function TrackerIndex() {
             total_amount: amount, category: debtCategory,
           });
         }
+        hapticMedium();
         closeDebtModal();
         await fetchAll();
       }
@@ -368,6 +370,7 @@ export default function TrackerIndex() {
           category: 'Debt', note: deleteDebtTarget.name,
         });
       }
+      haptic();
       setDeleteDebtTarget(null);
       await fetchAll();
     } finally {
@@ -421,6 +424,7 @@ export default function TrackerIndex() {
             category: 'Saving', note: savingNote.trim() || null,
           });
         }
+        hapticMedium();
         closeSavingModal();
         await fetchAll();
       }
@@ -446,6 +450,7 @@ export default function TrackerIndex() {
           category: 'Saving', note: deleteSavingTarget.note,
         });
       }
+      haptic();
       setDeleteSavingTarget(null);
       await fetchAll();
     } finally {
@@ -480,6 +485,7 @@ export default function TrackerIndex() {
           user_id: user.id, type: 'session', amount,
           category: sessionCategory, note: sessionNote.trim() || null,
         });
+        hapticMedium();
         closeSessionModal();
         await fetchAll();
         showInterstitialIfReady(isPremium, 0.2);
@@ -497,6 +503,7 @@ export default function TrackerIndex() {
     try {
       const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSessionTarget.id);
       if (delErr) { Alert.alert('Could not delete session', delErr.message); return; }
+      haptic();
       setDeleteSessionTarget(null);
       await fetchAll();
     } finally {
@@ -573,6 +580,7 @@ export default function TrackerIndex() {
       }
       setSavingsTargetDate(goalTargetDateInput);
     }
+    haptic();
     closeGoalModal();
   };
 
@@ -681,6 +689,7 @@ export default function TrackerIndex() {
             category: 'Debt', note: quickPayDebt.name,
           });
         }
+        hapticMedium();
         closeQuickPay();
         await fetchAll();
       }

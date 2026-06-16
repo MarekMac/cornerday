@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { haptic } from '@/lib/haptics';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
@@ -249,7 +250,7 @@ export default function CoachScreen() {
 
   const sendMessage = useCallback(() => {
     const text = input.trim();
-    if (text) sendText(text);
+    if (text) { haptic(); sendText(text); }
   }, [input, sendText]);
 
   const sendStarter = useCallback((text: string) => {

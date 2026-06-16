@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { haptic, hapticMedium } from '@/lib/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -262,6 +263,7 @@ export default function PostDetail() {
           if (prev.some(c => c.id === (data as any).id)) return prev;
           return [...prev, newComment];
         });
+        hapticMedium();
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
       }
     } finally {
