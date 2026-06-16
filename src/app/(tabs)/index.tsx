@@ -322,7 +322,9 @@ function formatStreakFull(ms: number): string {
 function getMilestone(ms: number) {
   const days = ms / 86400000;
   const next = MILESTONES.find(m => m > days) ?? 3650;
-  const progress = next > 0 ? days / next : 1;
+  const prev = [...MILESTONES].reverse().find(m => m <= days) ?? 0;
+  const span = next - prev;
+  const progress = span > 0 ? (days - prev) / span : 1;
   const remainingMs = Math.max(0, next * 86400000 - ms);
   return { next, remainingMs, progress: Math.min(1, Math.max(0, progress)) };
 }
