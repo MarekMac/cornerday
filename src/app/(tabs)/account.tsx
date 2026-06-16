@@ -3,6 +3,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,7 +32,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { setImagePickerActive } from '@/lib/image-picker-active';
 import { supabase } from '@/lib/supabase';
@@ -266,6 +267,8 @@ export default function AccountScreen() {
   const [restoringPurchases, setRestoringPurchases] = useState(false);
   const [isPasswordUser, setIsPasswordUser] = useState(true);
   const [renewalDate, setRenewalDate] = useState<string | null>(null);
+  const [hapticsEnabled, setHapticsEnabled] = useState(true);
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
 
   const [partnerToken, setPartnerToken] = useState<string | null>(null);
   const [partnerLinkId, setPartnerLinkId] = useState<string | null>(null);
@@ -488,7 +491,8 @@ export default function AccountScreen() {
       AsyncStorage.getItem(TRUSTED_CONTACT_KEY),
       AsyncStorage.getItem(NOTIF_STREAK_HOUR_KEY),
       AsyncStorage.getItem(NOTIF_CHECKIN_HOUR_KEY),
-    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour]) => {
+      AsyncStorage.getItem(HAPTICS_KEY),
+    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour, rawHaptics]) => {
       if (rawGoal) { const n = Number(rawGoal); if (!isNaN(n)) setSavingsGoal(n); }
       if (rawFor) setSavingsGoalFor(rawFor);
       if (rawIcon) setSavingsGoalIcon(rawIcon);
@@ -501,6 +505,7 @@ export default function AccountScreen() {
       }
       if (rawStreakHour) { const n = Number(rawStreakHour); if (!isNaN(n)) setNotifStreakHour(n); }
       if (rawCheckinHour) { const n = Number(rawCheckinHour); if (!isNaN(n)) setNotifCheckinHour(n); }
+      if (rawHaptics !== null) setHapticsEnabled(rawHaptics !== 'false');
     });
     return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
   }, [fetchProfile, loadPartnerLink]);
@@ -1161,6 +1166,25 @@ export default function AccountScreen() {
     }
   };
 
+  const haptic = (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
+    if (hapticsEnabled) Haptics.impactAsync(style).catch(() => {});
+  };
+
+  const handleHapticsToggle = async (value: boolean) => {
+    setHapticsEnabled(value);
+    await AsyncStorage.setItem(HAPTICS_KEY, String(value));
+    if (value) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  };
+
+  const saveCurrency = async (code: string) => {
+    setShowCurrencyModal(false);
+    if (code === profile?.currency) return;
+    setProfile(prev => prev ? { ...prev, currency: code } : prev);
+    haptic();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await supabase.from('users').update({ currency: code }).eq('id', user.id);
+  };
+
   const handleBiometricToggle = async (value: boolean) => {
     if (value) {
       if (!biometricAvailable) {
@@ -1671,30 +1695,29 @@ export default function AccountScreen() {
               ))}
             </View>
           </View>
-          {isPasswordUser && (
-            <>
-              <View style={s.menuDivider} />
-              <Pressable
-                style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-                onPress={handleChangePassword}>
-                <View style={s.menuIconWrap}>
-                  <Ionicons name="key-outline" size={17} color={c.primary} />
-                </View>
-                <Text style={s.menuRowLabel}>Change password</Text>
-                <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-              </Pressable>
-            </>
-          )}
           <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={() => router.push('/(tabs)/urge/checklist')}>
+            onPress={() => setShowCurrencyModal(true)}>
             <View style={s.menuIconWrap}>
-              <Ionicons name="checkmark-done-outline" size={17} color={c.primary} />
+              <Ionicons name="cash-outline" size={17} color={c.primary} />
             </View>
-            <Text style={s.menuRowLabel}>Prevention checklist</Text>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+            <Text style={s.menuRowLabel}>Currency</Text>
+            <Text style={s.menuRowValue}>{profile?.currency ?? 'USD'}</Text>
           </Pressable>
+          <View style={s.menuDivider} />
+          <View style={s.menuRow}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="phone-portrait-outline" size={17} color={c.primary} />
+            </View>
+            <Text style={s.menuRowLabel}>Haptics</Text>
+            <Switch
+              value={hapticsEnabled}
+              onValueChange={handleHapticsToggle}
+              trackColor={{ true: c.primary, false: c.bgElement }}
+              thumbColor={c.white}
+            />
+          </View>
           <View style={s.menuDivider} />
           <View style={[s.menuRow, { paddingVertical: 10 }]}>
             <View style={s.menuIconWrap}>
@@ -1729,21 +1752,21 @@ export default function AccountScreen() {
               </Pressable>
             )}
           </View>
-          <View style={s.menuDivider} />
-          <Pressable
-            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={() => setResetDataModalVisible(true)}>
-            <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
-              <Ionicons name="refresh-outline" size={17} color={c.error} />
-            </View>
-            <Text style={[s.menuRowLabel, { color: c.error }]}>Reset data</Text>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-          </Pressable>
         </View>
 
-        {/* Support & about */}
+        {/* Support */}
         <View style={s.menuCard}>
-          <Text style={s.menuCardTitle}>Support & about</Text>
+          <Text style={s.menuCardTitle}>Support</Text>
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => router.push('/(tabs)/urge/checklist')}>
+            <View style={s.menuIconWrap}>
+              <Ionicons name="checkmark-done-outline" size={17} color={c.primary} />
+            </View>
+            <Text style={s.menuRowLabel}>Prevention checklist</Text>
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+          </Pressable>
+          <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={handleExport}
@@ -1806,6 +1829,30 @@ export default function AccountScreen() {
         {/* Danger zone */}
         <View style={s.dangerCard}>
           <Text style={s.menuCardTitle}>Account</Text>
+          {isPasswordUser && (
+            <>
+              <Pressable
+                style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+                onPress={handleChangePassword}>
+                <View style={s.menuIconWrap}>
+                  <Ionicons name="key-outline" size={17} color={c.primary} />
+                </View>
+                <Text style={s.menuRowLabel}>Change password</Text>
+                <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+              </Pressable>
+              <View style={s.menuDivider} />
+            </>
+          )}
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={() => setResetDataModalVisible(true)}>
+            <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
+              <Ionicons name="refresh-outline" size={17} color={c.error} />
+            </View>
+            <Text style={[s.menuRowLabel, { color: c.error }]}>Reset data</Text>
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+          </Pressable>
+          <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={confirmSignOut}
@@ -2099,6 +2146,28 @@ export default function AccountScreen() {
                   ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.modalBtnSaveTxt}>Save</Text>}
               </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Currency picker modal */}
+      <Modal visible={showCurrencyModal} transparent animationType="fade" onRequestClose={() => setShowCurrencyModal(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setShowCurrencyModal(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <Text style={s.confirmTitle}>Currency</Text>
+            <Text style={[s.confirmBody, { marginBottom: 20 }]}>Choose how money is displayed throughout the app.</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+              {CURRENCIES.map(cur => (
+                <Pressable
+                  key={cur.code}
+                  style={[s.currencyChip, profile?.currency === cur.code && s.currencyChipSelected]}
+                  onPress={() => saveCurrency(cur.code)}>
+                  <Text style={[s.currencyChipTxt, profile?.currency === cur.code && s.currencyChipTxtSelected]}>
+                    {cur.symbol} {cur.code}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </Pressable>
         </Pressable>
@@ -3152,6 +3221,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   menuIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   menuIconWrapRed: { backgroundColor: c.bgErrorMid },
   menuRowLabel: { flex: 1, fontSize: 15, color: c.textPrimary, fontWeight: '500' },
+  menuRowValue: { fontSize: 14, color: c.textMuted, fontWeight: '500', marginRight: 4 },
   menuDivider: { height: 1, backgroundColor: c.borderSubtle, marginLeft: 62 },
 
   // Theme segment control (appearance row)

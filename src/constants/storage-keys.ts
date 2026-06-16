@@ -22,6 +22,7 @@ export const THEME_PREF_KEY = 'cornerday_theme_pref';
 export const URGE_PREDICTION_SCHEDULE_KEY = 'cornerday_urge_prediction_schedule';
 export const URGE_PREDICTION_NOTIF_ID_KEY = 'cornerday_urge_prediction_notif_id';
 export const BIOMETRIC_LOCK_KEY = 'cornerday_biometric_lock';
+export const HAPTICS_KEY = 'cornerday_haptics';
 export const AI_CHECKIN_NOTIF_ID_KEY = 'cornerday_ai_checkin_notif_id';
 export const STORE_REVIEW_ASKED_KEY = 'cornerday_store_review_asked';
 export const PROFILE_NUDGE_SHOWN_KEY = 'cornerday_profile_nudge_shown';
