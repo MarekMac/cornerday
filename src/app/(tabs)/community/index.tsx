@@ -8,6 +8,7 @@ import {
   Alert,
   Animated,
   FlatList,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -647,7 +648,13 @@ export default function CommunityFeed() {
                 })()
               : 'Permanent'}
           </Text>
-          {!!banInfo.ban_appeal_note && <Text style={s.banNoticeRow}><Text style={s.banNoticeLabel}>To appeal: </Text>{banInfo.ban_appeal_note}</Text>}
+          {!!banInfo.ban_appeal_note && <Text style={s.banNoticeRow}><Text style={s.banNoticeLabel}>Note: </Text>{banInfo.ban_appeal_note}</Text>}
+          <Pressable
+            style={({ pressed }) => [s.banContactBtn, pressed && { opacity: 0.75 }]}
+            onPress={() => Linking.openURL('mailto:support@cornerday.app?subject=Ban%20appeal&body=Hi%2C%20I%20would%20like%20to%20appeal%20my%20community%20ban.')}
+          >
+            <Text style={s.banContactTxt}>Contact Support</Text>
+          </Pressable>
         </View>
       )}
 
@@ -954,6 +961,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   banNoticeTitle: { fontSize: 14, fontWeight: '700', color: '#b91c1c', marginBottom: 2 },
   banNoticeRow: { fontSize: 13, color: '#7f1d1d', lineHeight: 19 },
   banNoticeLabel: { fontWeight: '700' },
+  banContactBtn: { marginTop: 6, alignSelf: 'flex-start', backgroundColor: '#b91c1c', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  banContactTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32, gap: 8 },
   emptyEmoji: { fontSize: 48, marginBottom: 4 },
