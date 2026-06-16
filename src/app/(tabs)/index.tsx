@@ -338,7 +338,7 @@ function getMilestone(ms: number) {
   return { next, remainingMs, progress: Math.min(1, Math.max(0, progress)) };
 }
 
-function fmtCountdown(ms: number): string {
+function fmtCountdown(ms: number, ceilHours = false): string {
   const totalMins = Math.floor(ms / 60000);
   const hours = Math.floor(ms / 3600000);
   const days = Math.floor(ms / 86400000);
@@ -358,8 +358,11 @@ function fmtCountdown(ms: number): string {
     return rem > 0 ? `${weeks}w ${rem}d` : `${weeks}w`;
   }
   if (days >= 1) {
-    const rem = Math.floor((ms % 86400000) / 3600000);
-    return rem > 0 ? `${days}d ${rem}h` : `${days}d`;
+    const remH = ceilHours
+      ? Math.ceil((ms % 86400000) / 3600000)
+      : Math.floor((ms % 86400000) / 3600000);
+    if (remH >= 24) return `${days + 1}d`;
+    return remH > 0 ? `${days}d ${remH}h` : `${days}d`;
   }
   if (hours >= 1) {
     const rem = Math.floor((ms % 3600000) / 60000);
@@ -1654,7 +1657,7 @@ export default function HomeScreen() {
                   : <Text style={s.milestoneTxt}>
                       {remainingMs <= 0
                         ? `🎉 ${milestoneLabel(next)} reached!`
-                        : `${fmtCountdown(remainingMs)} to ${milestoneLabel(next)}`}
+                        : `${fmtCountdown(remainingMs, true)} to ${milestoneLabel(next)}`}
                     </Text>
                 }
                 <View style={s.streakMetaRow}>
