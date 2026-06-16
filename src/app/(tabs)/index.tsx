@@ -897,15 +897,18 @@ export default function HomeScreen() {
     }
   }, [checkin, moodCardY]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     AsyncStorage.getItem(PROFILE_NUDGE_SHOWN_KEY).then(v => {
-      if (!v) setShowProfileNudge(true);
+      const count = parseInt(v ?? '0', 10);
+      if (count < 2) {
+        setShowProfileNudge(true);
+        AsyncStorage.setItem(PROFILE_NUDGE_SHOWN_KEY, String(count + 1));
+      }
     });
-  }, []);
+  }, []));
 
   const dismissProfileNudge = useCallback(() => {
     setShowProfileNudge(false);
-    AsyncStorage.setItem(PROFILE_NUDGE_SHOWN_KEY, '1');
   }, []);
 
   const [badgeMsgIndex, setBadgeMsgIndex] = useState(0);
