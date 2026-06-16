@@ -34,7 +34,7 @@ import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
 
-type MainTab = 'debts' | 'saving';
+type MainTab = 'debts' | 'saving' | 'session';
 
 interface Debt {
   id: string;
@@ -57,6 +57,22 @@ interface SavingEntry {
   created_at: string;
 }
 
+interface SessionEntry {
+  id: string;
+  amount: number;
+  category: string;
+  note: string | null;
+  created_at: string;
+}
+
+const SESSION_CATEGORIES = [
+  { key: 'sports_betting', label: 'Sports betting', emoji: '⚽' },
+  { key: 'casino',         label: 'Casino',         emoji: '🎰' },
+  { key: 'poker',          label: 'Poker',          emoji: '🃏' },
+  { key: 'online_slots',   label: 'Online slots',   emoji: '🎮' },
+  { key: 'other',          label: 'Other',          emoji: '🎲' },
+];
+
 const DEBT_CATEGORIES = [
   { key: 'bank',   label: 'Bank',        emoji: '🏦' },
   { key: 'credit', label: 'Credit card', emoji: '💳' },
@@ -67,6 +83,14 @@ const DEBT_CATEGORIES = [
 
 function categoryEmoji(cat: string) {
   return DEBT_CATEGORIES.find(c => c.key === cat)?.emoji ?? '💰';
+}
+
+function sessionEmoji(cat: string) {
+  return SESSION_CATEGORIES.find(c => c.key === cat)?.emoji ?? '🎲';
+}
+
+function sessionLabel(cat: string) {
+  return SESSION_CATEGORIES.find(c => c.key === cat)?.label ?? cat;
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -168,6 +192,16 @@ export default function TrackerIndex() {
   const [quickPayNote, setQuickPayNote] = useState('');
   const [submittingQuickPay, setSubmittingQuickPay] = useState(false);
 
+  // Session log
+  const [sessions, setSessions] = useState<SessionEntry[]>([]);
+  const [sessionModalVisible, setSessionModalVisible] = useState(false);
+  const [sessionAmount, setSessionAmount] = useState('');
+  const [sessionCategory, setSessionCategory] = useState('sports_betting');
+  const [sessionNote, setSessionNote] = useState('');
+  const [submittingSession, setSubmittingSession] = useState(false);
+  const [menuSession, setMenuSession] = useState<SessionEntry | null>(null);
+  const [deleteSessionTarget, setDeleteSessionTarget] = useState<SessionEntry | null>(null);
+
   // Pull-to-refresh
   const [refreshing, setRefreshing] = useState(false);
 
@@ -203,10 +237,11 @@ export default function TrackerIndex() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { fetchingRef.current = false; return; }
 
-    const [debtsRes, paymentsRes, savingsRes, profileRes, rawGoal, rawFor, rawIcon] = await Promise.all([
+    const [debtsRes, paymentsRes, savingsRes, sessionsRes, profileRes, rawGoal, rawFor, rawIcon] = await Promise.all([
       supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
+      supabase.from('losses').select('id, amount, category, note, created_at').eq('user_id', user.id).eq('type', 'session').order('created_at', { ascending: false }),
       supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, debt_target_date, savings_target_date').eq('id', user.id).maybeSingle(),
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
@@ -216,6 +251,7 @@ export default function TrackerIndex() {
     setDebts((debtsRes.data ?? []) as Debt[]);
     setPayments((paymentsRes.data ?? []) as DebtPayment[]);
     setSavings((savingsRes.data ?? []) as SavingEntry[]);
+    setSessions((sessionsRes.data ?? []) as SessionEntry[]);
     if (profileRes.data) {
       setCurrency(profileRes.data.currency ?? 'USD');
       setWeeklyBet(profileRes.data.weekly_bet ?? null);
@@ -410,6 +446,56 @@ export default function TrackerIndex() {
         });
       }
       setDeleteSavingTarget(null);
+      await fetchAll();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ── Session actions ───────────────────────────────────────────
+
+  const openAddSession = () => {
+    setSessionAmount(''); setSessionCategory('sports_betting'); setSessionNote('');
+    setSessionModalVisible(true);
+  };
+
+  const closeSessionModal = () => {
+    Keyboard.dismiss();
+    setSessionModalVisible(false);
+    setSessionAmount(''); setSessionCategory('sports_betting'); setSessionNote('');
+  };
+
+  const saveSession = async () => {
+    const amount = parseFloat(sessionAmount.trim());
+    if (!sessionAmount.trim() || isNaN(amount) || !isFinite(amount) || amount <= 0) {
+      Alert.alert('Invalid amount', 'Please enter a valid amount.');
+      return;
+    }
+    setSubmittingSession(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'session', amount,
+          category: sessionCategory, note: sessionNote.trim() || null,
+        });
+        closeSessionModal();
+        await fetchAll();
+        showInterstitialIfReady(isPremium, 0.2);
+      }
+    } finally {
+      setSubmittingSession(false);
+    }
+  };
+
+  const confirmDeleteSession = (entry: SessionEntry) => setDeleteSessionTarget(entry);
+
+  const executeDeleteSession = async () => {
+    if (!deleteSessionTarget) return;
+    setDeleting(true);
+    try {
+      await supabase.from('losses').delete().eq('id', deleteSessionTarget.id);
+      setDeleteSessionTarget(null);
       await fetchAll();
     } finally {
       setDeleting(false);
@@ -767,6 +853,10 @@ export default function TrackerIndex() {
               <Text style={[s.tabTxt, tab === 'saving' && s.tabTxtSaving]}>Savings</Text>
               {tab === 'saving' && <View style={[s.tabIndicator, { backgroundColor: '#0F6E6E' }]} />}
             </Pressable>
+            <Pressable style={s.tabBtn} onPress={() => setTab('session')}>
+              <Text style={[s.tabTxt, tab === 'session' && s.tabTxtSession]}>Session log</Text>
+              {tab === 'session' && <View style={[s.tabIndicator, { backgroundColor: '#7b5ea7' }]} />}
+            </Pressable>
           </View>
 
           {/* Debts tab */}
@@ -941,6 +1031,65 @@ export default function TrackerIndex() {
                     </Pressable>
                   ))}
                 </>
+              )}
+            </>
+          )}
+
+          {/* Session log tab */}
+          {tab === 'session' && (
+            <>
+              {/* Info card — explains what this feature is */}
+              <View style={s.sessionInfoCard}>
+                <View style={s.sessionInfoHeader}>
+                  <Text style={s.sessionInfoIcon}>📓</Text>
+                  <Text style={s.sessionInfoTitle}>What is the session log?</Text>
+                </View>
+                <Text style={s.sessionInfoBody}>
+                  This is a private, honest record of gambling sessions — without adding to your debt total.
+                </Text>
+                <Text style={s.sessionInfoBody}>
+                  Use it to track when you gambled, how much you lost, and spot patterns over time. It does{' '}
+                  <Text style={s.sessionInfoBold}>not</Text> affect your streak, your debt recovery progress, or your savings — it's purely for self-awareness.
+                </Text>
+                <View style={s.sessionInfoTip}>
+                  <Ionicons name="information-circle-outline" size={15} color="#7b5ea7" />
+                  <Text style={s.sessionInfoTipTxt}>Only you can see these entries.</Text>
+                </View>
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [s.addBtn, { borderColor: '#7b5ea7' }, pressed && { opacity: 0.85 }]}
+                onPress={openAddSession}>
+                <Ionicons name="add-circle-outline" size={18} color="#7b5ea7" />
+                <Text style={[s.addBtnTxt, { color: '#7b5ea7' }]}>Log a session</Text>
+              </Pressable>
+
+              {sessions.length === 0 ? (
+                <View style={s.emptyCard}>
+                  <Text style={s.emptyTxt}>No sessions logged yet.{'\n'}Tap "Log a session" to start tracking honestly.</Text>
+                </View>
+              ) : (
+                sessions.map(entry => (
+                  <Pressable
+                    key={entry.id}
+                    style={({ pressed }) => [s.sessionCard, pressed && { opacity: 0.85 }]}
+                    onPress={() => setMenuSession(entry)}>
+                    <View style={s.sessionCardTop}>
+                      <Text style={s.sessionCardEmoji}>{sessionEmoji(entry.category)}</Text>
+                      <View style={s.sessionCardInfo}>
+                        <Text style={s.sessionCardLabel}>{sessionLabel(entry.category)}</Text>
+                        {entry.note ? <Text style={s.sessionCardNote}>{entry.note}</Text> : null}
+                        <Text style={s.sessionCardDate}>{fmtDate(entry.created_at)}</Text>
+                      </View>
+                      <View style={s.sessionCardRight}>
+                        <Text style={s.sessionCardAmt}>-{fmt(Number(entry.amount), currency)}</Text>
+                        <Pressable onPress={() => setMenuSession(entry)} hitSlop={10} style={s.menuBtn}>
+                          <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
+                        </Pressable>
+                      </View>
+                    </View>
+                  </Pressable>
+                ))
               )}
             </>
           )}
@@ -1342,6 +1491,122 @@ export default function TrackerIndex() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Session log modal */}
+      <Modal visible={sessionModalVisible} transparent animationType="fade" onRequestClose={closeSessionModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={s.modalOverlay} onPress={closeSessionModal}>
+            <Pressable style={s.sheet} onPress={() => {}}>
+              <Text style={s.sheetTitle}>Log a session</Text>
+              <Text style={[s.fieldLbl, { color: c.textFaint, fontWeight: '400', textTransform: 'none', letterSpacing: 0, marginTop: 4 }]}>
+                This won't affect your debt or streak — it's just for your own awareness.
+              </Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={s.fieldLbl}>Amount lost</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. 50"
+                  placeholderTextColor={c.textFaint}
+                  keyboardType="decimal-pad"
+                  value={sessionAmount}
+                  onChangeText={setSessionAmount}
+                  autoFocus
+                />
+                <Text style={s.fieldLbl}>Type of gambling</Text>
+                <View style={s.chipRow}>
+                  {SESSION_CATEGORIES.map(cat => (
+                    <Pressable
+                      key={cat.key}
+                      style={[s.chip, sessionCategory === cat.key && s.sessionChipActive]}
+                      onPress={() => setSessionCategory(cat.key)}>
+                      <Text style={[s.chipTxt, sessionCategory === cat.key && s.sessionChipTxtActive]}>
+                        {cat.emoji} {cat.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. what triggered it, how you felt"
+                  placeholderTextColor={c.textFaint}
+                  value={sessionNote}
+                  onChangeText={setSessionNote}
+                  maxLength={120}
+                />
+              </ScrollView>
+              <View style={s.sheetActions}>
+                <Pressable style={s.cancelBtn} onPress={closeSessionModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[s.sessionSaveBtn, submittingSession && s.btnDisabled]} onPress={saveSession} disabled={submittingSession}>
+                  {submittingSession
+                    ? <ActivityIndicator color={c.white} size="small" />
+                    : <Text style={s.saveBtnTxt}>Log session</Text>}
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Session context menu */}
+      <Modal visible={!!menuSession} transparent animationType="fade" onRequestClose={() => setMenuSession(null)}>
+        <Pressable style={s.menuOverlay} onPress={() => setMenuSession(null)}>
+          <Pressable style={s.menuSheet} onPress={() => {}}>
+            {menuSession && (
+              <>
+                <View style={s.menuHeader}>
+                  <Text style={s.menuEmoji}>{sessionEmoji(menuSession.category)}</Text>
+                  <View style={s.menuHeaderText}>
+                    <Text style={s.menuTitle}>{sessionLabel(menuSession.category)}</Text>
+                    <Text style={s.menuSub}>{fmtDate(menuSession.created_at)}{menuSession.note ? ` · ${menuSession.note}` : ''}</Text>
+                  </View>
+                  <Text style={[s.menuStatVal, { color: c.error, fontSize: 18 }]}>-{fmt(Number(menuSession.amount), currency)}</Text>
+                </View>
+                <View style={s.menuActions}>
+                  <Pressable style={({ pressed }) => [s.menuActionBtn, s.menuActionDanger, pressed && { opacity: 0.75 }]}
+                    onPress={() => { setMenuSession(null); confirmDeleteSession(menuSession); }}>
+                    <Ionicons name="trash-outline" size={18} color={c.error} />
+                    <Text style={[s.menuActionTxt, { color: c.error }]}>Delete</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+            <View style={{ height: Math.max(16, insets.bottom) }} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Delete session confirmation */}
+      <Modal visible={!!deleteSessionTarget} transparent animationType="fade" onRequestClose={() => setDeleteSessionTarget(null)}>
+        <Pressable style={s.modalOverlay} onPress={() => setDeleteSessionTarget(null)}>
+          <Pressable style={s.sheet} onPress={() => {}}>
+            <View style={s.deleteIconRow}>
+              <View style={s.deleteIconCircle}>
+                <Ionicons name="trash-outline" size={26} color={c.error} />
+              </View>
+            </View>
+            <Text style={s.deleteTitle}>Delete session?</Text>
+            {deleteSessionTarget && (
+              <Text style={s.deleteBody}>
+                Delete this{' '}<Text style={s.deleteBold}>{fmt(Number(deleteSessionTarget.amount), currency)}</Text>{' '}
+                {sessionLabel(deleteSessionTarget.category)} entry?
+              </Text>
+            )}
+            <View style={s.sheetActions}>
+              <Pressable style={s.cancelBtn} onPress={() => setDeleteSessionTarget(null)}>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteSession} disabled={deleting}>
+                {deleting
+                  ? <ActivityIndicator color={c.white} size="small" />
+                  : <Text style={s.deleteBtnTxt}>Delete</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* iOS debt target date picker */}
       {Platform.OS === 'ios' && (
         <Modal visible={showDebtTargetModal} transparent animationType="slide">
@@ -1647,4 +1912,32 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   iosModalSave: { backgroundColor: c.primary },
   iosModalCancel: { fontSize: 15, fontWeight: '600', color: c.textSecondary },
   iosModalSaveTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  tabTxtSession: { color: '#7b5ea7' },
+
+  sessionInfoCard: {
+    backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10,
+    borderLeftWidth: 3, borderLeftColor: '#7b5ea7',
+  },
+  sessionInfoHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 },
+  sessionInfoIcon: { fontSize: 22 },
+  sessionInfoTitle: { fontSize: 15, fontWeight: '700', color: c.textPrimary },
+  sessionInfoBody: { fontSize: 13, color: c.textBody, lineHeight: 20 },
+  sessionInfoBold: { fontWeight: '700', color: c.textSecondary },
+  sessionInfoTip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  sessionInfoTipTxt: { fontSize: 12, color: '#7b5ea7', fontWeight: '500' },
+
+  sessionCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
+  sessionCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sessionCardEmoji: { fontSize: 26 },
+  sessionCardInfo: { flex: 1 },
+  sessionCardLabel: { fontSize: 15, fontWeight: '700', color: c.textPrimary },
+  sessionCardNote: { fontSize: 12, color: c.textMuted, marginTop: 2 },
+  sessionCardDate: { fontSize: 12, color: c.textFaint, marginTop: 2 },
+  sessionCardRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sessionCardAmt: { fontSize: 15, fontWeight: '700', color: c.error },
+
+  sessionChipActive: { borderColor: '#7b5ea7', backgroundColor: '#f0ebfa' },
+  sessionChipTxtActive: { color: '#7b5ea7', fontWeight: '600' },
+  sessionSaveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#7b5ea7' },
 });
