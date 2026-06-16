@@ -401,7 +401,7 @@ export default function JournalScreen() {
       <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
-            <Pressable style={s.backBtn} onPress={() => from === 'home' ? router.push('/(tabs)/' as any) : router.back()} hitSlop={12}>
+            <Pressable style={s.backBtn} onPress={() => from === 'home' ? router.push('/(tabs)/' as any) : router.back()} hitSlop={12} accessibilityLabel="Go back" accessibilityRole="button">
               <Ionicons name="chevron-back" size={26} color={c.white} />
             </Pressable>
             <View style={s.headerCenter}>

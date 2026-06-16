@@ -949,7 +949,7 @@ export default function TrackerIndex() {
                             ) : (
                               <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
                             )}
-                            <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn}>
+                            <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn} accessibilityLabel="Debt options" accessibilityRole="button">
                               <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
                             </Pressable>
                           </View>
@@ -1049,7 +1049,7 @@ export default function TrackerIndex() {
                         </View>
                         <View style={s.savingCardRight}>
                           <Text style={s.savingCardAmt}>+{fmt(Number(entry.amount), currency)}</Text>
-                          <Pressable onPress={() => handleSavingMenu(entry)} hitSlop={10} style={s.menuBtn}>
+                          <Pressable onPress={() => handleSavingMenu(entry)} hitSlop={10} style={s.menuBtn} accessibilityLabel="Saving entry options" accessibilityRole="button">
                             <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
                           </Pressable>
                         </View>
@@ -1109,7 +1109,7 @@ export default function TrackerIndex() {
                       </View>
                       <View style={s.sessionCardRight}>
                         <Text style={s.sessionCardAmt}>-{fmt(Number(entry.amount), currency)}</Text>
-                        <Pressable onPress={() => setMenuSession(entry)} hitSlop={10} style={s.menuBtn}>
+                        <Pressable onPress={() => setMenuSession(entry)} hitSlop={10} style={s.menuBtn} accessibilityLabel="Session options" accessibilityRole="button">
                           <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
                         </Pressable>
                       </View>

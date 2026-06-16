@@ -65,7 +65,13 @@ function TabButton({
   };
 
   return (
-    <Pressable onPress={handlePress} style={[tbs.tab, (isFocused || showTimer) && tbs.tabActive]}>
+    <Pressable
+      onPress={handlePress}
+      style={[tbs.tab, (isFocused || showTimer) && tbs.tabActive]}
+      accessibilityLabel={label}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isFocused }}
+    >
       <Animated.View style={[StyleSheet.absoluteFill, tbs.pillBg, { opacity: activeAnim }, showTimer && !isFocused && tbs.pillBgTimer]} />
       <Animated.View style={[tbs.tabInner, { transform: [{ scale }] }]}>
         <Ionicons

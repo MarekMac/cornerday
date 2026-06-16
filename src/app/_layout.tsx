@@ -20,7 +20,7 @@ if (__DEV__) {
   };
 }
 
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider, ErrorBoundaryProps } from 'expo-router';
 import { Slot, useRouter, useRootNavigationState } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Session } from '@supabase/supabase-js';
@@ -195,7 +195,7 @@ function InnerLayout() {
             <Text style={lockStyles.emoji}>🔒</Text>
             <Text style={lockStyles.title}>CornerDay</Text>
             <Text style={lockStyles.sub}>Your recovery is private</Text>
-            <Pressable style={lockStyles.btn} onPress={authenticate}>
+            <Pressable style={lockStyles.btn} onPress={authenticate} accessibilityLabel="Unlock CornerDay" accessibilityRole="button">
               <Text style={lockStyles.btnTxt}>Unlock</Text>
             </Pressable>
           </LinearGradient>
@@ -214,6 +214,31 @@ const lockStyles = StyleSheet.create({
   btn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 24, paddingHorizontal: 40, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
   btnTxt: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <LinearGradient
+      colors={['#0F6E6E', '#1a9a9a']}
+      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 }}
+    >
+      <Text style={{ fontSize: 48 }}>⚠️</Text>
+      <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center' }}>
+        Something went wrong
+      </Text>
+      <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center', lineHeight: 20 }}>
+        {error.message || 'An unexpected error occurred.'}
+      </Text>
+      <Pressable
+        onPress={retry}
+        accessibilityLabel="Try again"
+        accessibilityRole="button"
+        style={{ marginTop: 16, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 24, paddingHorizontal: 40, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' }}
+      >
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Try again</Text>
+      </Pressable>
+    </LinearGradient>
+  );
+}
 
 export default function RootLayout() {
   return (

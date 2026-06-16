@@ -499,7 +499,7 @@ export default function PostDetail() {
       <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
-            <Pressable onPress={() => { showInterstitialIfReady(isPremium); router.back(); }} style={s.backBtn} hitSlop={8}>
+            <Pressable onPress={() => { showInterstitialIfReady(isPremium); router.back(); }} style={s.backBtn} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
               <Ionicons name="arrow-back" size={22} color={c.white} />
             </Pressable>
             <Text style={s.headerTitle}>Story</Text>
@@ -610,7 +610,7 @@ export default function PostDetail() {
               <Text style={s.menuTitle}>
                 {menuTarget?.kind === 'post' ? 'Your story' : 'Your comment'}
               </Text>
-              <Pressable onPress={() => setMenuTarget(null)} hitSlop={10}>
+              <Pressable onPress={() => setMenuTarget(null)} hitSlop={10} accessibilityLabel="Close menu" accessibilityRole="button">
                 <Ionicons name="close" size={22} color={c.textMuted} />
               </Pressable>
             </View>
@@ -723,7 +723,7 @@ export default function PostDetail() {
               <Text style={s.menuTitle}>
                 Report {reportTarget?.kind === 'post' ? 'story' : 'comment'}
               </Text>
-              <Pressable onPress={() => setReportTarget(null)} hitSlop={10}>
+              <Pressable onPress={() => setReportTarget(null)} hitSlop={10} accessibilityLabel="Cancel report" accessibilityRole="button">
                 <Ionicons name="close" size={22} color={c.textMuted} />
               </Pressable>
             </View>
