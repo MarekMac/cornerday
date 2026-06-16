@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@cornerday.app>';
 
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
@@ -699,7 +700,10 @@ async function buildEmailForUser(
 
 Deno.serve(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
-  if (auth !== `Bearer ${SERVICE_ROLE_KEY}`) {
+  const cronKey = req.headers.get('x-cron-secret') ?? '';
+  const validSrk = auth === `Bearer ${SERVICE_ROLE_KEY}`;
+  const validCron = CRON_SECRET && cronKey === CRON_SECRET;
+  if (!validSrk && !validCron) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 
