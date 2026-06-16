@@ -426,17 +426,7 @@ function fmtTimeSince(ms: number): string {
 }
 
 function milestoneLabel(days: number) {
-  const map: Record<number, string> = {
-    [1/24]: '1 hour', [3/24]: '3 hours', [6/24]: '6 hours', [12/24]: '12 hours',
-    1: '1 day', 3: '3 days', 7: '1 week', 10: '10 days',
-    14: '2 weeks', 21: '3 weeks', 30: '1 month', 45: '45 days',
-    60: '2 months', 90: '3 months', 120: '4 months', 150: '5 months',
-    180: '6 months', 270: '9 months', 365: '1 year', 548: '18 months',
-    730: '2 years', 1095: '3 years', 1460: '4 years', 1825: '5 years',
-    2190: '6 years', 2555: '7 years', 2920: '8 years', 3285: '9 years',
-    3650: '10 years',
-  };
-  return map[days] ?? `${days} days`;
+  return BADGE_DEFS.find(b => b.days === days)?.label ?? `${days} days`;
 }
 
 function todayStr() {
