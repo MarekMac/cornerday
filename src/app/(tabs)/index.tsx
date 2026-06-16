@@ -1648,16 +1648,15 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
                 <LiveCounter quitDate={data.quitDate} />
-                <View style={s.milestonePill}>
-                  {next < 1 && data.quitDate
-                    ? <SubDayCountdown quitDate={data.quitDate} nextDays={next} style={s.milestoneTxt} />
-                    : <Text style={s.milestoneTxt}>
-                        {remainingMs <= 0
-                          ? `🎉 ${milestoneLabel(next)} reached!`
-                          : `${fmtCountdown(remainingMs)} to ${milestoneLabel(next)}`}
-                      </Text>
-                  }
-                </View>
+                <View style={s.separator} />
+                {next < 1 && data.quitDate
+                  ? <SubDayCountdown quitDate={data.quitDate} nextDays={next} style={s.milestoneTxt} />
+                  : <Text style={s.milestoneTxt}>
+                      {remainingMs <= 0
+                        ? `🎉 ${milestoneLabel(next)} reached!`
+                        : `${fmtCountdown(remainingMs)} to ${milestoneLabel(next)}`}
+                    </Text>
+                }
                 <View style={s.streakMetaRow}>
                   <Text style={s.longestTxt}>Best: {formatBest(data.longestStreak, streakMs)}</Text>
                   {msToPersonalBest !== null && (
@@ -2705,17 +2704,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   streakRight: { flex: 1, gap: 8 },
   streakTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   streakTitle: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.9 },
-  separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  milestonePill: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-  },
-  milestoneTxt: { fontSize: 11, color: '#ffffff', fontWeight: '600' },
+  separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)' },
+  milestoneTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
   liveCounter: { fontSize: 20, fontWeight: '800', color: c.white, fontVariant: ['tabular-nums'], lineHeight: 24 },
   streakMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   longestTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
