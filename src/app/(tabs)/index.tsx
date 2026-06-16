@@ -132,12 +132,19 @@ const BADGE_DEFS = [
 
 const ACTIVITY_BADGE_DEFS = [
   { type: 'first_checkin',    emoji: '🧘', label: 'First Check-in',  earned: 'First mood check-in logged.',         pending: 'Log your first mood check-in on the home screen.' },
-  { type: 'checkins_7',       emoji: '🗓️', label: '7 Check-ins',     earned: '7 mood check-ins logged.',            pending: 'Log 7 mood check-ins to earn this.' },
-  { type: 'checkins_30',      emoji: '📅', label: '30 Check-ins',    earned: '30 mood check-ins logged.',           pending: 'Log 30 mood check-ins to earn this.' },
-  { type: 'first_journal',    emoji: '📝', label: 'First Entry',     earned: 'First urge journal entry logged.',    pending: 'Log an urge from the Support screen to earn this.' },
-  { type: 'urge_overcame_1',  emoji: '🛡️', label: 'Urge Fighter',   earned: 'Overcame your first urge.',           pending: 'Log an urge you overcame in the Support screen.' },
-  { type: 'urge_overcame_10', emoji: '💪', label: 'Urge Warrior',   earned: 'Overcame 10 urges.',                  pending: 'Overcome 10 urges to earn this.' },
-  { type: 'first_payment',    emoji: '💰', label: 'First Payment',  earned: 'First debt payment logged.',          pending: 'Log a payment in the Tracker tab to earn this.' },
+  { type: 'checkins_7',           emoji: '🗓️', label: '7 Check-ins',      earned: '7 mood check-ins logged.',                        pending: 'Log 7 mood check-ins to earn this.' },
+  { type: 'checkins_30',          emoji: '📅', label: '30 Check-ins',     earned: '30 mood check-ins logged.',                       pending: 'Log 30 mood check-ins to earn this.' },
+  { type: 'checkins_100',         emoji: '🏅', label: '100 Check-ins',    earned: '100 mood check-ins logged.',                      pending: 'Log 100 mood check-ins to earn this.' },
+  { type: 'first_journal',        emoji: '📝', label: 'First Entry',      earned: 'First urge journal entry logged.',                pending: 'Log an urge from the Support screen to earn this.' },
+  { type: 'urge_overcame_1',      emoji: '🛡️', label: 'Urge Fighter',    earned: 'Overcame your first urge.',                       pending: 'Log an urge you overcame in the Support screen.' },
+  { type: 'urge_overcame_10',     emoji: '💪', label: 'Urge Warrior',    earned: 'Overcame 10 urges.',                              pending: 'Overcome 10 urges to earn this.' },
+  { type: 'urge_overcame_25',     emoji: '⚔️', label: 'Urge Guardian',   earned: 'Overcame 25 urges.',                              pending: 'Overcome 25 urges to earn this.' },
+  { type: 'urge_overcame_50',     emoji: '🔰', label: 'Urge Slayer',     earned: 'Overcame 50 urges.',                              pending: 'Overcome 50 urges to earn this.' },
+  { type: 'loss_first_log',       emoji: '🪞', label: 'Honest Start',    earned: 'Logged your first loss — that took courage.',     pending: 'Log a loss in the Tracker tab to earn this.' },
+  { type: 'first_payment',        emoji: '💰', label: 'First Payment',   earned: 'First debt payment logged.',                      pending: 'Log a payment in the Tracker tab to earn this.' },
+  { type: 'payments_5',           emoji: '📈', label: '5 Payments',      earned: '5 debt payments logged.',                         pending: 'Log 5 payments in the Tracker tab to earn this.' },
+  { type: 'payments_10',          emoji: '💸', label: '10 Payments',     earned: '10 debt payments logged.',                        pending: 'Log 10 payments in the Tracker tab to earn this.' },
+  { type: 'community_first_post', emoji: '🤝', label: 'First Story',     earned: 'Posted your first story to the community.',       pending: 'Share your first post in the Community tab.' },
 ];
 
 const MOODS = ['😢', '😕', '😐', '🙂', '😄'];
@@ -939,7 +946,7 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, moodCountRes, paymentCountRes, checkinDatesRes, calRelapseRes] = await Promise.all([
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, moodCountRes, paymentCountRes, checkinDatesRes, calRelapseRes, lossCountRes, communityPostCountRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
@@ -953,6 +960,8 @@ export default function HomeScreen() {
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
       supabase.from('losses').select('created_at').eq('user_id', user.id).eq('type', 'streak_reset').gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
+      supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'loss'),
+      supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
 
     if (profileRes.error) throw profileRes.error;
@@ -1071,14 +1080,23 @@ export default function HomeScreen() {
     const urgeList = urgeRes.data ?? [];
     const urgesOvercome = urgeList.filter(e => e.outcome === 'overcame').length;
     const paymentCount = paymentCountRes.count ?? 0;
+    const lossCount = lossCountRes.count ?? 0;
+    const communityPostCount = communityPostCountRes.count ?? 0;
     const activityConditions: Record<string, boolean> = {
-      first_checkin:    moodCount >= 1,
-      checkins_7:       moodCount >= 7,
-      checkins_30:      moodCount >= 30,
-      first_journal:    urgeList.length >= 1,
-      urge_overcame_1:  urgesOvercome >= 1,
-      urge_overcame_10: urgesOvercome >= 10,
-      first_payment:    paymentCount >= 1,
+      first_checkin:        moodCount >= 1,
+      checkins_7:           moodCount >= 7,
+      checkins_30:          moodCount >= 30,
+      checkins_100:         moodCount >= 100,
+      first_journal:        urgeList.length >= 1,
+      urge_overcame_1:      urgesOvercome >= 1,
+      urge_overcame_10:     urgesOvercome >= 10,
+      urge_overcame_25:     urgesOvercome >= 25,
+      urge_overcame_50:     urgesOvercome >= 50,
+      loss_first_log:       lossCount >= 1,
+      first_payment:        paymentCount >= 1,
+      payments_5:           paymentCount >= 5,
+      payments_10:          paymentCount >= 10,
+      community_first_post: communityPostCount >= 1,
     };
     const newActivityBadges = ACTIVITY_BADGE_DEFS
       .filter(b => activityConditions[b.type] && !dedupeGuard.has(b.type))
