@@ -433,23 +433,18 @@ export default function CommunityFeed() {
     }
   };
 
-  const reportPost = (postId: string) => {
-    Alert.alert('Report story', 'Why are you reporting this?', [
-      { text: 'Spam', onPress: () => submitReport(postId, 'Spam') },
-      { text: 'Harmful content', onPress: () => submitReport(postId, 'Harmful content') },
-      { text: 'Misinformation', onPress: () => submitReport(postId, 'Misinformation') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const reportPost = (postId: string) => setReportPostId(postId);
 
-  const submitReport = async (postId: string, reason: string) => {
+  const submitReport = async (reason: string) => {
     const uid = currentUserIdRef.current;
-    if (!uid || reportingInFeed) return;
+    const postId = reportPostId;
+    if (!uid || !postId || reportingInFeed) return;
     setReportingInFeed(true);
     const { error } = await supabase.from('community_reports').insert({
       target_type: 'post', target_id: postId, reporter_id: uid, reason,
     });
     setReportingInFeed(false);
+    setReportPostId(null);
     if (error) { Alert.alert('Could not submit report', error.message); return; }
     Alert.alert('Reported', 'Thank you — we will review this shortly.');
   };
@@ -790,6 +785,38 @@ export default function CommunityFeed() {
         </Pressable>
       </Modal>
 
+      {/* Report story modal */}
+      <Modal visible={!!reportPostId} transparent animationType="fade" onRequestClose={() => setReportPostId(null)}>
+        <Pressable style={s.glOverlay} onPress={() => setReportPostId(null)}>
+          <Pressable style={s.reportSheet} onPress={() => {}}>
+            <View style={s.reportIconRow}>
+              <View style={s.reportIconCircle}>
+                <Ionicons name="flag-outline" size={24} color={c.error} />
+              </View>
+            </View>
+            <Text style={s.reportTitle}>Report story</Text>
+            <Text style={s.reportSubtitle}>Why are you reporting this?</Text>
+            {(['Spam', 'Harmful content', 'Misinformation'] as const).map((reason, i, arr) => (
+              <View key={reason} style={{ width: '100%' }}>
+                <Pressable
+                  style={({ pressed }) => [s.reportReasonRow, pressed && { opacity: 0.6 }]}
+                  onPress={() => submitReport(reason)}
+                  disabled={reportingInFeed}>
+                  <Text style={s.reportReasonTxt}>{reason}</Text>
+                  {reportingInFeed ? null : <Ionicons name="chevron-forward" size={16} color={c.textFaint} />}
+                </Pressable>
+                {i < arr.length - 1 && <View style={s.reportDivider} />}
+              </View>
+            ))}
+            <Pressable
+              style={({ pressed }) => [s.reportCancelBtn, pressed && { opacity: 0.7 }]}
+              onPress={() => setReportPostId(null)}>
+              <Text style={s.reportCancelTxt}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Community guidelines — shown once on first visit */}
       <Modal
         visible={guidelinesVisible}
@@ -975,6 +1002,32 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   emptyBody: { fontSize: 14, color: c.textMuted, textAlign: 'center', marginTop: 6 },
   retryBtn: { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: c.primary, borderRadius: 20 },
   retryBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  // Report modal
+  reportSheet: {
+    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+  },
+  reportIconRow: { alignItems: 'center', marginBottom: 12 },
+  reportIconCircle: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: c.bgError, borderWidth: 1.5, borderColor: c.borderError,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  reportTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 4 },
+  reportSubtitle: { fontSize: 14, color: c.textMuted, textAlign: 'center', marginBottom: 16 },
+  reportReasonRow: {
+    width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, paddingHorizontal: 4,
+  },
+  reportReasonTxt: { fontSize: 15, color: c.textPrimary, fontWeight: '500' },
+  reportDivider: { height: 1, backgroundColor: c.borderSubtle },
+  reportCancelBtn: {
+    marginTop: 16, width: '100%', paddingVertical: 13,
+    borderRadius: 12, backgroundColor: c.bgElement, alignItems: 'center',
+  },
+  reportCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
   glOverlay: {
     flex: 1, backgroundColor: c.overlay,
