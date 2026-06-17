@@ -1584,6 +1584,25 @@ export default function AccountScreen() {
             </View>
             <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
+          <View style={s.infoDivider} />
+          <Pressable
+            onPress={isPremiumFromRC ? openCustomMilestoneModal : () => showPaywall()}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={s.infoItemMain}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={s.infoItemLabel}>Custom milestone</Text>
+                {!isPremiumFromRC && (
+                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[s.infoItemValue, !customMilestone && s.infoValueEmpty]}>
+                {customMilestone ? `${customMilestone} days` : 'Not set'}
+              </Text>
+            </View>
+            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
+          </Pressable>
         </View>
 
         {/* Your plan */}
@@ -1638,6 +1657,34 @@ export default function AccountScreen() {
             </View>
             <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
+          <View style={s.infoDivider} />
+          <View style={[s.infoItem, { paddingVertical: 12 }]}>
+            <View style={s.infoItemMain}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={s.infoItemLabel}>Streak shield</Text>
+                {!isPremiumFromRC && (
+                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[s.infoItemValue, { fontSize: 13, color: c.textBody, fontWeight: '400' }]}>
+                24h window to undo a relapse
+              </Text>
+            </View>
+            {isPremiumFromRC ? (
+              <Switch
+                value={streakShieldEnabled}
+                onValueChange={handleShieldToggle}
+                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+                thumbColor={streakShieldEnabled ? '#0F6E6E' : '#bbb'}
+              />
+            ) : (
+              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                <Text style={{ fontSize: 12, color: c.primary, fontWeight: '600' }}>Upgrade</Text>
+              </Pressable>
+            )}
+          </View>
           <View style={s.infoDivider} />
           <Pressable
             onPress={() => router.push('/(tabs)/urge/checklist')}
@@ -1737,66 +1784,6 @@ export default function AccountScreen() {
               )}
             </>
           )}
-        </View>
-
-        {/* Premium tools */}
-        <View style={s.menuCard}>
-          <Text style={s.menuCardTitle}>Premium tools</Text>
-
-          {/* Streak shield */}
-          <View style={[s.menuRow, { paddingVertical: 10 }]}>
-            <View style={s.menuIconWrap}>
-              <Text style={{ fontSize: 16 }}>🛡️</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={s.menuRowLabel}>Streak shield</Text>
-                {!isPremiumFromRC && (
-                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={s.notifDesc}>24h window to undo a relapse reset</Text>
-            </View>
-            {isPremiumFromRC ? (
-              <Switch
-                value={streakShieldEnabled}
-                onValueChange={handleShieldToggle}
-                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-                thumbColor={streakShieldEnabled ? '#0F6E6E' : '#bbb'}
-              />
-            ) : (
-              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 12, color: c.primary, fontWeight: '600' }}>Upgrade</Text>
-              </Pressable>
-            )}
-          </View>
-
-          <View style={s.menuDivider} />
-
-          {/* Custom milestone */}
-          <Pressable
-            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={isPremiumFromRC ? openCustomMilestoneModal : () => showPaywall()}>
-            <View style={s.menuIconWrap}>
-              <Text style={{ fontSize: 16 }}>🎯</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={s.menuRowLabel}>Custom milestone</Text>
-                {!isPremiumFromRC && (
-                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={s.notifDesc}>
-                {customMilestone ? `Celebrating ${customMilestone} clean days` : 'Set a personal day goal'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-          </Pressable>
         </View>
 
         {/* Settings */}

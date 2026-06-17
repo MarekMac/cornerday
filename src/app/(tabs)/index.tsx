@@ -2088,11 +2088,16 @@ export default function HomeScreen() {
                 <Text style={s.whyAnchorLabel}>Your why</Text>
                 <Text style={s.whyAnchorSub}>What you're fighting for</Text>
               </View>
-              {motivationPhoto && (
-                <Pressable onPress={() => router.push('/(tabs)/urge' as any)}>
+              <Pressable onPress={() => router.push('/(tabs)/urge' as any)}>
+                {motivationPhoto ? (
                   <Image source={{ uri: motivationPhoto }} style={s.whyAnchorPhoto} />
-                </Pressable>
-              )}
+                ) : (
+                  <View style={[s.whyAnchorPhoto, s.whyAnchorPhotoEmpty]}>
+                    <Text style={{ fontSize: 18 }}>📷</Text>
+                    <Text style={s.whyAnchorPhotoAddTxt}>Add</Text>
+                  </View>
+                )}
+              </Pressable>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
               {motivations.map((m, i) => (
@@ -2987,6 +2992,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
     marginTop: 2,
   },
+  whyAnchorPhotoEmpty: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center', gap: 2,
+  },
+  whyAnchorPhotoAddTxt: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3 },
   whyAnchorLabel: {
     fontSize: 16,
     fontWeight: '700',
