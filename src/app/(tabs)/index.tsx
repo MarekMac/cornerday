@@ -983,6 +983,7 @@ export default function HomeScreen() {
   const [shareCardMessage, setShareCardMessage] = useState('');
   const [shareCardMilestoneLabel, setShareCardMilestoneLabel] = useState<string | null>(null);
   const [shareCardEarnedOn, setShareCardEarnedOn] = useState<string | null>(null);
+  const [shareCardAction, setShareCardAction] = useState<{ label: string; onPress: () => void } | null>(null);
   const [urgePeakHour, setUrgePeakHour] = useState<number | null>(null);
   const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
   const [shieldEnabled, setShieldEnabled] = useState(false);
@@ -1499,6 +1500,7 @@ export default function HomeScreen() {
     message = '',
     milestoneLabel: string | null = null,
     earnedOn: string | null = null,
+    action: { label: string; onPress: () => void } | null = null,
   ) => {
     setShareCardBadge(badge);
     setShareCardHideTime(hideTime);
@@ -1508,6 +1510,7 @@ export default function HomeScreen() {
     setShareCardMessage(message);
     setShareCardMilestoneLabel(milestoneLabel);
     setShareCardEarnedOn(earnedOn);
+    setShareCardAction(action);
     if (!locked) setShareTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
     setShowShareCard(true);
   };
@@ -1942,7 +1945,21 @@ export default function HomeScreen() {
               const earned = data.checklistCompleted;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (earned) { openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Achievement', value: 'All prevention steps completed' }]); } else { router.push('/(tabs)/urge' as any); } }}>
+                  onPress={() => {
+                    if (earned) {
+                      openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Achievement', value: 'All prevention steps completed' }]);
+                    } else {
+                      const done = Math.round(data.checklistProgress * CHECKLIST_TOTAL);
+                      openShareCard(
+                        { emoji: '🛡️', label: 'Safe Zone' }, true,
+                        [{ label: 'Steps completed', value: `${done} of ${CHECKLIST_TOTAL}` }],
+                        true, data.checklistProgress,
+                        'Complete every step of the prevention checklist.',
+                        null, null,
+                        { label: 'Open Checklist', onPress: () => { setShowShareCard(false); router.push('/(tabs)/urge/checklist' as any); } },
+                      );
+                    }
+                  }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : data.checklistProgress} />
                     <Text style={s.badgeEmoji}>{earned ? '🛡️' : '🔒'}</Text>
@@ -2826,6 +2843,14 @@ export default function HomeScreen() {
             </View>
 
             <View style={s.shareCardActions}>
+              {shareCardLocked && shareCardAction && (
+                <Pressable
+                  style={({ pressed }) => [s.shareCardShareBtn, pressed && { opacity: 0.85 }]}
+                  onPress={shareCardAction.onPress}
+                >
+                  <Text style={s.shareCardShareTxt}>{shareCardAction.label}</Text>
+                </Pressable>
+              )}
               {!shareCardLocked && (
                 <>
                   <Pressable
