@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
       })());
     }
 
-    if (link.share_recovery !== false) {
+    if (link.share_recovery === true) {
       fetches.push((async () => {
         const { data: lossRows } = await sb
           .from('losses')

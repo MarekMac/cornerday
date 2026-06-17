@@ -891,6 +891,7 @@ export default function HomeScreen() {
   const badgeScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
   const fetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
   const moodScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [moodCardY, setMoodCardY] = useState(0);
 
@@ -1032,6 +1033,7 @@ export default function HomeScreen() {
       supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
 
+    if (!isMountedRef.current) return;
     if (profileRes.error) throw profileRes.error;
     if (streakRes.error) console.warn('[home] streakRes error:', streakRes.error.message);
     if (badgesRes.error) console.warn('[home] badgesRes error:', badgesRes.error.message);
@@ -1109,7 +1111,7 @@ export default function HomeScreen() {
     const streak = Math.floor(streakDaysFloat);
     const longest = streakRes.data?.longest_streak ?? 0;
     if (streak > longest) {
-      await supabase.from('streaks').update({ longest_streak: streak }).eq('user_id', user.id);
+      await supabase.from('streaks').upsert({ user_id: user.id, longest_streak: streak }, { onConflict: 'user_id' });
     }
 
     const lossRows = lossesRes.data ?? [];
@@ -1351,6 +1353,8 @@ export default function HomeScreen() {
   }, []);
 
   const initialLoadDone = useRef(false);
+
+  useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
 
   useEffect(() => {
     fetchData().finally(() => {

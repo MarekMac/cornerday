@@ -80,8 +80,10 @@ export default function PostDetail() {
 
   const inputRef = useRef<TextInput>(null);
   const flatListRef = useRef<FlatList>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadAll();
 
     const channel = supabase
@@ -95,7 +97,7 @@ export default function PostDetail() {
             .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
             .eq('id', payload.new.id)
             .maybeSingle();
-          if (data) {
+          if (data && isMountedRef.current) {
             setComments(prev => {
               if (prev.some(c => c.id === (data as any).id)) return prev;
               setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
@@ -106,7 +108,7 @@ export default function PostDetail() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { isMountedRef.current = false; supabase.removeChannel(channel); };
   }, [id]);
 
   const loadAll = async () => {
@@ -139,6 +141,7 @@ export default function PostDetail() {
           : Promise.resolve({ data: [] }),
       ]);
 
+      if (!isMountedRef.current) return;
       const loadedPost = postRes.data as Post ?? null;
       setPost(loadedPost);
       setComments((commentsRes.data as Comment[]) ?? []);
@@ -164,7 +167,7 @@ export default function PostDetail() {
       }
       setMyHelpfulReactions(myHelpful);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 

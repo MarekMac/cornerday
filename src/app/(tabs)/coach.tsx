@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { haptic } from '@/lib/haptics';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
@@ -129,6 +129,8 @@ export default function CoachScreen() {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const listRef = useRef<FlatList>(null);
+  const isMountedRef = useRef(true);
+  useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
 
   const scrollToBottom = useCallback((animated = true) => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated }), 80);
@@ -209,14 +211,16 @@ export default function CoachScreen() {
               event.delta?.type === 'text_delta' &&
               event.delta.text
             ) {
-              setMessages(prev =>
-                prev.map(m =>
-                  m.id === assistantId
-                    ? { ...m, content: m.content + event.delta.text, pending: false }
-                    : m,
-                ),
-              );
-              scrollToBottom(false);
+              if (isMountedRef.current) {
+                setMessages(prev =>
+                  prev.map(m =>
+                    m.id === assistantId
+                      ? { ...m, content: m.content + event.delta.text, pending: false }
+                      : m,
+                  ),
+                );
+                scrollToBottom(false);
+              }
             }
           } catch {
             // ignore malformed SSE events
@@ -225,26 +229,30 @@ export default function CoachScreen() {
       }
     } catch (err) {
       console.error('ai-coach fetch error:', err);
-      const isTimeout = err instanceof Error && err.name === 'AbortError';
-      const errMsg = isTimeout
-        ? "The response took too long. Please try again."
-        : "I'm having trouble connecting right now. Please try again in a moment.";
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === assistantId
-            ? { ...m, content: errMsg, pending: false }
-            : m,
-        ),
-      );
+      if (isMountedRef.current) {
+        const isTimeout = err instanceof Error && err.name === 'AbortError';
+        const errMsg = isTimeout
+          ? "The response took too long. Please try again."
+          : "I'm having trouble connecting right now. Please try again in a moment.";
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantId
+              ? { ...m, content: errMsg, pending: false }
+              : m,
+          ),
+        );
+      }
     } finally {
       clearTimeout(streamTimeout);
       reader?.cancel().catch(() => {});
-      setIsStreaming(false);
-      // Clear pending flag if the stream ended before any text arrived
-      setMessages(prev =>
-        prev.map(m => (m.id === assistantId && m.pending ? { ...m, pending: false } : m)),
-      );
-      scrollToBottom();
+      if (isMountedRef.current) {
+        setIsStreaming(false);
+        // Clear pending flag if the stream ended before any text arrived
+        setMessages(prev =>
+          prev.map(m => (m.id === assistantId && m.pending ? { ...m, pending: false } : m)),
+        );
+        scrollToBottom();
+      }
     }
   }, [isStreaming, messages, scrollToBottom, hasAccess, showPaywall]);
 
