@@ -148,20 +148,25 @@ Deno.serve(async (req: Request) => {
 
       if (existing) { skipped++; continue; }
 
-      // Award badge + send email in parallel
-      const [badgeRes, emailRes] = await Promise.all([
-        supabase.from('badges').insert({ user_id: user.id, badge_type: milestone.badge }),
-        fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: FROM_EMAIL,
-            to: [user.email],
-            subject: `${milestone.emoji} You've reached ${milestone.label} clean — CornerDay`,
-            html: buildHtml(esc(user.display_name?.split(' ')?.[0] || 'there'), milestone, totalDays),
-          }),
+      const { error: insertError } = await supabase
+        .from('badges')
+        .insert({ user_id: user.id, badge_type: milestone.badge, earned_at: new Date().toISOString() });
+
+      if (insertError) {
+        if (insertError.code === '23505') { skipped++; continue; }
+        throw new Error(`Badge insert failed: ${insertError.message}`);
+      }
+
+      const emailRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: FROM_EMAIL,
+          to: [user.email],
+          subject: `${milestone.emoji} You've reached ${milestone.label} clean — CornerDay`,
+          html: buildHtml(esc(user.display_name?.split(' ')?.[0] || 'there'), milestone, totalDays),
         }),
-      ]);
+      });
 
       if (!emailRes.ok) {
         const body = await emailRes.text();

@@ -156,14 +156,20 @@ Deno.serve(async (req: Request) => {
       const firstName = esc(user.display_name?.split(' ')?.[0] || 'there');
       const html = buildHtml(firstName, motivationLabel(user.motivation), streak.current_streak ?? 0);
 
-      const [, emailRes] = await Promise.all([
-        supabase.from('badges').insert({ user_id: streak.user_id, badge_type: 'reengagement_7d' }),
-        fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `${firstName}, we've been thinking about you`, html }),
-        }),
-      ]);
+      const { error: insertError } = await supabase
+        .from('badges')
+        .insert({ user_id: streak.user_id, badge_type: 'reengagement_7d', earned_at: new Date().toISOString() });
+
+      if (insertError) {
+        if (insertError.code === '23505') { skipped++; continue; }
+        throw new Error(`Badge insert failed: ${insertError.message}`);
+      }
+
+      const emailRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `${firstName}, we've been thinking about you`, html }),
+      });
 
       if (!emailRes.ok) throw new Error(`Resend ${emailRes.status}: ${await emailRes.text()}`);
       sent++;
