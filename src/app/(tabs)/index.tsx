@@ -2087,7 +2087,7 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.whyAnchorLabel}>Your why</Text>
                 <Text style={s.whyAnchorSub}>What you're fighting for</Text>
-                <View style={{ marginTop: 10, overflow: 'hidden' }}>
+                <View style={{ marginTop: 16, overflow: 'hidden' }}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
                   {motivations.map((m, i) => (
                     <View key={i} style={s.whyAnchorChip}>
@@ -2996,7 +2996,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
   },
   whyAnchorPhoto: {
-    width: 120, height: 120, borderRadius: 14,
+    width: 136, height: 136, borderRadius: 14,
   },
   whyAnchorPhotoEmpty: {
     backgroundColor: 'rgba(255,255,255,0.12)',
