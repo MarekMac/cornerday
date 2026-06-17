@@ -364,9 +364,9 @@ export default function AnalyticsScreen() {
     const moodRows   = moodRes.data ?? [];
     const moodByDate: Record<string, number> = {};
     moodRows.forEach(r => { moodByDate[new Date(r.created_at).toLocaleDateString('en-CA')] = r.mood; });
-    const moodLast30 = moodRows.map(r => ({
-      date: new Date(r.created_at).toLocaleDateString('en-CA'), mood: r.mood,
-    }));
+    const moodLast30 = Object.entries(moodByDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, mood]) => ({ date, mood }));
     const checkInDays = Object.keys(moodByDate).length;
 
     const moodSparkline: (number | null)[] = [];

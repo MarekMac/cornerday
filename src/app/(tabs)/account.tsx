@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { setHapticsEnabled as setGlobalHaptics } from '@/lib/haptics';
+import { parseQuitDate } from '@/lib/parseQuitDate';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -307,7 +308,7 @@ export default function AccountScreen() {
       supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
     ]);
     const quitTs = data?.quit_timestamp ?? data?.quit_date;
-    const streakDays = quitTs ? Math.max(0, Date.now() - new Date(quitTs).getTime()) / 86400000 : 0;
+    const streakDays = quitTs ? Math.max(0, Date.now() - parseQuitDate(quitTs).getTime()) / 86400000 : 0;
     const MILESTONE_DAYS = [0, 1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
     const badgeCount = MILESTONE_DAYS.filter(d => streakDays >= d).length;
     setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
