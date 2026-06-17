@@ -1433,7 +1433,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     alignSelf: 'center', marginBottom: 16,
   },
   logTitle: { fontSize: 16, fontWeight: '700', color: c.textPrimary },
-  logExpandedTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 12 },
+  logExpandedTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 20 },
   logSub: { fontSize: 13, color: c.textMuted, marginTop: -4 },
 
   // ── Had a slip overlay ────────────────────────────────────────────────────────
@@ -1537,7 +1537,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     backgroundColor: c.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, maxHeight: '85%',
   },
-  outcomeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  outcomeRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   outcomeBtn: {
     flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
     backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: c.borderLight,
@@ -1546,10 +1546,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   outcomeBtnRed: { backgroundColor: c.bgError, borderColor: c.error },
   outcomeBtnTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
   outcomeBtnTxtActive: { color: c.textPrimary },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: c.textBody, marginBottom: 10 },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: c.textBody, marginTop: 8, marginBottom: 10 },
   optional: { fontWeight: '400', color: c.textFaint },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  chipsScroll: { marginBottom: 16 },
+  chipsScroll: { marginBottom: 20 },
   chipsScrollContent: { flexDirection: 'row', gap: 8, paddingRight: 4 },
   chip: {
     borderRadius: 20, paddingVertical: 7, paddingHorizontal: 14,
