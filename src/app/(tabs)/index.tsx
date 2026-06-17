@@ -2087,7 +2087,8 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.whyAnchorLabel}>Your why</Text>
                 <Text style={s.whyAnchorSub}>What you're fighting for</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={s.whyAnchorRow}>
+                <View style={{ marginTop: 10, overflow: 'hidden' }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
                   {motivations.map((m, i) => (
                     <View key={i} style={s.whyAnchorChip}>
                       <Text style={s.whyAnchorEmoji}>{m.emoji}</Text>
@@ -2095,6 +2096,14 @@ export default function HomeScreen() {
                     </View>
                   ))}
                 </ScrollView>
+                <View style={s.whyAnchorFade} pointerEvents="none">
+                  <LinearGradient
+                    colors={['transparent', '#0d7a7a']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </View>
               </View>
               <Pressable onPress={() => router.push('/(tabs)/urge' as any)}>
                 {motivationPhoto ? (
@@ -2994,6 +3003,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
   whyAnchorPhotoAddTxt: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.2 },
+  whyAnchorFade: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 44 },
   whyAnchorLabel: {
     fontSize: 16,
     fontWeight: '700',
