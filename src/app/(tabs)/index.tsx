@@ -2083,28 +2083,30 @@ export default function HomeScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={s.whyAnchorCard}>
-            <View style={s.whyAnchorContent}>
-              <Text style={s.whyAnchorLabel}>Your why</Text>
-              <Text style={s.whyAnchorSub}>What you're fighting for</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
-                {motivations.map((m, i) => (
-                  <View key={i} style={s.whyAnchorChip}>
-                    <Text style={s.whyAnchorEmoji}>{m.emoji}</Text>
-                    <Text style={s.whyAnchorText}>{m.label}</Text>
+            <View style={s.whyAnchorHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.whyAnchorLabel}>Your why</Text>
+                <Text style={s.whyAnchorSub}>What you're fighting for</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={s.whyAnchorRow}>
+                  {motivations.map((m, i) => (
+                    <View key={i} style={s.whyAnchorChip}>
+                      <Text style={s.whyAnchorEmoji}>{m.emoji}</Text>
+                      <Text style={s.whyAnchorText}>{m.label}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+              <Pressable onPress={() => router.push('/(tabs)/urge' as any)}>
+                {motivationPhoto ? (
+                  <Image source={{ uri: motivationPhoto }} style={s.whyAnchorPhoto} />
+                ) : (
+                  <View style={[s.whyAnchorPhoto, s.whyAnchorPhotoEmpty]}>
+                    <Text style={{ fontSize: 22 }}>📷</Text>
+                    <Text style={s.whyAnchorPhotoAddTxt}>Add</Text>
                   </View>
-                ))}
-              </ScrollView>
+                )}
+              </Pressable>
             </View>
-            <Pressable onPress={() => router.push('/(tabs)/urge' as any)} style={s.whyAnchorPhotoPanel}>
-              {motivationPhoto ? (
-                <Image source={{ uri: motivationPhoto }} style={{ flex: 1 }} resizeMode="cover" />
-              ) : (
-                <View style={[{ flex: 1 }, s.whyAnchorPhotoEmpty]}>
-                  <Text style={{ fontSize: 24 }}>📷</Text>
-                  <Text style={s.whyAnchorPhotoAddTxt}>Add photo</Text>
-                </View>
-              )}
-            </Pressable>
           </LinearGradient>
         )}
 
@@ -2976,24 +2978,22 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   whyAnchorCard: {
     borderRadius: 18,
     overflow: 'hidden',
-    flexDirection: 'row',
-    minHeight: 120,
-  },
-  whyAnchorContent: {
-    flex: 1,
     paddingTop: 18,
     paddingBottom: 16,
     paddingLeft: 16,
-    paddingRight: 8,
+    paddingRight: 16,
   },
-  whyAnchorPhotoPanel: {
-    width: 150,
+  whyAnchorHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  whyAnchorPhoto: {
+    width: 120, height: 120, borderRadius: 14,
   },
   whyAnchorPhotoEmpty: {
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
-  whyAnchorPhotoAddTxt: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.2 },
+  whyAnchorPhotoAddTxt: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.2 },
   whyAnchorLabel: {
     fontSize: 16,
     fontWeight: '700',
