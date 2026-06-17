@@ -16,7 +16,6 @@ if (__DEV__) {
   const orig = console.error.bind(console);
   console.error = (...args: unknown[]) => {
     if (typeof args[0] === 'string' && args[0].includes("'GO_BACK'")) return;
-    if (typeof args[0] === 'string' && args[0].includes('expo-notifications')) return;
     orig(...args);
   };
 }
@@ -103,7 +102,7 @@ function InnerLayout() {
       } else if (state === 'active' && backgroundedAtRef.current !== null) {
         const elapsed = Date.now() - backgroundedAtRef.current;
         backgroundedAtRef.current = null;
-        if (elapsed > 2000 && !getImagePickerActive()) {
+        if (elapsed > 2000) {
           const flag = await AsyncStorage.getItem(BIOMETRIC_LOCK_KEY);
           if (flag === 'true' && !getImagePickerActive()) setLocked(true);
         }

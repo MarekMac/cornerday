@@ -40,11 +40,15 @@ Deno.serve(async (req: Request) => {
     const user_email = user.email ?? null;
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    const adminEmail   = Deno.env.get('ADMIN_EMAIL') ?? 'marekmac.ski@gmail.com';
+    const adminEmail   = Deno.env.get('ADMIN_EMAIL');
 
     if (!resendApiKey) {
       console.warn('RESEND_API_KEY not set — skipping email');
       return new Response(JSON.stringify({ ok: true, skipped: 'no_resend_key' }), { status: 200 });
+    }
+    if (!adminEmail) {
+      console.warn('ADMIN_EMAIL not set — skipping email');
+      return new Response(JSON.stringify({ ok: true, skipped: 'no_admin_email' }), { status: 200 });
     }
 
     if (!message || typeof message !== 'string') {
