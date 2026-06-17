@@ -553,7 +553,7 @@ export default function UrgeScreen() {
                     const opts = [10, 20, 30];
                     const idx = opts.indexOf(timerDuration / 60);
                     setTimerDuration(opts[(idx + 1) % opts.length] * 60);
-                    haptic();
+                    hapticMedium();
                   }}>
                   <Text style={s.timerDigits}>
                     {String(timerDuration / 60).padStart(2, '0')}:00
