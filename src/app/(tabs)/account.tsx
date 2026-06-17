@@ -1625,6 +1625,26 @@ export default function AccountScreen() {
                   <Ionicons name="call-outline" size={16} color={c.primary} />
                 </Pressable>
               ) : null}
+              {(trustedContactName || trustedContactPhone) ? (
+                <Pressable
+                  hitSlop={8}
+                  onPress={e => {
+                    e.stopPropagation?.();
+                    Alert.alert('Remove contact', 'Remove your trusted contact?', [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Remove', style: 'destructive', onPress: async () => {
+                        await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
+                        setTrustedContactName('');
+                        setTrustedContactPhone('');
+                        setTrustedContactEmail('');
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null, trusted_contact_email: null }).eq('id', user.id);
+                      }},
+                    ]);
+                  }}>
+                  <Ionicons name="trash-outline" size={15} color={c.error} />
+                </Pressable>
+              ) : null}
               <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
             </View>
           </Pressable>
