@@ -1,4 +1,7 @@
 -- Trigger milestone-email immediately when a user's streak reaches a milestone day
+-- NOTE: WEBHOOK_SECRET is stored only in Supabase Edge Function secrets (never committed).
+--       To apply these triggers, run this SQL via the Supabase SQL Editor after replacing
+--       WEBHOOK_SECRET_PLACEHOLDER with the actual secret from the Edge Function settings.
 CREATE OR REPLACE FUNCTION public.trigger_milestone_email()
 RETURNS trigger
 LANGUAGE plpgsql
