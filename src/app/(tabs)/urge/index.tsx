@@ -705,6 +705,14 @@ export default function UrgeScreen() {
             </View>
           </View>
 
+          {/* Journal */}
+          <Pressable
+            style={({ pressed }) => [s.logNowBtn, pressed && { opacity: 0.8 }]}
+            onPress={() => openLog('overcame')}>
+            <Text style={s.logNowBtnTxt}>✍️  Note how I'm feeling</Text>
+            <Text style={s.logNowBtnSub}>Track what's on your mind right now</Text>
+          </Pressable>
+
           {/* Checklist progress button */}
           <Pressable
             style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.8 }]}
@@ -776,14 +784,6 @@ export default function UrgeScreen() {
             </View>
           )}
 
-          {/* Journal */}
-          <Pressable
-            style={({ pressed }) => [s.logNowBtn, pressed && { opacity: 0.8 }]}
-            onPress={() => openLog('overcame')}>
-            <Text style={s.logNowBtnTxt}>✍️  Write in your journal</Text>
-            <Text style={s.logNowBtnSub}>What triggered this? How are you feeling right now?</Text>
-          </Pressable>
-
           {/* Urge pattern insight */}
           {urgeInsight && (
             <View style={s.insightCard}>
@@ -841,7 +841,7 @@ export default function UrgeScreen() {
                 </View>
               ) : (
                 <ScrollView ref={logScrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                  <Text style={s.logExpandedTitle}>Write in your journal</Text>
+                  <Text style={s.logExpandedTitle}>Note how I'm feeling</Text>
                   <View style={s.outcomeRow}>
                     <Pressable
                       style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnGreen]}
