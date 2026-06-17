@@ -149,6 +149,13 @@ export default function TrackerIndex() {
     return () => clearInterval(id);
   }, []);
 
+  const [androidKbOffset, setAndroidKbOffset] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKbOffset(e.endCoordinates.height));
+    const hide  = Keyboard.addListener('keyboardDidHide', () => setAndroidKbOffset(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   // Context menus
   const [menuDebt, setMenuDebt] = useState<Debt | null>(null);
@@ -305,6 +312,7 @@ export default function TrackerIndex() {
   };
 
   const closeDebtModal = () => {
+    if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setDebtModalVisible(false);
     setEditingDebt(null);
@@ -394,6 +402,7 @@ export default function TrackerIndex() {
   };
 
   const closeSavingModal = () => {
+    if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setSavingModalVisible(false);
     setEditingSaving(null);
@@ -475,6 +484,7 @@ export default function TrackerIndex() {
   };
 
   const closeSessionModal = () => {
+    if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setSessionModalVisible(false);
     setEditingSession(null);
@@ -545,6 +555,7 @@ export default function TrackerIndex() {
     setGoalModalVisible(true);
   };
   const closeGoalModal = () => {
+    if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setGoalModalVisible(false);
     setGoalInput('');
@@ -657,6 +668,7 @@ export default function TrackerIndex() {
   };
 
   const closeQuickPay = () => {
+    if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setQuickPayDebt(null);
     setQuickPayAmount('');
@@ -1166,7 +1178,7 @@ export default function TrackerIndex() {
       {/* Debt modal — add & edit */}
       <Modal visible={debtModalVisible} transparent animationType="fade" onRequestClose={() => { if (!nativePickerOpen.current) closeDebtModal(); }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={s.modalOverlay} onPress={closeDebtModal}>
+          <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeDebtModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               
               <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Add a debt'}</Text>
@@ -1237,7 +1249,7 @@ export default function TrackerIndex() {
       {/* Saving modal — add & edit */}
       <Modal visible={savingModalVisible} transparent animationType="fade" onRequestClose={closeSavingModal}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={s.modalOverlay} onPress={closeSavingModal}>
+          <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeSavingModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               
               <Text style={s.sheetTitle}>{editingSaving ? 'Edit saving' : 'Log a saving'}</Text>
@@ -1428,7 +1440,7 @@ export default function TrackerIndex() {
       {/* Savings goal modal */}
       <Modal visible={goalModalVisible} transparent animationType={Platform.OS === 'android' ? 'none' : 'fade'} onRequestClose={() => { if (!nativePickerOpen.current) closeGoalModal(); }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
+          <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeGoalModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <Text style={s.sheetTitle}>Savings goal</Text>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -1509,7 +1521,7 @@ export default function TrackerIndex() {
       {/* Quick pay modal */}
       <Modal visible={!!quickPayDebt} transparent animationType="fade" onRequestClose={closeQuickPay}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={s.modalOverlay} onPress={closeQuickPay}>
+          <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeQuickPay}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <Text style={s.sheetTitle}>Log a payment</Text>
               {quickPayDebt && (
@@ -1559,7 +1571,7 @@ export default function TrackerIndex() {
       {/* Session log modal */}
       <Modal visible={sessionModalVisible} transparent animationType="fade" onRequestClose={closeSessionModal}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={s.modalOverlay} onPress={closeSessionModal}>
+          <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeSessionModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <Text style={s.sheetTitle}>{editingSession ? 'Edit session' : 'Log a session'}</Text>
               {!editingSession && (
