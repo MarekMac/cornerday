@@ -713,22 +713,6 @@ export default function UrgeScreen() {
             <Text style={s.logNowBtnSub}>Track what's on your mind right now</Text>
           </Pressable>
 
-          {/* Checklist progress button */}
-          <Pressable
-            style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.8 }]}
-            onPress={() => router.push('/(tabs)/urge/checklist' as any)}>
-            <Text style={s.checklistBtnIcon}>✅</Text>
-            <View style={s.checklistBtnText}>
-              <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
-              <Text style={s.checklistBtnSub}>
-                {checklistCount >= CHECKLIST_TOTAL
-                  ? 'All habits set up — you\'re prepared!'
-                  : `${checklistCount}/${CHECKLIST_TOTAL} prevention habits set up`}
-              </Text>
-            </View>
-            <Text style={s.checklistBtnChevron}>›</Text>
-          </Pressable>
-
           {/* Recovery plan — always visible as compact card; interactive when timer is active */}
           {!timerRunning && (recoveryPlan.distractions.length > 0 || recoveryPlan.mantra) && (
             <View style={[s.planCard, { opacity: 0.85 }]}>
@@ -822,6 +806,22 @@ export default function UrgeScreen() {
               <Text style={s.therapyBtnSub}>Official therapy &amp; treatment resources by region</Text>
             </View>
             <Text style={s.therapyBtnChevron}>›</Text>
+          </Pressable>
+
+          {/* Checklist progress button */}
+          <Pressable
+            style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.8 }]}
+            onPress={() => router.push('/(tabs)/urge/checklist' as any)}>
+            <Text style={s.checklistBtnIcon}>✅</Text>
+            <View style={s.checklistBtnText}>
+              <Text style={s.checklistBtnTitle}>Prevention checklist</Text>
+              <Text style={s.checklistBtnSub}>
+                {checklistCount >= CHECKLIST_TOTAL
+                  ? 'All habits set up — you\'re prepared!'
+                  : `${checklistCount}/${CHECKLIST_TOTAL} prevention habits set up`}
+              </Text>
+            </View>
+            <Text style={s.checklistBtnChevron}>›</Text>
           </Pressable>
 
           <View style={{ height: 32 }} />
