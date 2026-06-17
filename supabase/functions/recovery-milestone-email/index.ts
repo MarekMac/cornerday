@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `${m.emoji} Recovery milestone: ${m.pct}% paid back — CornerDay`, html }),
+      body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `Recovery milestone: ${m.pct}% paid back — CornerDay`, html }),
     });
     if (!res.ok) return new Response(JSON.stringify({ error: await res.text() }), { status: 500 });
     return new Response(JSON.stringify({ ok: true, mode: 'direct', milestone: m.badge }), { status: 200 });
@@ -192,17 +192,25 @@ Deno.serve(async (req: Request) => {
 
         if (existing) continue;
 
+        // Insert badge first — if it conflicts (unique violation), another invocation already
+        // handled this milestone, so skip to avoid duplicate emails.
+        const { error: insertError } = await supabase
+          .from('badges')
+          .insert({ user_id: userId, badge_type: m.badge, earned_at: new Date().toISOString() });
+
+        if (insertError) {
+          if (insertError.code === '23505') { skipped++; continue; }
+          throw new Error(`Badge insert failed: ${insertError.message}`);
+        }
+
         const firstName = esc(user.display_name?.split(' ')?.[0] || 'there');
         const html = buildHtml(firstName, m, stats.totalPaid, stats.totalLost);
 
-        const [, emailRes] = await Promise.all([
-          supabase.from('badges').insert({ user_id: userId, badge_type: m.badge }),
-          fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `${m.emoji} Recovery milestone: ${m.pct}% paid back — CornerDay`, html }),
-          }),
-        ]);
+        const emailRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `Recovery milestone: ${m.pct}% paid back — CornerDay`, html }),
+        });
 
         if (!emailRes.ok) throw new Error(`Resend ${emailRes.status}: ${await emailRes.text()}`);
         sent++;
