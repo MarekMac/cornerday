@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
       adminClient.from('debt_payments').delete().eq('user_id', user.id),
       adminClient.from('debts').delete().eq('user_id', user.id),
       adminClient.from('streaks').delete().eq('user_id', user.id),
+      adminClient.from('game_scores').delete().eq('user_id', user.id),
       adminClient.from('community_posts').delete().eq('user_id', user.id),
       adminClient.from('community_comments').delete().eq('user_id', user.id),
       adminClient.from('community_reactions').delete().eq('user_id', user.id),

@@ -40,7 +40,9 @@ async function syncToSupabase(premium: boolean) {
     if (user) {
       await supabase.from('users').update({ is_premium: premium }).eq('id', user.id);
     }
-  } catch {}
+  } catch (e) {
+    console.warn('[syncToSupabase] error:', e);
+  }
 }
 
 async function fetchIsAdmin(userId: string): Promise<boolean> {

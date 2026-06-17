@@ -98,26 +98,13 @@ Deno.serve(async (req: Request) => {
   const type: string = body.type ?? '';
   const milestoneLabel: string = body.milestone_label ?? '';
 
-  // Test mode: service role key + test_user_id bypasses user JWT requirement
-  let userId: string | null = null;
-  if (body.test_user_id) {
-    // Verify caller holds the actual service role key (full token comparison, not payload decoding)
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    if (!serviceRoleKey || authHeader !== `Bearer ${serviceRoleKey}`) {
-      return new Response(JSON.stringify({ error: 'unauthorized' }), {
-        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
-    }
-    userId = body.test_user_id;
-  } else {
-    const { data: { user }, error: authErr } = await sb.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: 'unauthorized' }), {
-        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
-    }
-    userId = user.id;
+  const { data: { user }, error: authErr } = await sb.auth.getUser(authHeader.replace('Bearer ', ''));
+  if (authErr || !user) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), {
+      status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
   }
+  const userId = user.id;
 
   if (!['urge', 'relapse', 'milestone'].includes(type)) {
     return new Response(JSON.stringify({ error: 'invalid_type' }), {

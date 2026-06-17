@@ -492,6 +492,9 @@ export default function UrgeScreen() {
     if (!result) return;
     const name = result.name ?? '';
     const phone = result.phoneNumbers?.[0]?.number ?? '';
+    if (!phone) {
+      Alert.alert('No phone number', 'This contact has no phone number saved. Please enter it manually.');
+    }
     setContactNameInput(name);
     setContactPhoneInput(phone);
   };
