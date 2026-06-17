@@ -18,10 +18,12 @@ Deno.serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  // Validate webhook shared secret
+  // Validate webhook shared secret (RevenueCat may send raw or Bearer-prefixed)
   const authHeader = req.headers.get('Authorization') ?? '';
   const expectedSecret = Deno.env.get('REVENUECAT_WEBHOOK_SECRET') ?? '';
-  if (!expectedSecret || authHeader !== expectedSecret) {
+  const authOk = expectedSecret && (authHeader === expectedSecret || authHeader === `Bearer ${expectedSecret}`);
+  if (!authOk) {
+    console.warn(`[revenuecat-webhook] auth mismatch — format: ${authHeader.startsWith('Bearer ') ? 'Bearer' : 'raw'}, length: ${authHeader.length}`);
     return new Response('Unauthorized', { status: 401 });
   }
 

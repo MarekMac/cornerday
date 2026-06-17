@@ -748,7 +748,7 @@ function ConfettiParticle({ index }: { index: number }) {
   useEffect(() => {
     y.value = withDelay(delay, withRepeat(withTiming(SCREEN_H + 30, { duration }), -1, false));
     rotation.value = withRepeat(withTiming(360, { duration: 900 + (index * 97) % 700 }), -1, false);
-  }, []);
+  }, [delay, duration, index]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const style = useAnimatedStyle(() => {
     'worklet';
@@ -1097,7 +1097,7 @@ export default function HomeScreen() {
 
       // Notify supporter for the highest milestone earned this run (last = most significant)
       const notifyBadge = toLog[toLog.length - 1];
-      if (notifyBadge) notifySupporter('milestone', notifyBadge.label);
+      if (notifyBadge) notifySupporter('milestone', notifyBadge.label).catch(e => console.warn('[milestone] notifySupporter error:', e));
     }
 
     // Update longest streak
@@ -1607,7 +1607,7 @@ export default function HomeScreen() {
           notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
         };
         await scheduleAllNotifications(prefs, newQuitTimestamp);
-        notifySupporter('relapse');
+        notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
         setData(prev => prev ? {
           ...prev,
           quitDate: newQuitTimestamp,

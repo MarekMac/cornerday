@@ -502,7 +502,7 @@ export default function UrgeScreen() {
         supabase.from('badges').delete().eq('user_id', user.id),
         AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]),
       ]);
-      notifySupporter('relapse');
+      notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
 
       const { data: prefsRow } = await supabase
         .from('users')
