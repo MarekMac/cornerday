@@ -381,11 +381,10 @@ export default function AnalyticsScreen() {
     }
 
     const today = new Date();
-    const sun = new Date(today); sun.setDate(today.getDate() - today.getDay());
     const weekMoods = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(sun); d.setDate(sun.getDate() + i);
+      const d = new Date(today); d.setDate(today.getDate() - (6 - i));
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      return { date: DAY_LABELS[i], mood: moodByDate[key] ?? null };
+      return { date: key, mood: moodByDate[key] ?? null };
     });
 
     const dailySavingsRate = currentStreakDays > 0 ? totalSavings / currentStreakDays : 0;
@@ -769,10 +768,10 @@ export default function AnalyticsScreen() {
           ) : (
             <View style={s.insightGap}>
               {insights.slice(0, 5).map((item, i) => (
-                <View key={i} style={[s.insightChip, { backgroundColor: item.bg }]}>
+                <View key={i} style={s.insightChip}>
                   <View style={[s.insightAccent, { backgroundColor: item.tc }]} />
                   <Text style={s.insightEmoji}>{item.emoji}</Text>
-                  <Text style={[s.insightText, { color: item.tc }]}>{item.text}</Text>
+                  <Text style={s.insightText}>{item.text}</Text>
                 </View>
               ))}
             </View>
@@ -822,13 +821,15 @@ export default function AnalyticsScreen() {
           />
           <View style={s.weekRow}>
             {data.weekMoods.map((day, i) => {
-              const isToday = i === new Date().getDay();
+              const d = new Date(); d.setDate(d.getDate() - (6 - i));
+              const dayLabel = d.toLocaleDateString([], { weekday: 'short' }).slice(0, 2);
+              const isToday = i === 6;
               return (
                 <View key={i} style={s.weekDayCol}>
                   <View style={[s.weekDot, isToday && s.weekDotToday]}>
                     {day.mood !== null ? <Text style={s.weekEmoji}>{MOODS[day.mood - 1]}</Text> : <View style={s.weekDotEmpty} />}
                   </View>
-                  <Text style={[s.weekDayLabel, isToday && s.weekDayLabelToday]}>{day.date}</Text>
+                  <Text style={[s.weekDayLabel, isToday && s.weekDayLabelToday]}>{dayLabel}</Text>
                 </View>
               );
             })}
@@ -1270,10 +1271,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   statSub:     { fontSize: 10, color: c.success, textAlign: 'center' },
 
   insightGap:   { gap: 8 },
-  insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 12 },
+  insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 12, backgroundColor: c.bgInput },
   insightAccent:{ width: 3, alignSelf: 'stretch', borderRadius: 2 },
   insightEmoji: { fontSize: 16 },
-  insightText:  { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 19 },
+  insightText:  { flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 19, color: c.textPrimary },
   insightEmpty: { fontSize: 13, color: c.textMuted, fontStyle: 'italic' },
 
 

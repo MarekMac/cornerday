@@ -97,7 +97,8 @@ function sessionLabel(cat: string) {
 function fmtLive(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
   const s = syms[currency] ?? currency;
-  return `${s}${amount.toFixed(1)}`;
+  const rounded = Math.round(amount * 100) / 100;
+  return `${s}${rounded.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 function fmt(amount: number, currency = 'USD') {
@@ -161,6 +162,7 @@ export default function TrackerIndex() {
     return () => clearInterval(id);
   }, []);
 
+
   // Context menus
   const [menuDebt, setMenuDebt] = useState<Debt | null>(null);
   const [menuSaving, setMenuSaving] = useState<SavingEntry | null>(null);
@@ -196,6 +198,7 @@ export default function TrackerIndex() {
   // Session log
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [sessionModalVisible, setSessionModalVisible] = useState(false);
+  const [editingSession, setEditingSession] = useState<SessionEntry | null>(null);
   const [sessionAmount, setSessionAmount] = useState('');
   const [sessionCategory, setSessionCategory] = useState('sports_betting');
   const [sessionNote, setSessionNote] = useState('');
@@ -231,6 +234,10 @@ export default function TrackerIndex() {
   // Prevent useFocusEffect from duplicating the initial useEffect fetch
   const initialFetchDone = useRef(false);
   const fetchingRef = useRef(false);
+  // Prevent Modal's onRequestClose firing while a native Android picker is open
+  const nativePickerOpen = useRef(false);
+  // Snapshot of debt target date when modal opens — restored on Cancel
+  const debtTargetDateBeforeEdit = useRef<Date | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (fetchingRef.current) return;
@@ -297,6 +304,7 @@ export default function TrackerIndex() {
   const openAddDebt = () => {
     setEditingDebt(null);
     setDebtName(''); setDebtAmount(''); setDebtCategory('other');
+    debtTargetDateBeforeEdit.current = debtTargetDate;
     setDebtModalVisible(true);
   };
 
@@ -305,6 +313,7 @@ export default function TrackerIndex() {
     setDebtName(debt.name);
     setDebtAmount(String(debt.total_amount));
     setDebtCategory(debt.category);
+    debtTargetDateBeforeEdit.current = debtTargetDate;
     setDebtModalVisible(true);
   };
 
@@ -313,6 +322,7 @@ export default function TrackerIndex() {
     setDebtModalVisible(false);
     setEditingDebt(null);
     setDebtName(''); setDebtAmount(''); setDebtCategory('other');
+    setDebtTargetDate(debtTargetDateBeforeEdit.current);
   };
 
   const saveDebt = async () => {
@@ -345,6 +355,9 @@ export default function TrackerIndex() {
             total_amount: amount, category: debtCategory,
           });
         }
+        await supabase.from('users').update({
+          debt_target_date: debtTargetDate ? debtTargetDate.toISOString().split('T')[0] : null,
+        }).eq('id', user.id);
         hapticMedium();
         closeDebtModal();
         await fetchAll();
@@ -461,13 +474,23 @@ export default function TrackerIndex() {
   // ── Session actions ───────────────────────────────────────────
 
   const openAddSession = () => {
+    setEditingSession(null);
     setSessionAmount(''); setSessionCategory('sports_betting'); setSessionNote('');
+    setSessionModalVisible(true);
+  };
+
+  const openEditSession = (entry: SessionEntry) => {
+    setEditingSession(entry);
+    setSessionAmount(String(entry.amount));
+    setSessionCategory(entry.category);
+    setSessionNote(entry.note ?? '');
     setSessionModalVisible(true);
   };
 
   const closeSessionModal = () => {
     Keyboard.dismiss();
     setSessionModalVisible(false);
+    setEditingSession(null);
     setSessionAmount(''); setSessionCategory('sports_betting'); setSessionNote('');
   };
 
@@ -481,14 +504,20 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'session', amount,
-          category: sessionCategory, note: sessionNote.trim() || null,
-        });
+        if (editingSession) {
+          await supabase.from('losses').update({
+            amount, category: sessionCategory, note: sessionNote.trim() || null,
+          }).eq('id', editingSession.id);
+        } else {
+          await supabase.from('losses').insert({
+            user_id: user.id, type: 'session', amount,
+            category: sessionCategory, note: sessionNote.trim() || null,
+          });
+          showInterstitialIfReady(isPremium, 0.2);
+        }
         hapticMedium();
         closeSessionModal();
         await fetchAll();
-        showInterstitialIfReady(isPremium, 0.2);
       }
     } finally {
       setSubmittingSession(false);
@@ -606,11 +635,12 @@ export default function TrackerIndex() {
     if (Platform.OS === 'ios') {
       setShowDebtTargetModal(true);
     } else {
+      nativePickerOpen.current = true;
       DateTimePickerAndroid.open({
         value: seed,
         mode: 'date',
         minimumDate: new Date(),
-        onValueChange: (_evt: any, d?: Date) => { if (d) saveDebtTargetDate(d); },
+        onValueChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) saveDebtTargetDate(d); },
       });
     }
   };
@@ -621,11 +651,12 @@ export default function TrackerIndex() {
     if (Platform.OS === 'ios') {
       setShowSavingsTargetModal(true);
     } else {
+      nativePickerOpen.current = true;
       DateTimePickerAndroid.open({
         value: seed,
         mode: 'date',
         minimumDate: new Date(),
-        onValueChange: (_evt: any, d?: Date) => { if (d) { setGoalTargetDateInput(d); setShowSavingsTargetModal(false); } },
+        onValueChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) { setGoalTargetDateInput(d); } },
       });
     }
   };
@@ -1136,7 +1167,7 @@ export default function TrackerIndex() {
       </KeyboardAvoidingView>
 
       {/* Debt modal — add & edit */}
-      <Modal visible={debtModalVisible} transparent animationType="fade" onRequestClose={closeDebtModal}>
+      <Modal visible={debtModalVisible} transparent animationType="fade" onRequestClose={() => { if (!nativePickerOpen.current) closeDebtModal(); }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.modalOverlay} onPress={closeDebtModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
@@ -1185,15 +1216,7 @@ export default function TrackerIndex() {
                       : 'No target date set'}
                   </Text>
                   {debtTargetDate && (
-                    <Pressable onPress={async e => {
-                      e.stopPropagation();
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (user) {
-                        const { error } = await supabase.from('users').update({ debt_target_date: null }).eq('id', user.id);
-                        if (error) { Alert.alert('Could not clear date', error.message); return; }
-                      }
-                      setDebtTargetDate(null);
-                    }} hitSlop={10}>
+                    <Pressable onPress={e => { e.stopPropagation(); setDebtTargetDate(null); }} hitSlop={10}>
                       <Ionicons name="close-circle" size={16} color={c.textFaint} />
                     </Pressable>
                   )}
@@ -1406,8 +1429,8 @@ export default function TrackerIndex() {
       </Modal>
 
       {/* Savings goal modal */}
-      <Modal visible={goalModalVisible} transparent animationType="fade" onRequestClose={closeGoalModal}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <Modal visible={goalModalVisible} transparent animationType={Platform.OS === 'android' ? 'none' : 'fade'} onRequestClose={() => { if (!nativePickerOpen.current) closeGoalModal(); }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.modalOverlay} onPress={closeGoalModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <Text style={s.sheetTitle}>Savings goal</Text>
@@ -1505,6 +1528,14 @@ export default function TrackerIndex() {
                 onChangeText={setQuickPayAmount}
                 autoFocus
               />
+              {quickPayDebt && (() => {
+                const remaining = Math.max(0, Number(quickPayDebt.total_amount) - (paidByDebt[quickPayDebt.id] ?? 0));
+                return remaining > 0 ? (
+                  <Pressable style={s.payInFullBtn} onPress={() => setQuickPayAmount(String(Math.round(remaining * 100) / 100))}>
+                    <Text style={s.payInFullTxt}>Pay in full · {fmt(remaining, currency)}</Text>
+                  </Pressable>
+                ) : null;
+              })()}
               <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
               <TextInput
                 style={s.input}
@@ -1533,10 +1564,12 @@ export default function TrackerIndex() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.modalOverlay} onPress={closeSessionModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
-              <Text style={s.sheetTitle}>Log a session</Text>
-              <Text style={[s.fieldLbl, { color: c.textFaint, fontWeight: '400', textTransform: 'none', letterSpacing: 0, marginTop: 4 }]}>
-                This won't affect your debt or streak — it's just for your own awareness.
-              </Text>
+              <Text style={s.sheetTitle}>{editingSession ? 'Edit session' : 'Log a session'}</Text>
+              {!editingSession && (
+                <Text style={[s.fieldLbl, { color: c.textFaint, fontWeight: '400', textTransform: 'none', letterSpacing: 0, marginTop: 4 }]}>
+                  This won't affect your debt or streak — it's just for your own awareness.
+                </Text>
+              )}
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <Text style={s.fieldLbl}>Amount lost</Text>
                 <TextInput
@@ -1578,7 +1611,7 @@ export default function TrackerIndex() {
                 <Pressable style={[s.sessionSaveBtn, submittingSession && s.btnDisabled]} onPress={saveSession} disabled={submittingSession}>
                   {submittingSession
                     ? <ActivityIndicator color={c.white} size="small" />
-                    : <Text style={s.saveBtnTxt}>Log session</Text>}
+                    : <Text style={s.saveBtnTxt}>{editingSession ? 'Save changes' : 'Log session'}</Text>}
                 </Pressable>
               </View>
             </Pressable>
@@ -1601,6 +1634,11 @@ export default function TrackerIndex() {
                   <Text style={[s.menuStatVal, { color: c.error, fontSize: 18 }]}>-{fmt(Number(menuSession.amount), currency)}</Text>
                 </View>
                 <View style={s.menuActions}>
+                  <Pressable style={({ pressed }) => [s.menuActionBtn, pressed && { opacity: 0.75 }]}
+                    onPress={() => { setMenuSession(null); openEditSession(menuSession); }}>
+                    <Ionicons name="pencil-outline" size={18} color={c.primary} />
+                    <Text style={s.menuActionTxt}>Edit</Text>
+                  </Pressable>
                   <Pressable style={({ pressed }) => [s.menuActionBtn, s.menuActionDanger, pressed && { opacity: 0.75 }]}
                     onPress={() => { setMenuSession(null); confirmDeleteSession(menuSession); }}>
                     <Ionicons name="trash-outline" size={18} color={c.error} />
@@ -1977,4 +2015,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   sessionChipActive: { borderColor: '#7b5ea7', backgroundColor: '#f0ebfa' },
   sessionChipTxtActive: { color: '#7b5ea7', fontWeight: '600' },
   sessionSaveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#7b5ea7' },
+
+  payInFullBtn: {
+    alignSelf: 'flex-start', marginTop: 6,
+    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: c.bgTeal, borderRadius: 8,
+  },
+  payInFullTxt: { fontSize: 13, fontWeight: '600', color: c.primary },
 });
