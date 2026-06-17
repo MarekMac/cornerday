@@ -1933,7 +1933,7 @@ export default function HomeScreen() {
             <Text style={s.quickActionLabel}>Urge Help</Text>
           </Pressable>
           <View style={s.quickActionDivider} />
-          <Pressable style={({ pressed }) => [s.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push('/urge/journal?from=home' as any)}>
+          <Pressable style={({ pressed }) => [s.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push('/journal' as any)}>
             <Text style={s.quickActionEmoji}>📓</Text>
             <Text style={s.quickActionLabel}>Journal</Text>
           </Pressable>

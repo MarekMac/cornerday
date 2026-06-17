@@ -1,6 +1,6 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -312,8 +312,6 @@ type FilterOutcome = 'all' | 'overcame' | 'slipped';
 export default function JournalScreen() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
-  const { from } = useLocalSearchParams<{ from?: string }>();
-
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
@@ -402,7 +400,7 @@ export default function JournalScreen() {
       <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
-            <Pressable style={s.backBtn} onPress={() => from === 'home' ? router.push('/(tabs)/' as any) : router.back()} hitSlop={12} accessibilityLabel="Go back" accessibilityRole="button">
+            <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back" accessibilityRole="button">
               <Ionicons name="chevron-back" size={26} color={c.white} />
             </Pressable>
             <View style={s.headerCenter}>
