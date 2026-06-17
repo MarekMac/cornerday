@@ -188,7 +188,7 @@ interface AnalyticsData {
   dailySavingsRate: number;
   avgWeeklySpend: number;
   savingsDaysSpan: number;
-  streakHistory: number[];
+  streakHistory: { days: number; startDate: string | null }[];
   calendarDays: CalDay[];
   weekSummary: {
     thisWeek: { urges: number; moodAvg: number | null; checkIns: number; savings: number };
@@ -392,14 +392,23 @@ export default function AnalyticsScreen() {
     const sortedRelapses = [...relapseRows].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
-    const streakHistory: number[] = [];
+    const streakHistory: { days: number; startDate: string | null }[] = [];
+    if (sortedRelapses.length > 0 && quitDate) {
+      const firstDays = Math.floor(
+        (new Date(sortedRelapses[0].created_at).getTime() - parseQuitDate(quitDate).getTime()) / 86400000
+      );
+      if (firstDays > 0) streakHistory.push({ days: firstDays, startDate: quitDate });
+    }
     for (let i = 1; i < sortedRelapses.length; i++) {
       const gap = Math.floor(
         (new Date(sortedRelapses[i].created_at).getTime() - new Date(sortedRelapses[i - 1].created_at).getTime()) / 86400000
       );
-      if (gap > 0) streakHistory.push(gap);
+      if (gap > 0) streakHistory.push({ days: gap, startDate: sortedRelapses[i - 1].created_at });
     }
-    streakHistory.push(currentStreakDays);
+    streakHistory.push({
+      days: currentStreakDays,
+      startDate: sortedRelapses.length > 0 ? sortedRelapses[sortedRelapses.length - 1].created_at : quitDate,
+    });
 
     // 60-day calendar
     const relapseByDate = new Set<string>(
@@ -651,7 +660,7 @@ export default function AnalyticsScreen() {
   const trueDailyRate    = data.savingsDaysSpan > 0 ? data.totalSavings / data.savingsDaysSpan : 0;
   const weeklySpendRate  = data.avgWeeklySpend > 0 ? data.avgWeeklySpend : trueDailyRate * 7;
   const isStreakImproving = data.streakHistory.length >= 3 &&
-    data.streakHistory[data.streakHistory.length - 1] > data.streakHistory[0];
+    data.streakHistory[data.streakHistory.length - 1].days > data.streakHistory[0].days;
 
   const [heroNum, heroLabel, heroNum2, heroLabel2] = heroTime(elapsedMs);
   const bestEverMs = (data.quitDate && data.currentStreakDays >= data.longestStreak)
@@ -1169,6 +1178,80 @@ export default function AnalyticsScreen() {
           </View>
         )}
 
+        {/* ── Streak history ── */}
+        {data.quitDate !== null && (
+          <View style={s.card}>
+            <SectionHeader
+              title="📅 Streak history"
+              subtitle={
+                data.streakHistory.length === 1
+                  ? 'First attempt — no relapses'
+                  : `${data.streakHistory.length} attempts · ${data.streakHistory.length - 1} relapse${data.streakHistory.length - 1 !== 1 ? 's' : ''}`
+              }
+            />
+
+            {data.streakHistory.length === 1 ? (
+              <View style={s.streakSingle}>
+                <View style={s.streakSingleBar} />
+                <Text style={s.streakSingleDays}>{fmtDuration(data.streakHistory[0].days)}</Text>
+                <Text style={s.streakSingleSub}>No relapses on record 🌟</Text>
+              </View>
+            ) : (
+              <>
+                {(() => {
+                  const maxDays = Math.max(...data.streakHistory.map(h => h.days), 1);
+                  return data.streakHistory.map((entry, i) => {
+                    const isCurrent = i === data.streakHistory.length - 1;
+                    const isLongest = entry.days === maxDays;
+                    const barPct = Math.max(4, Math.round((entry.days / maxDays) * 100));
+                    const startLabel = entry.startDate
+                      ? new Date(entry.startDate).toLocaleDateString([], { month: 'short', year: '2-digit' })
+                      : null;
+                    return (
+                      <View key={i} style={[s.streakHistRow, isCurrent && s.streakHistRowCurrent]}>
+                        <Text style={[s.streakHistLabel, isCurrent && s.streakHistLabelCurrent]}>
+                          {isCurrent ? 'Now' : `#${i + 1}`}
+                        </Text>
+                        <View style={s.streakHistBarWrap}>
+                          <View style={s.streakHistBarTrack}>
+                            <View style={[s.streakHistBarFill, { width: `${barPct}%` as any }, isCurrent && s.streakHistBarCurrent]} />
+                          </View>
+                          {startLabel && <Text style={s.streakHistDate}>{startLabel}</Text>}
+                        </View>
+                        <View style={s.streakHistEnd}>
+                          <Text style={[s.streakHistDays, isCurrent && s.streakHistDaysCurrent]}>
+                            {fmtDuration(entry.days)}
+                          </Text>
+                          {isLongest && <Text style={s.streakHistStar}>★</Text>}
+                        </View>
+                      </View>
+                    );
+                  });
+                })()}
+                {(() => {
+                  const current = data.streakHistory[data.streakHistory.length - 1].days;
+                  const prevBest = Math.max(...data.streakHistory.slice(0, -1).map(h => h.days));
+                  if (current >= prevBest) {
+                    return (
+                      <View style={s.streakImproveChip}>
+                        <Text style={s.streakImproveText}>🏆 Your longest streak yet — keep going</Text>
+                      </View>
+                    );
+                  }
+                  if (data.streakHistory.length >= 2 && current > data.streakHistory[data.streakHistory.length - 2].days) {
+                    return (
+                      <View style={s.streakImproveChip}>
+                        <Text style={s.streakImproveText}>📈 Longer than your last attempt — trending up</Text>
+                      </View>
+                    );
+                  }
+                  return null;
+                })()}
+              </>
+            )}
+          </View>
+        )}
+
         <View style={{ height: 32 }} />
       </ScrollView>
 
@@ -1416,6 +1499,28 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   debtFreeLabel: { fontSize: 11, fontWeight: '700', color: '#27ae60', textTransform: 'uppercase', letterSpacing: 0.8 },
   debtFreeDate:  { fontSize: 18, fontWeight: '900', color: '#27ae60', marginTop: 2 },
   debtFreeSub:   { fontSize: 11, color: '#5a8a6a', marginTop: 2 },
+
+  // Streak history
+  streakSingle:         { gap: 10 },
+  streakSingleBar:      { height: 12, backgroundColor: c.primary, borderRadius: 6 },
+  streakSingleDays:     { fontSize: 28, fontWeight: '900', color: c.primary },
+  streakSingleSub:      { fontSize: 13, color: c.textMuted },
+
+  streakHistRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 },
+  streakHistRowCurrent: { marginTop: 4, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderSubtle },
+  streakHistLabel:      { fontSize: 11, fontWeight: '600', color: c.textFaint, width: 28, textAlign: 'right' },
+  streakHistLabelCurrent: { color: c.primary, fontWeight: '800' },
+  streakHistBarWrap:    { flex: 1, gap: 3 },
+  streakHistBarTrack:   { height: 8, backgroundColor: c.bgElement, borderRadius: 4, overflow: 'hidden' },
+  streakHistBarFill:    { height: '100%', backgroundColor: c.primaryLight, borderRadius: 4 },
+  streakHistBarCurrent: { backgroundColor: c.primary },
+  streakHistDate:       { fontSize: 9, color: c.textFaint, fontWeight: '500' },
+  streakHistEnd:        { flexDirection: 'row', alignItems: 'center', gap: 4, width: 56, justifyContent: 'flex-end' },
+  streakHistDays:       { fontSize: 12, fontWeight: '600', color: c.textMuted },
+  streakHistDaysCurrent:{ fontSize: 13, fontWeight: '800', color: c.primary },
+  streakHistStar:       { fontSize: 11, color: c.primary },
+  streakImproveChip:    { backgroundColor: c.bgTeal, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, marginTop: 4, alignItems: 'center' },
+  streakImproveText:    { fontSize: 13, color: c.primary, fontWeight: '600', textAlign: 'center' },
 
   // Per-debt payoff timeline chart
   debtTimeline:      { gap: 5, paddingTop: 2 },
