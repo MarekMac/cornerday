@@ -522,12 +522,11 @@ export default function UrgeScreen() {
     setSavingContact(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error } = await supabase.from('users').update({ trusted_contact_name: name, trusted_contact_phone: phone }).eq('id', user.id);
-        if (error) {
-          Alert.alert('Could not save', 'Please try again.');
-          return;
-        }
+      if (!user) { Alert.alert('Not signed in', 'Please sign in to save your contact.'); return; }
+      const { error } = await supabase.from('users').update({ trusted_contact_name: name, trusted_contact_phone: phone }).eq('id', user.id);
+      if (error) {
+        Alert.alert('Could not save', 'Please try again.');
+        return;
       }
       await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone }));
       setTrustedContact({ name, phone });

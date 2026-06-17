@@ -1523,9 +1523,11 @@ export default function HomeScreen() {
       if (user) {
         const noteVal = note?.trim() || null;
         if (data.todayMoodId) {
-          await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId);
+          const { error: updateErr } = await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId);
+          if (updateErr) { Alert.alert('Could not save mood', updateErr.message); return; }
         } else {
-          const { data: inserted } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
+          const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
+          if (insertErr) { Alert.alert('Could not save mood', insertErr.message); return; }
           setData(prev => prev ? { ...prev, todayMoodId: inserted?.id ?? null } : prev);
           showInterstitialIfReady(isPremium);
         }
@@ -1587,11 +1589,12 @@ export default function HomeScreen() {
           Alert.alert('Could not reset streak', rpcError.message);
           return;
         }
-        await supabase.from('losses').insert({
+        const { error: journalErr } = await supabase.from('losses').insert({
           user_id: user.id, type: 'streak_reset', amount: 0,
           category: 'Streak Reset',
           note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
         });
+        if (journalErr) console.warn('[doRelapse] journal insert failed:', journalErr.message);
         // Save shield undo state if shield is enabled
         if (shieldEnabled && data?.quitDate) {
           const undoData = { prevQuit: data.quitDate, prevStreakDays: days, expiresAt: Date.now() + 24 * 60 * 60 * 1000 };
@@ -1616,6 +1619,7 @@ export default function HomeScreen() {
         };
         await scheduleAllNotifications(prefs, newQuitTimestamp);
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
+        if (!isMountedRef.current) return;
         setData(prev => prev ? {
           ...prev,
           quitDate: newQuitTimestamp,
