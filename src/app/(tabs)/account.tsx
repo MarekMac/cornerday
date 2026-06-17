@@ -18,6 +18,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -266,6 +267,7 @@ export default function AccountScreen() {
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
   const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [androidKbOffset, setAndroidKbOffset] = useState(0);
   const [thankYouVisible, setThankYouVisible] = useState(false);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
   const [isPasswordUser, setIsPasswordUser] = useState(true);
@@ -483,6 +485,13 @@ export default function AccountScreen() {
   }, []);
 
   useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKbOffset(e.endCoordinates.height));
+    const hide  = Keyboard.addListener('keyboardDidHide', () => setAndroidKbOffset(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  useEffect(() => {
     fetchProfile().finally(() => setLoading(false));
     loadPartnerLink();
     Promise.all([
@@ -594,6 +603,7 @@ export default function AccountScreen() {
     setShowGoalModal(true);
   };
   const closeGoalModal = () => {
+    if (Platform.OS === 'android') setAndroidKbOffset(0);
     setShowGoalModal(false);
     setGoalInput(''); setGoalForInput(''); setGoalIconInput('🎯');
   };
@@ -1984,8 +1994,8 @@ export default function AccountScreen() {
 
       {/* Savings goal modal */}
       <Modal visible={showGoalModal} transparent animationType="fade" onRequestClose={closeGoalModal}>
-        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Pressable style={s.confirmOverlay} onPress={closeGoalModal}>
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Pressable style={[s.confirmOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeGoalModal}>
           <Pressable style={s.editCenterSheet} onPress={() => {}}>
             <Text style={s.editFieldTitle}>Savings goal</Text>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -2606,9 +2616,9 @@ export default function AccountScreen() {
       </Modal>
 
       {/* Feedback modal */}
-      <Modal visible={feedbackVisible} transparent animationType="fade" onRequestClose={() => setFeedbackVisible(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Pressable style={s.confirmOverlay} onPress={() => setFeedbackVisible(false)}>
+      <Modal visible={feedbackVisible} transparent animationType="fade" onRequestClose={() => { setAndroidKbOffset(0); setFeedbackVisible(false); }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Pressable style={[s.confirmOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={() => { setAndroidKbOffset(0); setFeedbackVisible(false); }}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <Text style={s.confirmTitle}>Feedback &amp; Feature Request</Text>
 
@@ -2644,7 +2654,7 @@ export default function AccountScreen() {
             <View style={s.confirmActions}>
               <Pressable
                 style={s.confirmCancel}
-                onPress={() => setFeedbackVisible(false)}>
+                onPress={() => { setAndroidKbOffset(0); setFeedbackVisible(false); }}>
                 <Text style={s.confirmCancelTxt}>Cancel</Text>
               </Pressable>
               <Pressable

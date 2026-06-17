@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -77,6 +78,7 @@ export default function PostDetail() {
   const [reportTarget, setReportTarget] = useState<ActionTarget | null>(null);
   const [reporting, setReporting] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [androidKbOffset, setAndroidKbOffset] = useState(0);
 
   const inputRef = useRef<TextInput>(null);
   const flatListRef = useRef<FlatList>(null);
@@ -110,6 +112,13 @@ export default function PostDetail() {
 
     return () => { isMountedRef.current = false; supabase.removeChannel(channel); };
   }, [id]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKbOffset(e.endCoordinates.height));
+    const hide  = Keyboard.addListener('keyboardDidHide', () => setAndroidKbOffset(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const loadAll = async () => {
     setLoading(true);
@@ -645,9 +654,9 @@ export default function PostDetail() {
       </Modal>
 
       {/* ── Edit modal ──────────────────────────────────────────────────── */}
-      <Modal visible={!!editTarget} transparent animationType="fade" onRequestClose={() => setEditTarget(null)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <Pressable style={s.confirmOverlay} onPress={() => setEditTarget(null)}>
+      <Modal visible={!!editTarget} transparent animationType="fade" onRequestClose={() => { setAndroidKbOffset(0); setEditTarget(null); }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <Pressable style={[s.confirmOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={() => { setAndroidKbOffset(0); setEditTarget(null); }}>
             <Pressable style={s.confirmSheet} onPress={() => {}}>
               <View style={s.confirmIconRow}>
                 <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
@@ -658,7 +667,7 @@ export default function PostDetail() {
                 Edit {editTarget?.kind === 'post' ? 'story' : 'comment'}
               </Text>
               <View style={s.confirmActions}>
-                <Pressable style={[s.confirmCancel, { flex: 1 }]} onPress={() => setEditTarget(null)}>
+                <Pressable style={[s.confirmCancel, { flex: 1 }]} onPress={() => { setAndroidKbOffset(0); setEditTarget(null); }}>
                   <Text style={s.confirmCancelTxt}>Cancel</Text>
                 </Pressable>
                 <Pressable
