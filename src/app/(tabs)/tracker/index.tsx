@@ -94,13 +94,6 @@ function sessionLabel(cat: string) {
   return SESSION_CATEGORIES.find(c => c.key === cat)?.label ?? cat;
 }
 
-function fmtLive(amount: number, currency = 'USD') {
-  const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
-  const s = syms[currency] ?? currency;
-  const rounded = Math.round(amount * 100) / 100;
-  return `${s}${rounded.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
-
 function fmt(amount: number, currency = 'USD') {
   const syms: Record<string, string> = {
     USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$',
@@ -753,6 +746,11 @@ export default function TrackerIndex() {
     return 0;
   });
 
+  const firstUnpaidDebtId = sortedDebts.find(d => {
+    const paid = paidByDebt[d.id] ?? 0;
+    return Math.max(0, Number(d.total_amount) - paid) > 0;
+  })?.id;
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -825,16 +823,21 @@ export default function TrackerIndex() {
           {/* Savings card */}
           <View style={s.savingsCard}>
             <Text style={s.savingsCardTitle}>Savings</Text>
-            <View style={s.savingsRow}>
+            <Pressable
+              style={s.savingsRow}
+              onPress={weeklyBet ? undefined : () => router.push('/(tabs)/account')}
+              disabled={!!weeklyBet}>
               <Text style={s.savingsRowEmoji}>💸</Text>
               <View style={s.savingsRowBody}>
                 <Text style={s.savingsRowLabel}>Not spent since day one</Text>
                 <Text style={s.savingsRowSub}>
-                  {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Set weekly spending in Account'}
+                  {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Tap to set your weekly spending →'}
                 </Text>
               </View>
-              <Text style={[s.savingsRowAmt, { color: c.textMuted }]}>{fmtLive(autoSaved, currency)}</Text>
-            </View>
+              {weeklyBet
+                ? <Text style={[s.savingsRowAmt, { color: c.textMuted }]}>{fmt(autoSaved, currency)}</Text>
+                : <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />}
+            </Pressable>
             {totalManualSavings > 0 && (
               <>
                 <View style={s.savingsSep} />
@@ -1035,7 +1038,7 @@ export default function TrackerIndex() {
                             </View>
                           );
                         })()}
-                        {!isPaidOff && (
+                        {!isPaidOff && debt.id === firstUnpaidDebtId && (
                           <View style={s.swipeHint}>
                             <Text style={s.swipeHintDelete}>← Delete</Text>
                             <Text style={s.swipeHintPay}>Pay →</Text>
@@ -1106,8 +1109,8 @@ export default function TrackerIndex() {
           {/* Session log tab */}
           {tab === 'session' && (
             <>
-              {/* Info card — explains what this feature is */}
-              <View style={s.sessionInfoCard}>
+              {/* Info card — only shown before first entry */}
+              {sessions.length === 0 && <View style={s.sessionInfoCard}>
                 <View style={s.sessionInfoHeader}>
                   <Text style={s.sessionInfoIcon}>📓</Text>
                   <Text style={s.sessionInfoTitle}>What is the session log?</Text>
@@ -1123,7 +1126,7 @@ export default function TrackerIndex() {
                   <Ionicons name="information-circle-outline" size={15} color="#7b5ea7" />
                   <Text style={s.sessionInfoTipTxt}>Only you can see these entries.</Text>
                 </View>
-              </View>
+              </View>}
 
               <Pressable
                 style={({ pressed }) => [s.addBtn, { borderColor: '#7b5ea7' }, pressed && { opacity: 0.85 }]}
