@@ -35,6 +35,9 @@ yarn-error.*
 .env
 .env*.local
 
+# Claude Code local settings (may contain PATs/tokens)
+.claude/
+
 # typescript
 *.tsbuildinfo
 
