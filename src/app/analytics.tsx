@@ -1200,7 +1200,7 @@ export default function AnalyticsScreen() {
               <>
                 {(() => {
                   const maxDays = Math.max(...data.streakHistory.map(h => h.days), 1);
-                  return data.streakHistory.map((entry, i) => {
+                  const rows = data.streakHistory.map((entry, i) => {
                     const isCurrent = i === data.streakHistory.length - 1;
                     const isLongest = entry.days === maxDays;
                     const barPct = Math.max(4, Math.round((entry.days / maxDays) * 100));
@@ -1227,6 +1227,14 @@ export default function AnalyticsScreen() {
                       </View>
                     );
                   });
+                  return (
+                    <ScrollView
+                      style={s.streakHistScroll}
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator={false}>
+                      {rows}
+                    </ScrollView>
+                  );
                 })()}
                 {(() => {
                   const current = data.streakHistory[data.streakHistory.length - 1].days;
@@ -1506,6 +1514,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   streakSingleDays:     { fontSize: 28, fontWeight: '900', color: c.primary },
   streakSingleSub:      { fontSize: 13, color: c.textMuted },
 
+  streakHistScroll:     { maxHeight: 216 },
   streakHistRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 },
   streakHistRowCurrent: { marginTop: 4, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.borderSubtle },
   streakHistLabel:      { fontSize: 11, fontWeight: '600', color: c.textFaint, width: 28, textAlign: 'right' },
