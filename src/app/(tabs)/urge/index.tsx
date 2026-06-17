@@ -241,6 +241,7 @@ export default function UrgeScreen() {
   const [timerPointsEarned, setTimerPointsEarned] = useState(false);
   const [timerDuration, setTimerDuration] = useState(10 * 60);
   const scrollRef = useRef<ScrollView>(null);
+  const logScrollRef = useRef<ScrollView>(null);
 
   const isMounted = useRef(true);
   const closeLogTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -822,7 +823,7 @@ export default function UrgeScreen() {
 
       {/* Log this moment modal */}
       <Modal visible={logExpanded} transparent animationType={Platform.OS === 'android' ? 'none' : 'fade'} onRequestClose={closeLog}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Pressable style={s.logModalOverlay} onPress={closeLog}>
             <Pressable style={s.logModalSheet} onPress={() => {}}>
               {saved ? (
@@ -832,7 +833,7 @@ export default function UrgeScreen() {
                   <Text style={s.savedSub}>Logged to your journal</Text>
                 </View>
               ) : (
-                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <ScrollView ref={logScrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                   <Text style={s.logExpandedTitle}>Write in your journal</Text>
                   <View style={s.outcomeRow}>
                     <Pressable
@@ -909,6 +910,7 @@ export default function UrgeScreen() {
                     numberOfLines={3}
                     maxLength={500}
                     textAlignVertical="top"
+                    onFocus={() => setTimeout(() => logScrollRef.current?.scrollToEnd({ animated: true }), 100)}
                   />
                   <View style={[s.sheetActions, { marginBottom: 8 }]}>
                     <Pressable style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]} onPress={closeLog}>
