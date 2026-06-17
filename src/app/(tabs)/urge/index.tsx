@@ -417,17 +417,20 @@ export default function UrgeScreen() {
       : selectedTrigger;
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase.from('urge_journal').insert({
-        user_id: user.id, trigger: triggerValue, outcome,
-        note: note.trim() || null,
-        distraction_used: outcome === 'overcame' ? (distractionUsed || null) : null,
-      });
-      if (error) {
-        setSaving(false);
-        Alert.alert('Could not save', error.message);
-        return;
-      }
+    if (!user) {
+      setSaving(false);
+      Alert.alert('Not signed in', 'Please sign in to save your journal entry.');
+      return;
+    }
+    const { error } = await supabase.from('urge_journal').insert({
+      user_id: user.id, trigger: triggerValue, outcome,
+      note: note.trim() || null,
+      distraction_used: outcome === 'overcame' ? (distractionUsed || null) : null,
+    });
+    if (error) {
+      setSaving(false);
+      Alert.alert('Could not save', error.message);
+      return;
     }
     setSaving(false);
     setSaved(true);
@@ -495,7 +498,13 @@ export default function UrgeScreen() {
 
   const removeContact = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null }).eq('id', user.id);
+    if (user) {
+      const { error } = await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null }).eq('id', user.id);
+      if (error) {
+        Alert.alert('Could not remove', 'Please try again.');
+        return;
+      }
+    }
     await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
     setTrustedContact(null);
   };
@@ -508,7 +517,11 @@ export default function UrgeScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('users').update({ trusted_contact_name: name, trusted_contact_phone: phone }).eq('id', user.id);
+        const { error } = await supabase.from('users').update({ trusted_contact_name: name, trusted_contact_phone: phone }).eq('id', user.id);
+        if (error) {
+          Alert.alert('Could not save', 'Please try again.');
+          return;
+        }
       }
       await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone }));
       setTrustedContact({ name, phone });

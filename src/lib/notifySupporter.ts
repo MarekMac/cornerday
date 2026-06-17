@@ -7,6 +7,9 @@ export async function notifySupporter(
   milestoneLabel?: string,
 ): Promise<void> {
   try {
+    // getUser() validates the token server-side and triggers a refresh if expired
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { console.warn('[notifySupporter] no user, skipping'); return; }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { console.warn('[notifySupporter] no session, skipping'); return; }
     const res = await fetch(`${FUNCTIONS_URL}/notify-supporter`, {
