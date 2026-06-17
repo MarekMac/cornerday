@@ -27,7 +27,8 @@ import { AppColors } from '@/constants/theme';
 function fmt(amount: number, currency = 'USD') {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
   const s = syms[currency] ?? currency;
-  return `${s}${Math.round(amount * 100) / 100}`;
+  const rounded = Math.round(amount * 100) / 100;
+  return `${s}${rounded.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 function fmtCompact(amount: number, currency = 'USD') {
@@ -776,7 +777,7 @@ export default function AnalyticsScreen() {
             <Text style={s.insightEmpty}>Keep going — patterns will appear as you check in more.</Text>
           ) : (
             <View style={s.insightGap}>
-              {insights.slice(0, 5).map((item, i) => (
+              {insights.map((item, i) => (
                 <View key={i} style={s.insightChip}>
                   <View style={[s.insightAccent, { backgroundColor: item.tc }]} />
                   <Text style={s.insightEmoji}>{item.emoji}</Text>
@@ -1161,20 +1162,25 @@ export default function AnalyticsScreen() {
         {data.topTriggers.length > 0 && (
           <View style={s.card}>
             <SectionHeader title="⚡ Your triggers" subtitle={`${data.urgeCount} urge${data.urgeCount !== 1 ? 's' : ''} logged`} />
-            {data.topTriggers.map((item, i) => {
-              const pct = item.count > 0 ? Math.round((item.overcame / item.count) * 100) : 0;
-              return (
-                <View key={i} style={s.triggerRow}>
-                  <View style={s.triggerLabelRow}>
-                    <Text style={s.triggerName}>{item.trigger}</Text>
-                    <Text style={s.triggerMeta}>{item.count}× · {pct}% beaten</Text>
+            {(() => {
+              const maxCount = Math.max(...data.topTriggers.map(t => t.count), 1);
+              return data.topTriggers.map((item, i) => {
+                const freqPct = Math.round((item.count / maxCount) * 100);
+                const winPct  = item.count > 0 ? Math.round((item.overcame / item.count) * 100) : 0;
+                const barColor = winPct >= 70 ? '#27ae60' : winPct >= 40 ? '#e67e22' : '#c0392b';
+                return (
+                  <View key={i} style={s.triggerRow}>
+                    <View style={s.triggerLabelRow}>
+                      <Text style={s.triggerName}>{item.trigger}</Text>
+                      <Text style={s.triggerMeta}>{item.count}× · {winPct}% beaten</Text>
+                    </View>
+                    <View style={s.progressBarBg}>
+                      <View style={[s.progressBarFill, { width: `${freqPct}%` as any, backgroundColor: barColor }]} />
+                    </View>
                   </View>
-                  <View style={s.progressBarBg}>
-                    <View style={[s.progressBarFill, { width: `${pct}%` as any }, pct >= 70 ? s.progressBarDone : undefined]} />
-                  </View>
-                </View>
-              );
-            })}
+                );
+              });
+            })()}
           </View>
         )}
 
