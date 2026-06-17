@@ -866,6 +866,7 @@ export default function UrgeScreen() {
                       value={customTrigger}
                       onChangeText={setCustomTrigger}
                       maxLength={120}
+                      onFocus={() => setTimeout(() => logScrollRef.current?.scrollTo({ y: 0, animated: true }), 100)}
                     />
                   )}
                   {outcome === 'overcame' && (() => {
