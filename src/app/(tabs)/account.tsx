@@ -33,7 +33,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { setImagePickerActive } from '@/lib/image-picker-active';
 import { supabase } from '@/lib/supabase';
@@ -271,6 +271,10 @@ export default function AccountScreen() {
   const [renewalDate, setRenewalDate] = useState<string | null>(null);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [streakShieldEnabled, setStreakShieldEnabled] = useState(false);
+  const [customMilestone, setCustomMilestone] = useState<number | null>(null);
+  const [showCustomMilestoneModal, setShowCustomMilestoneModal] = useState(false);
+  const [customMilestoneInput, setCustomMilestoneInput] = useState('');
 
   const [partnerToken, setPartnerToken] = useState<string | null>(null);
   const [partnerLinkId, setPartnerLinkId] = useState<string | null>(null);
@@ -488,7 +492,9 @@ export default function AccountScreen() {
       AsyncStorage.getItem(NOTIF_STREAK_HOUR_KEY),
       AsyncStorage.getItem(NOTIF_CHECKIN_HOUR_KEY),
       AsyncStorage.getItem(HAPTICS_KEY),
-    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour, rawHaptics]) => {
+      AsyncStorage.getItem(STREAK_SHIELD_KEY),
+      AsyncStorage.getItem(CUSTOM_MILESTONE_KEY),
+    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour, rawHaptics, rawShield, rawMilestone]) => {
       if (rawGoal) { const n = Number(rawGoal); if (!isNaN(n)) setSavingsGoal(n); }
       if (rawFor) setSavingsGoalFor(rawFor);
       if (rawIcon) setSavingsGoalIcon(rawIcon);
@@ -502,6 +508,8 @@ export default function AccountScreen() {
       if (rawStreakHour) { const n = Number(rawStreakHour); if (!isNaN(n)) setNotifStreakHour(n); }
       if (rawCheckinHour) { const n = Number(rawCheckinHour); if (!isNaN(n)) setNotifCheckinHour(n); }
       if (rawHaptics !== null) { const v = rawHaptics !== 'false'; setHapticsEnabled(v); setGlobalHaptics(v); }
+      setStreakShieldEnabled(rawShield === 'true');
+      if (rawMilestone) { const n = Number(rawMilestone); if (!isNaN(n) && n > 0) setCustomMilestone(n); }
     });
     return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
   }, [fetchProfile, loadPartnerLink]);
@@ -1202,6 +1210,58 @@ export default function AccountScreen() {
     }
   };
 
+  const handleShieldToggle = async (value: boolean) => {
+    setStreakShieldEnabled(value);
+    if (value) await AsyncStorage.setItem(STREAK_SHIELD_KEY, 'true');
+    else await AsyncStorage.removeItem(STREAK_SHIELD_KEY);
+  };
+
+  const openCustomMilestoneModal = () => {
+    setCustomMilestoneInput(customMilestone ? String(customMilestone) : '');
+    setShowCustomMilestoneModal(true);
+  };
+
+  const saveCustomMilestone = async () => {
+    const days = parseInt(customMilestoneInput.trim(), 10);
+    if (isNaN(days) || days <= 0 || days > 3650) {
+      Alert.alert('Invalid value', 'Enter a number between 1 and 3650.');
+      return;
+    }
+    await AsyncStorage.setItem(CUSTOM_MILESTONE_KEY, String(days));
+    setCustomMilestone(days);
+    // Schedule notification if we have a quit timestamp
+    if (quitTimestamp) {
+      const targetTime = new Date(new Date(quitTimestamp).getTime() + days * 86400000);
+      if (targetTime > new Date()) {
+        const existingId = await AsyncStorage.getItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
+        if (existingId) await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {});
+        try {
+          const { status } = await Notifications.getPermissionsAsync();
+          if (status === 'granted') {
+            const id = await Notifications.scheduleNotificationAsync({
+              content: {
+                title: `🎯 ${days} Days Clean!`,
+                body: `You hit your personal ${days}-day milestone. This is a huge achievement. Keep going! 🏆`,
+                data: { type: 'custom_milestone' },
+              },
+              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: targetTime },
+            });
+            await AsyncStorage.setItem(CUSTOM_MILESTONE_NOTIF_ID_KEY, id);
+          }
+        } catch { /* notification scheduling is best-effort */ }
+      }
+    }
+    setShowCustomMilestoneModal(false);
+  };
+
+  const removeCustomMilestone = async () => {
+    const existingId = await AsyncStorage.getItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
+    if (existingId) await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {});
+    await AsyncStorage.multiRemove([CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY]);
+    setCustomMilestone(null);
+    setShowCustomMilestoneModal(false);
+  };
+
   const handleNotifToggle = async (key: keyof NotifPrefs, value: boolean) => {
     const updated = { ...notifPrefs, [key]: value };
     setNotifPrefs(updated);
@@ -1677,6 +1737,66 @@ export default function AccountScreen() {
               )}
             </>
           )}
+        </View>
+
+        {/* Premium tools */}
+        <View style={s.menuCard}>
+          <Text style={s.menuCardTitle}>Premium tools</Text>
+
+          {/* Streak shield */}
+          <View style={[s.menuRow, { paddingVertical: 10 }]}>
+            <View style={s.menuIconWrap}>
+              <Text style={{ fontSize: 16 }}>🛡️</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={s.menuRowLabel}>Streak shield</Text>
+                {!isPremiumFromRC && (
+                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={s.notifDesc}>24h window to undo a relapse reset</Text>
+            </View>
+            {isPremiumFromRC ? (
+              <Switch
+                value={streakShieldEnabled}
+                onValueChange={handleShieldToggle}
+                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+                thumbColor={streakShieldEnabled ? '#0F6E6E' : '#bbb'}
+              />
+            ) : (
+              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                <Text style={{ fontSize: 12, color: c.primary, fontWeight: '600' }}>Upgrade</Text>
+              </Pressable>
+            )}
+          </View>
+
+          <View style={s.menuDivider} />
+
+          {/* Custom milestone */}
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={isPremiumFromRC ? openCustomMilestoneModal : () => showPaywall()}>
+            <View style={s.menuIconWrap}>
+              <Text style={{ fontSize: 16 }}>🎯</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={s.menuRowLabel}>Custom milestone</Text>
+                {!isPremiumFromRC && (
+                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={s.notifDesc}>
+                {customMilestone ? `Celebrating ${customMilestone} clean days` : 'Set a personal day goal'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+          </Pressable>
         </View>
 
         {/* Settings */}
@@ -2412,6 +2532,46 @@ export default function AccountScreen() {
               </Pressable>
               <Pressable style={s.confirmDelete} onPress={executeRevokePartnerLink}>
                 <Text style={s.confirmDeleteTxt}>Revoke</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Custom milestone modal */}
+      <Modal visible={showCustomMilestoneModal} transparent animationType="fade" onRequestClose={() => setShowCustomMilestoneModal(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setShowCustomMilestoneModal(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: '#fff7e0', borderColor: '#f0c040' }]}>
+                <Text style={{ fontSize: 26 }}>🎯</Text>
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Custom milestone</Text>
+            <Text style={s.confirmBody}>
+              Set a personal target day. You'll get a push notification and celebration when you hit it.
+            </Text>
+            <TextInput
+              style={s.milestoneInput}
+              placeholder="e.g. 100"
+              placeholderTextColor={c.textFaint}
+              keyboardType="number-pad"
+              value={customMilestoneInput}
+              onChangeText={setCustomMilestoneInput}
+              maxLength={4}
+            />
+            <Text style={[s.confirmBody, { fontSize: 11, marginTop: 4, opacity: 0.6 }]}>days clean</Text>
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setShowCustomMilestoneModal(false)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              {customMilestone && (
+                <Pressable style={[s.confirmCancel, { borderColor: c.error }]} onPress={removeCustomMilestone}>
+                  <Text style={[s.confirmCancelTxt, { color: c.error }]}>Remove</Text>
+                </Pressable>
+              )}
+              <Pressable style={[s.confirmDelete, { backgroundColor: c.primary, borderColor: c.primary }]} onPress={saveCustomMilestone}>
+                <Text style={[s.confirmDeleteTxt, { color: '#fff' }]}>Save</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -3192,6 +3352,12 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
   confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  milestoneInput: {
+    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 16, fontSize: 28, fontWeight: '700',
+    color: c.textPrimary, textAlign: 'center', backgroundColor: c.bgElement,
+    marginTop: 16, alignSelf: 'center', width: 140,
+  },
   confirmBold: { fontWeight: '700', color: c.textSecondary },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
   confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },

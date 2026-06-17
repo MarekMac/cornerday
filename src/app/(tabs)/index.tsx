@@ -37,7 +37,7 @@ import { notifySupporter } from '@/lib/notifySupporter';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY, MOTIVATION_PHOTO_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
@@ -912,6 +912,34 @@ export default function HomeScreen() {
     });
   }, []));
 
+  useFocusEffect(useCallback(() => {
+    Promise.all([
+      AsyncStorage.getItem(MOTIVATION_PHOTO_KEY),
+      AsyncStorage.getItem(STREAK_SHIELD_KEY),
+      AsyncStorage.getItem(SHIELD_UNDO_KEY),
+      AsyncStorage.getItem(CUSTOM_MILESTONE_KEY),
+    ]).then(([rawPhoto, rawShield, rawUndo, rawMilestone]) => {
+      setMotivationPhoto(rawPhoto ? rawPhoto + '?t=' + Date.now() : null);
+      setShieldEnabled(rawShield === 'true');
+      if (rawUndo) {
+        try {
+          const parsed = JSON.parse(rawUndo);
+          if (parsed.expiresAt > Date.now()) setShieldUndo(parsed);
+          else { setShieldUndo(null); AsyncStorage.removeItem(SHIELD_UNDO_KEY); }
+        } catch { setShieldUndo(null); }
+      } else {
+        setShieldUndo(null);
+      }
+      if (rawMilestone) {
+        const days = Number(rawMilestone);
+        if (!isNaN(days) && days > 0) setCustomMilestone(days);
+        else setCustomMilestone(null);
+      } else {
+        setCustomMilestone(null);
+      }
+    });
+  }, []));
+
   const dismissProfileNudge = useCallback(() => {
     setShowProfileNudge(false);
   }, []);
@@ -934,6 +962,11 @@ export default function HomeScreen() {
   const [shareCardMilestoneLabel, setShareCardMilestoneLabel] = useState<string | null>(null);
   const [shareCardEarnedOn, setShareCardEarnedOn] = useState<string | null>(null);
   const [urgePeakHour, setUrgePeakHour] = useState<number | null>(null);
+  const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
+  const [shieldEnabled, setShieldEnabled] = useState(false);
+  const [shieldUndo, setShieldUndo] = useState<{ prevQuit: string; prevStreakDays: number; expiresAt: number } | null>(null);
+  const [customMilestone, setCustomMilestone] = useState<number | null>(null);
+  const [customMilestoneCelebVisible, setCustomMilestoneCelebVisible] = useState(false);
   const [celebrationBadge, setCelebrationBadge] = useState<{ emoji: string; label: string; celebration: { icon: string; text: string }; msg: string } | null>(null);
   const shareCardRef = useRef<View>(null);
 
@@ -948,6 +981,21 @@ export default function HomeScreen() {
     prevNextMilestone.current = next;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, fetchData]);
+
+  // Check custom milestone when streak or milestone setting changes
+  useEffect(() => {
+    if (!data?.quitDate || !customMilestone) return;
+    const streakDaysFloat = Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) / 86400000;
+    if (streakDaysFloat >= customMilestone) {
+      AsyncStorage.getItem(CUSTOM_MILESTONE_CELEBRATED_KEY).then(raw => {
+        const celebrated = raw ? Number(raw) : null;
+        if (celebrated !== customMilestone) {
+          setCustomMilestoneCelebVisible(true);
+          AsyncStorage.setItem(CUSTOM_MILESTONE_CELEBRATED_KEY, String(customMilestone));
+        }
+      });
+    }
+  }, [data, customMilestone]);
 
   const randomQuote = useCallback(() => {
     setQuoteIndex(i => {
@@ -1541,8 +1589,14 @@ export default function HomeScreen() {
           Alert.alert('Could not reset streak', dbError.message);
           return;
         }
+        // Save shield undo state if shield is enabled
+        if (shieldEnabled && data?.quitDate) {
+          const undoData = { prevQuit: data.quitDate, prevStreakDays: days, expiresAt: Date.now() + 24 * 60 * 60 * 1000 };
+          await AsyncStorage.setItem(SHIELD_UNDO_KEY, JSON.stringify(undoData));
+          setShieldUndo(undoData);
+        }
         // Clear AsyncStorage badge/notification flags so everything resets cleanly after a relapse
-        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]);
+        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY]);
         // Reschedule notifications against the new quit timestamp
         const { data: prefsRow } = await supabase
           .from('users')
@@ -1571,6 +1625,39 @@ export default function HomeScreen() {
     }
   };
 
+
+  const doUndoRelapse = async () => {
+    if (!shieldUndo) return;
+    setRelapseLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { prevQuit, prevStreakDays } = shieldUndo;
+      const prevDate = prevQuit.split('T')[0];
+      await Promise.all([
+        supabase.from('users').update({ quit_timestamp: prevQuit, quit_date: prevDate }).eq('id', user.id),
+        supabase.from('streaks').update({ current_streak: prevStreakDays, streak_start_date: prevDate }).eq('user_id', user.id),
+      ]);
+      await AsyncStorage.removeItem(SHIELD_UNDO_KEY);
+      setShieldUndo(null);
+      // Restore badge/notification flags so milestones can re-fire
+      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]);
+      // Reschedule notifications against the restored quit timestamp
+      const { data: prefsRow } = await supabase.from('users').select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction').eq('id', user.id).maybeSingle();
+      const prefs = {
+        notif_milestone: prefsRow?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+        notif_daily_streak: prefsRow?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+        notif_daily_checkin: prefsRow?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+        notif_weekly_summary: prefsRow?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+        notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+        notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+      };
+      await scheduleAllNotifications(prefs, prevQuit);
+      await fetchData();
+    } finally {
+      setRelapseLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -1997,8 +2084,15 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
             style={s.whyAnchorCard}>
             <View style={s.whyAnchorHeader}>
-              <Text style={s.whyAnchorLabel}>Your why</Text>
-              <Text style={s.whyAnchorSub}>What you're fighting for</Text>
+              <View>
+                <Text style={s.whyAnchorLabel}>Your why</Text>
+                <Text style={s.whyAnchorSub}>What you're fighting for</Text>
+              </View>
+              {motivationPhoto && (
+                <Pressable onPress={() => router.push('/(tabs)/urge' as any)}>
+                  <Image source={{ uri: motivationPhoto }} style={s.whyAnchorPhoto} />
+                </Pressable>
+              )}
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
               {motivations.map((m, i) => (
@@ -2119,8 +2213,56 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Streak shield undo banner */}
+        {shieldUndo && shieldUndo.expiresAt > Date.now() && (
+          <View style={s.shieldUndoBanner}>
+            <Text style={s.shieldUndoIcon}>🛡️</Text>
+            <View style={s.shieldUndoBody}>
+              <Text style={s.shieldUndoTitle}>Shield active</Text>
+              <Text style={s.shieldUndoSub}>
+                Undo expires in {Math.max(1, Math.ceil((shieldUndo.expiresAt - Date.now()) / 3600000))}h — restore your {shieldUndo.prevStreakDays}d streak
+              </Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [s.shieldUndoBtn, pressed && { opacity: 0.8 }]}
+              onPress={doUndoRelapse}
+              disabled={relapseLoading}>
+              {relapseLoading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={s.shieldUndoBtnTxt}>Undo</Text>}
+            </Pressable>
+          </View>
+        )}
+
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Custom milestone celebration modal */}
+      <Modal visible={customMilestoneCelebVisible} transparent animationType="fade" onRequestClose={() => setCustomMilestoneCelebVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setCustomMilestoneCelebVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: '#fff7e0' }]}>
+                <Text style={{ fontSize: 28 }}>🎯</Text>
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>{customMilestone} Days Clean!</Text>
+            <Text style={s.confirmBody}>
+              You hit your personal milestone.{'\n'}This is exactly what you set out to do. 🏆
+            </Text>
+            <View style={s.confirmActions}>
+              <Pressable
+                style={[s.confirmReset, { backgroundColor: c.primary, borderColor: c.primary }]}
+                onPress={() => { setCustomMilestoneCelebVisible(false); openShareCard({ emoji: '🎯', label: `${customMilestone} Days` }, false); }}>
+                <Text style={[s.confirmResetTxt, { color: '#fff' }]}>Share</Text>
+              </Pressable>
+              <Pressable style={s.confirmCancel} onPress={() => setCustomMilestoneCelebVisible(false)}>
+                <Text style={s.confirmCancelTxt}>Close</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Badge detail modal */}
       <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => { showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
@@ -2837,7 +2979,13 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     overflow: 'hidden',
   },
   whyAnchorHeader: {
-    flexDirection: 'column', marginBottom: 14, paddingRight: 16,
+    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
+    marginBottom: 14, paddingRight: 16,
+  },
+  whyAnchorPhoto: {
+    width: 54, height: 54, borderRadius: 12,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
+    marginTop: 2,
   },
   whyAnchorLabel: {
     fontSize: 16,
@@ -2884,6 +3032,19 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   relapseBtnTxt: { fontSize: 13, color: c.error, fontWeight: '600' },
   relapseMinimal: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
   relapseMinimalTxt: { fontSize: 13, color: c.textFaint, textDecorationLine: 'underline' },
+
+  // Streak shield undo banner
+  shieldUndoBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: c.bgTeal, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: c.primary + '40',
+  },
+  shieldUndoIcon: { fontSize: 22 },
+  shieldUndoBody: { flex: 1 },
+  shieldUndoTitle: { fontSize: 13, fontWeight: '700', color: c.primary },
+  shieldUndoSub: { fontSize: 12, color: c.textBody, marginTop: 1 },
+  shieldUndoBtn: { backgroundColor: c.primary, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 14 },
+  shieldUndoBtnTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   // Urge prediction card
   urgePredCard: {
