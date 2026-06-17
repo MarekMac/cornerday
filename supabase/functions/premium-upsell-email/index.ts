@@ -138,16 +138,14 @@ Deno.serve(async (req: Request) => {
   }
 
   const now = Date.now();
-  const thirtyDaysAgo  = new Date(now - 30 * 86_400_000).toISOString();
-  const thirtyOneDaysAgo = new Date(now - 31 * 86_400_000).toISOString();
+  const thirtyDaysAgo = new Date(now - 30 * 86_400_000).toISOString();
 
-  // Free users who joined exactly 30 days ago
+  // All free users who joined 30+ days ago
   const { data: eligibleUsers, error } = await supabase
     .from('users')
     .select('id, email, display_name')
     .eq('is_premium', false)
     .lt('created_at', thirtyDaysAgo)
-    .gte('created_at', thirtyOneDaysAgo)
     .not('email', 'is', null);
 
   if (error) {
@@ -159,15 +157,16 @@ Deno.serve(async (req: Request) => {
 
   for (const user of (eligibleUsers ?? [])) {
     try {
-      // Send only once
-      const { data: existing } = await supabase
+      // Skip if an upsell was sent within the last 30 days
+      const { data: recentUpsell } = await supabase
         .from('badges')
         .select('id')
         .eq('user_id', user.id)
         .eq('badge_type', 'upsell_30d')
+        .gte('earned_at', thirtyDaysAgo)
         .maybeSingle();
 
-      if (existing) { skipped++; continue; }
+      if (recentUpsell) { skipped++; continue; }
 
       const { data: streak } = await supabase
         .from('streaks')
@@ -178,14 +177,13 @@ Deno.serve(async (req: Request) => {
       const firstName = user.display_name?.split(' ')[0] || 'there';
       const html = buildHtml(firstName, streak?.current_streak ?? 0);
 
-      const { error: insertError } = await supabase
+      // Upsert so earned_at refreshes each cycle, giving a rolling 30-day window
+      const { error: upsertError } = await supabase
         .from('badges')
-        .insert({ user_id: user.id, badge_type: 'upsell_30d', earned_at: new Date().toISOString() });
+        .upsert({ user_id: user.id, badge_type: 'upsell_30d', earned_at: new Date().toISOString() },
+                 { onConflict: 'user_id,badge_type' });
 
-      if (insertError) {
-        if (insertError.code === '23505') { skipped++; continue; }
-        throw new Error(`Badge insert failed: ${insertError.message}`);
-      }
+      if (upsertError) throw new Error(`Badge upsert failed: ${upsertError.message}`);
 
       const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
