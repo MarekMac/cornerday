@@ -535,22 +535,6 @@ export default function UrgeScreen() {
             )}
           </Pressable>
 
-          {/* Duration picker — shown before timer starts */}
-          {!timerRunning && !timerDone && (
-            <View style={s.durationRow}>
-              {([10, 20, 30] as const).map(mins => (
-                <Pressable
-                  key={mins}
-                  style={[s.durationChip, timerDuration === mins * 60 && s.durationChipActive]}
-                  onPress={() => setTimerDuration(mins * 60)}>
-                  <Text style={[s.durationChipTxt, timerDuration === mins * 60 && s.durationChipTxtActive]}>
-                    {mins} min
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-
           {/* Urge delay timer */}
           <View style={[s.timerCard, timerDone && s.timerCardDone]}>
             <View style={s.timerTop}>
@@ -562,7 +546,23 @@ export default function UrgeScreen() {
                   {timerDone ? 'The urge has passed. That took strength.' : `Most urges fade within ${timerDuration / 60} minutes`}
                 </Text>
               </View>
-              <Text style={[s.timerDigits, timerDone && { color: '#27ae60' }]}>{timerDisplay}</Text>
+              {!timerRunning && !timerDone ? (
+                <Pressable
+                  style={s.timerDigitsBtn}
+                  onPress={() => {
+                    const opts = [10, 20, 30];
+                    const idx = opts.indexOf(timerDuration / 60);
+                    setTimerDuration(opts[(idx + 1) % opts.length] * 60);
+                    haptic();
+                  }}>
+                  <Text style={s.timerDigits}>
+                    {String(timerDuration / 60).padStart(2, '0')}:00
+                  </Text>
+                  <Text style={s.timerDigitsHint}>tap to change</Text>
+                </Pressable>
+              ) : (
+                <Text style={[s.timerDigits, timerDone && { color: '#27ae60' }]}>{timerDisplay}</Text>
+              )}
             </View>
             <View style={s.timerTrack}>
               <View style={[s.timerFill, { width: `${timerPct}%` as any }, timerDone && s.timerFillDone]} />
@@ -1270,6 +1270,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   timerTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 3 },
   timerSub: { fontSize: 13, color: c.textMuted, lineHeight: 18 },
   timerDigits: { fontSize: 34, fontWeight: '800', color: c.primary, fontVariant: ['tabular-nums'] as any },
+  timerDigitsBtn: { alignItems: 'center', gap: 2 },
+  timerDigitsHint: { fontSize: 10, color: c.primary, opacity: 0.6, fontWeight: '500' },
   timerTrack: { height: 6, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden', marginBottom: 16 },
   timerFill: { height: 6, backgroundColor: c.primary, borderRadius: 3 },
   timerFillDone: { backgroundColor: '#27ae60' },
