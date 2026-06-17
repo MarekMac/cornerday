@@ -1,4 +1,5 @@
-﻿import { LinearGradient } from 'expo-linear-gradient';
+﻿import * as Contacts from 'expo-contacts/legacy';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -43,6 +44,7 @@ import { supabase } from '@/lib/supabase';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { hapticMedium } from '@/lib/haptics';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
@@ -233,6 +235,10 @@ export default function UrgeScreen() {
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const { personalBests, globalBests, handleScore } = useGameBests();
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
+  const [contactNameInput, setContactNameInput] = useState('');
+  const [contactPhoneInput, setContactPhoneInput] = useState('');
+  const [savingContact, setSavingContact] = useState(false);
+  const [editingContact, setEditingContact] = useState(false);
   const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
   const [pickerVisible, setPickerVisible] = useState<'games' | 'exercises' | null>(null);
@@ -471,6 +477,47 @@ export default function UrgeScreen() {
 
   const handleDistraction = (d: typeof DISTRACTIONS[0]) => {
     setActiveDistraction(d);
+  };
+
+  const pickContact = async () => {
+    const { status } = await Contacts.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow access to contacts so you can pick someone quickly.');
+      return;
+    }
+    const result = await Contacts.presentContactPickerAsync();
+    if (!result) return;
+    const name = result.name ?? '';
+    const phone = result.phoneNumbers?.[0]?.number ?? '';
+    setContactNameInput(name);
+    setContactPhoneInput(phone);
+  };
+
+  const removeContact = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null }).eq('id', user.id);
+    await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
+    setTrustedContact(null);
+  };
+
+  const saveContact = async () => {
+    const name = contactNameInput.trim();
+    const phone = contactPhoneInput.trim();
+    if (!name || !phone) return;
+    setSavingContact(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('users').update({ trusted_contact_name: name, trusted_contact_phone: phone }).eq('id', user.id);
+      }
+      await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone }));
+      setTrustedContact({ name, phone });
+      setContactNameInput('');
+      setContactPhoneInput('');
+      setEditingContact(false);
+    } finally {
+      setSavingContact(false);
+    }
   };
 
   const motivations = (motivation ?? '').split(',').filter(Boolean)
@@ -1064,18 +1111,20 @@ export default function UrgeScreen() {
         visible={activeDistraction !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setActiveDistraction(null)}>
+        onRequestClose={() => { setActiveDistraction(null); setEditingContact(false); }}>
         <View style={s.pickerOverlay}>
-          <Pressable style={s.modalBackdrop} onPress={() => setActiveDistraction(null)} />
+          <Pressable style={s.modalBackdrop} onPress={() => { setActiveDistraction(null); setEditingContact(false); }} />
           {activeDistraction && (
             <View style={s.pickerSheet}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <Text style={{ fontSize: 36 }}>{activeDistraction.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.pickerTitle}>{activeDistraction.label}</Text>
-                  <Text style={s.pickerSub}>{activeDistraction.sub}</Text>
+              {!(activeDistraction.action === 'call' && (!trustedContact || editingContact)) && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <Text style={{ fontSize: 36 }}>{activeDistraction.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.pickerTitle}>{activeDistraction.label}</Text>
+                    <Text style={s.pickerSub}>{activeDistraction.sub}</Text>
+                  </View>
                 </View>
-              </View>
+              )}
 
               {'tip' in activeDistraction && activeDistraction.tip ? (
                 <View style={s.distractionTipBox}>
@@ -1084,28 +1133,66 @@ export default function UrgeScreen() {
               ) : null}
 
               {activeDistraction.action === 'call' && (
-                trustedContact ? (
+                trustedContact && !editingContact ? (
                   <View style={s.distractionTipBox}>
                     <Text style={s.distractionTipTxt}>
                       Reach out to {trustedContact.name} — they're in your corner.
                     </Text>
                     <Pressable
                       style={({ pressed }) => [s.distractionCallBtn, pressed && { opacity: 0.85 }]}
-                      onPress={() => { setActiveDistraction(null); Linking.openURL(`tel:${trustedContact.phone}`); }}>
+                      onPress={() => { setActiveDistraction(null); setEditingContact(false); Linking.openURL(`tel:${trustedContact.phone}`); }}>
                       <Text style={s.distractionCallBtnTxt}>📞  Call {trustedContact.name}</Text>
                     </Pressable>
+                    <View style={s.contactEditRow}>
+                      <Pressable onPress={() => { setContactNameInput(trustedContact.name); setContactPhoneInput(trustedContact.phone); setEditingContact(true); }}>
+                        <Text style={s.contactEditBtn}>Edit</Text>
+                      </Pressable>
+                      <Text style={s.contactEditSep}>·</Text>
+                      <Pressable onPress={removeContact}>
+                        <Text style={s.contactRemoveBtn}>Remove</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 ) : (
-                  <View style={s.distractionTipBox}>
-                    <Text style={s.distractionTipTxt}>
-                      No trusted contact saved yet. Add one in Account settings for quick access.
-                    </Text>
+                  <>
+                    <Text style={s.contactFormTitle}>Trusted contact</Text>
                     <Pressable
-                      style={({ pressed }) => [s.distractionCallBtn, pressed && { opacity: 0.85 }]}
-                      onPress={() => { setActiveDistraction(null); router.push('/(tabs)/account'); }}>
-                      <Text style={s.distractionCallBtnTxt}>Go to Account settings</Text>
+                      style={({ pressed }) => [s.contactPickBtn, pressed && { opacity: 0.75 }]}
+                      onPress={pickContact}>
+                      <Ionicons name="person-add-outline" size={16} color={c.primary} />
+                      <Text style={s.contactPickBtnTxt}>Choose from contacts</Text>
                     </Pressable>
-                  </View>
+                    <Text style={s.contactLabel}>Their name</Text>
+                    <TextInput
+                      style={s.contactInput}
+                      placeholder="e.g. Mum, John"
+                      placeholderTextColor="#bbb"
+                      value={contactNameInput}
+                      onChangeText={setContactNameInput}
+                      autoCapitalize="words"
+                      maxLength={60}
+                    />
+                    <Text style={s.contactLabel}>Phone number</Text>
+                    <TextInput
+                      style={s.contactInput}
+                      placeholder="+1 555 000 0000"
+                      placeholderTextColor="#bbb"
+                      value={contactPhoneInput}
+                      onChangeText={setContactPhoneInput}
+                      keyboardType="phone-pad"
+                      autoComplete="off"
+                      textContentType="none"
+                      maxLength={20}
+                    />
+                    <View style={s.contactActions}>
+                      <Pressable
+                        style={({ pressed }) => [s.contactSaveBtn, (!contactNameInput.trim() || !contactPhoneInput.trim() || savingContact) && { opacity: 0.5 }, pressed && { opacity: 0.85 }]}
+                        onPress={saveContact}
+                        disabled={!contactNameInput.trim() || !contactPhoneInput.trim() || savingContact}>
+                        <Text style={s.contactSaveBtnTxt}>{savingContact ? 'Saving…' : 'Save'}</Text>
+                      </Pressable>
+                    </View>
+                  </>
                 )
               )}
 
@@ -1369,6 +1456,27 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     marginBottom: 14, gap: 12,
   },
   distractionTipTxt: { fontSize: 14, color: c.textBody, lineHeight: 21 },
+  contactEditRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
+  contactEditBtn: { fontSize: 13, fontWeight: '600', color: c.primary },
+  contactEditSep: { fontSize: 13, color: c.textFaint },
+  contactRemoveBtn: { fontSize: 13, fontWeight: '600', color: c.error },
+  contactFormTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 16 },
+  contactPickBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1.5, borderColor: c.primary, borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 14, alignSelf: 'stretch', justifyContent: 'center',
+    backgroundColor: c.bgTealDeep, marginBottom: 16,
+  },
+  contactPickBtnTxt: { fontSize: 14, fontWeight: '600', color: c.primary },
+  contactLabel: { fontSize: 13, color: c.textBody, marginBottom: 8, marginTop: 4 },
+  contactInput: {
+    borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.textPrimary,
+    backgroundColor: c.bgInput, marginBottom: 16,
+  },
+  contactActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  contactSaveBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: c.primary },
+  contactSaveBtnTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
   distractionCallBtn: {
     backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center',
   },

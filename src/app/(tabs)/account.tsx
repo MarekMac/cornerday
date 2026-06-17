@@ -2070,7 +2070,7 @@ export default function AccountScreen() {
             </Pressable>
             <Text style={[s.spendingCustomLabel, { marginBottom: 8, marginTop: 16 }]}>Their name</Text>
             <TextInput
-              style={[s.spendingInput, { flex: 0, marginBottom: 16 }]}
+              style={[s.spendingInput, s.contactModalInput, { marginBottom: 16 }]}
               value={contactNameInput}
               onChangeText={setContactNameInput}
               placeholder="e.g. Mum, John"
@@ -2079,7 +2079,7 @@ export default function AccountScreen() {
             />
             <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Phone number</Text>
             <TextInput
-              style={[s.spendingInput, { flex: 0, marginBottom: 16 }]}
+              style={[s.spendingInput, s.contactModalInput, { marginBottom: 16 }]}
               value={contactPhoneInput}
               onChangeText={setContactPhoneInput}
               placeholder="+1 555 000 0000"
@@ -2090,7 +2090,7 @@ export default function AccountScreen() {
             />
             <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Email address</Text>
             <TextInput
-              style={[s.spendingInput, { flex: 0, marginBottom: 24 }]}
+              style={[s.spendingInput, s.contactModalInput, { marginBottom: 24 }]}
               value={contactEmailInput}
               onChangeText={setContactEmailInput}
               placeholder="their@email.com"
@@ -3248,6 +3248,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   spendingChipTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
   spendingChipTxtSelected: { color: c.primary },
   spendingCustomLabel: { fontSize: 13, color: c.textBody, marginBottom: 10 },
+  contactModalInput: {
+    flex: 0, borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, backgroundColor: c.bgInput,
+  },
   contactPickerBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1.5, borderColor: c.primary, borderRadius: 12,
