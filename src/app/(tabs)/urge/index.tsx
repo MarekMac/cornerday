@@ -249,6 +249,9 @@ export default function UrgeScreen() {
     if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
   }; }, []);
 
+  // Reset log form state after modal has finished closing
+  useEffect(() => { if (!logExpanded) resetLogState(); }, [logExpanded]);
+
   // Award a point when the timer completes
   useEffect(() => {
     if (timerDone && !timerPointsEarned) {
@@ -363,8 +366,9 @@ export default function UrgeScreen() {
     setLogExpanded(true);
   };
 
-  const closeLog = () => {
-    setLogExpanded(false);
+  const closeLog = () => setLogExpanded(false);
+
+  const resetLogState = () => {
     setSelectedTrigger(null);
     setCustomTrigger('');
     setOutcome(null);
@@ -741,6 +745,14 @@ export default function UrgeScreen() {
               )}
             </View>
           )}
+
+          {/* Journal */}
+          <Pressable
+            style={({ pressed }) => [s.logNowBtn, pressed && { opacity: 0.8 }]}
+            onPress={() => openLog('overcame')}>
+            <Text style={s.logNowBtnTxt}>✍️  Write in your journal</Text>
+            <Text style={s.logNowBtnSub}>What triggered this? How are you feeling right now?</Text>
+          </Pressable>
 
           {/* Urge pattern insight */}
           {urgeInsight && (
