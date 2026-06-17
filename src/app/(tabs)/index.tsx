@@ -2087,7 +2087,7 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.whyAnchorLabel}>Your why</Text>
                 <Text style={s.whyAnchorSub}>What you're fighting for</Text>
-                <View style={{ marginTop: 16, overflow: 'hidden' }}>
+                <View style={{ marginTop: 24, overflow: 'hidden' }}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
                   {motivations.map((m, i) => (
                     <View key={i} style={s.whyAnchorChip}>
