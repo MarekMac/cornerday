@@ -376,18 +376,10 @@ export default function UrgeScreen() {
   };
 
   const closeLog = () => {
-    if (Platform.OS === 'android' && keyboardVisible.current) {
-      // Wait for keyboard animation to finish before closing modal to prevent layout-shift flicker
-      let sub: ReturnType<typeof Keyboard.addListener> | null = null;
-      let timer: ReturnType<typeof setTimeout>;
-      const done = () => { sub?.remove(); sub = null; clearTimeout(timer); setLogExpanded(false); };
-      sub = Keyboard.addListener('keyboardDidHide', done);
-      timer = setTimeout(done, 400);
-      Keyboard.dismiss();
-    } else {
-      Keyboard.dismiss();
-      setLogExpanded(false);
-    }
+    // On Android the modal has animationType='none' so it closes instantly — dismiss keyboard
+    // and close together so the KAV height animation never has a chance to show.
+    Keyboard.dismiss();
+    setLogExpanded(false);
   };
 
   const resetLogState = () => {
