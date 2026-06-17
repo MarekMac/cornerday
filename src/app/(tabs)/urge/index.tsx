@@ -678,12 +678,14 @@ export default function UrgeScreen() {
             <View style={s.whyInner}>
               <View style={s.whyText}>
                 <Text style={s.whyLbl}>Remember your why</Text>
-                {motivations.map((m, i) => (
-                  <View key={i} style={s.whyRow}>
-                    <Text style={s.whyEmoji}>{m.emoji}</Text>
-                    <Text style={s.whyVal}>{m.label}</Text>
-                  </View>
-                ))}
+                <ScrollView style={{ marginTop: 6, maxHeight: 80 }} showsVerticalScrollIndicator={false} nestedScrollEnabled contentContainerStyle={{ flexDirection: 'column' }}>
+                  {motivations.map((m, i) => (
+                    <View key={i} style={[s.whyChip, i > 0 && { marginTop: 6 }]}>
+                      <Text style={s.whyEmoji}>{m.emoji}</Text>
+                      <Text style={s.whyVal}>{m.label}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
               </View>
               <Pressable onPress={pickMotivationPhoto} style={s.whyPhotoBtn}>
                 {motivationPhoto ? (
@@ -1394,9 +1396,16 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   whyInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   whyText: { flex: 1, gap: 6 },
   whyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  whyChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderRadius: 24,
+    paddingVertical: 5, paddingHorizontal: 10,
+    borderWidth: 1, borderColor: c.borderLight,
+    alignSelf: 'flex-start',
+  },
   whyLbl: { fontSize: 11, color: c.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-  whyEmoji: { fontSize: 18 },
-  whyVal: { fontSize: 15, color: c.textPrimary, fontWeight: '600' },
+  whyEmoji: { fontSize: 14 },
+  whyVal: { fontSize: 12, color: c.textPrimary, fontWeight: '600' },
   whyPhotoBtn: { alignItems: 'center' },
   whyPhoto: { width: 120, height: 120, borderRadius: 14 },
   whyPhotoBadge: {

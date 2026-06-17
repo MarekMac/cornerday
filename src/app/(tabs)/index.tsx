@@ -2098,23 +2098,14 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.whyAnchorLabel}>Your why</Text>
                 <Text style={s.whyAnchorSub}>What you're fighting for</Text>
-                <View style={{ marginTop: 24, overflow: 'hidden' }}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.whyAnchorRow}>
+                <ScrollView style={{ marginTop: 12, maxHeight: 80 }} showsVerticalScrollIndicator={false} nestedScrollEnabled contentContainerStyle={s.whyAnchorCol}>
                   {motivations.map((m, i) => (
-                    <View key={i} style={s.whyAnchorChip}>
+                    <View key={i} style={[s.whyAnchorChip, i > 0 && { marginTop: 6 }]}>
                       <Text style={s.whyAnchorEmoji}>{m.emoji}</Text>
                       <Text style={s.whyAnchorText}>{m.label}</Text>
                     </View>
                   ))}
                 </ScrollView>
-                <View style={s.whyAnchorFade} pointerEvents="none">
-                  <LinearGradient
-                    colors={['transparent', '#0d7a7a']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-              </View>
               </View>
               <Pressable onPress={() => router.push('/(tabs)/urge' as any)}>
                 {motivationPhoto ? (
@@ -3014,7 +3005,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
   whyAnchorPhotoAddTxt: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.2 },
-  whyAnchorFade: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 44 },
+  whyAnchorFade: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 44 }, // unused — kept to avoid style-key errors
   whyAnchorLabel: {
     fontSize: 16,
     fontWeight: '700',
@@ -3026,17 +3017,19 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     marginTop: 2,
   },
-  whyAnchorRow: { flexDirection: 'row', gap: 8, paddingRight: 16, alignItems: 'center' },
+  whyAnchorRow: { flexDirection: 'row', gap: 8, paddingRight: 16, alignItems: 'center' }, // unused
+  whyAnchorCol: { flexDirection: 'column' },
   whyAnchorChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 7,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 24,
-    paddingVertical: 9, paddingHorizontal: 14,
+    paddingVertical: 5, paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.22)',
+    alignSelf: 'flex-start',
   },
-  whyAnchorEmoji: { fontSize: 17 },
-  whyAnchorText: { fontSize: 13, fontWeight: '600', color: '#ffffff' },
+  whyAnchorEmoji: { fontSize: 14 },
+  whyAnchorText: { fontSize: 12, fontWeight: '600', color: '#ffffff' },
 
   // Relapse
   relapseCard: {
