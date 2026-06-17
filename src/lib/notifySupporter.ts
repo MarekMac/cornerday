@@ -10,6 +10,9 @@ export async function notifySupporter(
     // getUser() validates the token server-side and triggers a refresh if expired
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { console.warn('[notifySupporter] no user, skipping'); return; }
+    // Skip the Edge Function call if the user has no partner link configured
+    const { data: link } = await supabase.from('partner_links').select('id').eq('user_id', user.id).maybeSingle();
+    if (!link) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { console.warn('[notifySupporter] no session, skipping'); return; }
     const res = await fetch(`${FUNCTIONS_URL}/notify-supporter`, {

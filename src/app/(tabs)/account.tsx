@@ -521,7 +521,10 @@ export default function AccountScreen() {
       setStreakShieldEnabled(rawShield === 'true');
       if (rawMilestone) { const n = Number(rawMilestone); if (!isNaN(n) && n > 0) setCustomMilestone(n); }
     });
-    return () => { if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current); };
+    return () => {
+      if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current);
+      if (linkCopyTimerRef.current) clearTimeout(linkCopyTimerRef.current);
+    };
   }, [fetchProfile, loadPartnerLink]);
 
   useEffect(() => {

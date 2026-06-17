@@ -291,7 +291,7 @@ export default function UrgeScreen() {
     ]);
     if (cachedMotivation) setMotivation(cachedMotivation);
     if (rawContact) { try { setTrustedContact(JSON.parse(rawContact)); } catch { /* corrupted */ } }
-    if (rawPhoto) setMotivationPhoto(rawPhoto + '?t=' + Date.now());
+    if (rawPhoto) setMotivationPhoto(rawPhoto);
     setLoading(false);
 
     // Refresh from network in the background; update cache on success
@@ -467,8 +467,9 @@ export default function UrgeScreen() {
         const destFile = new File(Paths.document, 'motivation_photo.jpg');
         if (destFile.exists) destFile.delete();
         await new File(resized.uri).copy(destFile);
-        await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, destFile.uri);
-        setMotivationPhoto(destFile.uri + '?t=' + Date.now());
+        const photoUri = destFile.uri + '?t=' + Date.now();
+        await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, photoUri);
+        setMotivationPhoto(photoUri);
       } catch (err) {
         console.error('[MotivationPhoto] save error:', err);
         Alert.alert('Could not save photo', 'Please try again.');
@@ -985,7 +986,7 @@ export default function UrgeScreen() {
                     onFocus={() => setTimeout(() => logScrollRef.current?.scrollToEnd({ animated: true }), 100)}
                   />
                   <View style={[s.sheetActions, { marginBottom: 8 }]}>
-                    <Pressable style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]} onPress={closeLog}>
+                    <Pressable style={({ pressed }) => [s.cancelBtn, saving && { opacity: 0.4 }, !saving && pressed && { opacity: 0.7 }]} onPress={closeLog} disabled={saving}>
                       <Text style={s.cancelBtnTxt}>Cancel</Text>
                     </Pressable>
                     <Pressable

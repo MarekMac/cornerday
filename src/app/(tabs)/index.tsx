@@ -637,19 +637,24 @@ function computeCheckinStreak(rows: { created_at: string }[]): { current: number
   const unique = [...new Set(rows.map(r => new Date(r.created_at).toLocaleDateString('en-CA')))]
     .sort().reverse();
   if (unique.length === 0) return { current: 0, best: 0 };
-  const todayStr = new Date().toLocaleDateString('en-CA');
-  const yesterStr = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('en-CA');
+  const yest = new Date(today); yest.setDate(yest.getDate() - 1);
+  const yesterStr = yest.toLocaleDateString('en-CA');
   let current = 0;
   if (unique[0] === todayStr || unique[0] === yesterStr) {
-    let d = new Date(unique[0] + 'T00:00:00');
+    // Use noon to avoid DST midnight edge cases when stepping back one day at a time
+    const d = new Date(unique[0] + 'T12:00:00');
     for (const dateStr of unique) {
-      if (dateStr === d.toLocaleDateString('en-CA')) { current++; d = new Date(d.getTime() - 86400000); }
+      if (dateStr === d.toLocaleDateString('en-CA')) { current++; d.setDate(d.getDate() - 1); }
       else break;
     }
   }
   let best = 0, run = 1;
   for (let i = 1; i < unique.length; i++) {
-    const diff = Math.round((new Date(unique[i - 1] + 'T00:00:00').getTime() - new Date(unique[i] + 'T00:00:00').getTime()) / 86400000);
+    const a = new Date(unique[i - 1] + 'T12:00:00');
+    const b = new Date(unique[i] + 'T12:00:00');
+    const diff = Math.round((a.getTime() - b.getTime()) / 86400000);
     if (diff === 1) { run++; } else { best = Math.max(best, run); run = 1; }
   }
   best = Math.max(best, run);
