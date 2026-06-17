@@ -361,12 +361,12 @@ export default function UrgeScreen() {
   const awardTimerPoint = async (totalSecs: number) => {
     setTimerPointsEarned(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || !isMounted.current) return;
     const now = new Date();
     const localDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const key = `urge_timer_${localDay}`;
     const already = await AsyncStorage.getItem(key);
-    if (already) return;
+    if (already || !isMounted.current) return;
     const { error } = await supabase.from('urge_journal').insert({
       user_id: user.id,
       trigger: 'timer_completed',

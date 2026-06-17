@@ -920,6 +920,8 @@ export default function AccountScreen() {
       await Promise.all([
         supabase.from('urge_journal').delete().eq('user_id', user.id),
         supabase.from('mood_checkins').delete().eq('user_id', user.id),
+        AsyncStorage.removeItem(CHECKLIST_KEY),
+        AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
       ]);
     }
     setResetting(false);
@@ -970,11 +972,16 @@ export default function AccountScreen() {
     if (user) {
       const today = new Date().toISOString().split('T')[0];
       const nowIso = new Date().toISOString();
-      await supabase.rpc('reset_everything', {
+      const { error: rpcError } = await supabase.rpc('reset_everything', {
         p_user_id: user.id,
         p_quit_date: today,
         p_quit_timestamp: nowIso,
       });
+      if (rpcError) {
+        Alert.alert('Reset failed', rpcError.message);
+        setResetting(false);
+        return;
+      }
       await AsyncStorage.multiRemove([
         MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY,
         GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,

@@ -298,7 +298,8 @@ export default function TrackerIndex() {
   const openAddDebt = () => {
     setEditingDebt(null);
     setDebtName(''); setDebtAmount(''); setDebtCategory('other');
-    debtTargetDateBeforeEdit.current = debtTargetDate;
+    debtTargetDateBeforeEdit.current = null;
+    setDebtTargetDate(null);
     setDebtModalVisible(true);
   };
 
@@ -307,7 +308,9 @@ export default function TrackerIndex() {
     setDebtName(debt.name);
     setDebtAmount(String(debt.total_amount));
     setDebtCategory(debt.category);
-    debtTargetDateBeforeEdit.current = debtTargetDate;
+    const perDebtDate = debt.target_date ? new Date(debt.target_date) : null;
+    debtTargetDateBeforeEdit.current = perDebtDate;
+    setDebtTargetDate(perDebtDate);
     setDebtModalVisible(true);
   };
 
@@ -337,9 +340,11 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        const targetDateStr = debtTargetDate ? debtTargetDate.toISOString().split('T')[0] : null;
         if (editingDebt) {
           await supabase.from('debts').update({
             name: debtName.trim(), total_amount: amount, category: debtCategory,
+            target_date: targetDateStr,
           }).eq('id', editingDebt.id);
           await supabase.from('losses').insert({
             user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
@@ -347,12 +352,9 @@ export default function TrackerIndex() {
         } else {
           await supabase.from('debts').insert({
             user_id: user.id, name: debtName.trim(),
-            total_amount: amount, category: debtCategory,
+            total_amount: amount, category: debtCategory, target_date: targetDateStr,
           });
         }
-        await supabase.from('users').update({
-          debt_target_date: debtTargetDate ? debtTargetDate.toISOString().split('T')[0] : null,
-        }).eq('id', user.id);
         hapticMedium();
         closeDebtModal();
         await fetchAll();
@@ -372,6 +374,7 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id);
         await supabase.from('debts').delete().eq('id', deleteDebtTarget.id);
         await supabase.from('losses').insert({
           user_id: user.id, type: 'debt_deleted', amount: deleteDebtTarget.total_amount,
