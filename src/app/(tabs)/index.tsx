@@ -73,31 +73,31 @@ const SHARE_TAGLINES = [
 ];
 
 const BADGE_DEFS = [
-  { type: 'started',  emoji: '🚀', label: 'Started',  days: 0 },
-  { type: '1_hour',   emoji: '⏰', label: '1 Hour',   days: 1/24 },
-  { type: '3_hours',  emoji: '🌤️', label: '3 Hours',  days: 3/24 },
-  { type: '6_hours',  emoji: '☀️', label: '6 Hours',  days: 6/24 },
-  { type: '12_hours', emoji: '🌗', label: '12 Hours', days: 12/24 },
-  { type: '1_day',    emoji: '🌱', label: '1 Day',    days: 1 },
-  { type: '3_days',   emoji: '🌿', label: '3 Days',   days: 3 },
-  { type: '5_days',   emoji: '🕊️', label: '5 Days',   days: 5 },
-  { type: '1_week',   emoji: '⭐', label: '1 Week',   days: 7 },
-  { type: '10_days',  emoji: '✨', label: '10 Days',  days: 10 },
-  { type: '2_weeks',  emoji: '🌙', label: '2 Weeks',  days: 14 },
-  { type: '3_weeks',  emoji: '💫', label: '3 Weeks',  days: 21 },
-  { type: '1_month',  emoji: '🔥', label: '1 Month',  days: 30 },
-  { type: '45_days',  emoji: '⚡', label: '45 Days',  days: 45 },
-  { type: '2_months', emoji: '🏅', label: '2 Months', days: 60 },
-  { type: '3_months', emoji: '🎯', label: '3 Months', days: 90 },
-  { type: '100_days', emoji: '💯', label: '100 Days', days: 100 },
-  { type: '4_months', emoji: '🌊', label: '4 Months', days: 120 },
-  { type: '5_months', emoji: '🦋', label: '5 Months', days: 150 },
-  { type: '6_months', emoji: '💎', label: '6 Months', days: 180 },
-  { type: '200_days', emoji: '🌈', label: '200 Days', days: 200 },
-  { type: '9_months', emoji: '🌸', label: '9 Months', days: 270 },
-  { type: '1_year',   emoji: '🏆', label: '1 Year',   days: 365 },
-  { type: '500_days', emoji: '🔑', label: '500 Days', days: 500 },
-  { type: '18_months',emoji: '🦅', label: '18 Months',days: 548 },
+  { type: 'started',    emoji: '🚀', label: 'Started',    days: 0 },
+  { type: '1_hour',     emoji: '⏰', label: '1 Hour',     days: 1/24 },
+  { type: '3_hours',    emoji: '🌤️', label: '3 Hours',    days: 3/24 },
+  { type: '6_hours',    emoji: '☀️', label: '6 Hours',    days: 6/24 },
+  { type: '12_hours',   emoji: '🌗', label: '12 Hours',   days: 12/24 },
+  { type: '1_day',      emoji: '🌱', label: '1 Day',      days: 1 },
+  { type: '3_days',     emoji: '🌿', label: '3 Days',     days: 3 },
+  { type: '5_days',     emoji: '🕊️', label: '5 Days',     days: 5 },
+  { type: '1_week',     emoji: '⭐', label: '1 Week',     days: 7 },
+  { type: '10_days',    emoji: '✨', label: '10 Days',    days: 10 },
+  { type: '2_weeks',    emoji: '🌙', label: '2 Weeks',    days: 14 },
+  { type: '3_weeks',    emoji: '💫', label: '3 Weeks',    days: 21 },
+  { type: '1_month',    emoji: '🔥', label: '1 Month',    days: 30 },
+  { type: '45_days',    emoji: '⚡', label: '45 Days',    days: 45 },
+  { type: '2_months',   emoji: '🏅', label: '2 Months',   days: 60 },
+  { type: '3_months',   emoji: '🎯', label: '3 Months',   days: 90 },
+  { type: '100_days',   emoji: '💯', label: '100 Days',   days: 100 },
+  { type: '4_months',   emoji: '🌊', label: '4 Months',   days: 120 },
+  { type: '5_months',   emoji: '🦋', label: '5 Months',   days: 150 },
+  { type: '6_months',   emoji: '💎', label: '6 Months',   days: 180 },
+  { type: '200_days',   emoji: '🌈', label: '200 Days',   days: 200 },
+  { type: '9_months',   emoji: '🌸', label: '9 Months',   days: 270 },
+  { type: '1_year',     emoji: '🏆', label: '1 Year',     days: 365 },
+  { type: '500_days',   emoji: '🔑', label: '500 Days',   days: 500 },
+  { type: '18_months',  emoji: '🦅', label: '18 Months',  days: 548 },
   { type: '2_years',    emoji: '👑', label: '2 Years',    days: 730 },
   { type: '27_months',  emoji: '🕯️', label: '27 Months',  days: 821 },
   { type: '2_5_years',  emoji: '⚓', label: '2.5 Years',  days: 912 },
@@ -134,21 +134,41 @@ const BADGE_DEFS = [
 ];
 
 const ACTIVITY_BADGE_DEFS = [
-  { type: 'first_checkin',    emoji: '🧘', label: 'First Check-in',  earned: 'First mood check-in logged.',         pending: 'Log your first mood check-in on the home screen.' },
-  { type: 'checkins_7',           emoji: '🗓️', label: '7 Check-ins',      earned: '7 mood check-ins logged.',                        pending: 'Log 7 mood check-ins to earn this.' },
-  { type: 'checkins_30',          emoji: '📅', label: '30 Check-ins',     earned: '30 mood check-ins logged.',                       pending: 'Log 30 mood check-ins to earn this.' },
-  { type: 'checkins_100',         emoji: '🏅', label: '100 Check-ins',    earned: '100 mood check-ins logged.',                      pending: 'Log 100 mood check-ins to earn this.' },
-  { type: 'first_journal',        emoji: '📝', label: 'First Entry',      earned: 'First urge journal entry logged.',                pending: 'Log an urge from the Support screen to earn this.' },
-  { type: 'urge_overcame_1',      emoji: '🛡️', label: 'Urge Fighter',    earned: 'Overcame your first urge.',                       pending: 'Log an urge you overcame in the Support screen.' },
-  { type: 'urge_overcame_10',     emoji: '💪', label: 'Urge Warrior',    earned: 'Overcame 10 urges.',                              pending: 'Overcome 10 urges to earn this.' },
-  { type: 'urge_overcame_25',     emoji: '⚔️', label: 'Urge Guardian',   earned: 'Overcame 25 urges.',                              pending: 'Overcome 25 urges to earn this.' },
-  { type: 'urge_overcame_50',     emoji: '🔰', label: 'Urge Slayer',     earned: 'Overcame 50 urges.',                              pending: 'Overcome 50 urges to earn this.' },
-  { type: 'loss_first_log',       emoji: '🪞', label: 'Honest Start',    earned: 'Logged your first loss — that took courage.',     pending: 'Log a loss in the Tracker tab to earn this.' },
-  { type: 'first_payment',        emoji: '💰', label: 'First Payment',   earned: 'First debt payment logged.',                      pending: 'Log a payment in the Tracker tab to earn this.' },
-  { type: 'payments_5',           emoji: '📈', label: '5 Payments',      earned: '5 debt payments logged.',                         pending: 'Log 5 payments in the Tracker tab to earn this.' },
-  { type: 'payments_10',          emoji: '💸', label: '10 Payments',     earned: '10 debt payments logged.',                        pending: 'Log 10 payments in the Tracker tab to earn this.' },
-  { type: 'community_first_post', emoji: '🤝', label: 'First Story',     earned: 'Posted your first story to the community.',       pending: 'Share your first post in the Community tab.' },
+  { type: 'first_checkin',    emoji: '🧘', label: 'First Check-in',  earned: 'First mood check-in logged.',                 pending: 'Log your first mood check-in on the home screen.' },
+  { type: 'checkins_7',      emoji: '🗓️', label: '7 Check-ins',     earned: '7 mood check-ins logged.',                    pending: 'Log 7 mood check-ins.' },
+  { type: 'checkins_14',     emoji: '📆', label: '14 Check-ins',    earned: '14 mood check-ins logged.',                   pending: 'Log 14 mood check-ins.' },
+  { type: 'checkins_30',     emoji: '📅', label: '30 Check-ins',    earned: '30 mood check-ins logged.',                   pending: 'Log 30 mood check-ins.' },
+  { type: 'checkins_50',     emoji: '✅', label: '50 Check-ins',    earned: '50 mood check-ins logged.',                   pending: 'Log 50 mood check-ins.' },
+  { type: 'checkins_75',     emoji: '🌟', label: '75 Check-ins',    earned: '75 mood check-ins logged.',                   pending: 'Log 75 mood check-ins.' },
+  { type: 'checkins_100',    emoji: '🏅', label: '100 Check-ins',   earned: '100 mood check-ins logged.',                  pending: 'Log 100 mood check-ins.' },
+  { type: 'checkins_200',    emoji: '🎯', label: '200 Check-ins',   earned: '200 mood check-ins logged.',                  pending: 'Log 200 mood check-ins.' },
+  { type: 'checkins_365',    emoji: '📖', label: '365 Check-ins',   earned: '365 mood check-ins — a full year of tracking.',pending: 'Log 365 mood check-ins.' },
+  { type: 'first_journal',   emoji: '📝', label: 'First Entry',     earned: 'First urge journal entry logged.',            pending: 'Log an urge from the Support screen.' },
+  { type: 'urge_overcame_1', emoji: '🛡️', label: 'Urge Fighter',   earned: 'Overcame your first urge.',                   pending: 'Log an urge you overcame in the Support screen.' },
+  { type: 'urge_overcame_5', emoji: '🌱', label: '5 Urges',        earned: 'Overcame 5 urges.',                           pending: 'Overcome 5 urges.' },
+  { type: 'urge_overcame_10',emoji: '💪', label: '10 Urges',       earned: 'Overcame 10 urges.',                          pending: 'Overcome 10 urges.' },
+  { type: 'urge_overcame_25',emoji: '⚔️', label: '25 Urges',       earned: 'Overcame 25 urges.',                          pending: 'Overcome 25 urges.' },
+  { type: 'urge_overcame_50',emoji: '🔰', label: '50 Urges',       earned: 'Overcame 50 urges.',                          pending: 'Overcome 50 urges.' },
+  { type: 'urge_overcame_75',emoji: '🦅', label: '75 Urges',       earned: 'Overcame 75 urges.',                          pending: 'Overcome 75 urges.' },
+  { type: 'urge_overcame_100',emoji:'🏆', label: '100 Urges',      earned: 'Overcame 100 urges.',                         pending: 'Overcome 100 urges.' },
+  { type: 'loss_first_log',  emoji: '🪞', label: 'Honest Start',   earned: 'Logged your first loss — that took courage.', pending: 'Log a loss in the Tracker tab.' },
+  { type: 'first_payment',   emoji: '💰', label: 'First Payment',  earned: 'First debt payment logged.',                  pending: 'Log a payment in the Tracker tab.' },
+  { type: 'payments_5',      emoji: '📈', label: '5 Payments',     earned: '5 debt payments logged.',                     pending: 'Log 5 payments in the Tracker tab.' },
+  { type: 'payments_10',     emoji: '💸', label: '10 Payments',    earned: '10 debt payments logged.',                    pending: 'Log 10 payments in the Tracker tab.' },
+  { type: 'payments_25',     emoji: '🏦', label: '25 Payments',    earned: '25 debt payments logged.',                    pending: 'Log 25 payments in the Tracker tab.' },
+  { type: 'payments_50',     emoji: '🌿', label: '50 Payments',    earned: '50 debt payments logged.',                    pending: 'Log 50 payments in the Tracker tab.' },
+  { type: 'payments_100',    emoji: '🎖️', label: '100 Payments',   earned: '100 debt payments logged.',                   pending: 'Log 100 payments in the Tracker tab.' },
+  { type: 'community_first_post', emoji: '🤝', label: 'First Story', earned: 'Posted your first story to the community.', pending: 'Share your first post in the Community tab.' },
 ];
+
+const PAYMENT_BADGE_TYPES = ['first_payment', 'payments_5', 'payments_10', 'payments_25', 'payments_50', 'payments_100'];
+const CHECKIN_BADGE_TYPES = ['first_checkin', 'checkins_7', 'checkins_14', 'checkins_30', 'checkins_50', 'checkins_75', 'checkins_100', 'checkins_200', 'checkins_365'];
+const URGE_BADGE_TYPES    = ['first_journal', 'urge_overcame_1', 'urge_overcame_5', 'urge_overcame_10', 'urge_overcame_25', 'urge_overcame_50', 'urge_overcame_75', 'urge_overcame_100'];
+const ACTIVITY_BADGE_THRESHOLDS: Record<string, number> = {
+  first_checkin: 1, checkins_7: 7, checkins_14: 14, checkins_30: 30, checkins_50: 50, checkins_75: 75, checkins_100: 100, checkins_200: 200, checkins_365: 365,
+  first_journal: 1, urge_overcame_1: 1, urge_overcame_5: 5, urge_overcame_10: 10, urge_overcame_25: 25, urge_overcame_50: 50, urge_overcame_75: 75, urge_overcame_100: 100,
+  first_payment: 1, payments_5: 5, payments_10: 10, payments_25: 25, payments_50: 50, payments_100: 100,
+};
 
 const MOODS = ['😢', '😕', '😐', '🙂', '😄'];
 
@@ -683,6 +703,9 @@ interface HomeData {
   savingsGoalIcon: string;
   checkinStreak: { current: number; best: number };
   calendarDays: { iso: string; status: 'clean' | 'relapse' | 'inactive'; mood: number | null }[];
+  moodCount: number;
+  urgesOvercome: number;
+  paymentCount: number;
 }
 
 function fmtLive(amount: number, currency = 'USD') {
@@ -1155,19 +1178,30 @@ export default function HomeScreen() {
     const lossCount = lossCountRes.count ?? 0;
     const communityPostCount = communityPostCountRes.count ?? 0;
     const activityConditions: Record<string, boolean> = {
-      first_checkin:        moodCount >= 1,
-      checkins_7:           moodCount >= 7,
-      checkins_30:          moodCount >= 30,
-      checkins_100:         moodCount >= 100,
-      first_journal:        (urgeRes.count ?? urgeList.length) >= 1,
-      urge_overcame_1:      urgesOvercome >= 1,
-      urge_overcame_10:     urgesOvercome >= 10,
-      urge_overcame_25:     urgesOvercome >= 25,
-      urge_overcame_50:     urgesOvercome >= 50,
+      first_checkin:         moodCount >= 1,
+      checkins_7:            moodCount >= 7,
+      checkins_14:           moodCount >= 14,
+      checkins_30:           moodCount >= 30,
+      checkins_50:           moodCount >= 50,
+      checkins_75:           moodCount >= 75,
+      checkins_100:          moodCount >= 100,
+      checkins_200:          moodCount >= 200,
+      checkins_365:          moodCount >= 365,
+      first_journal:         (urgeRes.count ?? urgeList.length) >= 1,
+      urge_overcame_1:       urgesOvercome >= 1,
+      urge_overcame_5:       urgesOvercome >= 5,
+      urge_overcame_10:      urgesOvercome >= 10,
+      urge_overcame_25:      urgesOvercome >= 25,
+      urge_overcame_50:      urgesOvercome >= 50,
+      urge_overcame_75:      urgesOvercome >= 75,
+      urge_overcame_100:     urgesOvercome >= 100,
       loss_first_log:       lossCount >= 1,
       first_payment:        paymentCount >= 1,
       payments_5:           paymentCount >= 5,
       payments_10:          paymentCount >= 10,
+      payments_25:          paymentCount >= 25,
+      payments_50:          paymentCount >= 50,
+      payments_100:         paymentCount >= 100,
       community_first_post: communityPostCount >= 1,
     };
     const newActivityBadges = ACTIVITY_BADGE_DEFS
@@ -1309,6 +1343,9 @@ export default function HomeScreen() {
       savingsGoal: savingsGoalAmount,
       savingsGoalFor: savingsGoalForRaw ?? '',
       savingsGoalIcon: savingsGoalIconRaw ?? '🎯',
+      moodCount,
+      urgesOvercome,
+      paymentCount,
       checkinStreak: computeCheckinStreak(checkinDatesRes.data ?? []),
       calendarDays: (() => {
         const relapseSet = new Set((calRelapseRes.data ?? []).map((r: { created_at: string }) => new Date(r.created_at).toLocaleDateString('en-CA')));
@@ -1406,7 +1443,12 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!data) return;
-    const lastEarnedIdx = BADGE_DEFS.reduce((acc, b, i) =>
+    const unearnedStart = BADGE_DEFS.findIndex(b => b.days > 0 && !data.earnedBadges.includes(b.type));
+    const visibleBadges = BADGE_DEFS.filter((b, i) => {
+      const earned = b.days === 0 || data.earnedBadges.includes(b.type);
+      return earned || (unearnedStart >= 0 && i >= unearnedStart && i < unearnedStart + 6);
+    });
+    const lastEarnedIdx = visibleBadges.reduce((acc, b, i) =>
       data.earnedBadges.includes(b.type) ? i : acc, -1);
     const targetIdx = lastEarnedIdx >= 0 ? lastEarnedIdx : 0;
     const ITEM_WIDTH = 57 + 18; // badgeItem width + gap
@@ -1816,7 +1858,13 @@ export default function HomeScreen() {
             <Text style={s.milestonesHint}>Tap to celebrate</Text>
           </View>
           <ScrollView ref={badgeScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.badgesRow}>
-            {BADGE_DEFS.map(badge => {
+            {(() => {
+              const unearnedStart = BADGE_DEFS.findIndex(b => b.days > 0 && !data.earnedBadges.includes(b.type));
+              return BADGE_DEFS.filter((badge, i) => {
+                const earned = badge.days === 0 || data.earnedBadges.includes(badge.type);
+                return earned || (unearnedStart >= 0 && i >= unearnedStart && i < unearnedStart + 6);
+              });
+            })().map(badge => {
               // started badge (days: 0) is earned from day 0 — always show as earned
               const earned = badge.days === 0 || data.earnedBadges.includes(badge.type);
               const streakFrac = streakMs / 86400000;
@@ -1894,7 +1942,7 @@ export default function HomeScreen() {
               const earned = data.checklistCompleted;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
-                  onPress={() => { if (earned) { openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Achievement', value: 'All prevention steps completed' }]); } else { const done = Math.round(data.checklistProgress * CHECKLIST_TOTAL); openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Steps completed', value: `${done} of ${CHECKLIST_TOTAL}` }], true, data.checklistProgress, "Complete every step of the prevention checklist in Support."); } }}>
+                  onPress={() => { if (earned) { openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Achievement', value: 'All prevention steps completed' }]); } else { router.push('/(tabs)/urge' as any); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : data.checklistProgress} />
                     <Text style={s.badgeEmoji}>{earned ? '🛡️' : '🔒'}</Text>
@@ -1931,9 +1979,31 @@ export default function HomeScreen() {
                 </Pressable>
               );
             })()}
-            {ACTIVITY_BADGE_DEFS.map(badge => {
+            {(() => {
+              const debtFullyPaid = data.debtItems.length > 0 && data.debtItems.every(d => d.paidAmount >= d.totalAmount);
+              const firstUnearned = (group: string[]) => group.findIndex(t => !data.earnedBadges.includes(t));
+              const firstUnearnedPayment = debtFullyPaid ? -1 : firstUnearned(PAYMENT_BADGE_TYPES);
+              const firstUnearnedCheckin = firstUnearned(CHECKIN_BADGE_TYPES);
+              const firstUnearnedUrge    = firstUnearned(URGE_BADGE_TYPES);
+              const progressiveFilter = (group: string[], firstIdx: number, badge: { type: string }) => {
+                if (data.earnedBadges.includes(badge.type)) return true;
+                const idx = group.indexOf(badge.type);
+                return firstIdx >= 0 && idx >= firstIdx && idx < firstIdx + 2;
+              };
+              return ACTIVITY_BADGE_DEFS.filter(badge => {
+                if (PAYMENT_BADGE_TYPES.includes(badge.type)) return progressiveFilter(PAYMENT_BADGE_TYPES, firstUnearnedPayment, badge);
+                if (CHECKIN_BADGE_TYPES.includes(badge.type)) return progressiveFilter(CHECKIN_BADGE_TYPES, firstUnearnedCheckin, badge);
+                if (URGE_BADGE_TYPES.includes(badge.type))    return progressiveFilter(URGE_BADGE_TYPES, firstUnearnedUrge, badge);
+                return true;
+              });
+            })().map(badge => {
               const earned = data.earnedBadges.includes(badge.type);
               const earnedAt = data.badgeTimestamps[badge.type];
+              const activityCount = CHECKIN_BADGE_TYPES.includes(badge.type) ? data.moodCount
+                : URGE_BADGE_TYPES.includes(badge.type) ? data.urgesOvercome
+                : PAYMENT_BADGE_TYPES.includes(badge.type) ? data.paymentCount
+                : 0;
+              const progress = earned ? 1 : Math.min(1, activityCount / (ACTIVITY_BADGE_THRESHOLDS[badge.type] ?? 1));
               return (
                 <Pressable key={badge.type} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
                   onPress={() => {
@@ -1942,11 +2012,11 @@ export default function HomeScreen() {
                       if (earnedAt) det.unshift({ label: 'Earned on', value: new Date(earnedAt).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
                       openShareCard({ emoji: badge.emoji, label: badge.label }, true, det);
                     } else {
-                      openShareCard({ emoji: badge.emoji, label: badge.label }, true, [{ label: 'How to earn', value: badge.pending }], true, 0, badge.pending);
+                      openShareCard({ emoji: badge.emoji, label: badge.label }, true, [{ label: 'How to earn', value: badge.pending }], true, progress, badge.pending);
                     }
                   }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
-                    <BadgeRing progress={earned ? 1 : 0} />
+                    <BadgeRing progress={progress} />
                     <Text style={s.badgeEmoji}>{earned ? badge.emoji : '🔒'}</Text>
                   </View>
                   <Text style={[s.badgeLabel, !earned && s.badgeLabelLocked]} numberOfLines={2} ellipsizeMode="tail">{badge.label}</Text>
@@ -3258,10 +3328,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderRadius: 16, marginTop: 4, marginBottom: 20, paddingVertical: 4,
   },
   shareCardDetailRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     paddingHorizontal: 16, paddingVertical: 11,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.12)',
   },
-  shareCardDetailLabel: { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
-  shareCardDetailValue: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  shareCardDetailLabel: { fontSize: 13, color: 'rgba(255,255,255,0.55)', flexShrink: 0, marginRight: 12 },
+  shareCardDetailValue: { fontSize: 13, fontWeight: '700', color: '#fff', flex: 1, textAlign: 'right', flexWrap: 'wrap' },
 });
