@@ -236,35 +236,39 @@ export default function TrackerIndex() {
   const fetchAll = useCallback(async () => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { fetchingRef.current = false; return; }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const [debtsRes, paymentsRes, savingsRes, sessionsRes, profileRes, rawGoal, rawFor, rawIcon] = await Promise.all([
-      supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
-      supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
-      supabase.from('losses').select('id, amount, category, note, created_at').eq('user_id', user.id).eq('type', 'session').order('created_at', { ascending: false }),
-      supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, debt_target_date, savings_target_date').eq('id', user.id).maybeSingle(),
-      AsyncStorage.getItem(SAVINGS_GOAL_KEY),
-      AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
-      AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
-    ]);
+      const [debtsRes, paymentsRes, savingsRes, sessionsRes, profileRes, rawGoal, rawFor, rawIcon] = await Promise.all([
+        supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
+        supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
+        supabase.from('losses').select('id, amount, category, note, created_at').eq('user_id', user.id).eq('type', 'session').order('created_at', { ascending: false }),
+        supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, debt_target_date, savings_target_date').eq('id', user.id).maybeSingle(),
+        AsyncStorage.getItem(SAVINGS_GOAL_KEY),
+        AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
+        AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
+      ]);
 
-    setDebts((debtsRes.data ?? []) as Debt[]);
-    setPayments((paymentsRes.data ?? []) as DebtPayment[]);
-    setSavings((savingsRes.data ?? []) as SavingEntry[]);
-    setSessions((sessionsRes.data ?? []) as SessionEntry[]);
-    if (profileRes.data) {
-      setCurrency(profileRes.data.currency ?? 'USD');
-      setWeeklyBet(profileRes.data.weekly_bet ?? null);
-      setQuitTs(profileRes.data.quit_timestamp ?? profileRes.data.quit_date ?? null);
-      setDebtTargetDate(profileRes.data.debt_target_date ? new Date(profileRes.data.debt_target_date) : null);
-      setSavingsTargetDate(profileRes.data.savings_target_date ? new Date(profileRes.data.savings_target_date) : null);
+      setDebts((debtsRes.data ?? []) as Debt[]);
+      setPayments((paymentsRes.data ?? []) as DebtPayment[]);
+      setSavings((savingsRes.data ?? []) as SavingEntry[]);
+      setSessions((sessionsRes.data ?? []) as SessionEntry[]);
+      if (profileRes.data) {
+        setCurrency(profileRes.data.currency ?? 'USD');
+        setWeeklyBet(profileRes.data.weekly_bet ?? null);
+        setQuitTs(profileRes.data.quit_timestamp ?? profileRes.data.quit_date ?? null);
+        setDebtTargetDate(profileRes.data.debt_target_date ? new Date(profileRes.data.debt_target_date) : null);
+        setSavingsTargetDate(profileRes.data.savings_target_date ? new Date(profileRes.data.savings_target_date) : null);
+      }
+      const _rawGoalN = rawGoal ? Number(rawGoal) : null;
+      setSavingsGoal(_rawGoalN !== null && !isNaN(_rawGoalN) ? _rawGoalN : null);
+      setSavingsGoalFor(rawFor ?? '');
+      setSavingsGoalIcon(rawIcon ?? '🎯');
+    } finally {
+      fetchingRef.current = false;
     }
-    const _rawGoalN = rawGoal ? Number(rawGoal) : null;
-    setSavingsGoal(_rawGoalN !== null && !isNaN(_rawGoalN) ? _rawGoalN : null);
-    setSavingsGoalFor(rawFor ?? '');
-    setSavingsGoalIcon(rawIcon ?? '🎯');
   }, []);
 
   useEffect(() => { fetchAll().finally(() => { setLoading(false); initialFetchDone.current = true; fetchingRef.current = false; }); }, [fetchAll]);

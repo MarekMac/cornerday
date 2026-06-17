@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
       // Fetch supporting data in parallel
       const [streakRes, lossesRes, moodRes] = await Promise.all([
         admin.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
-        admin.from('losses').select('type, amount').eq('user_id', user.id),
+        admin.from('losses').select('type, amount').eq('user_id', user.id).in('type', ['loss', 'payment']).limit(500),
         admin.from('mood_checkins').select('mood').eq('user_id', user.id).order('created_at', { ascending: false }).limit(7),
       ]);
 

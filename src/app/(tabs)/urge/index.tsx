@@ -588,6 +588,7 @@ export default function UrgeScreen() {
       };
       await scheduleAllNotifications(prefs, newQuitTimestamp);
     }
+    if (!isMounted.current) return;
     setSlipResetting(false);
     setSlipReset(true);
   };

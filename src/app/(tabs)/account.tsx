@@ -667,7 +667,7 @@ export default function AccountScreen() {
       setTrustedContactName('');
       setTrustedContactPhone('');
     } else {
-      await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone }));
+      await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone, email }));
       setTrustedContactName(name);
       setTrustedContactPhone(phone);
     }
@@ -1022,14 +1022,14 @@ export default function AccountScreen() {
   const executeDeleteAccount = async () => {
     setSigningOut(true);
     try {
-      if (profile?.avatarUrl) {
-        const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
-        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
-      }
       const { error: deleteErr } = await supabase.functions.invoke('delete-account');
       if (deleteErr) {
         Alert.alert('Could not delete account', 'Please try again or contact support.');
         return;
+      }
+      if (profile?.avatarUrl) {
+        const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
+        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
       }
       await AsyncStorage.multiRemove([
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
