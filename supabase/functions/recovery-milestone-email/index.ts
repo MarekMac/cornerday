@@ -118,6 +118,55 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const body = await req.json().catch(() => ({}));
 
+  // Webhook mode: triggered by debt_payments insert for a single user
+  if (body.user_id) {
+    const userId = body.user_id as string;
+
+    const [debtsRes, paymentsRes, userRes] = await Promise.all([
+      supabase.from('debts').select('total_amount').eq('user_id', userId),
+      supabase.from('debt_payments').select('amount').eq('user_id', userId),
+      supabase.from('users').select('email, display_name').eq('id', userId).maybeSingle(),
+    ]);
+
+    const totalLost = ((debtsRes.data ?? []) as { total_amount: number }[]).reduce((s, r) => s + Number(r.total_amount), 0);
+    const totalPaid = ((paymentsRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + Number(r.amount), 0);
+    if (totalLost === 0 || !userRes.data?.email) {
+      return new Response(JSON.stringify({ skipped: 'no debt or email' }), { status: 200 });
+    }
+
+    const recoveryPct = (totalPaid / totalLost) * 100;
+    let sent = 0;
+
+    for (const m of MILESTONES) {
+      if (recoveryPct < m.pct) continue;
+
+      const { data: existing } = await supabase
+        .from('badges').select('id').eq('user_id', userId).eq('badge_type', m.badge).maybeSingle();
+      if (existing) continue;
+
+      const { error: insertError } = await supabase
+        .from('badges')
+        .insert({ user_id: userId, badge_type: m.badge, earned_at: new Date().toISOString() });
+      if (insertError) {
+        if (insertError.code === '23505') continue;
+        return new Response(JSON.stringify({ error: insertError.message }), { status: 500 });
+      }
+
+      const firstName = esc(userRes.data.display_name?.split(' ')?.[0] || 'there');
+      const html = buildHtml(firstName, m, totalPaid, totalLost);
+      const emailRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: FROM_EMAIL, to: [userRes.data.email], subject: `Recovery milestone: ${m.pct}% paid back — CornerDay`, html }),
+      });
+      if (!emailRes.ok) return new Response(JSON.stringify({ error: await emailRes.text() }), { status: 500 });
+      console.log(`Recovery milestone ${m.badge} webhook email sent to ${userId}`);
+      sent++;
+    }
+
+    return new Response(JSON.stringify({ ok: true, mode: 'webhook', sent }), { status: 200 });
+  }
+
   // Direct test mode: send a specific milestone to a specific user using mock amounts
   if (body.direct_user_id) {
     const milestoneIdx = body.milestone_index ?? 1;

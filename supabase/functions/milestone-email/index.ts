@@ -106,6 +106,48 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const body = await req.json().catch(() => ({}));
+
+  // Webhook mode: triggered by streaks table update for a single user
+  if (body.user_id) {
+    const milestone = MILESTONES.find(m => m.days === Number(body.streak));
+    if (!milestone) return new Response(JSON.stringify({ skipped: 'not a milestone day' }), { status: 200 });
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('email, display_name, quit_date, quit_timestamp, notif_milestone')
+      .eq('id', body.user_id)
+      .maybeSingle();
+
+    if (!user?.email || user.notif_milestone === false) {
+      return new Response(JSON.stringify({ skipped: 'no email or notifications off' }), { status: 200 });
+    }
+
+    const { data: existing } = await supabase
+      .from('badges').select('id').eq('user_id', body.user_id).eq('badge_type', milestone.badge).maybeSingle();
+    if (existing) return new Response(JSON.stringify({ skipped: 'already sent' }), { status: 200 });
+
+    const { error: insertError } = await supabase
+      .from('badges')
+      .insert({ user_id: body.user_id, badge_type: milestone.badge, earned_at: new Date().toISOString() });
+    if (insertError) {
+      if (insertError.code === '23505') return new Response(JSON.stringify({ skipped: 'race' }), { status: 200 });
+      return new Response(JSON.stringify({ error: insertError.message }), { status: 500 });
+    }
+
+    const quitMs    = parseQuitMs(user.quit_timestamp, user.quit_date);
+    const totalDays = Math.floor(Math.max(0, Date.now() - quitMs) / 86_400_000);
+    const html      = buildHtml(esc(user.display_name?.split(' ')?.[0] || 'there'), milestone, totalDays);
+
+    const emailRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `${milestone.emoji} You've reached ${milestone.label} clean — CornerDay`, html }),
+    });
+    if (!emailRes.ok) return new Response(JSON.stringify({ error: await emailRes.text() }), { status: 500 });
+    console.log(`Milestone ${milestone.label} webhook email sent to ${body.user_id}`);
+    return new Response(JSON.stringify({ ok: true, mode: 'webhook', milestone: milestone.badge }), { status: 200 });
+  }
 
   const { data: users, error } = await supabase
     .from('users')
