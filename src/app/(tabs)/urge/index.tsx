@@ -252,9 +252,17 @@ export default function UrgeScreen() {
     if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
   }; }, []);
 
+  const [androidKbOffset, setAndroidKbOffset] = useState(0);
+
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => { keyboardVisible.current = true; });
-    const hide  = Keyboard.addListener('keyboardDidHide', () => { keyboardVisible.current = false; });
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      keyboardVisible.current = true;
+      if (Platform.OS === 'android') setAndroidKbOffset(e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardVisible.current = false;
+      if (Platform.OS === 'android') setAndroidKbOffset(0);
+    });
     return () => { show.remove(); hide.remove(); };
   }, []);
 
@@ -376,10 +384,15 @@ export default function UrgeScreen() {
   };
 
   const closeLog = () => {
-    // On Android the modal has animationType='none' so it closes instantly — dismiss keyboard
-    // and close together so the KAV height animation never has a chance to show.
-    Keyboard.dismiss();
-    setLogExpanded(false);
+    if (Platform.OS === 'android') {
+      // Clear offset and close in the same batch so the padding shift is never visible.
+      setAndroidKbOffset(0);
+      setLogExpanded(false);
+      Keyboard.dismiss();
+    } else {
+      Keyboard.dismiss();
+      setLogExpanded(false);
+    }
   };
 
   const resetLogState = () => {
@@ -815,8 +828,8 @@ export default function UrgeScreen() {
 
       {/* Log this moment modal */}
       <Modal visible={logExpanded} transparent animationType={Platform.OS === 'android' ? 'none' : 'fade'} onRequestClose={closeLog}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={s.logModalOverlay} onPress={closeLog}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={[s.logModalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeLog}>
             <Pressable style={s.logModalSheet} onPress={() => {}}>
               {saved ? (
                 <View style={s.savedWrap}>
