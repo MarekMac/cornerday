@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -243,11 +244,18 @@ export default function UrgeScreen() {
 
   const isMounted = useRef(true);
   const closeLogTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyboardVisible = useRef(false);
 
   useEffect(() => { return () => {
     isMounted.current = false;
     if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
   }; }, []);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => { keyboardVisible.current = true; });
+    const hide  = Keyboard.addListener('keyboardDidHide', () => { keyboardVisible.current = false; });
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   // Reset log form state after modal has finished closing
   useEffect(() => { if (!logExpanded) resetLogState(); }, [logExpanded]);
@@ -366,7 +374,20 @@ export default function UrgeScreen() {
     setLogExpanded(true);
   };
 
-  const closeLog = () => setLogExpanded(false);
+  const closeLog = () => {
+    if (Platform.OS === 'android' && keyboardVisible.current) {
+      // Wait for keyboard animation to finish before closing modal to prevent layout-shift flicker
+      let sub: ReturnType<typeof Keyboard.addListener> | null = null;
+      let timer: ReturnType<typeof setTimeout>;
+      const done = () => { sub?.remove(); sub = null; clearTimeout(timer); setLogExpanded(false); };
+      sub = Keyboard.addListener('keyboardDidHide', done);
+      timer = setTimeout(done, 400);
+      Keyboard.dismiss();
+    } else {
+      Keyboard.dismiss();
+      setLogExpanded(false);
+    }
+  };
 
   const resetLogState = () => {
     setSelectedTrigger(null);
@@ -800,10 +821,9 @@ export default function UrgeScreen() {
 
       {/* Log this moment modal */}
       <Modal visible={logExpanded} transparent animationType={Platform.OS === 'android' ? 'none' : 'fade'} onRequestClose={closeLog}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.logModalOverlay} onPress={closeLog}>
             <Pressable style={s.logModalSheet} onPress={() => {}}>
-              <View style={s.logModalHandle} />
               {saved ? (
                 <View style={s.savedWrap}>
                   <Text style={s.savedIcon}>✓</Text>
@@ -812,7 +832,7 @@ export default function UrgeScreen() {
                 </View>
               ) : (
                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                  <Text style={s.logExpandedTitle}>Log this moment</Text>
+                  <Text style={s.logExpandedTitle}>Write in your journal</Text>
                   <View style={s.outcomeRow}>
                     <Pressable
                       style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnGreen]}
@@ -826,7 +846,7 @@ export default function UrgeScreen() {
                     </Pressable>
                   </View>
                   <Text style={s.fieldLabel}>What triggered it?</Text>
-                  <View style={s.chipsWrap}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipsScroll} contentContainerStyle={s.chipsScrollContent}>
                     {TRIGGERS.map(t => (
                       <Pressable
                         key={t.key}
@@ -835,7 +855,7 @@ export default function UrgeScreen() {
                         <Text style={[s.chipTxt, selectedTrigger === t.key && s.chipTxtActive]}>{t.label}</Text>
                       </Pressable>
                     ))}
-                  </View>
+                  </ScrollView>
                   {selectedTrigger === 'other' && (
                     <TextInput
                       style={s.customInput}
@@ -856,7 +876,7 @@ export default function UrgeScreen() {
                         <Text style={s.fieldLabel}>
                           What helped? <Text style={s.optional}>(optional)</Text>
                         </Text>
-                        <View style={s.chipsWrap}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipsScroll} contentContainerStyle={s.chipsScrollContent}>
                           {opts.map(o => (
                             <Pressable
                               key={o.key}
@@ -867,7 +887,7 @@ export default function UrgeScreen() {
                               </Text>
                             </Pressable>
                           ))}
-                        </View>
+                        </ScrollView>
                       </View>
                     );
                   })()}
@@ -1511,6 +1531,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   fieldLabel: { fontSize: 13, fontWeight: '600', color: c.textBody, marginBottom: 10 },
   optional: { fontWeight: '400', color: c.textFaint },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  chipsScroll: { marginBottom: 16 },
+  chipsScrollContent: { flexDirection: 'row', gap: 8, paddingRight: 4 },
   chip: {
     borderRadius: 20, paddingVertical: 7, paddingHorizontal: 14,
     backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: c.borderLight,
