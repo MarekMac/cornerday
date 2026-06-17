@@ -721,10 +721,11 @@ export default function TrackerIndex() {
               trigger: null,
             });
           }
-          await supabase.from('losses').insert({
+          const { error: journalErr } = await supabase.from('losses').insert({
             user_id: user.id, type: 'debt_paid_off', amount: Number(quickPayDebt.total_amount),
             category: 'Debt', note: quickPayDebt.name,
           });
+          if (journalErr) console.warn('[saveQuickPay] journal insert failed:', journalErr.message);
         }
         hapticMedium();
         closeQuickPay();

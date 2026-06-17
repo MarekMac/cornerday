@@ -349,6 +349,7 @@ export default function UrgeScreen() {
     fetchMotivation();
     setCheckedPlanItems([]);
     AsyncStorage.getItem(CHECKLIST_KEY).then(raw => {
+      if (!isMounted.current) return;
       try {
         const data = raw ? JSON.parse(raw) : {};
         setChecklistCount(Object.values(data).filter(Boolean).length);
@@ -374,6 +375,7 @@ export default function UrgeScreen() {
       note: `Completed ${Math.round(totalSecs / 60)}-minute urge timer`,
     });
     if (!error) {
+      if (!isMounted.current) return;
       await AsyncStorage.setItem(key, '1');
     } else {
       console.warn('awardTimerPoint insert failed:', error.message);

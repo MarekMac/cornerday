@@ -665,6 +665,15 @@ export default function AccountScreen() {
     const name = contactNameInput.trim();
     const phone = contactPhoneInput.trim();
     const email = contactEmailInput.trim().toLowerCase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error: dbErr } = await supabase.from('users').update({
+        trusted_contact_name: name || null,
+        trusted_contact_phone: phone || null,
+        trusted_contact_email: email || null,
+      }).eq('id', user.id);
+      if (dbErr) { Alert.alert('Could not save contact', 'Please try again.'); return; }
+    }
     if (!name && !phone) {
       await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
       setTrustedContactName('');
@@ -675,14 +684,6 @@ export default function AccountScreen() {
       setTrustedContactPhone(phone);
     }
     setTrustedContactEmail(email);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('users').update({
-        trusted_contact_name: name || null,
-        trusted_contact_phone: phone || null,
-        trusted_contact_email: email || null,
-      }).eq('id', user.id);
-    }
     setShowContactModal(false);
   };
 
@@ -796,7 +797,8 @@ export default function AccountScreen() {
         if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
       }
 
-      await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
+      const { error: dbError } = await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
+      if (dbError) throw dbError;
       setProfile(prev => prev ? { ...prev, avatarUrl: publicUrl } : prev);
       setGlobalAvatarUrl(publicUrl);
     } catch (err: any) {
