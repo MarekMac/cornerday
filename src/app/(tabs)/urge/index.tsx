@@ -641,6 +641,36 @@ export default function UrgeScreen() {
           <View style={s.iconSeparator} />
           </View>
 
+          {/* Your why */}
+          <View style={s.whyCard}>
+            <View style={s.whyInner}>
+              <View style={s.whyText}>
+                <Text style={s.whyLbl}>Remember your why</Text>
+                {motivations.map((m, i) => (
+                  <View key={i} style={s.whyRow}>
+                    <Text style={s.whyEmoji}>{m.emoji}</Text>
+                    <Text style={s.whyVal}>{m.label}</Text>
+                  </View>
+                ))}
+              </View>
+              <Pressable onPress={pickMotivationPhoto} style={s.whyPhotoBtn}>
+                {motivationPhoto ? (
+                  <View>
+                    <Image source={{ uri: motivationPhoto }} style={s.whyPhoto} />
+                    <View style={s.whyPhotoBadge}>
+                      <Text style={s.whyPhotoBadgeIcon}>📷</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={s.whyPhotoEmpty}>
+                    <Text style={{ fontSize: 20 }}>📷</Text>
+                    <Text style={s.whyPhotoEmptyTxt}>Add photo</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          </View>
+
           {/* Checklist progress button */}
           <Pressable
             style={({ pressed }) => [s.checklistBtn, pressed && { opacity: 0.8 }]}
@@ -712,14 +742,6 @@ export default function UrgeScreen() {
             </View>
           )}
 
-          {/* Log this moment */}
-          <Pressable
-            style={({ pressed }) => [s.logNowBtn, pressed && { opacity: 0.8 }]}
-            onPress={() => openLog('overcame')}>
-            <Text style={s.logNowBtnTxt}>✍️  Log this moment</Text>
-            <Text style={s.logNowBtnSub}>Record a trigger, urge, or slip in your journal</Text>
-          </Pressable>
-
           {/* Urge pattern insight */}
           {urgeInsight && (
             <View style={s.insightCard}>
@@ -729,37 +751,6 @@ export default function UrgeScreen() {
               </Text>
             </View>
           )}
-
-          {/* Your why */}
-          <View style={s.whyCard}>
-            <View style={s.whyInner}>
-              <View style={s.whyText}>
-                <Text style={s.whyLbl}>Remember your why</Text>
-                {motivations.map((m, i) => (
-                  <View key={i} style={s.whyRow}>
-                    <Text style={s.whyEmoji}>{m.emoji}</Text>
-                    <Text style={s.whyVal}>{m.label}</Text>
-                  </View>
-                ))}
-              </View>
-              <Pressable onPress={pickMotivationPhoto} style={s.whyPhotoBtn}>
-                {motivationPhoto ? (
-                  <View>
-                    <Image source={{ uri: motivationPhoto }} style={s.whyPhoto} />
-                    <View style={s.whyPhotoBadge}>
-                      <Text style={s.whyPhotoBadgeIcon}>📷</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={s.whyPhotoEmpty}>
-                    <Text style={{ fontSize: 20 }}>📷</Text>
-                    <Text style={s.whyPhotoEmptyTxt}>Add photo</Text>
-                  </View>
-                )}
-              </Pressable>
-            </View>
-          </View>
-
 
           {/* Crisis resources */}
           <View style={s.crisisCard}>
@@ -796,7 +787,7 @@ export default function UrgeScreen() {
       </KeyboardAvoidingView>
 
       {/* Log this moment modal */}
-      <Modal visible={logExpanded} transparent animationType="fade" onRequestClose={closeLog}>
+      <Modal visible={logExpanded} transparent animationType={Platform.OS === 'android' ? 'none' : 'fade'} onRequestClose={closeLog}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Pressable style={s.logModalOverlay} onPress={closeLog}>
             <Pressable style={s.logModalSheet} onPress={() => {}}>
