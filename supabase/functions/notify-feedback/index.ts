@@ -6,18 +6,38 @@
 //   RESEND_API_KEY   — from resend.com
 //   ADMIN_EMAIL      — where feedback emails go (e.g. marekmac.ski@gmail.com)
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 const TYPE_LABEL: Record<string, string> = {
   bug:     '🐛 Bug Report',
   feature: '✨ Feature Request',
   general: '💬 General Feedback',
 };
 
+const MAX_MESSAGE_LENGTH = 5000;
+
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
 
 Deno.serve(async (req: Request) => {
   try {
-    const { type, message, app_version, user_email } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401 });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401 });
+    }
+
+    const { type, message, app_version } = await req.json();
+    const user_email = user.email ?? null;
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const adminEmail   = Deno.env.get('ADMIN_EMAIL') ?? 'marekmac.ski@gmail.com';
@@ -27,8 +47,12 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, skipped: 'no_resend_key' }), { status: 200 });
     }
 
-    if (!message) {
+    if (!message || typeof message !== 'string') {
       return new Response(JSON.stringify({ ok: false, error: 'missing message' }), { status: 400 });
+    }
+
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return new Response(JSON.stringify({ ok: false, error: 'message too long' }), { status: 400 });
     }
 
     const typeLabel  = TYPE_LABEL[type] ?? type;

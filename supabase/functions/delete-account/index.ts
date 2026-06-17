@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       adminClient.from('community_posts').delete().eq('user_id', user.id),
       adminClient.from('community_comments').delete().eq('user_id', user.id),
       adminClient.from('community_reactions').delete().eq('user_id', user.id),
-      adminClient.from('community_saves').delete().eq('user_id', user.id),
+      adminClient.from('community_bookmarks').delete().eq('user_id', user.id),
     ]);
 
     // partner_messages reference partner_links (not users directly) — delete chain
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id);
     if (links && links.length > 0) {
       const linkIds = links.map((l: { id: string }) => l.id);
-      await adminClient.from('partner_messages').delete().in('partner_link_id', linkIds);
+      await adminClient.from('partner_messages').delete().in('link_id', linkIds);
       await adminClient.from('partner_links').delete().eq('user_id', user.id);
     }
 

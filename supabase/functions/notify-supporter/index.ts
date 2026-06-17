@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: link } = await sb
     .from('partner_links')
-    .select('id, token, supporter_email, notify_urge, notify_relapse, notify_milestone, last_urge_notify_at, urge_notify_count_today, urge_notify_date')
+    .select('id, token, supporter_email, notify_urge, notify_relapse, notify_milestone')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -138,20 +138,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (type === 'urge') {
-    const today = new Date().toISOString().split('T')[0];
-    const countToday = link.urge_notify_date === today ? (link.urge_notify_count_today ?? 0) : 0;
-
-    if (link.last_urge_notify_at) {
-      const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
-      if (new Date(link.last_urge_notify_at).getTime() > twoHoursAgo) {
-        return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'rate_limited' }), {
-          headers: { ...CORS, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    if (countToday >= 3) {
-      return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'daily_limit' }), {
+    const { data: claimed } = await sb.rpc('claim_urge_notify_slot', { p_link_id: link.id });
+    if (!claimed) {
+      return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'rate_limited' }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
     }
@@ -193,16 +182,6 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ ok: false, error: err }), {
       status: 502, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
-  }
-
-  if (type === 'urge') {
-    const today = new Date().toISOString().split('T')[0];
-    const countToday = link.urge_notify_date === today ? (link.urge_notify_count_today ?? 0) : 0;
-    await sb.from('partner_links').update({
-      last_urge_notify_at: new Date().toISOString(),
-      urge_notify_date: today,
-      urge_notify_count_today: countToday + 1,
-    }).eq('id', link.id);
   }
 
   return new Response(JSON.stringify({ ok: true }), {

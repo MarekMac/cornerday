@@ -1632,6 +1632,18 @@ export default function HomeScreen() {
         supabase.from('users').update({ quit_timestamp: prevQuit, quit_date: prevDate }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: prevStreakDays, streak_start_date: prevDate }).eq('user_id', user.id),
       ]);
+      // Remove the streak_reset loss row that was created by doRelapse
+      const { data: resetRow } = await supabase
+        .from('losses')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('type', 'streak_reset')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (resetRow?.id) {
+        await supabase.from('losses').delete().eq('id', resetRow.id);
+      }
       await AsyncStorage.removeItem(SHIELD_UNDO_KEY);
       setShieldUndo(null);
       // Restore badge/notification flags so milestones can re-fire
@@ -1807,11 +1819,16 @@ export default function HomeScreen() {
                       if (d) det.push({ label: 'Started on', value: new Date(d).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
                     } else {
                       if (earnedAt) det.push({ label: 'Earned on', value: new Date(earnedAt).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
-                      const streakDaysNow = streakMs / 86400000;
-                      det.push({ label: 'Current streak', value: formatStreakFull(streakMs) });
+                      const currentQuitTs = data.quitDate ? parseQuitDate(data.quitDate).getTime() : 0;
+                      const badgeIsCurrentStreak = earnedAt ? new Date(earnedAt).getTime() >= currentQuitTs : false;
+                      if (badgeIsCurrentStreak) {
+                        det.push({ label: 'Current streak', value: formatStreakFull(streakMs) });
+                      }
                       if (dailyRate > 0) {
                         det.push({ label: 'Saved at milestone', value: fmt(badge.days * dailyRate, data.currency) });
-                        det.push({ label: 'Total saved', value: fmt((streakMs / 86400000) * dailyRate, data.currency), highlight: true });
+                        if (badgeIsCurrentStreak) {
+                          det.push({ label: 'Total saved', value: fmt((streakMs / 86400000) * dailyRate, data.currency), highlight: true });
+                        }
                       }
                     }
                     openShareCard(

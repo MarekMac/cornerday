@@ -82,12 +82,24 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'messages required' }, 400);
     }
 
+    const MAX_TURNS = 40;
+    const MAX_USER_MSG_CHARS = 2000;
+
+    if (messages.length > MAX_TURNS) {
+      return json({ error: 'Conversation too long. Please start a new chat.' }, 429);
+    }
+
     const validatedMessages = messages.filter(
       (m): m is { role: 'user' | 'assistant'; content: string } =>
         (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
     );
     if (validatedMessages.length === 0) {
       return json({ error: 'no valid messages' }, 400);
+    }
+
+    const lastUserMsg = validatedMessages.filter(m => m.role === 'user').pop();
+    if (lastUserMsg && lastUserMsg.content.length > MAX_USER_MSG_CHARS) {
+      return json({ error: 'Message too long' }, 400);
     }
 
     const isFirstTurn = validatedMessages.length === 1;

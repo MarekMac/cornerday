@@ -1005,33 +1005,23 @@ export default function AccountScreen() {
   const executeDeleteAccount = async () => {
     setSigningOut(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await Promise.all([
-          supabase.from('losses').delete().eq('user_id', user.id),
-          supabase.from('streaks').delete().eq('user_id', user.id),
-          supabase.from('badges').delete().eq('user_id', user.id),
-          supabase.from('mood_checkins').delete().eq('user_id', user.id),
-          supabase.from('urge_journal').delete().eq('user_id', user.id),
-          supabase.from('debt_payments').delete().eq('user_id', user.id),
-          supabase.from('debts').delete().eq('user_id', user.id),
-        ]);
-        if (profile?.avatarUrl) {
-          const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
-          if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
-        }
-        await supabase.from('users').delete().eq('id', user.id);
-        const { error: deleteAuthErr } = await supabase.functions.invoke('delete-account');
-        if (deleteAuthErr) console.warn('[deleteAccount] auth user not removed:', deleteAuthErr);
-        await AsyncStorage.multiRemove([
-          ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
-          MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY,
-          SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY,
-          TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY,
-        ]);
+      if (profile?.avatarUrl) {
+        const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
+        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
       }
-    } finally {
+      const { error: deleteErr } = await supabase.functions.invoke('delete-account');
+      if (deleteErr) {
+        Alert.alert('Could not delete account', 'Please try again or contact support.');
+        return;
+      }
+      await AsyncStorage.multiRemove([
+        ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
+        MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY,
+        SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY,
+        TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY,
+      ]);
       try { await supabase.auth.signOut(); } catch (_e) {}
+    } finally {
       setSigningOut(false);
     }
   };

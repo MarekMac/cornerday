@@ -358,7 +358,6 @@ export default function PostDetail() {
         const { error } = await supabase.from('community_comments').delete().eq('id', deleteTarget.id);
         if (error) { Alert.alert('Could not delete', error.message); return; }
         setComments(prev => prev.filter(c => c.id !== deleteTarget.id));
-        setPost(p => p ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p);
         setDeleteTarget(null);
       }
     } finally {
