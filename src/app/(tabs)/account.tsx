@@ -886,16 +886,13 @@ export default function AccountScreen() {
       const clamped = date > now ? now : date;
       const iso = clamped.toISOString();
       const dateOnly = iso.split('T')[0];
-      const { error } = await supabase.from('users').update({
-        quit_timestamp: iso,
-        quit_date: dateOnly,
-      }).eq('id', user.id);
+      const { error } = await supabase.rpc('reset_streak', {
+        p_user_id: user.id,
+        p_quit_date: dateOnly,
+        p_quit_timestamp: iso,
+      });
       if (error) { Alert.alert('Could not save date', error.message); setSaving(false); return; }
-      await Promise.all([
-        supabase.from('streaks').update({ streak_start_date: dateOnly, current_streak: 0 }).eq('user_id', user.id),
-        supabase.from('badges').delete().eq('user_id', user.id),
-        AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]),
-      ]);
+      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
       await supabase.from('losses').insert({
         user_id: user.id, type: 'quit_date_changed', amount: 0,
         category: 'Account', note: iso,
@@ -963,28 +960,16 @@ export default function AccountScreen() {
     if (user) {
       const today = new Date().toISOString().split('T')[0];
       const nowIso = new Date().toISOString();
-      await Promise.all([
-        supabase.from('mood_checkins').delete().eq('user_id', user.id),
-        supabase.from('urge_journal').delete().eq('user_id', user.id),
-        supabase.from('badges').delete().eq('user_id', user.id),
-        supabase.from('losses').delete().eq('user_id', user.id),
-        supabase.from('debts').delete().eq('user_id', user.id),
-        supabase.from('debt_payments').delete().eq('user_id', user.id),
-        supabase.from('game_scores').delete().eq('user_id', user.id),
-        supabase.from('users').update({ quit_date: today, quit_timestamp: nowIso }).eq('id', user.id),
-        supabase.from('streaks').update({ current_streak: 0, longest_streak: 0, streak_start_date: today }).eq('user_id', user.id),
-        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
-        AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
-        AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
-        AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
-        AsyncStorage.removeItem(CHECKLIST_KEY),
-        AsyncStorage.removeItem(CUSTOM_MILESTONE_CELEBRATED_KEY),
-        AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY),
-        AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY),
-        AsyncStorage.removeItem(SAVINGS_GOAL_KEY),
-        AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY),
-        AsyncStorage.removeItem(SAVINGS_GOAL_ICON_KEY),
-        AsyncStorage.removeItem(GAME_BESTS_STORAGE_KEY),
+      await supabase.rpc('reset_everything', {
+        p_user_id: user.id,
+        p_quit_date: today,
+        p_quit_timestamp: nowIso,
+      });
+      await AsyncStorage.multiRemove([
+        MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY,
+        GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
+        URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY,
+        SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
       ]);
       // Seed journal with a fresh start entry
       await supabase.from('losses').insert({

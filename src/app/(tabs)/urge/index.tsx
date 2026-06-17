@@ -496,12 +496,13 @@ export default function UrgeScreen() {
     if (user) {
       const today = new Date().toISOString().split('T')[0];
       const newQuitTimestamp = new Date().toISOString();
-      await Promise.all([
-        supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
-        supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
-        supabase.from('badges').delete().eq('user_id', user.id),
-        AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]),
-      ]);
+      const { error: rpcError } = await supabase.rpc('reset_streak', {
+        p_user_id: user.id,
+        p_quit_date: today,
+        p_quit_timestamp: newQuitTimestamp,
+      });
+      if (rpcError) console.warn('[doStreakReset] rpc error:', rpcError.message);
+      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
       notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
 
       const { data: prefsRow } = await supabase

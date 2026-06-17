@@ -1569,21 +1569,20 @@ export default function HomeScreen() {
         const today = todayStr();
         const newQuitTimestamp = new Date().toISOString();
         const days = streakDays;
-        const results = await Promise.all([
-          supabase.from('users').update({ quit_date: today, quit_timestamp: newQuitTimestamp }).eq('id', user.id),
-          supabase.from('streaks').update({ current_streak: 0, streak_start_date: today }).eq('user_id', user.id),
-          supabase.from('badges').delete().eq('user_id', user.id),
-          supabase.from('losses').insert({
-            user_id: user.id, type: 'streak_reset', amount: 0,
-            category: 'Streak Reset',
-            note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
-          }),
-        ]);
-        const dbError = results.find(r => r.error)?.error;
-        if (dbError) {
-          Alert.alert('Could not reset streak', dbError.message);
+        const { error: rpcError } = await supabase.rpc('reset_streak', {
+          p_user_id: user.id,
+          p_quit_date: today,
+          p_quit_timestamp: newQuitTimestamp,
+        });
+        if (rpcError) {
+          Alert.alert('Could not reset streak', rpcError.message);
           return;
         }
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'streak_reset', amount: 0,
+          category: 'Streak Reset',
+          note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
+        });
         // Save shield undo state if shield is enabled
         if (shieldEnabled && data?.quitDate) {
           const undoData = { prevQuit: data.quitDate, prevStreakDays: days, expiresAt: Date.now() + 24 * 60 * 60 * 1000 };
