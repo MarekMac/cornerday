@@ -32,12 +32,13 @@ import PreferencesIllustration from '@/components/PreferencesIllustration';
 import * as Notifications from 'expo-notifications';
 import * as StoreReview from 'expo-store-review';
 import { supabase } from '@/lib/supabase';
+import { parseQuitDate } from '@/lib/parseQuitDate';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNotification } from '@/lib/notifications';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY, MOTIVATION_PHOTO_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY, MOTIVATION_PHOTO_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
@@ -449,14 +450,6 @@ function todayStr() {
   return `${y}-${m}-${d}`;
 }
 
-function parseQuitDate(quitDate: string): Date {
-  // Date-only strings (no time) must be parsed as local midnight, not UTC midnight
-  if (/^\d{4}-\d{2}-\d{2}$/.test(quitDate)) {
-    const [y, mo, d] = quitDate.split('-').map(Number);
-    return new Date(y, mo - 1, d);
-  }
-  return new Date(quitDate);
-}
 
 function localMidnight(): string {
   const now = new Date();
@@ -1024,7 +1017,7 @@ export default function HomeScreen() {
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
-      supabase.from('urge_journal').select('created_at, outcome').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200),
+      supabase.from('urge_journal').select('created_at, outcome', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
       supabase.from('mood_checkins').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
@@ -1157,7 +1150,7 @@ export default function HomeScreen() {
       checkins_7:           moodCount >= 7,
       checkins_30:          moodCount >= 30,
       checkins_100:         moodCount >= 100,
-      first_journal:        urgeList.length >= 1,
+      first_journal:        (urgeRes.count ?? urgeList.length) >= 1,
       urge_overcame_1:      urgesOvercome >= 1,
       urge_overcame_10:     urgesOvercome >= 10,
       urge_overcame_25:     urgesOvercome >= 25,
@@ -1177,23 +1170,21 @@ export default function HomeScreen() {
     }
 
     // Savings goal badges
-    const [savingsGoalRaw, savingsGoalForRaw, savingsGoalIconRaw, checklistRaw, checklistBadgeSent, goalSetBadgeSent, goalReachedBadgeSent] = await Promise.all([
+    const [savingsGoalRaw, savingsGoalForRaw, savingsGoalIconRaw, checklistRaw, checklistBadgeSent, goalReachedBadgeSent] = await Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
       AsyncStorage.getItem(CHECKLIST_KEY),
       AsyncStorage.getItem(CHECKLIST_BADGE_SENT_KEY),
-      AsyncStorage.getItem(GOAL_SET_BADGE_SENT_KEY),
       AsyncStorage.getItem(GOAL_REACHED_BADGE_SENT_KEY),
     ]);
     const _rawGoal = savingsGoalRaw ? Number(savingsGoalRaw) : null;
     const savingsGoalAmount = _rawGoal !== null && !isNaN(_rawGoal) ? _rawGoal : null;
     const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
-    if (savingsGoalAmount && !goalSetBadgeSent) {
+    if (savingsGoalAmount && !earnedBadges.includes('goal_set')) {
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_set' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: 0, category: 'Milestone', note: '📍 Goal Setter badge earned' });
-      await AsyncStorage.setItem(GOAL_SET_BADGE_SENT_KEY, '1');
       earnedBadges.push('goal_set');
       setCelebrationBadge({
         emoji: '📍', label: 'Goal Setter',
@@ -1600,7 +1591,7 @@ export default function HomeScreen() {
           setShieldUndo(undoData);
         }
         // Clear AsyncStorage badge/notification flags so everything resets cleanly after a relapse
-        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY]);
+        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         // Reschedule notifications against the new quit timestamp
         const { data: prefsRow } = await supabase
           .from('users')

@@ -150,14 +150,18 @@ Deno.serve(async (req: Request) => {
   }
 
   if (req.method === 'POST') {
-    // Email subscription: body has `email` key → save supporter_email
-    let email = '';
+    // Parse body once — JSON or form-encoded
     const ct = req.headers.get('content-type') ?? '';
-    let rawBody: Record<string, unknown> = {};
+    let parsedBody: Record<string, unknown> = {};
     if (ct.includes('application/json')) {
-      rawBody = await req.json().catch(() => ({}));
+      parsedBody = await req.json().catch(() => ({}));
+    } else {
+      const form = await req.formData().catch(() => new FormData());
+      parsedBody = { email: form.get('email') ?? '', message: form.get('message') ?? '' };
     }
-    email = String(rawBody.email ?? '').trim().toLowerCase();
+
+    // Email subscription: body has `email` key → save supporter_email
+    const email = String(parsedBody.email ?? '').trim().toLowerCase();
     if (email) {
       const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
       if (!emailValid) {
@@ -171,12 +175,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Message: body has `message` key (or form-encoded)
-    let message = String(rawBody.message ?? '').trim().slice(0, 200);
-    if (!message && !ct.includes('application/json')) {
-      const form = await req.formData().catch(() => new FormData());
-      message = String(form.get('message') ?? '').trim().slice(0, 200);
-    }
+    // Message: body has `message` key
+    const message = String(parsedBody.message ?? '').trim().slice(0, 200);
 
     if (message) {
       const { error: insertErr } = await sb.from('partner_messages').insert({ link_id: link.id, message });

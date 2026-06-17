@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { parseQuitDate } from '@/lib/parseQuitDate';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
@@ -122,13 +123,6 @@ function debtProgressColor(pct: number): string {
   return '#c0392b';
 }
 
-function parseQuitDate(quitDate: string): Date {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(quitDate)) {
-    const [y, mo, d] = quitDate.split('-').map(Number);
-    return new Date(y, mo - 1, d);
-  }
-  return new Date(quitDate);
-}
 
 function streakDays(quitTimestamp: string | null) {
   if (!quitTimestamp) return 0;

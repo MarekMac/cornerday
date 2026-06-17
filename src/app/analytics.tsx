@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { parseQuitDate } from '@/lib/parseQuitDate';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -62,13 +63,6 @@ function computeCheckinStreak(rows: { created_at: string }[]): { current: number
   return { current, best };
 }
 
-function parseQuitDate(quitDate: string): Date {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(quitDate)) {
-    const [y, m, d] = quitDate.split('-').map(Number);
-    return new Date(y, m - 1, d);
-  }
-  return new Date(quitDate);
-}
 
 function heroTime(ms: number): [string, string, string | null, string | null] {
   const mins   = Math.floor(ms / 60000);
