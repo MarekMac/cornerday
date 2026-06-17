@@ -82,7 +82,15 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'messages required' }, 400);
     }
 
-    const isFirstTurn = messages.length === 1;
+    const validatedMessages = messages.filter(
+      (m): m is { role: 'user' | 'assistant'; content: string } =>
+        (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
+    );
+    if (validatedMessages.length === 0) {
+      return json({ error: 'no valid messages' }, 400);
+    }
+
+    const isFirstTurn = validatedMessages.length === 1;
 
     // Always verify premium status
     const { data: profile } = await admin
@@ -97,7 +105,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Premium required' }, 403);
     }
 
-    let finalMessages = messages as { role: string; content: string }[];
+    let finalMessages: { role: string; content: string }[] = validatedMessages;
 
     if (isFirstTurn) {
       // Fetch supporting data in parallel
@@ -177,8 +185,8 @@ Deno.serve(async (req: Request) => {
       contextLines.push(`[End context]`);
 
       const contextBlock = contextLines.join('\n');
-      const firstContent = `${contextBlock}\n\n${messages[0].content}`;
-      finalMessages = [{ role: 'user', content: firstContent }, ...messages.slice(1)];
+      const firstContent = `${contextBlock}\n\n${validatedMessages[0].content}`;
+      finalMessages = [{ role: 'user', content: firstContent }, ...validatedMessages.slice(1)];
     }
 
     const upstream = await callAnthropic(finalMessages);

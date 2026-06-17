@@ -40,6 +40,12 @@ Deno.serve(async (req) => {
     return new Response('OK', { status: 200 });
   }
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(appUserId)) {
+    console.warn(`[revenuecat-webhook] invalid app_user_id format: ${appUserId}`);
+    return new Response('OK', { status: 200 });
+  }
+
   const isPremium = PREMIUM_EVENTS.has(eventType)
     ? true
     : LAPSE_EVENTS.has(eventType)
@@ -56,14 +62,20 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('users')
     .update({ is_premium: isPremium })
-    .eq('id', appUserId);
+    .eq('id', appUserId)
+    .select('id');
 
   if (error) {
     console.error('[revenuecat-webhook] update error:', error.message);
     return new Response('Internal error', { status: 500 });
+  }
+
+  if (!updated || updated.length === 0) {
+    console.warn(`[revenuecat-webhook] no user row found for app_user_id=${appUserId} (event=${eventType})`);
+    return new Response('OK', { status: 200 });
   }
 
   console.log(`[revenuecat-webhook] ${eventType} → user ${appUserId} → is_premium=${isPremium}`);

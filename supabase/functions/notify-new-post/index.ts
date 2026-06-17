@@ -26,7 +26,14 @@ interface ExpoPushMessage {
   data?: Record<string, unknown>;
 }
 
+const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET')!;
+
 Deno.serve(async (req: Request) => {
+  const auth = req.headers.get('Authorization') ?? '';
+  if (auth !== `Bearer ${WEBHOOK_SECRET}`) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
+  }
+
   try {
     const payload: WebhookPayload = await req.json();
 

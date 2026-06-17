@@ -1010,7 +1010,7 @@ export default function HomeScreen() {
     fetchingRef.current = true;
     try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { fetchingRef.current = false; return; }
+    if (!user) return;
 
     const today = todayStr();
 

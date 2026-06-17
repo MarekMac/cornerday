@@ -18,11 +18,39 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    // Delete the auth user using the service role key
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    // Explicitly delete all user PII — don't rely solely on cascade
+    await Promise.all([
+      adminClient.from('urge_journal').delete().eq('user_id', user.id),
+      adminClient.from('mood_checkins').delete().eq('user_id', user.id),
+      adminClient.from('badges').delete().eq('user_id', user.id),
+      adminClient.from('losses').delete().eq('user_id', user.id),
+      adminClient.from('debt_payments').delete().eq('user_id', user.id),
+      adminClient.from('debts').delete().eq('user_id', user.id),
+      adminClient.from('streaks').delete().eq('user_id', user.id),
+      adminClient.from('community_posts').delete().eq('user_id', user.id),
+      adminClient.from('community_comments').delete().eq('user_id', user.id),
+      adminClient.from('community_reactions').delete().eq('user_id', user.id),
+      adminClient.from('community_saves').delete().eq('user_id', user.id),
+    ]);
+
+    // partner_messages reference partner_links (not users directly) — delete chain
+    const { data: links } = await adminClient
+      .from('partner_links')
+      .select('id')
+      .eq('user_id', user.id);
+    if (links && links.length > 0) {
+      const linkIds = links.map((l: { id: string }) => l.id);
+      await adminClient.from('partner_messages').delete().in('partner_link_id', linkIds);
+      await adminClient.from('partner_links').delete().eq('user_id', user.id);
+    }
+
+    await adminClient.from('users').delete().eq('id', user.id);
+
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
