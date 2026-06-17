@@ -33,7 +33,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { setImagePickerActive } from '@/lib/image-picker-active';
 import { supabase } from '@/lib/supabase';
@@ -893,7 +893,7 @@ export default function AccountScreen() {
       await Promise.all([
         supabase.from('streaks').update({ streak_start_date: dateOnly, current_streak: 0 }).eq('user_id', user.id),
         supabase.from('badges').delete().eq('user_id', user.id),
-        AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]),
+        AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]),
       ]);
       await supabase.from('losses').insert({
         user_id: user.id, type: 'quit_date_changed', amount: 0,
@@ -927,6 +927,9 @@ export default function AccountScreen() {
       AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
       AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
       AsyncStorage.removeItem(CHECKLIST_KEY),
+      AsyncStorage.removeItem(CUSTOM_MILESTONE_CELEBRATED_KEY),
+      AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY),
+      AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY),
     ]);
     await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
     setResetting(false);
@@ -974,6 +977,9 @@ export default function AccountScreen() {
         AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
         AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
         AsyncStorage.removeItem(CHECKLIST_KEY),
+        AsyncStorage.removeItem(CUSTOM_MILESTONE_CELEBRATED_KEY),
+        AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY),
+        AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY),
         AsyncStorage.removeItem(SAVINGS_GOAL_ICON_KEY),

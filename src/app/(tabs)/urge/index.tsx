@@ -470,7 +470,7 @@ export default function UrgeScreen() {
   const motivations = (motivation ?? '').split(',').filter(Boolean)
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
-  const startTimer  = () => { hapticMedium(); ctxStartTimer(timerDuration); setTimerPointsEarned(false); notifySupporter('urge'); };
+  const startTimer  = () => { hapticMedium(); ctxStartTimer(timerDuration); setTimerPointsEarned(false); notifySupporter('urge').catch(e => console.warn('[urge] notifySupporter error:', e)); };
   const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); setCheckedPlanItems([]); setTimerDuration(10 * 60); };
   const stopTimer  = () => {
     const elapsed = timerTotal - timerSecsLeft;
