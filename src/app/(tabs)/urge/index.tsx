@@ -238,7 +238,7 @@ export default function UrgeScreen() {
   const [activeDistraction, setActiveDistraction] = useState<typeof DISTRACTIONS[0] | null>(null);
   const { timerRunning, timerSecsLeft, timerTotal, timerDone, timerDisplay, timerPct, startTimer: ctxStartTimer, resetTimer } = useTimer();
   const [timerPointsEarned, setTimerPointsEarned] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(20 * 60);
+  const [timerDuration, setTimerDuration] = useState(10 * 60);
   const scrollRef = useRef<ScrollView>(null);
 
   const isMounted = useRef(true);
@@ -446,7 +446,7 @@ export default function UrgeScreen() {
     .map(m => MOTIVATION_MAP[m] ?? { label: m, emoji: '💪' });
 
   const startTimer  = () => { hapticMedium(); ctxStartTimer(timerDuration); setTimerPointsEarned(false); notifySupporter('urge'); };
-  const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); setCheckedPlanItems([]); setTimerDuration(20 * 60); };
+  const cancelTimer = () => { resetTimer(); setTimerPointsEarned(false); setCheckedPlanItems([]); setTimerDuration(10 * 60); };
   const stopTimer  = () => {
     const elapsed = timerTotal - timerSecsLeft;
     resetTimer();
