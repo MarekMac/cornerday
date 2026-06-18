@@ -147,8 +147,8 @@ export function Paywall() {
               // Fallback when offerings haven't loaded yet
               <>
                 {[
-                  { label: 'Monthly', price: '$4.99', period: '/ month', isAnnual: false },
-                  { label: 'Annual', price: '$39.99', period: '/ year', isAnnual: true },
+                  { label: 'Monthly', price: '$6.99', period: '/ month', isAnnual: false },
+                  { label: 'Annual', price: '$49.99', period: '/ year', isAnnual: true },
                 ].map((p, i) => (
                   <Pressable
                     key={p.label}
