@@ -1,10 +1,9 @@
 // Supabase Edge Function: notify-feedback
 // Called directly from the app after a feedback row is inserted.
-// Sends an email to the admin via Resend, with reply-to set to the user's email.
+// Sends an email to support@cornerday.app via Resend, with reply-to set to the user's email.
 //
 // Required secrets (Supabase Dashboard → Edge Functions → Secrets):
 //   RESEND_API_KEY   — from resend.com
-//   ADMIN_EMAIL      — where feedback emails go (e.g. marekmac.ski@gmail.com)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -40,16 +39,13 @@ Deno.serve(async (req: Request) => {
     const user_email = user.email ?? null;
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    const adminEmail   = Deno.env.get('ADMIN_EMAIL');
 
     if (!resendApiKey) {
       console.warn('RESEND_API_KEY not set — skipping email');
       return new Response(JSON.stringify({ ok: true, skipped: 'no_resend_key' }), { status: 200 });
     }
-    if (!adminEmail) {
-      console.warn('ADMIN_EMAIL not set — skipping email');
-      return new Response(JSON.stringify({ ok: true, skipped: 'no_admin_email' }), { status: 200 });
-    }
+
+    const adminEmail = 'support@cornerday.app';
 
     if (!message || typeof message !== 'string') {
       return new Response(JSON.stringify({ ok: false, error: 'missing message' }), { status: 400 });
