@@ -430,7 +430,7 @@ export default function TrackerIndex() {
         if (editingSaving) {
           await supabase.from('losses').update({
             amount, note: savingNote.trim() || null,
-          }).eq('id', editingSaving.id);
+          }).eq('id', editingSaving.id).eq('user_id', user.id);
           await supabase.from('losses').insert({
             user_id: user.id, type: 'saving_edited', amount,
             category: 'Saving', note: savingNote.trim() || null,

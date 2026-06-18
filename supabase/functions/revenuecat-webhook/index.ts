@@ -1,5 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
+  return diff === 0;
+}
+
 const PREMIUM_EVENTS = new Set([
   'INITIAL_PURCHASE',
   'RENEWAL',
@@ -21,7 +30,8 @@ Deno.serve(async (req) => {
   // Validate webhook shared secret (RevenueCat may send raw or Bearer-prefixed)
   const authHeader = req.headers.get('Authorization') ?? '';
   const expectedSecret = Deno.env.get('REVENUECAT_WEBHOOK_SECRET') ?? '';
-  const authOk = expectedSecret && (authHeader === expectedSecret || authHeader === `Bearer ${expectedSecret}`);
+  const authValue = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+  const authOk = !!expectedSecret && timingSafeEqual(authValue, expectedSecret);
   if (!authOk) {
     console.warn(`[revenuecat-webhook] auth mismatch — format: ${authHeader.startsWith('Bearer ') ? 'Bearer' : 'raw'}, length: ${authHeader.length}`);
     return new Response('Unauthorized', { status: 401 });

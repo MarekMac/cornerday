@@ -43,7 +43,7 @@ import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILEST
 import { supabase } from '@/lib/supabase';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { hapticMedium } from '@/lib/haptics';
-import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications } from '@/lib/notifications';
+import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleOnboardingCheckin } from '@/lib/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -361,24 +361,28 @@ export default function UrgeScreen() {
 
   const awardTimerPoint = async (totalSecs: number) => {
     setTimerPointsEarned(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !isMounted.current) return;
-    const now = new Date();
-    const localDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const key = `urge_timer_${localDay}`;
-    const already = await AsyncStorage.getItem(key);
-    if (already || !isMounted.current) return;
-    const { error } = await supabase.from('urge_journal').insert({
-      user_id: user.id,
-      trigger: 'timer_completed',
-      outcome: 'overcame',
-      note: `Completed ${Math.round(totalSecs / 60)}-minute urge timer`,
-    });
-    if (!error) {
-      if (!isMounted.current) return;
-      await AsyncStorage.setItem(key, '1');
-    } else {
-      console.warn('awardTimerPoint insert failed:', error.message);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMounted.current) return;
+      const now = new Date();
+      const localDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const key = `urge_timer_${localDay}`;
+      const already = await AsyncStorage.getItem(key);
+      if (already || !isMounted.current) return;
+      const { error } = await supabase.from('urge_journal').insert({
+        user_id: user.id,
+        trigger: 'timer_completed',
+        outcome: 'overcame',
+        note: `Completed ${Math.round(totalSecs / 60)}-minute urge timer`,
+      });
+      if (!error) {
+        if (!isMounted.current) return;
+        await AsyncStorage.setItem(key, '1');
+      } else {
+        console.warn('awardTimerPoint insert failed:', error.message);
+      }
+    } catch (e) {
+      console.warn('awardTimerPoint error:', e);
     }
   };
 
@@ -418,26 +422,29 @@ export default function UrgeScreen() {
       ? (customTrigger.trim() || 'other')
       : selectedTrigger;
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        Alert.alert('Not signed in', 'Please sign in to save your journal entry.');
+        return;
+      }
+      const { error } = await supabase.from('urge_journal').insert({
+        user_id: user.id, trigger: triggerValue, outcome,
+        note: note.trim() || null,
+        distraction_used: outcome === 'overcame' ? (distractionUsed || null) : null,
+      });
+      if (error) {
+        Alert.alert('Could not save', error.message);
+        return;
+      }
+      setSaved(true);
+      if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
+      closeLogTimeoutRef.current = setTimeout(() => { if (isMounted.current) closeLog(); }, 1500);
+    } catch {
+      Alert.alert('Could not save', 'An unexpected error occurred.');
+    } finally {
       setSaving(false);
-      Alert.alert('Not signed in', 'Please sign in to save your journal entry.');
-      return;
     }
-    const { error } = await supabase.from('urge_journal').insert({
-      user_id: user.id, trigger: triggerValue, outcome,
-      note: note.trim() || null,
-      distraction_used: outcome === 'overcame' ? (distractionUsed || null) : null,
-    });
-    if (error) {
-      setSaving(false);
-      Alert.alert('Could not save', error.message);
-      return;
-    }
-    setSaving(false);
-    setSaved(true);
-    if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
-    closeLogTimeoutRef.current = setTimeout(() => { if (isMounted.current) closeLog(); }, 1500);
   };
 
   const canSave = selectedTrigger !== null && outcome !== null &&
@@ -589,6 +596,7 @@ export default function UrgeScreen() {
         notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
       };
       await scheduleAllNotifications(prefs, newQuitTimestamp);
+      await scheduleOnboardingCheckin();
     }
     if (!isMounted.current) return;
     setSlipResetting(false);

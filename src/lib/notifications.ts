@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY } from '../constants/storage-keys';
+import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY, AI_CHECKIN_NOTIF_ID_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '../constants/storage-keys';
 
 export interface NotifPrefs {
   notif_milestone: boolean;
@@ -89,6 +89,9 @@ export async function scheduleAllNotifications(
   earnedBadgeTypes: string[] = [],
   timeOverrides: { streakHour?: number; checkinHour?: number } = {},
 ) {
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') return;
+
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch (_e) {
@@ -193,7 +196,36 @@ export async function scheduleAllNotifications(
     });
   }
 
-  // 6. Urge prediction — restore saved schedule (computed from urge journal patterns)
+  // 6. Custom milestone — restore if set and in the future
+  if (prefs.notif_milestone && quitTimestamp) {
+    const milestoneRaw = await AsyncStorage.getItem(CUSTOM_MILESTONE_KEY);
+    if (milestoneRaw) {
+      try {
+        const milestone = JSON.parse(milestoneRaw);
+        if (milestone?.type === 'days' && typeof milestone.target === 'number') {
+          const targetMs = new Date(quitTimestamp).getTime() + milestone.target * 86400000;
+          if (targetMs > now) {
+            const newId = await Notifications.scheduleNotificationAsync({
+              content: {
+                title: `🎯 ${milestone.target} Days Clean!`,
+                body: `You hit your personal ${milestone.target}-day milestone. This is a huge achievement. Keep going! 🏆`,
+                data: { type: 'custom_milestone' },
+              },
+              trigger: androidTrigger({
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: new Date(targetMs),
+              }) as any,
+            });
+            await AsyncStorage.setItem(CUSTOM_MILESTONE_NOTIF_ID_KEY, newId);
+          } else {
+            await AsyncStorage.removeItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
+          }
+        }
+      } catch { /* corrupt entry — leave as is */ }
+    }
+  }
+
+  // 7. Urge prediction — restore saved schedule (computed from urge journal patterns)
   if (prefs.notif_urge_prediction) {
     const saved = await AsyncStorage.getItem(URGE_PREDICTION_SCHEDULE_KEY);
     if (saved) {
@@ -220,6 +252,22 @@ export async function scheduleAllNotifications(
       await AsyncStorage.setItem(URGE_PREDICTION_NOTIF_ID_KEY, restoredId);
     }
   }
+}
+
+export async function scheduleOnboardingCheckin(): Promise<void> {
+  const prevId = await AsyncStorage.getItem(AI_CHECKIN_NOTIF_ID_KEY);
+  if (prevId) await Notifications.cancelScheduledNotificationAsync(prevId).catch(() => {});
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Haven't seen you in a few days 👋",
+        body: 'How are you holding up? CornerDay is here whenever you need it.',
+        data: { type: 'ai_checkin' },
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 72 * 60 * 60, repeats: false },
+    });
+    if (id) await AsyncStorage.setItem(AI_CHECKIN_NOTIF_ID_KEY, id);
+  } catch { /* permissions may not be granted — best effort */ }
 }
 
 async function cancelExistingUrgePredictionNotif() {

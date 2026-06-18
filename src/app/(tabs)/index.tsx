@@ -33,7 +33,7 @@ import * as Notifications from 'expo-notifications';
 import { maybeRequestReview } from '@/lib/review';
 import { supabase } from '@/lib/supabase';
 import { parseQuitDate } from '@/lib/parseQuitDate';
-import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNotification } from '@/lib/notifications';
+import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleOnboardingCheckin, scheduleUrgePredictionNotification } from '@/lib/notifications';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
@@ -1046,7 +1046,7 @@ export default function HomeScreen() {
 
     const today = todayStr();
 
-    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, moodCountRes, paymentCountRes, checkinDatesRes, calRelapseRes, lossCountRes, communityPostCountRes] = await Promise.all([
+    const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, urgesOvercomeCountRes, moodCountRes, paymentCountRes, checkinDatesRes, calRelapseRes, lossCountRes, communityPostCountRes] = await Promise.all([
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
@@ -1055,7 +1055,8 @@ export default function HomeScreen() {
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
-      supabase.from('urge_journal').select('created_at, outcome', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+      supabase.from('urge_journal').select('created_at', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+      supabase.from('urge_journal').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('outcome', 'overcame'),
       supabase.from('mood_checkins').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
@@ -1075,6 +1076,8 @@ export default function HomeScreen() {
     const earnedBadges = badgeRows.map(b => b.badge_type);
     const badgeTimestamps: Record<string, string> = {};
     badgeRows.forEach(b => { if (b.earned_at) badgeTimestamps[b.badge_type] = b.earned_at; });
+
+    let pendingCelebration: { type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string } | null = null;
 
     // Auto-award badges
     const quitStr = profile?.quit_timestamp ?? profile?.quit_date;
@@ -1129,13 +1132,13 @@ export default function HomeScreen() {
       newlyAwarded.forEach(b => earnedBadges.push(b.type));
       if (newlyAwarded.length > 0) {
         const b = newlyAwarded[newlyAwarded.length - 1];
-        setCelebrationBadge({
+        pendingCelebration = {
           type: b.type,
           emoji: b.emoji,
           label: b.label,
           celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
           msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-        });
+        };
       }
 
       // Notify supporter for the highest milestone earned this run (last = most significant)
@@ -1172,19 +1175,19 @@ export default function HomeScreen() {
       await supabase.from('badges').upsert(newDebtBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       newDebtBadges.forEach(b => earnedBadges.push(b.badge_type));
       const newlyPaidDebt = debtItems.filter(d => d.earned && !dedupeGuard.has(`debt_${d.id}`)).pop();
-      if (newlyPaidDebt) {
-        setCelebrationBadge({
+      if (newlyPaidDebt && !pendingCelebration) {
+        pendingCelebration = {
           emoji: '🏦', label: `${newlyPaidDebt.name} paid off`,
           celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
           msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-        });
+        };
       }
     }
 
     // Activity badges
     const moodCount = moodCountRes.count ?? 0;
     const urgeList = urgeRes.data ?? [];
-    const urgesOvercome = urgeList.filter(e => e.outcome === 'overcame').length;
+    const urgesOvercome = urgesOvercomeCountRes.count ?? 0;
     const paymentCount = paymentCountRes.count ?? 0;
     const lossCount = lossCountRes.count ?? 0;
     const communityPostCount = communityPostCountRes.count ?? 0;
@@ -1240,11 +1243,11 @@ export default function HomeScreen() {
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_set' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: 0, category: 'Milestone', note: '📍 Goal Setter badge earned' });
       earnedBadges.push('goal_set');
-      setCelebrationBadge({
+      if (!pendingCelebration) pendingCelebration = {
         emoji: '📍', label: 'Goal Setter',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-      });
+      };
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       if (notifStatus === 'granted') {
         await Notifications.scheduleNotificationAsync({
@@ -1263,11 +1266,11 @@ export default function HomeScreen() {
       await AsyncStorage.setItem(GOAL_REACHED_BADGE_SENT_KEY, '1');
       earnedBadges.push('goal_reached');
       maybeRequestReview('savings_goal');
-      setCelebrationBadge({
+      if (!pendingCelebration) pendingCelebration = {
         emoji: '🎊', label: 'Goal Met',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-      });
+      };
       const { status: notifStatus } = await Notifications.getPermissionsAsync();
       if (notifStatus === 'granted') {
         await Notifications.scheduleNotificationAsync({
@@ -1292,11 +1295,11 @@ export default function HomeScreen() {
         category: 'Milestone', note: '🛡️ Safe Zone — prevention checklist completed',
       });
       await AsyncStorage.setItem(CHECKLIST_BADGE_SENT_KEY, '1');
-      setCelebrationBadge({
+      if (!pendingCelebration) pendingCelebration = {
         emoji: '🛡️', label: 'Safe Zone',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-      });
+      };
       const { status } = await Notifications.getPermissionsAsync();
       if (status === 'granted') {
         await Notifications.scheduleNotificationAsync({
@@ -1323,6 +1326,8 @@ export default function HomeScreen() {
         profile?.is_premium ?? false,
       );
     }
+
+    if (pendingCelebration) setCelebrationBadge(pendingCelebration);
 
     // Compute peak urge hour for home screen card
     const urgeEntries = urgeRes.data ?? [];
@@ -1674,6 +1679,7 @@ export default function HomeScreen() {
           notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
         };
         await scheduleAllNotifications(prefs, newQuitTimestamp);
+        await scheduleOnboardingCheckin();
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
         if (!isMountedRef.current) return;
         setData(prev => prev ? {
@@ -1728,6 +1734,7 @@ export default function HomeScreen() {
         notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
       };
       await scheduleAllNotifications(prefs, prevQuit);
+      await scheduleOnboardingCheckin();
       await fetchData();
     } finally {
       setRelapseLoading(false);

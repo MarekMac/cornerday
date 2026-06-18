@@ -390,7 +390,7 @@ export default function CoachScreen() {
         style={{ flex: 1 }}
       />
       <KeyboardAvoidingView
-        behavior="padding"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {showStarters && (
           <ScrollView

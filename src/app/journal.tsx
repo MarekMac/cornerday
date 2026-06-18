@@ -379,6 +379,7 @@ export default function JournalScreen() {
     if (user) {
       const results = await Promise.all([
         supabase.from('urge_journal').delete().eq('user_id', user.id),
+        supabase.from('mood_checkins').delete().eq('user_id', user.id),
         supabase.from('debt_payments').delete().eq('user_id', user.id),
         supabase.from('debts').delete().eq('user_id', user.id),
         supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
@@ -483,7 +484,7 @@ export default function JournalScreen() {
             </View>
             <Text style={s.confirmTitle}>Clear all journal entries?</Text>
             <Text style={s.confirmBody}>
-              This permanently deletes all urge logs, debts, payments, savings and streak resets.{'\n'}This cannot be undone.
+              This permanently deletes all urge logs, mood check-ins, debts, payments, savings and streak resets.{'\n'}This cannot be undone.
             </Text>
             <View style={s.confirmActions}>
               <Pressable style={s.confirmCancel} onPress={() => setClearAllVisible(false)}>

@@ -26,7 +26,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Session } from '@supabase/supabase-js';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY, AI_CHECKIN_NOTIF_ID_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
+import { scheduleOnboardingCheckin } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { UserProvider } from '@/context/user';
 import { PurchasesProvider, usePurchases } from '@/context/purchases';
@@ -62,23 +63,10 @@ function InnerLayout() {
     if (locked) authenticate();
   }, [locked, authenticate]);
 
-  // Schedule 48h check-in notification; reschedule on every app open
+  // Schedule 72h re-engagement check-in; reschedule on every session change
   useEffect(() => {
     if (!session) return;
-    const schedule = async () => {
-      const prevId = await AsyncStorage.getItem(AI_CHECKIN_NOTIF_ID_KEY);
-      if (prevId) await Notifications.cancelScheduledNotificationAsync(prevId).catch(() => {});
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Haven't seen you in a few days 👋",
-          body: "How are you holding up? CornerDay is here whenever you need it.",
-          data: { type: 'ai_checkin' },
-        },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 72 * 60 * 60, repeats: false },
-      }).catch(() => null);
-      if (id) await AsyncStorage.setItem(AI_CHECKIN_NOTIF_ID_KEY, id);
-    };
-    schedule();
+    scheduleOnboardingCheckin();
   }, [session]);
 
   // Handle tap on check-in notification — premium goes to AI coach, free goes to mood check-in

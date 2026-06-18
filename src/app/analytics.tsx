@@ -48,7 +48,7 @@ function computeCheckinStreak(rows: { created_at: string }[]): { current: number
   const yesterStr = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
   let current = 0;
   if (unique[0] === todayStr || unique[0] === yesterStr) {
-    let d = new Date(unique[0] + 'T00:00:00');
+    let d = new Date(unique[0] + 'T12:00:00');
     for (const dateStr of unique) {
       if (dateStr === d.toLocaleDateString('en-CA')) { current++; d = new Date(d.getTime() - 86400000); }
       else break;
@@ -56,7 +56,7 @@ function computeCheckinStreak(rows: { created_at: string }[]): { current: number
   }
   let best = 0, run = 1;
   for (let i = 1; i < unique.length; i++) {
-    const diff = Math.round((new Date(unique[i - 1] + 'T00:00:00').getTime() - new Date(unique[i] + 'T00:00:00').getTime()) / 86400000);
+    const diff = Math.round((new Date(unique[i - 1] + 'T12:00:00').getTime() - new Date(unique[i] + 'T12:00:00').getTime()) / 86400000);
     if (diff === 1) { run++; } else { best = Math.max(best, run); run = 1; }
   }
   best = Math.max(best, run);

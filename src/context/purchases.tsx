@@ -115,11 +115,13 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
 
     init();
 
-    Purchases.addCustomerInfoUpdateListener(async (info) => {
+    const customerInfoHandler = async (info: CustomerInfo) => {
       const premium = checkPremium(info) || isAdminRef.current;
       setIsPremium(premium);
       await syncToSupabase(premium);
-    });
+    };
+    Purchases.addCustomerInfoUpdateListener(customerInfoHandler);
+    return () => { Purchases.removeCustomerInfoUpdateListener(customerInfoHandler); };
   }, []);
 
   useEffect(() => {

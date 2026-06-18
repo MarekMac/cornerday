@@ -50,12 +50,11 @@ Deno.serve(async (req) => {
       await adminClient.from('partner_links').delete().eq('user_id', user.id);
     }
 
-    await adminClient.from('users').delete().eq('id', user.id);
-
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
     }
+    await adminClient.from('users').delete().eq('id', user.id);
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (e) {

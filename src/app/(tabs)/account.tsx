@@ -47,6 +47,7 @@ import {
   NotifPrefs,
   requestNotificationPermissions,
   scheduleAllNotifications,
+  scheduleOnboardingCheckin,
 } from '@/lib/notifications';
 import { usePurchases } from '@/context/purchases';
 import Purchases from 'react-native-purchases';
@@ -1283,7 +1284,7 @@ export default function AccountScreen() {
         if (existingId) await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {});
         try {
           const { status } = await Notifications.getPermissionsAsync();
-          if (status === 'granted') {
+          if (status === 'granted' && notifPrefs.notif_milestone) {
             const id = await Notifications.scheduleNotificationAsync({
               content: {
                 title: `🎯 ${target} Days Clean!`,
@@ -1319,7 +1320,17 @@ export default function AccountScreen() {
     if (user) {
       await supabase.from('users').update({ [key]: value }).eq('id', user.id);
       const granted = await requestNotificationPermissions();
-      if (granted) await scheduleAllNotifications(updated, quitTimestamp, [], { streakHour: notifStreakHour, checkinHour: notifCheckinHour });
+      if (granted) {
+        await scheduleAllNotifications(updated, quitTimestamp, [], { streakHour: notifStreakHour, checkinHour: notifCheckinHour });
+        await scheduleOnboardingCheckin();
+      }
+      if (key === 'notif_milestone' && !value) {
+        const existingId = await AsyncStorage.getItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
+        if (existingId) {
+          await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {});
+          await AsyncStorage.removeItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
+        }
+      }
     }
   };
 
