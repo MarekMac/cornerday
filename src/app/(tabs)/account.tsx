@@ -1873,33 +1873,20 @@ export default function AccountScreen() {
               <Ionicons name="finger-print-outline" size={17} color={c.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={s.menuRowLabel}>Biometric lock</Text>
-                {!isPremiumFromRC && (
-                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
-                  </View>
-                )}
-              </View>
+              <Text style={s.menuRowLabel}>Biometric lock</Text>
               <Text style={s.notifDesc}>
                 {biometricAvailable
                   ? 'Fingerprint or face unlock on reopen'
                   : 'Set up biometrics on your device first'}
               </Text>
             </View>
-            {isPremiumFromRC ? (
-              <Switch
-                value={biometricEnabled}
-                onValueChange={handleBiometricToggle}
-                disabled={!biometricAvailable}
-                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-                thumbColor={biometricEnabled ? '#0F6E6E' : '#bbb'}
-              />
-            ) : (
-              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 12, color: c.primary, fontWeight: '600' }}>Upgrade</Text>
-              </Pressable>
-            )}
+            <Switch
+              value={biometricEnabled}
+              onValueChange={handleBiometricToggle}
+              disabled={!biometricAvailable}
+              trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+              thumbColor={biometricEnabled ? '#0F6E6E' : '#bbb'}
+            />
           </View>
         </View>
 
