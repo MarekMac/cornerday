@@ -1378,8 +1378,15 @@ export default function AccountScreen() {
 
   const longestStreakDisplay = (() => {
     const dbDays = profile?.longestStreak ?? 0;
+    if (!profile?.quitTimestamp) {
+      if (dbDays >= 1) return { value: formatDual(dbDays * 86400000) };
+      return { value: '—' };
+    }
+    const liveMs = Math.max(0, Date.now() - new Date(profile.quitTimestamp).getTime());
+    const liveDays = Math.floor(liveMs / 86400000);
+    if (liveDays >= dbDays) return { value: formatDual(liveMs) };
     if (dbDays >= 1) return { value: formatDual(dbDays * 86400000) };
-    return streakDisplay;
+    return { value: '—' };
   })();
 
   return (
