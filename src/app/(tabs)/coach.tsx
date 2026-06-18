@@ -349,13 +349,16 @@ export default function CoachScreen() {
           <Text style={s.paywallSub}>
             Your personal support — available 24/7 and built for gambling recovery.
           </Text>
-          <View style={s.featureList}>
-            {FEATURES.map(f => (
-              <View key={f.text} style={s.featureRow}>
-                <View style={s.featureIconCircle}>
-                  <Text style={s.featureEmoji}>{f.icon}</Text>
+          <View style={s.featureCard}>
+            {FEATURES.map((f, i) => (
+              <View key={f.text}>
+                <View style={s.featureRow}>
+                  <View style={s.featureIconCircle}>
+                    <Text style={s.featureEmoji}>{f.icon}</Text>
+                  </View>
+                  <Text style={s.featureText}>{f.text}</Text>
                 </View>
-                <Text style={s.featureText}>{f.text}</Text>
+                {i < FEATURES.length - 1 && <View style={s.featureDivider} />}
               </View>
             ))}
           </View>
@@ -463,34 +466,34 @@ const makeStyles = (c: AppColors) =>
     premiumBadgeTxt: { fontSize: 12, color: c.white, fontWeight: '600' },
 
     // Paywall
-    paywallScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 32 },
+    paywallScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 20 },
     paywallIcon: {
-      width: 80, height: 80, borderRadius: 40,
+      width: 72, height: 72, borderRadius: 36,
       alignItems: 'center', justifyContent: 'center',
-      marginBottom: 20,
+      marginBottom: 14,
       shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
     },
-    paywallIconEmoji: { fontSize: 34 },
-    paywallTitle: { fontSize: 26, fontWeight: '800', color: c.textPrimary, marginBottom: 8, textAlign: 'center' },
-    paywallSub: { fontSize: 15, color: c.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
-    featureList: { alignSelf: 'stretch', gap: 10, marginBottom: 32 },
-    featureRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 14,
-      backgroundColor: c.bgCard, borderRadius: 14,
-      paddingVertical: 12, paddingHorizontal: 14,
-      borderWidth: 1, borderColor: c.borderSubtle,
+    paywallIconEmoji: { fontSize: 30 },
+    paywallTitle: { fontSize: 24, fontWeight: '800', color: c.textPrimary, marginBottom: 6, textAlign: 'center' },
+    paywallSub: { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21, marginBottom: 20 },
+    featureCard: {
+      alignSelf: 'stretch', marginBottom: 22,
+      backgroundColor: c.bgCard, borderRadius: 16,
+      borderWidth: 1, borderColor: c.borderSubtle, overflow: 'hidden',
     },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 11, paddingHorizontal: 14 },
+    featureDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.borderSubtle, marginLeft: 66 },
     featureIconCircle: {
-      width: 38, height: 38, borderRadius: 19,
+      width: 36, height: 36, borderRadius: 18,
       backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    featureEmoji: { fontSize: 18 },
-    featureText: { flex: 1, fontSize: 15, color: c.textSecondary, lineHeight: 21 },
+    featureEmoji: { fontSize: 17 },
+    featureText: { flex: 1, fontSize: 14, color: c.textSecondary, lineHeight: 20 },
     upgradeBtnWrap: { alignSelf: 'stretch', borderRadius: 16, overflow: 'hidden' },
-    upgradeBtn: { paddingVertical: 16, alignItems: 'center' },
-    upgradeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 17, letterSpacing: 0.3 },
-    price: { fontSize: 12, color: c.textFaint, marginTop: 12 },
+    upgradeBtn: { paddingVertical: 15, alignItems: 'center' },
+    upgradeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 16, letterSpacing: 0.3 },
+    price: { fontSize: 12, color: c.textFaint, marginTop: 10 },
 
     // Chat
     chatList: { padding: 16, paddingBottom: 8, gap: 12 },
