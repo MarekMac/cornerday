@@ -68,6 +68,7 @@ interface Profile {
   isPremium: boolean;
   avatarUrl: string | null;
   longestStreak: number;
+  longestStreakMs: number;
   milestonesEarned: number;
 }
 
@@ -332,7 +333,7 @@ export default function AccountScreen() {
         .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, debt_target_date, savings_target_date')
         .eq('id', user.id)
         .maybeSingle(),
-      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
+      supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
     ]);
     const quitTs = data?.quit_timestamp ?? data?.quit_date;
@@ -360,6 +361,7 @@ export default function AccountScreen() {
       isPremium: data?.is_premium ?? false,
       avatarUrl: resolvedAvatar,
       longestStreak: streakData?.longest_streak ?? 0,
+      longestStreakMs: streakData?.longest_streak_ms ?? 0,
       milestonesEarned: badgeCount ?? 0,
     });
     setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
@@ -1378,15 +1380,16 @@ export default function AccountScreen() {
 
   const longestStreakDisplay = (() => {
     const dbDays = profile?.longestStreak ?? 0;
+    const dbMs   = profile?.longestStreakMs ?? 0;
     if (!profile?.quitTimestamp) {
-      if (dbDays >= 1) return { value: formatDual(dbDays * 86400000) };
-      return { value: '—' };
+      const ms = dbMs > 0 ? dbMs : dbDays * 86400000;
+      return { value: ms > 0 ? formatDual(ms) : '—' };
     }
-    const liveMs = Math.max(0, Date.now() - new Date(profile.quitTimestamp).getTime());
+    const liveMs   = Math.max(0, Date.now() - new Date(profile.quitTimestamp).getTime());
     const liveDays = Math.floor(liveMs / 86400000);
     if (liveDays >= dbDays) return { value: formatDual(liveMs) };
-    if (dbDays >= 1) return { value: formatDual(dbDays * 86400000) };
-    return { value: '—' };
+    const bestMs = dbMs > 0 ? dbMs : dbDays * 86400000;
+    return { value: bestMs > 0 ? formatDual(bestMs) : '—' };
   })();
 
   return (
