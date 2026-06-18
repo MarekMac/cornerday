@@ -419,7 +419,9 @@ export default function AccountScreen() {
     if (!partnerLinkId) return;
     partnerSettingInFlight.current.add(key);
     try {
-      const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId).eq('user_id', user.id);
       if (error) {
         setShareSettings(prev => ({ ...prev, [shortKey]: !value }));
         Alert.alert('Could not save setting', error.message);
@@ -436,7 +438,9 @@ export default function AccountScreen() {
     if (!partnerLinkId) return;
     partnerSettingInFlight.current.add(key);
     try {
-      const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('partner_links').update({ [key]: value }).eq('id', partnerLinkId).eq('user_id', user.id);
       if (error) {
         setNotifySettings(prev => ({ ...prev, [shortKey]: !value }));
         Alert.alert('Could not save setting', error.message);
@@ -487,7 +491,9 @@ export default function AccountScreen() {
     setRevokePartnerVisible(false);
     setPartnerLinkLoading(true);
     if (partnerLinkId) {
-      const { error } = await supabase.from('partner_links').delete().eq('id', partnerLinkId);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setPartnerLinkLoading(false); return; }
+      const { error } = await supabase.from('partner_links').delete().eq('id', partnerLinkId).eq('user_id', user.id);
       if (error) {
         Alert.alert('Could not revoke link', error.message);
         setPartnerLinkLoading(false);
@@ -984,6 +990,7 @@ export default function AccountScreen() {
       AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY),
     ]);
     await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
+    await scheduleOnboardingCheckin();
     setResetting(false);
   };
 
@@ -1038,6 +1045,7 @@ export default function AccountScreen() {
       const granted = await requestNotificationPermissions();
       if (granted) {
         await scheduleAllNotifications(notifPrefs, nowIso, []);
+        await scheduleOnboardingCheckin();
         // Fire a confirmation notification in 5 seconds so the user knows scheduling works
         await Notifications.scheduleNotificationAsync({
           content: {
@@ -1348,7 +1356,10 @@ export default function AccountScreen() {
       const hours = type === 'streak'
         ? { streakHour: hour, checkinHour: notifCheckinHour }
         : { streakHour: notifStreakHour, checkinHour: hour };
-      if (granted) await scheduleAllNotifications(notifPrefs, quitTimestamp, [], hours);
+      if (granted) {
+        await scheduleAllNotifications(notifPrefs, quitTimestamp, [], hours);
+        await scheduleOnboardingCheckin();
+      }
     }
   };
 

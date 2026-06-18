@@ -1584,7 +1584,7 @@ export default function HomeScreen() {
       if (user) {
         const noteVal = note?.trim() || null;
         if (data.todayMoodId) {
-          const { error: updateErr } = await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId);
+          const { error: updateErr } = await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId).eq('user_id', user.id);
           if (updateErr) { Alert.alert('Could not save mood', updateErr.message); return; }
         } else {
           const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
@@ -1612,7 +1612,9 @@ export default function HomeScreen() {
     if (!data?.todayMoodId) return;
     setMoodSubmitting(true);
     try {
-      const { error } = await supabase.from('mood_checkins').delete().eq('id', data.todayMoodId);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('mood_checkins').delete().eq('id', data.todayMoodId).eq('user_id', user.id);
       if (error) {
         Alert.alert('Could not clear mood', error.message);
         return;
