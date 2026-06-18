@@ -98,7 +98,7 @@ export function Paywall() {
       <View style={[s.root, { paddingBottom: insets.bottom }]}>
         {/* Header gradient */}
         <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
-          <View style={[s.headerRow, { paddingTop: insets.top + 8 }]}>
+          <View style={[s.headerRow, { paddingTop: insets.top + 16 }]}>
             <View style={s.headerTextCol}>
               <Text style={s.headerTitle}>Go Premium</Text>
               <Text style={s.headerSub}>Unlock your full recovery toolkit</Text>
