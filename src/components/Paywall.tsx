@@ -18,10 +18,12 @@ import { useAppTheme } from '@/context/theme';
 import { usePurchases } from '@/context/purchases';
 
 const FEATURES = [
-  { emoji: '🤖', title: 'AI Corner', desc: 'Personal AI support built for gambling recovery, available 24/7' },
-  { emoji: '📊', title: 'Recovery Analytics', desc: 'Streak trends, mood patterns and debt progress in one view' },
-  { emoji: '👥', title: 'Someone in Your Corner', desc: 'Let a trusted person follow your journey and send you support' },
-  { emoji: '🚫', title: 'Ad-Free', desc: 'Zero ads, zero distractions — just your recovery' },
+  { emoji: '🤖', title: 'AI Corner', desc: 'Personal AI support available 24/7 — built for gambling recovery, not generic wellness' },
+  { emoji: '👥', title: 'Someone in Your Corner', desc: 'Give someone close to you a window into your recovery — they\'ll cheer you on' },
+  { emoji: '📧', title: 'Supporter Notifications', desc: 'Your supporter gets an email when you hit a milestone, feel an urge, or have a slip' },
+  { emoji: '📊', title: 'Recovery Analytics', desc: 'See exactly how far you\'ve come — streaks, mood and money recovered in one place' },
+  { emoji: '🎉', title: 'Progress Sharing', desc: 'Share a milestone card with friends or your community and celebrate out loud' },
+  { emoji: '🚫', title: 'Ad-Free', desc: 'Zero ads, zero distractions — a clean space built entirely around your recovery' },
 ];
 
 export function Paywall() {
