@@ -570,37 +570,44 @@ export default function UrgeScreen() {
 
   const doStreakReset = async () => {
     setSlipResetting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const today = new Date().toISOString().split('T')[0];
-      const newQuitTimestamp = new Date().toISOString();
-      const { error: rpcError } = await supabase.rpc('reset_streak', {
-        p_user_id: user.id,
-        p_quit_date: today,
-        p_quit_timestamp: newQuitTimestamp,
-      });
-      if (rpcError) console.warn('[doStreakReset] rpc error:', rpcError.message);
-      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
-      notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
+    let success = false;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const today = new Date().toISOString().split('T')[0];
+        const newQuitTimestamp = new Date().toISOString();
+        const { error: rpcError } = await supabase.rpc('reset_streak', {
+          p_user_id: user.id,
+          p_quit_date: today,
+          p_quit_timestamp: newQuitTimestamp,
+        });
+        if (rpcError) console.warn('[doStreakReset] rpc error:', rpcError.message);
+        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
+        notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
 
-      const { data: prefsRow } = await supabase
-        .from('users')
-        .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
-        .eq('id', user.id).maybeSingle();
-      const prefs = {
-        notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
-        notif_daily_streak:          prefsRow?.notif_daily_streak          ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
-        notif_daily_checkin:         prefsRow?.notif_daily_checkin         ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
-        notif_weekly_summary:        prefsRow?.notif_weekly_summary        ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
-        notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
-        notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
-      };
-      await scheduleAllNotifications(prefs, newQuitTimestamp);
-      await scheduleOnboardingCheckin();
+        const { data: prefsRow } = await supabase
+          .from('users')
+          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
+          .eq('id', user.id).maybeSingle();
+        const prefs = {
+          notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+          notif_daily_streak:          prefsRow?.notif_daily_streak          ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+          notif_daily_checkin:         prefsRow?.notif_daily_checkin         ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+          notif_weekly_summary:        prefsRow?.notif_weekly_summary        ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+          notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+          notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+        };
+        await scheduleAllNotifications(prefs, newQuitTimestamp);
+        await scheduleOnboardingCheckin();
+        success = true;
+      }
+    } catch (e) {
+      console.warn('[doStreakReset] error:', e);
+    } finally {
+      if (!isMounted.current) return;
+      setSlipResetting(false);
+      if (success) setSlipReset(true);
     }
-    if (!isMounted.current) return;
-    setSlipResetting(false);
-    setSlipReset(true);
   };
 
   if (loading) {

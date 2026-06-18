@@ -1790,7 +1790,7 @@ export default function HomeScreen() {
     : null;
 
   return (
-    <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* ── Header ── */}
       <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
         <SafeAreaView edges={['top']}>
@@ -1859,8 +1859,8 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [s.partnerMsgBanner, pressed && { opacity: 0.85 }]}
             onPress={async () => {
-              await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id);
-              setPartnerMsg(null);
+              const { error } = await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id);
+              if (!error) setPartnerMsg(null);
             }}>
             <Text style={s.partnerMsgEmoji}>💙</Text>
             <View style={{ flex: 1 }}>

@@ -160,13 +160,18 @@ Deno.serve(async (req: Request) => {
       parsedBody = { email: form.get('email') ?? '', message: form.get('message') ?? '' };
     }
 
-    // Email subscription: body has `email` key → save supporter_email
+    // Email subscription: body has `email` key → save supporter_email (only if not already set)
     const email = String(parsedBody.email ?? '').trim().toLowerCase();
     if (email) {
       const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
       if (!emailValid) {
         return new Response(JSON.stringify({ error: 'invalid_email' }), {
           status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      if (link.supporter_email) {
+        return new Response(JSON.stringify({ error: 'already_subscribed' }), {
+          status: 409, headers: { ...CORS, 'Content-Type': 'application/json' },
         });
       }
       await sb.from('partner_links').update({ supporter_email: email }).eq('id', link.id);

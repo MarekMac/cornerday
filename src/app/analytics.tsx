@@ -505,7 +505,12 @@ export default function AnalyticsScreen() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user || !data) return;
             setResettingUrges(true);
-            await supabase.from('urge_journal').delete().eq('user_id', user.id);
+            const { error: urgeDelErr } = await supabase.from('urge_journal').delete().eq('user_id', user.id);
+            if (urgeDelErr) {
+              Alert.alert('Could not reset urge logs', urgeDelErr.message);
+              setResettingUrges(false);
+              return;
+            }
             setData(prev => prev ? {
               ...prev,
               urgeCount: 0, urgesOvercome: 0,
@@ -522,13 +527,16 @@ export default function AnalyticsScreen() {
 
   const saveTargetDate = async (date: Date) => {
     setSavingTarget(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
-      setSavingsTargetDate(date);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+        setSavingsTargetDate(date);
+      }
+      setShowTargetModal(false);
+    } finally {
+      setSavingTarget(false);
     }
-    setSavingTarget(false);
-    setShowTargetModal(false);
   };
 
   const openTargetPicker = () => {

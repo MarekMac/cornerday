@@ -378,13 +378,15 @@ export default function JournalScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const results = await Promise.all([
+        // debt_payments must be deleted before debts to avoid FK constraint conflicts
+        const debtPaymentsRes = await supabase.from('debt_payments').delete().eq('user_id', user.id);
+        const debtsRes = await supabase.from('debts').delete().eq('user_id', user.id);
+        const [urgeRes, moodRes, lossRes] = await Promise.all([
           supabase.from('urge_journal').delete().eq('user_id', user.id),
           supabase.from('mood_checkins').delete().eq('user_id', user.id),
-          supabase.from('debt_payments').delete().eq('user_id', user.id),
-          supabase.from('debts').delete().eq('user_id', user.id),
           supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
         ]);
+        const results = [debtPaymentsRes, debtsRes, urgeRes, moodRes, lossRes];
         const dbError = results.find(r => r.error)?.error;
         if (dbError) {
           Alert.alert('Could not clear journal', dbError.message);
