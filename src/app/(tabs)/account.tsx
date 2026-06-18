@@ -1903,22 +1903,9 @@ export default function AccountScreen() {
           </View>
         </View>
 
-        {/* Support */}
+        {/* About */}
         <View style={s.menuCard}>
-          <Text style={s.menuCardTitle}>Support</Text>
-          <Pressable
-            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={handleExport}
-            disabled={exportLoading}>
-            <View style={s.menuIconWrap}>
-              {exportLoading
-                ? <ActivityIndicator size="small" color={c.primary} />
-                : <Ionicons name="download-outline" size={17} color={c.primary} />}
-            </View>
-            <Text style={s.menuRowLabel}>Export my data</Text>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-          </Pressable>
-          <View style={s.menuDivider} />
+          <Text style={s.menuCardTitle}>About</Text>
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => { setFeedbackMsg(''); setFeedbackType('general'); setFeedbackVisible(true); }}>
@@ -1982,6 +1969,19 @@ export default function AccountScreen() {
               <View style={s.menuDivider} />
             </>
           )}
+          <Pressable
+            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+            onPress={handleExport}
+            disabled={exportLoading}>
+            <View style={s.menuIconWrap}>
+              {exportLoading
+                ? <ActivityIndicator size="small" color={c.primary} />
+                : <Ionicons name="download-outline" size={17} color={c.primary} />}
+            </View>
+            <Text style={s.menuRowLabel}>Export my data</Text>
+            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+          </Pressable>
+          <View style={s.menuDivider} />
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={confirmSignOut}
