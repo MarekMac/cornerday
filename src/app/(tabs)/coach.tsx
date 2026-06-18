@@ -341,7 +341,7 @@ export default function CoachScreen() {
     return (
       <View style={s.root}>
         {header}
-        <ScrollView contentContainerStyle={s.paywallScroll}>
+        <ScrollView contentContainerStyle={s.paywallScroll} style={s.paywallBg}>
           <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.paywallIcon}>
             <Text style={s.paywallIconEmoji}>🤖</Text>
           </LinearGradient>
@@ -349,7 +349,7 @@ export default function CoachScreen() {
           <Text style={s.paywallSub}>
             Your personal support — available 24/7 and built for gambling recovery.
           </Text>
-          <View style={s.featureCard}>
+          <View style={s.featureList}>
             {FEATURES.map((f, i) => (
               <View key={f.text}>
                 <View style={s.featureRow}>
@@ -466,6 +466,7 @@ const makeStyles = (c: AppColors) =>
     premiumBadgeTxt: { fontSize: 12, color: c.white, fontWeight: '600' },
 
     // Paywall
+    paywallBg: { backgroundColor: c.bgCard },
     paywallScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 20 },
     paywallIcon: {
       width: 72, height: 72, borderRadius: 36,
@@ -477,13 +478,9 @@ const makeStyles = (c: AppColors) =>
     paywallIconEmoji: { fontSize: 30 },
     paywallTitle: { fontSize: 24, fontWeight: '800', color: c.textPrimary, marginBottom: 6, textAlign: 'center' },
     paywallSub: { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21, marginBottom: 20 },
-    featureCard: {
-      alignSelf: 'stretch', marginBottom: 22,
-      backgroundColor: c.bgCard, borderRadius: 16,
-      borderWidth: 1, borderColor: c.borderSubtle, overflow: 'hidden',
-    },
-    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 11, paddingHorizontal: 14 },
-    featureDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.borderSubtle, marginLeft: 66 },
+    featureList: { alignSelf: 'stretch', marginBottom: 24 },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 13, paddingHorizontal: 0 },
+    featureDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.borderSubtle },
     featureIconCircle: {
       width: 36, height: 36, borderRadius: 18,
       backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
