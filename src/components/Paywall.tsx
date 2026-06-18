@@ -97,15 +97,15 @@ export function Paywall() {
     >
       <View style={[s.root, { paddingBottom: insets.bottom }]}>
         {/* Header gradient */}
-        <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#2db8b8']} style={s.header}>
-          <View style={[s.headerTop, { paddingTop: insets.top + 12 }]}>
+        <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+          <View style={[s.headerRow, { paddingTop: insets.top + 8 }]}>
+            <View style={s.headerTextCol}>
+              <Text style={s.headerTitle}>Go Premium</Text>
+              <Text style={s.headerSub}>Unlock your full recovery toolkit</Text>
+            </View>
             <Pressable onPress={hidePaywall} style={({ pressed }) => [s.closeBtn, pressed && { opacity: 0.6 }]} hitSlop={12}>
               <Text style={s.closeBtnTxt}>✕</Text>
             </Pressable>
-          </View>
-          <View style={s.headerBody}>
-            <Text style={s.headerTitle}>Go Premium</Text>
-            <Text style={s.headerSub}>Unlock your full recovery toolkit</Text>
           </View>
         </LinearGradient>
 
@@ -233,16 +233,20 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: c.bgElement },
 
   header: { paddingBottom: 16 },
-  headerTop: { paddingHorizontal: 20, alignItems: 'flex-end' },
+  headerRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingBottom: 4, gap: 12,
+  },
+  headerTextCol: { flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: c.white, letterSpacing: -0.3 },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 3 },
   closeBtn: {
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
   closeBtnTxt: { color: c.white, fontSize: 14, fontWeight: '700' },
-  headerBody: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 4, paddingBottom: 4 },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: c.white, letterSpacing: -0.3 },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4, textAlign: 'center' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
