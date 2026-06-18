@@ -343,7 +343,7 @@ export default function CoachScreen() {
         {header}
         <ScrollView contentContainerStyle={s.paywallScroll}>
           <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.paywallIcon}>
-            <Text style={s.paywallIconEmoji}>✨</Text>
+            <Text style={s.paywallIconEmoji}>🤖</Text>
           </LinearGradient>
           <Text style={s.paywallTitle}>AI Corner</Text>
           <Text style={s.paywallSub}>
@@ -474,8 +474,13 @@ const makeStyles = (c: AppColors) =>
     paywallIconEmoji: { fontSize: 34 },
     paywallTitle: { fontSize: 26, fontWeight: '800', color: c.textPrimary, marginBottom: 8, textAlign: 'center' },
     paywallSub: { fontSize: 15, color: c.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
-    featureList: { alignSelf: 'stretch', gap: 16, marginBottom: 32 },
-    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    featureList: { alignSelf: 'stretch', gap: 10, marginBottom: 32 },
+    featureRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      backgroundColor: c.bgCard, borderRadius: 14,
+      paddingVertical: 12, paddingHorizontal: 14,
+      borderWidth: 1, borderColor: c.borderSubtle,
+    },
     featureIconCircle: {
       width: 38, height: 38, borderRadius: 19,
       backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
