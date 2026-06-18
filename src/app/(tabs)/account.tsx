@@ -1965,8 +1965,8 @@ export default function AccountScreen() {
           </Pressable>
         </View>
 
-        {/* Danger zone */}
-        <View style={s.dangerCard}>
+        {/* Account actions */}
+        <View style={s.menuCard}>
           <Text style={s.menuCardTitle}>Account</Text>
           {isPasswordUser && (
             <>
@@ -1986,15 +1986,19 @@ export default function AccountScreen() {
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={confirmSignOut}
             disabled={signingOut}>
-            <View style={[s.menuIconWrap, s.menuIconWrapRed]}>
-              <Ionicons name="log-out-outline" size={17} color={c.error} />
+            <View style={[s.menuIconWrap, { backgroundColor: c.bgElement }]}>
+              <Ionicons name="log-out-outline" size={17} color={c.textMuted} />
             </View>
             {signingOut
-              ? <ActivityIndicator color={c.error} size="small" style={{ flex: 1 }} />
-              : <Text style={[s.menuRowLabel, s.dangerRowLabel]}>Sign out</Text>}
+              ? <ActivityIndicator color={c.textMuted} size="small" style={{ flex: 1 }} />
+              : <Text style={[s.menuRowLabel, { color: c.textMuted }]}>Sign out</Text>}
             <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
-          <View style={s.menuDivider} />
+        </View>
+
+        {/* Danger zone */}
+        <View style={s.dangerCard}>
+          <Text style={s.menuCardTitle}>Danger zone</Text>
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => setResetDataModalVisible(true)}>

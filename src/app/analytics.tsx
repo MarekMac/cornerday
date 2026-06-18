@@ -606,20 +606,20 @@ export default function AnalyticsScreen() {
               Deep insights into your recovery — see exactly how far you've come and what's driving your progress.
             </Text>
             <Pressable style={({ pressed }) => [s.lockBtn, pressed && { opacity: 0.85 }]} onPress={showPaywall}>
-              <Text style={s.lockBtnTxt}>✨ Upgrade to Premium</Text>
+              <Text style={s.lockBtnTxt}>Upgrade to Premium</Text>
             </Pressable>
           </View>
           <Text style={s.teaserHeading}>What you'll unlock</Text>
           {[
-            { emoji: '⏱️', title: 'Live time-based streak hero', desc: 'Minutes · hours · days · months — at a glance' },
-            { emoji: '🏅', title: 'Milestone progress', desc: 'Countdown to your next recovery badge with motivating context' },
-            { emoji: '🗓️', title: '60-day clean days calendar', desc: 'A heatmap of every clean day — visually powerful motivation' },
-            { emoji: '📊', title: 'Weekly progress summary', desc: 'This week vs last week: urges, mood, and check-ins at a glance' },
-            { emoji: '📈', title: 'Streak improvement history', desc: 'See how each of your streaks compares over time' },
-            { emoji: '😊', title: '30-day mood sparkline', desc: 'Daily colour-coded bars showing your emotional wellbeing' },
-            { emoji: '🧠', title: 'Urge pattern by time & day', desc: "Discover when you're most challenged — morning, evening, weekends" },
-            { emoji: '💸', title: 'Money not spent + projections', desc: 'Total saved plus what you\'ll save in a day, week, month, year' },
-            { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts based on your real data' },
+            { emoji: '⏱️', title: 'Live streak hero', desc: 'Precise time without gambling — hours, days, months at a glance' },
+            { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts from your real data — patterns you won\'t see yourself' },
+            { emoji: '📊', title: 'Weekly summary', desc: 'Urges, mood, check-ins and savings — this week vs last' },
+            { emoji: '😊', title: '30-day mood tracking', desc: 'Daily bars and check-in streak to spot your emotional trends' },
+            { emoji: '🧠', title: 'Urge patterns', desc: 'When you\'re most challenged — by day of week and time of day' },
+            { emoji: '💰', title: 'Savings + projections', desc: 'Money not spent, plus what you\'ll save this week, month and year' },
+            { emoji: '🏦', title: 'Debt recovery pacing', desc: 'Per-debt progress, target dates and a projected debt-free date' },
+            { emoji: '⚡', title: 'Trigger breakdown', desc: 'Your top triggers ranked by frequency — and how often you beat them' },
+            { emoji: '📅', title: 'Streak history', desc: 'Every streak you\'ve ever had — see how they\'re getting longer' },
           ].map((item, i) => (
             <View key={i} style={s.teaserCard}>
               <Text style={s.teaserEmoji}>{item.emoji}</Text>
