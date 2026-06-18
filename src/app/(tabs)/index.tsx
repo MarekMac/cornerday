@@ -352,11 +352,9 @@ function formatStreakFull(ms: number): string {
 function getMilestone(ms: number) {
   const days = ms / 86400000;
   const next = MILESTONES.find(m => m > days) ?? 3650;
-  const prev = [...MILESTONES].reverse().find(m => m <= days) ?? 0;
-  const span = next - prev;
-  const progress = span > 0 ? (days - prev) / span : 1;
   const remainingMs = Math.max(0, next * 86400000 - ms);
-  return { next, remainingMs, progress: Math.min(1, Math.max(0, progress)) };
+  const progress = next > 0 ? Math.min(1, days / next) : 1;
+  return { next, remainingMs, progress };
 }
 
 function fmtCountdown(ms: number, ceilHours = false): string {
@@ -596,7 +594,7 @@ function LiveCounter({ quitDate }: { quitDate: string | null }) {
       : weeks >= 2
         ? `${plural(weeks, 'week')}${remainingAfterWeeks > 0 ? `, ${plural(remainingAfterWeeks, 'day')}` : ''}`
         : days > 0
-          ? `${plural(days, 'day')}${hours > 0 ? `, ${plural(hours, 'hour')}` : ''}`
+          ? `${plural(days, 'day')}${hours > 0 ? `, ${plural(hours, 'hour')}` : mins > 0 ? `, ${plural(mins, 'minute')}` : ''}`
           : hours > 0
             ? `${plural(hours, 'hour')}${mins > 0 ? `, ${plural(mins, 'minute')}` : ''}`
             : mins > 0
