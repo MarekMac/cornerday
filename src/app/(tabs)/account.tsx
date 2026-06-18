@@ -1652,7 +1652,7 @@ export default function AccountScreen() {
           <Pressable
             onPress={openContactModal}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-            <View style={s.infoItemIcon}><Ionicons name="person-circle-outline" size={20} color={c.primary} /></View>
+            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="person-circle-outline" size={17} color={c.primary} /></View>
             <View style={s.infoItemMain}>
               <Text style={s.infoItemLabel}>Trusted contact</Text>
               <Text style={[s.infoItemValue, !trustedContactName && s.infoValueEmpty]}>
@@ -1707,7 +1707,7 @@ export default function AccountScreen() {
               setShowRecoveryPlanModal(true);
             }}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-            <View style={s.infoItemIcon}><Ionicons name="bulb-outline" size={20} color={c.primary} /></View>
+            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="bulb-outline" size={17} color={c.primary} /></View>
             <View style={s.infoItemMain}>
               <Text style={s.infoItemLabel}>Distraction plan</Text>
               <Text style={[s.infoItemValue, recoveryDistractions.length === 0 && !recoveryMantra && s.infoValueEmpty]}>
@@ -1722,7 +1722,7 @@ export default function AccountScreen() {
           </Pressable>
           <View style={s.infoDivider} />
           <View style={[s.infoItem, { paddingVertical: 12 }]}>
-            <View style={s.infoItemIcon}><Ionicons name="shield-outline" size={20} color={c.primary} /></View>
+            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="shield-outline" size={17} color={c.primary} /></View>
             <View style={s.infoItemMain}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={s.infoItemLabel}>Streak shield</Text>
@@ -1753,10 +1753,9 @@ export default function AccountScreen() {
           <Pressable
             onPress={() => router.push('/(tabs)/urge/checklist')}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-            <View style={s.infoItemIcon}><Ionicons name="checkmark-circle-outline" size={20} color={c.primary} /></View>
+            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="checkmark-circle-outline" size={17} color={c.primary} /></View>
             <View style={s.infoItemMain}>
               <Text style={s.infoItemLabel}>Prevention checklist</Text>
-              <Text style={s.infoItemValue}>Safe zone · relapse plan · triggers</Text>
             </View>
             <Ionicons name="chevron-forward" size={15} color={c.textFaint} />
           </Pressable>
@@ -3261,7 +3260,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   infoCard: { backgroundColor: c.bgCard, borderRadius: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   infoCardTitle: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   infoItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
-  infoItemIcon: { width: 28, alignItems: 'center' },
   infoItemMain: { flex: 1, gap: 2 },
   infoItemLabel: { fontSize: 12, color: c.textFaint, fontWeight: '500' },
   infoItemValue: { fontSize: 15, color: c.textPrimary, fontWeight: '600' },
