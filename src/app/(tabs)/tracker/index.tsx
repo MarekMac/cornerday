@@ -350,7 +350,7 @@ export default function TrackerIndex() {
           await supabase.from('debts').update({
             name: debtName.trim(), total_amount: amount, category: debtCategory,
             target_date: targetDateStr,
-          }).eq('id', editingDebt.id);
+          }).eq('id', editingDebt.id).eq('user_id', user.id);
           await supabase.from('losses').insert({
             user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
           });
@@ -379,8 +379,8 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id);
-        await supabase.from('debts').delete().eq('id', deleteDebtTarget.id);
+        await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id).eq('user_id', user.id);
+        await supabase.from('debts').delete().eq('id', deleteDebtTarget.id).eq('user_id', user.id);
         await supabase.from('losses').insert({
           user_id: user.id, type: 'debt_deleted', amount: deleteDebtTarget.total_amount,
           category: 'Debt', note: deleteDebtTarget.name,
@@ -460,7 +460,7 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSavingTarget.id);
+        const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSavingTarget.id).eq('user_id', user.id);
         if (delErr) { Alert.alert('Could not delete saving', delErr.message); return; }
         await supabase.from('losses').insert({
           user_id: user.id, type: 'saving_deleted', amount: deleteSavingTarget.amount,
@@ -512,7 +512,7 @@ export default function TrackerIndex() {
         if (editingSession) {
           await supabase.from('losses').update({
             amount, category: sessionCategory, note: sessionNote.trim() || null,
-          }).eq('id', editingSession.id);
+          }).eq('id', editingSession.id).eq('user_id', user.id);
         } else {
           await supabase.from('losses').insert({
             user_id: user.id, type: 'session', amount,
@@ -535,7 +535,9 @@ export default function TrackerIndex() {
     if (!deleteSessionTarget) return;
     setDeleting(true);
     try {
-      const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSessionTarget.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSessionTarget.id).eq('user_id', user.id);
       if (delErr) { Alert.alert('Could not delete session', delErr.message); return; }
       haptic();
       setDeleteSessionTarget(null);
