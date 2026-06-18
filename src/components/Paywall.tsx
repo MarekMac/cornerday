@@ -19,11 +19,11 @@ import { usePurchases } from '@/context/purchases';
 
 const FEATURES = [
   { emoji: '🤖', title: 'AI Corner', desc: 'Personal AI support available 24/7 — built for gambling recovery, not generic wellness' },
+  { emoji: '📊', title: 'Recovery Analytics', desc: 'See exactly how far you\'ve come — streaks, mood and money recovered in one place' },
+  { emoji: '🚫', title: 'Ad-Free', desc: 'Zero ads, zero distractions — a clean space built entirely around your recovery' },
   { emoji: '👥', title: 'Someone in Your Corner', desc: 'Give someone close to you a window into your recovery — they\'ll cheer you on' },
   { emoji: '📧', title: 'Supporter Notifications', desc: 'Your supporter gets an email when you hit a milestone, feel an urge, or have a slip' },
-  { emoji: '📊', title: 'Recovery Analytics', desc: 'See exactly how far you\'ve come — streaks, mood and money recovered in one place' },
   { emoji: '🎉', title: 'Progress Sharing', desc: 'Share a milestone card with friends or your community and celebrate out loud' },
-  { emoji: '🚫', title: 'Ad-Free', desc: 'Zero ads, zero distractions — a clean space built entirely around your recovery' },
 ];
 
 export function Paywall() {
