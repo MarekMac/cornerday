@@ -30,7 +30,7 @@ const FEATURES = [
   '💬 Chat any time, day or night',
   '🧠 Evidence-based coping strategies',
   '📈 Personalised to your recovery journey',
-  '🔒 Completely private and confidential',
+  '🔒 Never saved, never shared — only you can read this',
 ];
 
 const STARTERS = [
@@ -363,6 +363,7 @@ export default function CoachScreen() {
               <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
             </Pressable>
             <Text style={s.price}>Cancel any time</Text>
+            <Text style={s.privacyNote}>🔒 Your conversations are never saved or shared with anyone</Text>
           </View>
         </ScrollView>
       </View>
@@ -403,6 +404,7 @@ export default function CoachScreen() {
             ))}
           </ScrollView>
         )}
+        <Text style={s.chatPrivacyNote}>🔒 Not saved · Not shared · Private to you</Text>
         <View style={s.inputBar}>
           <TextInput
             style={s.textInput}
@@ -483,6 +485,7 @@ const makeStyles = (c: AppColors) =>
     },
     upgradeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
     price: { fontSize: 12, color: c.textFaint },
+    privacyNote: { fontSize: 12, color: c.textFaint, textAlign: 'center', lineHeight: 17 },
 
     // Chat
     chatList: { padding: 16, paddingBottom: 8, gap: 12 },
@@ -579,5 +582,13 @@ const makeStyles = (c: AppColors) =>
       fontSize: 13,
       color: c.primary,
       fontWeight: '500',
+    },
+
+    chatPrivacyNote: {
+      fontSize: 11,
+      color: c.textFaint,
+      textAlign: 'center',
+      paddingVertical: 4,
+      backgroundColor: c.bgCard,
     },
   });
