@@ -650,7 +650,10 @@ export default function CommunityFeed() {
           {!!banInfo.ban_appeal_note && <Text style={s.banNoticeRow}><Text style={s.banNoticeLabel}>Note: </Text>{banInfo.ban_appeal_note}</Text>}
           <Pressable
             style={({ pressed }) => [s.banContactBtn, pressed && { opacity: 0.75 }]}
-            onPress={() => Linking.openURL('mailto:support@cornerday.app?subject=Ban%20appeal&body=Hi%2C%20I%20would%20like%20to%20appeal%20my%20community%20ban.')}
+            onPress={() => {
+              const subject = encodeURIComponent(`Ban appeal – ${displayName || 'user'}`);
+              Linking.openURL(`mailto:support@cornerday.app?subject=${subject}&body=Hi%2C%20I%20would%20like%20to%20appeal%20my%20community%20ban.`);
+            }}
           >
             <Text style={s.banContactTxt}>Contact Support</Text>
           </Pressable>
