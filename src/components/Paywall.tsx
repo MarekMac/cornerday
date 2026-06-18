@@ -18,10 +18,10 @@ import { useAppTheme } from '@/context/theme';
 import { usePurchases } from '@/context/purchases';
 
 const FEATURES = [
-  { emoji: '🤖', title: 'AI Coach', desc: '24/7 personal support, available any time' },
-  { emoji: '📊', title: 'Detailed Analytics', desc: 'Deep insights into your recovery progress' },
-  { emoji: '👥', title: 'Someone in Your Corner', desc: 'Share your journey with someone you trust' },
-  { emoji: '🚫', title: 'Ad-Free', desc: 'No distractions — just your recovery' },
+  { emoji: '🤖', title: 'AI Corner', desc: 'Personal AI support built for gambling recovery, available 24/7' },
+  { emoji: '📊', title: 'Recovery Analytics', desc: 'Streak trends, mood patterns and debt progress in one view' },
+  { emoji: '👥', title: 'Someone in Your Corner', desc: 'Let a trusted person follow your journey and send you support' },
+  { emoji: '🚫', title: 'Ad-Free', desc: 'Zero ads, zero distractions — just your recovery' },
 ];
 
 export function Paywall() {
@@ -112,30 +112,8 @@ export function Paywall() {
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Feature list */}
-          <View style={s.featuresCard}>
-            {FEATURES.map((f, i) => (
-              <View key={f.title} style={[s.featureRow, i < FEATURES.length - 1 && s.featureRowBorder]}>
-                <View style={s.featureIcon}>
-                  <Text style={s.featureEmoji}>{f.emoji}</Text>
-                </View>
-                <View style={s.featureText}>
-                  <Text style={s.featureTitle}>{f.title}</Text>
-                  <Text style={s.featureDesc}>{f.desc}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          {/* Plan selector */}
+          {/* Plan selector — shown first so CTA is reachable without scrolling */}
           <Text style={s.planLabel}>Choose your plan</Text>
-          {sorted.length === 0 && (
-            <View style={s.plansUnavailable}>
-              <Text style={s.plansUnavailableEmoji}>📡</Text>
-              <Text style={s.plansUnavailableTitle}>Plans couldn't load</Text>
-              <Text style={s.plansUnavailableBody}>Check your internet connection and reopen this screen.</Text>
-            </View>
-          )}
           <View style={s.planRow}>
             {sorted.length > 0 ? sorted.map((pkg, i) => {
               const isAnnual = pkg.packageType === PACKAGE_TYPE.ANNUAL;
@@ -205,6 +183,21 @@ export function Paywall() {
 
           <Text style={s.trialNote}>Cancel any time. No commitment.</Text>
 
+          {/* Feature list */}
+          <View style={s.featuresCard}>
+            {FEATURES.map((f, i) => (
+              <View key={f.title} style={[s.featureRow, i < FEATURES.length - 1 && s.featureRowBorder]}>
+                <View style={s.featureIcon}>
+                  <Text style={s.featureEmoji}>{f.emoji}</Text>
+                </View>
+                <View style={s.featureText}>
+                  <Text style={s.featureTitle}>{f.title}</Text>
+                  <Text style={s.featureDesc}>{f.desc}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
           {/* Restore */}
           <Pressable
             onPress={handleRestore}
@@ -237,7 +230,7 @@ export function Paywall() {
 const makeStyles = (c: AppColors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: c.bgElement },
 
-  header: { paddingBottom: 28 },
+  header: { paddingBottom: 16 },
   headerTop: { paddingHorizontal: 20, alignItems: 'flex-end' },
   closeBtn: {
     width: 32, height: 32, borderRadius: 16,
@@ -245,9 +238,9 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   closeBtnTxt: { color: c.white, fontSize: 14, fontWeight: '700' },
-  headerBody: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 8 },
-  headerTitle: { fontSize: 30, fontWeight: '800', color: c.white, letterSpacing: -0.5 },
-  headerSub: { fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 6, textAlign: 'center' },
+  headerBody: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 4, paddingBottom: 4 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: c.white, letterSpacing: -0.3 },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4, textAlign: 'center' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
@@ -276,10 +269,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   featureDesc: { fontSize: 13, color: c.textMuted, lineHeight: 18 },
 
   planLabel: { fontSize: 13, fontWeight: '600', color: c.textMuted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  plansUnavailable: { alignItems: 'center', padding: 20, gap: 6, marginBottom: 8 },
-  plansUnavailableEmoji: { fontSize: 32 },
-  plansUnavailableTitle: { fontSize: 15, fontWeight: '700', color: c.textBody },
-  plansUnavailableBody: { fontSize: 13, color: c.textMuted, textAlign: 'center' },
   planRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   planCard: {
     flex: 1, borderRadius: 16, padding: 16,
