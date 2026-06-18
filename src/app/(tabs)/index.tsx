@@ -2971,7 +2971,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   streakTitle: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.9 },
   separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)' },
   milestoneTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
-  liveCounter: { fontSize: 20, fontWeight: '800', color: c.white, fontVariant: ['tabular-nums'], lineHeight: 24 },
+  liveCounter: { fontSize: 16, fontWeight: '800', color: c.white, fontVariant: ['tabular-nums'], lineHeight: 21 },
   streakMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   longestTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
   personalBestTxt: { fontSize: 11, color: 'rgba(168,216,208,0.9)', fontWeight: '600' },
