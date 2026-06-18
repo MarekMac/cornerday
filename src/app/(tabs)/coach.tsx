@@ -27,10 +27,10 @@ import { CHECKLIST_KEY } from '@/constants/storage-keys';
 const FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1`;
 
 const FEATURES = [
-  '💬 Chat any time, day or night',
-  '🧠 Evidence-based coping strategies',
-  '📈 Personalised to your recovery journey',
-  '🔒 Never saved, never shared — only you can read this',
+  { icon: '💬', text: 'Chat any time, day or night' },
+  { icon: '🧠', text: 'Evidence-based coping strategies' },
+  { icon: '📈', text: 'Personalised to your recovery journey' },
+  { icon: '🔒', text: 'Never saved, never shared — only you can read this' },
 ];
 
 const STARTERS = [
@@ -341,29 +341,33 @@ export default function CoachScreen() {
     return (
       <View style={s.root}>
         {header}
-        <ScrollView contentContainerStyle={s.body}>
-          <View style={s.lockCard}>
-            <Text style={s.lockEmoji}>🤖</Text>
-            <Text style={s.lockTitle}>AI Corner</Text>
-            <Text style={s.lockDesc}>
-              Your personal AI support — available 24/7 and built for gambling recovery.{'\n'}
-              Exclusive to Premium.
-            </Text>
-            <View style={s.featureList}>
-              {FEATURES.map(f => (
-                <View key={f} style={s.featureRow}>
-                  <Text style={s.featureItem}>{f}</Text>
+        <ScrollView contentContainerStyle={s.paywallScroll}>
+          <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.paywallIcon}>
+            <Text style={s.paywallIconEmoji}>✨</Text>
+          </LinearGradient>
+          <Text style={s.paywallTitle}>AI Corner</Text>
+          <Text style={s.paywallSub}>
+            Your personal support — available 24/7 and built for gambling recovery.
+          </Text>
+          <View style={s.featureList}>
+            {FEATURES.map(f => (
+              <View key={f.text} style={s.featureRow}>
+                <View style={s.featureIconCircle}>
+                  <Text style={s.featureEmoji}>{f.icon}</Text>
                 </View>
-              ))}
-            </View>
-            <Pressable
-              style={({ pressed }) => [s.upgradeBtn, pressed && { opacity: 0.85 }]}
-              onPress={showPaywall}
-            >
-              <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
-            </Pressable>
-            <Text style={s.price}>Cancel any time</Text>
+                <Text style={s.featureText}>{f.text}</Text>
+              </View>
+            ))}
           </View>
+          <Pressable
+            style={({ pressed }) => [s.upgradeBtnWrap, pressed && { opacity: 0.88 }]}
+            onPress={showPaywall}
+          >
+            <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.upgradeBtn}>
+              <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
+            </LinearGradient>
+          </Pressable>
+          <Text style={s.price}>Cancel any time</Text>
         </ScrollView>
       </View>
     );
@@ -459,31 +463,29 @@ const makeStyles = (c: AppColors) =>
     premiumBadgeTxt: { fontSize: 12, color: c.white, fontWeight: '600' },
 
     // Paywall
-    body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-    lockCard: {
-      backgroundColor: c.bgCard,
-      borderRadius: 20,
-      padding: 24,
-      alignItems: 'center',
-      gap: 14,
-      width: '100%',
+    paywallScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 32 },
+    paywallIcon: {
+      width: 80, height: 80, borderRadius: 40,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 20,
+      shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
     },
-    lockEmoji: { fontSize: 52 },
-    lockTitle: { fontSize: 20, fontWeight: '700', color: c.textPrimary, textAlign: 'center' },
-    lockDesc: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21 },
-    featureList: { gap: 10, alignSelf: 'stretch', marginVertical: 4 },
-    featureRow: { flexDirection: 'row' },
-    featureItem: { fontSize: 15, color: c.textSecondary },
-    upgradeBtn: {
-      backgroundColor: c.primary,
-      borderRadius: 14,
-      paddingVertical: 14,
-      alignSelf: 'stretch',
-      alignItems: 'center',
-      marginTop: 4,
+    paywallIconEmoji: { fontSize: 34 },
+    paywallTitle: { fontSize: 26, fontWeight: '800', color: c.textPrimary, marginBottom: 8, textAlign: 'center' },
+    paywallSub: { fontSize: 15, color: c.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
+    featureList: { alignSelf: 'stretch', gap: 16, marginBottom: 32 },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    featureIconCircle: {
+      width: 38, height: 38, borderRadius: 19,
+      backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    upgradeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
-    price: { fontSize: 12, color: c.textFaint },
+    featureEmoji: { fontSize: 18 },
+    featureText: { flex: 1, fontSize: 15, color: c.textSecondary, lineHeight: 21 },
+    upgradeBtnWrap: { alignSelf: 'stretch', borderRadius: 16, overflow: 'hidden' },
+    upgradeBtn: { paddingVertical: 16, alignItems: 'center' },
+    upgradeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 17, letterSpacing: 0.3 },
+    price: { fontSize: 12, color: c.textFaint, marginTop: 12 },
 
     // Chat
     chatList: { padding: 16, paddingBottom: 8, gap: 12 },
