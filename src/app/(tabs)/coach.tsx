@@ -363,7 +363,6 @@ export default function CoachScreen() {
               <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
             </Pressable>
             <Text style={s.price}>Cancel any time</Text>
-            <Text style={s.privacyNote}>🔒 Your conversations are never saved or shared with anyone</Text>
           </View>
         </ScrollView>
       </View>
@@ -485,7 +484,6 @@ const makeStyles = (c: AppColors) =>
     },
     upgradeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
     price: { fontSize: 12, color: c.textFaint },
-    privacyNote: { fontSize: 12, color: c.textFaint, textAlign: 'center', lineHeight: 17 },
 
     // Chat
     chatList: { padding: 16, paddingBottom: 8, gap: 12 },
