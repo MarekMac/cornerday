@@ -184,6 +184,29 @@ function formatStreakDual(ms: number): string {
   return '< 1m';
 }
 
+type MilestoneType = 'days' | 'savings' | 'urges' | 'payments';
+interface CustomMilestone { type: MilestoneType; target: number; icon: string }
+const MILESTONE_TYPES: { type: MilestoneType; emoji: string; label: string }[] = [
+  { type: 'days',     emoji: '📅', label: 'Clean days'    },
+  { type: 'savings',  emoji: '💰', label: 'Amount saved'  },
+  { type: 'urges',    emoji: '💪', label: 'Urges beaten'  },
+  { type: 'payments', emoji: '🏦', label: 'Debt payments' },
+];
+const DEFAULT_MILESTONE_ICON: Record<MilestoneType, string> = {
+  days: '📅', savings: '💰', urges: '💪', payments: '🏦',
+};
+const MILESTONE_ICONS = ['🎯','🏆','⭐','🔥','💎','🌟','🏅','🎉','💪','🌱','🌊','🦋','🥇','👑','🚀','❤️','🌈','📅','💰','🏦','✨','🙏','💯','🎖️'];
+function fmtMilestone(m: CustomMilestone, currency: string): string {
+  const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
+  const s = syms[currency] ?? currency + ' ';
+  switch (m.type) {
+    case 'days':     return `${m.target} clean days`;
+    case 'savings':  return `${s}${m.target} saved`;
+    case 'urges':    return `${m.target} urges beaten`;
+    case 'payments': return `${m.target} payments made`;
+  }
+}
+
 export default function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -275,9 +298,12 @@ export default function AccountScreen() {
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [streakShieldEnabled, setStreakShieldEnabled] = useState(false);
-  const [customMilestone, setCustomMilestone] = useState<number | null>(null);
+  const [customMilestone, setCustomMilestone] = useState<CustomMilestone | null>(null);
   const [showCustomMilestoneModal, setShowCustomMilestoneModal] = useState(false);
   const [customMilestoneInput, setCustomMilestoneInput] = useState('');
+  const [customMilestoneType, setCustomMilestoneType] = useState<MilestoneType>('days');
+  const [customMilestoneIcon, setCustomMilestoneIcon] = useState('📅');
+  const [milestoneIconPickerOpen, setMilestoneIconPickerOpen] = useState(false);
 
   const [partnerToken, setPartnerToken] = useState<string | null>(null);
   const [partnerLinkId, setPartnerLinkId] = useState<string | null>(null);
@@ -519,7 +545,15 @@ export default function AccountScreen() {
       if (rawCheckinHour) { const n = Number(rawCheckinHour); if (!isNaN(n)) setNotifCheckinHour(n); }
       if (rawHaptics !== null) { const v = rawHaptics !== 'false'; setHapticsEnabled(v); setGlobalHaptics(v); }
       setStreakShieldEnabled(rawShield === 'true');
-      if (rawMilestone) { const n = Number(rawMilestone); if (!isNaN(n) && n > 0) setCustomMilestone(n); }
+      if (rawMilestone) {
+        try {
+          const parsed = JSON.parse(rawMilestone) as CustomMilestone;
+          if (parsed.type && parsed.target > 0) setCustomMilestone({ icon: DEFAULT_MILESTONE_ICON[parsed.type as MilestoneType] ?? '🎯', ...parsed });
+        } catch {
+          const n = Number(rawMilestone);
+          if (!isNaN(n) && n > 0) setCustomMilestone({ type: 'days', target: n, icon: '📅' });
+        }
+      }
     });
     return () => {
       if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current);
@@ -1221,21 +1255,27 @@ export default function AccountScreen() {
   };
 
   const openCustomMilestoneModal = () => {
-    setCustomMilestoneInput(customMilestone ? String(customMilestone) : '');
+    const type = customMilestone?.type ?? 'days';
+    setCustomMilestoneType(type);
+    setCustomMilestoneIcon(customMilestone?.icon ?? DEFAULT_MILESTONE_ICON[type]);
+    setCustomMilestoneInput(customMilestone ? String(customMilestone.target) : '');
+    setMilestoneIconPickerOpen(false);
     setShowCustomMilestoneModal(true);
   };
 
   const saveCustomMilestone = async () => {
-    const days = parseInt(customMilestoneInput.trim(), 10);
-    if (isNaN(days) || days <= 0 || days > 3650) {
-      Alert.alert('Invalid value', 'Enter a number between 1 and 3650.');
+    const target = parseInt(customMilestoneInput.trim(), 10);
+    const maxes: Record<MilestoneType, number> = { days: 3650, savings: 999999, urges: 9999, payments: 9999 };
+    if (isNaN(target) || target <= 0 || target > maxes[customMilestoneType]) {
+      Alert.alert('Invalid value', `Enter a number between 1 and ${maxes[customMilestoneType].toLocaleString()}.`);
       return;
     }
-    await AsyncStorage.setItem(CUSTOM_MILESTONE_KEY, String(days));
-    setCustomMilestone(days);
-    // Schedule notification if we have a quit timestamp
-    if (quitTimestamp) {
-      const targetTime = new Date(new Date(quitTimestamp).getTime() + days * 86400000);
+    const milestone: CustomMilestone = { type: customMilestoneType, target, icon: customMilestoneIcon };
+    await AsyncStorage.setItem(CUSTOM_MILESTONE_KEY, JSON.stringify(milestone));
+    setCustomMilestone(milestone);
+    // Schedule push notification only for days type (others are event-driven)
+    if (customMilestoneType === 'days' && quitTimestamp) {
+      const targetTime = new Date(new Date(quitTimestamp).getTime() + target * 86400000);
       if (targetTime > new Date()) {
         const existingId = await AsyncStorage.getItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
         if (existingId) await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {});
@@ -1244,16 +1284,20 @@ export default function AccountScreen() {
           if (status === 'granted') {
             const id = await Notifications.scheduleNotificationAsync({
               content: {
-                title: `🎯 ${days} Days Clean!`,
-                body: `You hit your personal ${days}-day milestone. This is a huge achievement. Keep going! 🏆`,
+                title: `🎯 ${target} Days Clean!`,
+                body: `You hit your personal ${target}-day milestone. This is a huge achievement. Keep going! 🏆`,
                 data: { type: 'custom_milestone' },
               },
               trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: targetTime },
             });
             await AsyncStorage.setItem(CUSTOM_MILESTONE_NOTIF_ID_KEY, id);
           }
-        } catch { /* notification scheduling is best-effort */ }
+        } catch { /* best-effort */ }
       }
+    } else {
+      // Cancel any existing days-type notification
+      const existingId = await AsyncStorage.getItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
+      if (existingId) { await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {}); await AsyncStorage.removeItem(CUSTOM_MILESTONE_NOTIF_ID_KEY); }
     }
     setShowCustomMilestoneModal(false);
   };
@@ -1590,19 +1634,12 @@ export default function AccountScreen() {
           </Pressable>
           <View style={s.infoDivider} />
           <Pressable
-            onPress={isPremiumFromRC ? openCustomMilestoneModal : () => showPaywall()}
+            onPress={openCustomMilestoneModal}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
             <View style={s.infoItemMain}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={s.infoItemLabel}>Custom milestone</Text>
-                {!isPremiumFromRC && (
-                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                    <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
-                  </View>
-                )}
-              </View>
+              <Text style={s.infoItemLabel}>Custom milestone</Text>
               <Text style={[s.infoItemValue, !customMilestone && s.infoValueEmpty]}>
-                {customMilestone ? `${customMilestone} days` : 'Not set'}
+                {customMilestone ? `${customMilestone.icon} ${fmtMilestone(customMilestone, profile?.currency ?? 'USD')}` : 'Not set'}
               </Text>
             </View>
             <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
@@ -2542,27 +2579,66 @@ export default function AccountScreen() {
 
       {/* Custom milestone modal */}
       <Modal visible={showCustomMilestoneModal} transparent animationType="fade" onRequestClose={() => setShowCustomMilestoneModal(false)}>
-        <Pressable style={s.confirmOverlay} onPress={() => setShowCustomMilestoneModal(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Pressable style={[s.confirmOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={() => setShowCustomMilestoneModal(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: '#fff7e0', borderColor: '#f0c040' }]}>
-                <Text style={{ fontSize: 26 }}>🎯</Text>
-              </View>
-            </View>
             <Text style={s.confirmTitle}>Custom milestone</Text>
-            <Text style={s.confirmBody}>
-              Set a personal target day. You'll get a push notification and celebration when you hit it.
-            </Text>
-            <TextInput
-              style={s.milestoneInput}
-              placeholder="e.g. 100"
-              placeholderTextColor={c.textFaint}
-              keyboardType="number-pad"
-              value={customMilestoneInput}
-              onChangeText={setCustomMilestoneInput}
-              maxLength={4}
-            />
-            <Text style={[s.confirmBody, { fontSize: 11, marginTop: 4, opacity: 0.6 }]}>days clean</Text>
+
+            {/* Type picker */}
+            <View style={s.milestoneTypeGrid}>
+              {MILESTONE_TYPES.map(mt => {
+                const selected = customMilestoneType === mt.type;
+                return (
+                  <Pressable
+                    key={mt.type}
+                    style={[s.milestoneTypeBtn, selected && s.milestoneTypeBtnSelected]}
+                    onPress={() => { setCustomMilestoneType(mt.type); setCustomMilestoneIcon(DEFAULT_MILESTONE_ICON[mt.type]); setCustomMilestoneInput(''); setMilestoneIconPickerOpen(false); }}>
+                    <Text style={s.milestoneTypeEmoji}>{mt.emoji}</Text>
+                    <Text style={[s.milestoneTypeLabel, selected && s.milestoneTypeLabelSelected]}>{mt.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Input row + inline icon trigger */}
+            <View style={s.milestoneInputRow}>
+              <Pressable
+                style={[s.milestoneIconTrigger, milestoneIconPickerOpen && s.milestoneIconTriggerOpen]}
+                onPress={() => setMilestoneIconPickerOpen(v => !v)}>
+                <Text style={{ fontSize: 20 }}>{customMilestoneIcon}</Text>
+                <Text style={s.milestoneIconChevron}>{milestoneIconPickerOpen ? '▴' : '▾'}</Text>
+              </Pressable>
+              <TextInput
+                style={s.milestoneInput}
+                placeholder={customMilestoneType === 'days' ? '100' : customMilestoneType === 'savings' ? '500' : '50'}
+                placeholderTextColor={c.textFaint}
+                keyboardType="number-pad"
+                value={customMilestoneInput}
+                onChangeText={setCustomMilestoneInput}
+                maxLength={6}
+              />
+              <Text style={s.milestoneInputUnit}>
+                {customMilestoneType === 'days'     ? 'days clean' :
+                 customMilestoneType === 'savings'  ? (profile?.currency ?? 'USD') + ' saved' :
+                 customMilestoneType === 'urges'    ? 'urges beaten' :
+                                                      'payments made'}
+              </Text>
+            </View>
+
+            {/* Expandable icon strip */}
+            {milestoneIconPickerOpen && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.milestoneIconScroll} contentContainerStyle={s.milestoneIconScrollContent}>
+                {MILESTONE_ICONS.map(icon => (
+                  <Pressable
+                    key={icon}
+                    style={[s.milestoneIconBtn, customMilestoneIcon === icon && s.milestoneIconBtnSelected]}
+                    onPress={() => { setCustomMilestoneIcon(icon); setMilestoneIconPickerOpen(false); }}>
+                    <Text style={s.milestoneIconEmoji}>{icon}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+
             <View style={s.confirmActions}>
               <Pressable style={s.confirmCancel} onPress={() => setShowCustomMilestoneModal(false)}>
                 <Text style={s.confirmCancelTxt}>Cancel</Text>
@@ -2578,6 +2654,7 @@ export default function AccountScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Confirm sign out */}
@@ -3358,12 +3435,35 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
   confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
-  milestoneInput: {
-    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 12,
-    paddingVertical: 12, paddingHorizontal: 16, fontSize: 28, fontWeight: '700',
-    color: c.textPrimary, textAlign: 'center', backgroundColor: c.bgElement,
-    marginTop: 16, alignSelf: 'center', width: 140,
+  milestoneTypeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16, marginBottom: 10 },
+  milestoneTypeBtn: {
+    width: '47%', flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12,
+    backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: 'transparent',
   },
+  milestoneTypeBtnSelected: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  milestoneTypeEmoji: { fontSize: 17 },
+  milestoneTypeLabel: { fontSize: 13, fontWeight: '600', color: c.textMuted },
+  milestoneTypeLabelSelected: { color: c.primary },
+  milestoneInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  milestoneIconTrigger: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 10,
+    paddingVertical: 8, paddingHorizontal: 10, backgroundColor: c.bgElement,
+  },
+  milestoneIconTriggerOpen: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  milestoneIconChevron: { fontSize: 9, color: c.textFaint, marginTop: 1 },
+  milestoneInput: {
+    flex: 1, borderWidth: 1.5, borderColor: c.borderLight, borderRadius: 10,
+    paddingVertical: 8, paddingHorizontal: 12, fontSize: 20, fontWeight: '700',
+    color: c.textPrimary, textAlign: 'center', backgroundColor: c.bgElement,
+  },
+  milestoneInputUnit: { fontSize: 13, fontWeight: '600', color: c.textMuted, flexShrink: 1 },
+  milestoneIconScroll: { marginTop: 8, marginHorizontal: -4 },
+  milestoneIconScrollContent: { paddingHorizontal: 4, gap: 5, paddingVertical: 2 },
+  milestoneIconBtn: { width: 36, height: 36, borderRadius: 9, backgroundColor: c.bgElement, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'transparent' },
+  milestoneIconBtnSelected: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  milestoneIconEmoji: { fontSize: 18 },
   confirmBold: { fontWeight: '700', color: c.textSecondary },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
   confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },

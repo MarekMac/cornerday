@@ -951,9 +951,14 @@ export default function HomeScreen() {
         setShieldUndo(null);
       }
       if (rawMilestone) {
-        const days = Number(rawMilestone);
-        if (!isNaN(days) && days > 0) setCustomMilestone(days);
-        else setCustomMilestone(null);
+        try {
+          const parsed = JSON.parse(rawMilestone);
+          if (parsed.type && parsed.target > 0) setCustomMilestone(parsed);
+          else setCustomMilestone(null);
+        } catch {
+          const n = Number(rawMilestone);
+          setCustomMilestone(!isNaN(n) && n > 0 ? { type: 'days', target: n, icon: '📅' } : null);
+        }
       } else {
         setCustomMilestone(null);
       }
@@ -986,7 +991,7 @@ export default function HomeScreen() {
   const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
   const [shieldEnabled, setShieldEnabled] = useState(false);
   const [shieldUndo, setShieldUndo] = useState<{ prevQuit: string; prevStreakDays: number; expiresAt: number } | null>(null);
-  const [customMilestone, setCustomMilestone] = useState<number | null>(null);
+  const [customMilestone, setCustomMilestone] = useState<{ type: string; target: number; icon?: string } | null>(null);
   const [customMilestoneCelebVisible, setCustomMilestoneCelebVisible] = useState(false);
   const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string } | null>(null);
   const shareCardRef = useRef<View>(null);
@@ -1003,16 +1008,22 @@ export default function HomeScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, fetchData]);
 
-  // Check custom milestone when streak or milestone setting changes
+  // Check custom milestone when data or milestone setting changes
   useEffect(() => {
-    if (!data?.quitDate || !customMilestone) return;
-    const streakDaysFloat = Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) / 86400000;
-    if (streakDaysFloat >= customMilestone) {
+    if (!data || !customMilestone) return;
+    const { type, target } = customMilestone;
+    const streakDaysFloat = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) / 86400000 : 0;
+    const value =
+      type === 'days'     ? streakDaysFloat :
+      type === 'savings'  ? data.totalPaid :
+      type === 'urges'    ? data.urgesOvercome :
+      type === 'payments' ? data.paymentCount : 0;
+    if (value >= target) {
+      const celebKey = `${type}_${target}`;
       AsyncStorage.getItem(CUSTOM_MILESTONE_CELEBRATED_KEY).then(raw => {
-        const celebrated = raw ? Number(raw) : null;
-        if (celebrated !== customMilestone) {
+        if (raw !== celebKey) {
           setCustomMilestoneCelebVisible(true);
-          AsyncStorage.setItem(CUSTOM_MILESTONE_CELEBRATED_KEY, String(customMilestone));
+          AsyncStorage.setItem(CUSTOM_MILESTONE_CELEBRATED_KEY, celebKey);
         }
       });
     }
@@ -2359,17 +2370,22 @@ export default function HomeScreen() {
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
               <View style={[s.confirmIconCircle, { backgroundColor: '#fff7e0' }]}>
-                <Text style={{ fontSize: 28 }}>🎯</Text>
+                <Text style={{ fontSize: 28 }}>{customMilestone?.icon ?? '🎯'}</Text>
               </View>
             </View>
-            <Text style={s.confirmTitle}>{customMilestone} Days Clean!</Text>
+            <Text style={s.confirmTitle}>{
+              customMilestone?.type === 'days'     ? `${customMilestone.target} Days Clean!` :
+              customMilestone?.type === 'savings'  ? `${customMilestone.target} Saved!` :
+              customMilestone?.type === 'urges'    ? `${customMilestone.target} Urges Beaten!` :
+              customMilestone?.type === 'payments' ? `${customMilestone.target} Payments Made!` : 'Milestone reached!'
+            }</Text>
             <Text style={s.confirmBody}>
               You hit your personal milestone.{'\n'}This is exactly what you set out to do. 🏆
             </Text>
             <View style={s.confirmActions}>
               <Pressable
                 style={[s.confirmReset, { backgroundColor: c.primary, borderColor: c.primary }]}
-                onPress={() => { setCustomMilestoneCelebVisible(false); openShareCard({ emoji: '🎯', label: `${customMilestone} Days` }, false); }}>
+                onPress={() => { setCustomMilestoneCelebVisible(false); openShareCard({ emoji: '🎯', label: customMilestone ? `${customMilestone.target} ${customMilestone.type === 'days' ? 'Days' : customMilestone.type === 'savings' ? 'Saved' : customMilestone.type === 'urges' ? 'Urges' : 'Payments'}` : 'Milestone' }, false); }}>
                 <Text style={[s.confirmResetTxt, { color: '#fff' }]}>Share</Text>
               </Pressable>
               <Pressable style={s.confirmCancel} onPress={() => setCustomMilestoneCelebVisible(false)}>
