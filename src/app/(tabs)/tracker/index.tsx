@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { maybeRequestReview } from '@/lib/review';
 import { parseQuitDate } from '@/lib/parseQuitDate';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
@@ -726,6 +727,7 @@ export default function TrackerIndex() {
             category: 'Debt', note: quickPayDebt.name,
           });
           if (journalErr) console.warn('[saveQuickPay] journal insert failed:', journalErr.message);
+          maybeRequestReview('debt_paid');
         }
         hapticMedium();
         closeQuickPay();

@@ -30,7 +30,7 @@ import Svg, { Circle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PreferencesIllustration from '@/components/PreferencesIllustration';
 import * as Notifications from 'expo-notifications';
-import * as StoreReview from 'expo-store-review';
+import { maybeRequestReview } from '@/lib/review';
 import { supabase } from '@/lib/supabase';
 import { parseQuitDate } from '@/lib/parseQuitDate';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleUrgePredictionNotification } from '@/lib/notifications';
@@ -38,7 +38,7 @@ import { notifySupporter } from '@/lib/notifySupporter';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY, MOTIVATION_PHOTO_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, PROFILE_NUDGE_SHOWN_KEY, MOTIVATION_PHOTO_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
@@ -990,7 +990,7 @@ export default function HomeScreen() {
   const [shieldUndo, setShieldUndo] = useState<{ prevQuit: string; prevStreakDays: number; expiresAt: number } | null>(null);
   const [customMilestone, setCustomMilestone] = useState<number | null>(null);
   const [customMilestoneCelebVisible, setCustomMilestoneCelebVisible] = useState(false);
-  const [celebrationBadge, setCelebrationBadge] = useState<{ emoji: string; label: string; celebration: { icon: string; text: string }; msg: string } | null>(null);
+  const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string } | null>(null);
   const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
@@ -1121,6 +1121,7 @@ export default function HomeScreen() {
       if (newlyAwarded.length > 0) {
         const b = newlyAwarded[newlyAwarded.length - 1];
         setCelebrationBadge({
+          type: b.type,
           emoji: b.emoji,
           label: b.label,
           celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
@@ -1252,6 +1253,7 @@ export default function HomeScreen() {
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: savingsGoalAmount, category: 'Milestone', note: '🎊 Savings goal reached' });
       await AsyncStorage.setItem(GOAL_REACHED_BADGE_SENT_KEY, '1');
       earnedBadges.push('goal_reached');
+      maybeRequestReview('savings_goal');
       setCelebrationBadge({
         emoji: '🎊', label: 'Goal Met',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
@@ -2930,14 +2932,10 @@ export default function HomeScreen() {
           }}
           onClose={async () => {
             showInterstitialIfReady(isPremium, 0.4);
+            const badgeType = celebrationBadge?.type;
             setCelebrationBadge(null);
-            try {
-              const alreadyAsked = await AsyncStorage.getItem(STORE_REVIEW_ASKED_KEY);
-              if (!alreadyAsked && await StoreReview.hasAction()) {
-                await AsyncStorage.setItem(STORE_REVIEW_ASKED_KEY, '1');
-                await StoreReview.requestReview();
-              }
-            } catch (_e) {}
+            if (badgeType === '1_week') maybeRequestReview('7_day');
+            else if (badgeType === '1_month') maybeRequestReview('1_month');
           }}
         />
       )}
