@@ -45,6 +45,7 @@ function InnerLayout() {
   const [seenWelcome, setSeenWelcome] = useState<boolean>(false);
   const [locked, setLocked] = useState(false);
   const backgroundedAtRef = useRef<number | null>(null);
+  const lastScheduledUserIdRef = useRef<string | null>(null);
 
   const authenticate = useCallback(async () => {
     try {
@@ -63,9 +64,11 @@ function InnerLayout() {
     if (locked) authenticate();
   }, [locked, authenticate]);
 
-  // Schedule 72h re-engagement check-in; reschedule on every session change
+  // Schedule 72h re-engagement check-in on sign-in only, not on every JWT refresh
   useEffect(() => {
-    if (!session) return;
+    const userId = session?.user?.id ?? null;
+    if (!userId || userId === lastScheduledUserIdRef.current) return;
+    lastScheduledUserIdRef.current = userId;
     scheduleOnboardingCheckin();
   }, [session]);
 

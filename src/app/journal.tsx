@@ -375,25 +375,27 @@ export default function JournalScreen() {
 
   const executeClearAll = async () => {
     setClearingAll(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const results = await Promise.all([
-        supabase.from('urge_journal').delete().eq('user_id', user.id),
-        supabase.from('mood_checkins').delete().eq('user_id', user.id),
-        supabase.from('debt_payments').delete().eq('user_id', user.id),
-        supabase.from('debts').delete().eq('user_id', user.id),
-        supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
-      ]);
-      const dbError = results.find(r => r.error)?.error;
-      if (dbError) {
-        Alert.alert('Could not clear journal', dbError.message);
-        setClearingAll(false);
-        return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const results = await Promise.all([
+          supabase.from('urge_journal').delete().eq('user_id', user.id),
+          supabase.from('mood_checkins').delete().eq('user_id', user.id),
+          supabase.from('debt_payments').delete().eq('user_id', user.id),
+          supabase.from('debts').delete().eq('user_id', user.id),
+          supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
+        ]);
+        const dbError = results.find(r => r.error)?.error;
+        if (dbError) {
+          Alert.alert('Could not clear journal', dbError.message);
+          return;
+        }
+        await fetchFeed();
       }
-      await fetchFeed();
+      setClearAllVisible(false);
+    } finally {
+      setClearingAll(false);
     }
-    setClearAllVisible(false);
-    setClearingAll(false);
   };
 
   return (

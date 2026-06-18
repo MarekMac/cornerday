@@ -775,7 +775,15 @@ export default function AccountScreen() {
   };
 
   const saveSpending = async () => {
-    const value = spendingCustom.trim() ? spendingCustom.trim() : spendingChip || null;
+    const raw = spendingCustom.trim();
+    if (raw) {
+      const parsed = parseFloat(raw);
+      if (isNaN(parsed) || parsed <= 0 || parsed > 999_999_999) {
+        Alert.alert('Invalid amount', 'Please enter a valid amount between 0 and 999,999,999.');
+        return;
+      }
+    }
+    const value = raw || spendingChip || null;
     setSavingSpending(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -956,6 +964,12 @@ export default function AccountScreen() {
         category: 'Account', note: iso,
       });
       setProfile(prev => prev ? { ...prev, quitTimestamp: iso } : prev);
+      setQuitTimestamp(iso);
+      const granted = await requestNotificationPermissions();
+      if (granted) {
+        await scheduleAllNotifications(notifPrefs, iso, []);
+        await scheduleOnboardingCheckin();
+      }
     }
     setSaving(false);
   };
