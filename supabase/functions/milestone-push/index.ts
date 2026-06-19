@@ -12,9 +12,13 @@ interface MilestoneDef {
   body: string;
 }
 
-// All milestones ≥ 1 day. Sub-day milestones (1h, 3h, 6h, 12h) are client-side only.
-// Badge types use push_ prefix so they are independent of the milestone-email badges.
+// Badge types use push_ prefix so they are independent of the client-side milestone badges.
+// Cron runs hourly; window is 65 min so every milestone is caught within ~1 hour of occurring.
 const MILESTONES: MilestoneDef[] = [
+  { days: 1/24,  badge: 'push_1_hour',   label: '1 hour',    emoji: '⏰', body: 'The first hour is the hardest. You did it — keep building.' },
+  { days: 3/24,  badge: 'push_3_hours',  label: '3 hours',   emoji: '🌤️', body: 'Three hours clean. Every hour you hold on rewires something.' },
+  { days: 6/24,  badge: 'push_6_hours',  label: '6 hours',   emoji: '☀️', body: 'Six hours clean. Most people don\'t make it this far on day one. You did.' },
+  { days: 12/24, badge: 'push_12_hours', label: '12 hours',  emoji: '🌗', body: 'Half a day clean. You\'re proving to yourself this is possible.' },
   { days: 1,    badge: 'push_1_day',     label: '1 day',     emoji: '🌱', body: 'One full day. A lot of people don\'t make it this far. You did.' },
   { days: 3,    badge: 'push_3_days',    label: '3 days',    emoji: '🌿', body: 'Three days clean. The hardest window. You\'re through it.' },
   { days: 5,    badge: 'push_5_days',    label: '5 days',    emoji: '🕊️', body: 'Five days. You\'ve made it through a full working week without gambling.' },
@@ -86,10 +90,11 @@ Deno.serve(async (req: Request) => {
 
       const elapsed = Math.max(0, Date.now() - quitMs);
 
-      // Find the milestone crossed within the last 24 hours
+      // Find the milestone crossed within the last 65 minutes (cron runs hourly, 5-min buffer)
+      const WINDOW_MS = 65 * 60 * 1_000;
       const milestone = MILESTONES.find(m => {
         const msAtMilestone = m.days * 86_400_000;
-        return elapsed >= msAtMilestone && (elapsed - 86_400_000) < msAtMilestone;
+        return elapsed >= msAtMilestone && (elapsed - WINDOW_MS) < msAtMilestone;
       });
 
       if (!milestone) { skipped++; continue; }
