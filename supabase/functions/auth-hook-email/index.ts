@@ -42,7 +42,7 @@ const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
 </body></html>`;
 
 Deno.serve(async (req: Request) => {
-  let data: { user: { email: string }; email_data: { email_action_type: string; token_hash: string; redirect_to: string } };
+  let data: { user: { email: string }; email_data: { email_action_type: string; token?: string; token_hash?: string; redirect_to: string } };
 
   try {
     data = await req.json();
@@ -55,15 +55,23 @@ Deno.serve(async (req: Request) => {
     return err('Missing required fields', 400);
   }
 
-  const { email_action_type, token_hash, redirect_to } = email_data;
+  const { email_action_type, token_hash, token, redirect_to } = email_data;
+  console.log('auth-hook-email full payload:', JSON.stringify(email_data));
 
   // Only handle password recovery — suppress other types (mailer_autoconfirm is ON)
   if (email_action_type !== 'recovery') {
     return ok();
   }
 
-  const redirectUrl = redirect_to || 'cornerday://reset-password';
-  const resetUrl = `${SUPABASE_URL}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${encodeURIComponent(redirectUrl)}`;
+  // Use token_hash if present, fall back to token
+  const verifyToken = token_hash || token;
+  if (!verifyToken) {
+    console.error('No token or token_hash in email_data');
+    return err('Missing token', 400);
+  }
+
+  const paramName = token_hash ? 'token_hash' : 'token';
+  const resetUrl = `${SUPABASE_URL}/auth/v1/verify?${paramName}=${verifyToken}&type=recovery&redirect_to=${encodeURIComponent('cornerday://reset-password')}`;
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

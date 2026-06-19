@@ -97,7 +97,32 @@ function InnerLayout() {
   }, []);
 
   useEffect(() => {
+    // Returns true if the URL was a password-reset deep link and was handled
+    const handleResetUrl = async (url: string): Promise<boolean> => {
+      if (!url.includes('reset-password')) return false;
+      const paramStr = url.split('#')[1] ?? url.split('?')[1] ?? '';
+      const params: Record<string, string> = {};
+      paramStr.split('&').forEach(pair => {
+        const idx = pair.indexOf('=');
+        if (idx === -1) return;
+        params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1));
+      });
+      if (params.access_token && params.refresh_token) {
+        await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+        setPendingRoute('/(onboarding)/reset-password');
+        return true;
+      }
+      return false;
+    };
+
     const init = async () => {
+      // Check for password-reset deep link first — must win over normal auth flow
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl && await handleResetUrl(initialUrl)) {
+        setAuthChecked(true);
+        return;
+      }
+
       const [sessionResult, onboarded, savedStep, seenWelcomeVal, biometricFlag] = await Promise.all([
         supabase.auth.getSession().catch(() => ({ data: { session: null }, error: null })),
         AsyncStorage.getItem(ONBOARDED_KEY),
@@ -153,23 +178,7 @@ function InnerLayout() {
 
     init();
 
-    // Handle password-reset deep links (cornerday://reset-password#access_token=...&type=recovery)
-    const handleResetUrl = async (url: string) => {
-      if (!url.includes('reset-password')) return;
-      const paramStr = url.split('#')[1] ?? url.split('?')[1] ?? '';
-      const params: Record<string, string> = {};
-      paramStr.split('&').forEach(pair => {
-        const idx = pair.indexOf('=');
-        if (idx === -1) return;
-        params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1));
-      });
-      if (params.access_token && params.refresh_token) {
-        await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
-        setPendingRoute('/(onboarding)/reset-password');
-      }
-    };
-
-    Linking.getInitialURL().then(url => { if (url) handleResetUrl(url); });
+    // Handle password-reset deep links when the app is already foregrounded
     const urlSub = Linking.addEventListener('url', ({ url }) => { handleResetUrl(url); });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
