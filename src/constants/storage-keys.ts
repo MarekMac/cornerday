@@ -24,6 +24,7 @@ export const URGE_PREDICTION_NOTIF_ID_KEY = 'cornerday_urge_prediction_notif_id'
 export const BIOMETRIC_LOCK_KEY = 'cornerday_biometric_lock';
 export const HAPTICS_KEY = 'cornerday_haptics';
 export const AI_CHECKIN_NOTIF_ID_KEY = 'cornerday_ai_checkin_notif_id';
+export const AI_CHECKIN_NOTIF_IDS_KEY = 'cornerday_ai_checkin_notif_ids';
 export const STREAK_SHIELD_KEY = 'cornerday_streak_shield';
 export const SHIELD_UNDO_KEY = 'cornerday_shield_undo';
 export const CUSTOM_MILESTONE_KEY = 'cornerday_custom_milestone';

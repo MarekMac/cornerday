@@ -14,6 +14,7 @@ import {
   NotifPrefs,
   requestNotificationPermissions,
   scheduleAllNotifications,
+  scheduleOnboardingCheckin,
   setupAndroidChannel,
 } from '@/lib/notifications';
 
@@ -186,6 +187,7 @@ export default function TabsLayout() {
       };
       const earnedBadgeTypes = (badgeData ?? []).map((b: any) => b.badge_type);
       await scheduleAllNotifications(prefs, data.quit_timestamp ?? null, earnedBadgeTypes);
+      await scheduleOnboardingCheckin();
 
       // Save Expo push token for push notifications
       try {

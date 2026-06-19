@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY, AI_CHECKIN_NOTIF_ID_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '../constants/storage-keys';
+import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '../constants/storage-keys';
 
 const STREAK_NOTIF_MESSAGES: { title: string; body: string }[] = [
   { title: '💪 Keep the streak alive',        body: 'Every day counts. You\'re stronger than the urge.' },
@@ -350,19 +350,52 @@ export async function scheduleAllNotifications(
   }
 }
 
+const REENGAGEMENT_SCHEDULE: { seconds: number; title: string; body: string }[] = [
+  {
+    seconds: 3 * 24 * 60 * 60,
+    title: "Haven't seen you in a few days 👋",
+    body: 'How are you holding up? CornerDay is here whenever you need it.',
+  },
+  {
+    seconds: 5 * 24 * 60 * 60,
+    title: "We've missed you 💙",
+    body: "5 days is a long time. Whatever's going on, we're here — no judgement, just support.",
+  },
+  {
+    seconds: 14 * 24 * 60 * 60,
+    title: "It's been a couple of weeks 🌱",
+    body: "Recovery isn't always a straight line. Come back whenever you're ready — your progress is waiting.",
+  },
+  {
+    seconds: 30 * 24 * 60 * 60,
+    title: "A month — we haven't forgotten you 🤍",
+    body: "Whenever you're ready to come back, CornerDay will be here. No questions asked.",
+  },
+];
+
 export async function scheduleOnboardingCheckin(): Promise<void> {
+  // Cancel any previously scheduled re-engagement notifications
   const prevId = await AsyncStorage.getItem(AI_CHECKIN_NOTIF_ID_KEY);
   if (prevId) await Notifications.cancelScheduledNotificationAsync(prevId).catch(() => {});
+  const prevIdsRaw = await AsyncStorage.getItem(AI_CHECKIN_NOTIF_IDS_KEY);
+  if (prevIdsRaw) {
+    try {
+      const ids: string[] = JSON.parse(prevIdsRaw);
+      await Promise.all(ids.map(id => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
+    } catch {}
+  }
+
   try {
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Haven't seen you in a few days 👋",
-        body: 'How are you holding up? CornerDay is here whenever you need it.',
-        data: { type: 'ai_checkin' },
-      },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 72 * 60 * 60, repeats: false },
-    });
-    if (id) await AsyncStorage.setItem(AI_CHECKIN_NOTIF_ID_KEY, id);
+    const ids: string[] = [];
+    for (const s of REENGAGEMENT_SCHEDULE) {
+      const id = await Notifications.scheduleNotificationAsync({
+        content: { title: s.title, body: s.body, data: { type: 'ai_checkin' } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: s.seconds, repeats: false },
+      });
+      if (id) ids.push(id);
+    }
+    await AsyncStorage.setItem(AI_CHECKIN_NOTIF_IDS_KEY, JSON.stringify(ids));
+    await AsyncStorage.removeItem(AI_CHECKIN_NOTIF_ID_KEY);
   } catch { /* permissions may not be granted — best effort */ }
 }
 

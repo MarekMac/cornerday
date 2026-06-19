@@ -27,7 +27,6 @@ import { Session } from '@supabase/supabase-js';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ONBOARDED_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
-import { scheduleOnboardingCheckin } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { UserProvider } from '@/context/user';
 import { PurchasesProvider, usePurchases } from '@/context/purchases';
@@ -67,13 +66,8 @@ function InnerLayout() {
     if (locked) authenticate();
   }, [locked, authenticate]);
 
-  // Schedule 72h re-engagement check-in on sign-in only, not on every JWT refresh
-  useEffect(() => {
-    const userId = session?.user?.id ?? null;
-    if (!userId || userId === lastScheduledUserIdRef.current) return;
-    lastScheduledUserIdRef.current = userId;
-    scheduleOnboardingCheckin();
-  }, [session]);
+  // lastScheduledUserIdRef kept for potential future use; re-engagement scheduling
+  // moved to tabs layout so it always runs after cancelAllScheduledNotificationsAsync
 
   // Handle tap on check-in notification — premium goes to AI coach, free goes to mood check-in
   useEffect(() => {
