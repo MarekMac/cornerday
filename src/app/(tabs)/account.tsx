@@ -288,6 +288,7 @@ export default function AccountScreen() {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [showPassModal, setShowPassModal] = useState(false);
   const [sendingPassReset, setSendingPassReset] = useState(false);
+  const [passResetSent, setPassResetSent] = useState(false);
   const [showContactsPermModal, setShowContactsPermModal] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -1261,19 +1262,20 @@ export default function AccountScreen() {
     }
   };
 
-  const handleChangePassword = () => setShowPassModal(true);
+  const handleChangePassword = () => { setPassResetSent(false); setShowPassModal(true); };
 
   const sendPasswordReset = async () => {
     const email = profile?.email;
     if (!email) return;
     setSendingPassReset(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      setShowPassModal(false);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'cornerday://reset-password',
+      });
       if (error) {
         Alert.alert('Error', 'Could not send reset email. Please try again.');
       } else {
-        Alert.alert('Check your inbox', `A password reset link has been sent to ${email}.`);
+        setPassResetSent(true);
       }
     } finally {
       setSendingPassReset(false);
@@ -2441,33 +2443,53 @@ export default function AccountScreen() {
       <Modal visible={showPassModal} transparent animationType="fade" onRequestClose={() => setShowPassModal(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setShowPassModal(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
-            <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
-                <Ionicons name="key-outline" size={26} color={c.primary} />
-              </View>
-            </View>
-            <Text style={s.confirmTitle}>Change password</Text>
-            <Text style={[s.confirmBody, { textAlign: 'center', marginBottom: 4 }]}>
-              We'll send a reset link to
-            </Text>
-            <Text style={[s.confirmBody, { textAlign: 'center', fontWeight: '600', color: c.primary, marginBottom: 20 }]}>
-              {profile?.email}
-            </Text>
-            <View style={s.confirmActions}>
-              <Pressable
-                style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
-                onPress={() => setShowPassModal(false)}>
-                <Text style={s.modalBtnCancel}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
-                onPress={sendPasswordReset}
-                disabled={sendingPassReset}>
-                {sendingPassReset
-                  ? <ActivityIndicator size="small" color={c.white} />
-                  : <Text style={s.modalBtnSaveTxt}>Send reset link</Text>}
-              </Pressable>
-            </View>
+            {passResetSent ? (
+              <>
+                <Text style={{ fontSize: 48, textAlign: 'center', marginBottom: 12 }}>📧</Text>
+                <Text style={[s.confirmTitle, { marginBottom: 8 }]}>Check your email</Text>
+                <Text style={[s.confirmBody, { textAlign: 'center', marginBottom: 4 }]}>
+                  We sent a password reset link to
+                </Text>
+                <Text style={[s.confirmBody, { textAlign: 'center', fontWeight: '700', color: c.primary, marginBottom: 24 }]}>
+                  {profile?.email}
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [s.modalBtn, s.modalBtnSave, pressed && { opacity: 0.85 }]}
+                  onPress={() => setShowPassModal(false)}>
+                  <Text style={s.modalBtnSaveTxt}>Done</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <View style={s.confirmIconRow}>
+                  <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
+                    <Ionicons name="key-outline" size={26} color={c.primary} />
+                  </View>
+                </View>
+                <Text style={s.confirmTitle}>Change password</Text>
+                <Text style={[s.confirmBody, { textAlign: 'center', marginBottom: 4 }]}>
+                  We'll send a reset link to
+                </Text>
+                <Text style={[s.confirmBody, { textAlign: 'center', fontWeight: '600', color: c.primary, marginBottom: 20 }]}>
+                  {profile?.email}
+                </Text>
+                <View style={s.confirmActions}>
+                  <Pressable
+                    style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                    onPress={() => setShowPassModal(false)}>
+                    <Text style={s.modalBtnCancel}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
+                    onPress={sendPasswordReset}
+                    disabled={sendingPassReset}>
+                    {sendingPassReset
+                      ? <ActivityIndicator size="small" color={c.white} />
+                      : <Text style={s.modalBtnSaveTxt}>Send reset link</Text>}
+                  </Pressable>
+                </View>
+              </>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
