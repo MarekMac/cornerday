@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
-const LAST_UPDATED = 'June 3, 2025';
+const LAST_UPDATED = 'June 19, 2026';
 
 const SECTIONS = [
   {
@@ -15,7 +15,7 @@ const SECTIONS = [
   },
   {
     title: '2. Description of service',
-    body: 'CornerDay is a mobile application designed to support individuals recovering from gambling addiction. The app provides tools including streak tracking, loss tracking, urge support, mood check-ins, a journal, and (for premium users) an AI coach.\n\nCornerDay is a support tool and is not a substitute for professional medical, psychological, or financial advice.',
+    body: 'CornerDay is a mobile application designed to support individuals recovering from gambling addiction. The app provides tools including:\n\n• Streak and recovery tracking\n• Loss and payment tracking\n• Urge support and breathing exercises\n• Daily mood check-ins\n• Urge journal\n• Milestone badges and progress tracking\n• Push notifications and reminders\n• Someone in your corner (accountability partner feature)\n• AI Coach powered by Claude (premium users only)\n\nCornerDay is a self-help support tool and is not a substitute for professional medical, psychological, or financial advice.',
   },
   {
     title: '3. Eligibility',
@@ -23,34 +23,50 @@ const SECTIONS = [
   },
   {
     title: '4. Account responsibility',
-    body: 'You are responsible for maintaining the confidentiality of your account credentials. You agree not to share your account with others or use another person\'s account. CornerDay is not liable for any loss or damage arising from unauthorised use of your account.',
+    body: 'You are responsible for maintaining the confidentiality of your account credentials. You agree not to share your account with others or use another person\'s account.\n\nYou may sign in with an email and password or via Google Sign-In. CornerDay is not liable for any loss or damage arising from unauthorised use of your account.',
   },
   {
     title: '5. Subscriptions and payments',
-    body: 'CornerDay offers a free tier and a premium subscription. Premium subscriptions are billed monthly or annually through the Google Play Store or Apple App Store.\n\nSubscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can manage or cancel your subscription in your device\'s app store account settings.\n\nAll purchases are subject to the payment terms of your app store provider. CornerDay does not process payments directly.',
+    body: 'CornerDay offers a free tier and a premium subscription (approximately $4.99–$7.99 per month, subject to change). Premium subscriptions are billed monthly or annually through the Google Play Store or Apple App Store and managed via RevenueCat.\n\nSubscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can manage or cancel your subscription in your device\'s app store account settings.\n\nAll purchases are subject to the payment terms of your app store provider. CornerDay does not process payments directly.',
   },
   {
-    title: '6. Acceptable use',
-    body: 'You agree not to:\n\n• Use CornerDay for any unlawful purpose\n• Attempt to reverse-engineer or modify the app\n• Submit false or misleading information\n• Use the app in a way that could damage, disable, or impair its operation\n\nWe reserve the right to suspend or terminate accounts that violate these terms.',
+    title: '6. Free tier and advertising',
+    body: 'Free tier users may see non-personalised advertisements served by Google AdMob. Ads are never shown on the urge support screen, relapse screen, crisis resources, or journal — only in non-sensitive areas of the app.\n\nPremium users have an ad-free experience.',
   },
   {
-    title: '7. Medical disclaimer',
-    body: 'CornerDay is not a medical or mental health service. The app provides self-help tools and supportive content only. If you are experiencing a mental health crisis, please contact a qualified professional or crisis helpline immediately.\n\nCrisis helpline: 1-800-522-4700 (National Problem Gambling Helpline, USA, 24/7, free).',
+    title: '7. AI Coach',
+    body: 'Premium subscribers have access to an AI Coach powered by Anthropic\'s Claude AI. Conversations with the AI Coach are processed by Anthropic\'s API and are subject to Anthropic\'s usage policies.\n\nThe AI Coach provides supportive, motivational responses and is not a licensed therapist, counsellor, or medical professional. Do not rely on it for clinical advice or in a crisis — use the crisis resources provided in the app instead.',
   },
   {
-    title: '8. Intellectual property',
+    title: '8. Push notifications',
+    body: 'With your permission, CornerDay may send you push notifications for milestone achievements, daily check-in reminders, and motivational messages. You can manage notification preferences at any time in the app\'s Settings or your device\'s notification settings.',
+  },
+  {
+    title: '9. Acceptable use',
+    body: 'You agree not to:\n\n• Use CornerDay for any unlawful purpose\n• Attempt to reverse-engineer, decompile, or modify the app\n• Submit false or misleading information\n• Attempt to access another user\'s data\n• Use the app in a way that could damage, disable, or impair its operation\n\nWe reserve the right to suspend or terminate accounts that violate these terms.',
+  },
+  {
+    title: '10. Medical disclaimer',
+    body: 'CornerDay is not a medical or mental health service. The app provides self-help tools and supportive content only. If you are experiencing a mental health crisis, please contact a qualified professional or crisis helpline immediately.\n\nNational Problem Gambling Helpline: 1-800-522-4700 (USA, 24/7, free).',
+  },
+  {
+    title: '11. Intellectual property',
     body: 'All content within CornerDay — including text, design, graphics, and code — is the property of CornerDay or its licensors. You may not reproduce, distribute, or create derivative works without our express written permission.',
   },
   {
-    title: '9. Limitation of liability',
-    body: 'CornerDay is provided on an "as is" basis without warranties of any kind. To the fullest extent permitted by law, we are not liable for any indirect, incidental, or consequential damages arising from your use of the app.',
+    title: '12. Limitation of liability',
+    body: 'CornerDay is provided on an "as is" basis without warranties of any kind. To the fullest extent permitted by law, we are not liable for any indirect, incidental, or consequential damages arising from your use of the app, including but not limited to reliance on AI-generated content.',
   },
   {
-    title: '10. Changes to these terms',
+    title: '13. Governing law',
+    body: 'These Terms of Use are governed by and construed in accordance with applicable law. Any disputes shall be resolved in the courts of the jurisdiction in which CornerDay operates.',
+  },
+  {
+    title: '14. Changes to these terms',
     body: 'We may update these Terms of Use from time to time. We will notify you of significant changes via the app. Continued use of CornerDay after changes constitutes acceptance of the updated terms.',
   },
   {
-    title: '11. Contact',
+    title: '15. Contact',
     body: 'If you have questions about these Terms of Use, please contact us at:\n\nsupport@cornerday.app',
   },
 ];
