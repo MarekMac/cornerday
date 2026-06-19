@@ -3,6 +3,29 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY, AI_CHECKIN_NOTIF_ID_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '../constants/storage-keys';
 
+const STREAK_NOTIF_MESSAGES: { title: string; body: string }[] = [
+  { title: '💪 Keep the streak alive',        body: 'Every day counts. You\'re stronger than the urge.' },
+  { title: '🌅 Another day, another win',      body: 'You made it through today. That matters.' },
+  { title: '🔥 Your streak is growing',        body: 'Each day you choose differently changes everything.' },
+  { title: '🌱 Small steps, big change',       body: 'One more evening without gambling. You\'re doing it.' },
+  { title: '💙 Check in with yourself',        body: 'How are you feeling tonight? Your streak is still going.' },
+  { title: '⭐ You showed up today',           body: 'That\'s the whole game — just keep showing up.' },
+  { title: '🛡️ Hold the line',                body: 'The urge passes. Your streak stays. Stay with it.' },
+  { title: '🌙 End the day clean',             body: 'Almost there. Finish tonight strong.' },
+  { title: '💎 You\'re building something real', body: 'Day by day. It adds up faster than you think.' },
+  { title: '🏃 Keep moving forward',           body: 'You didn\'t come this far to only come this far.' },
+  { title: '🌟 Tonight, choose you',           body: 'Not the bet. Not the rush. You.' },
+  { title: '🤝 You\'re not alone',             body: 'Thousands of people are holding their streak tonight too.' },
+  { title: '🧠 Your brain is healing',         body: 'Every clean day rewires the path. Keep going.' },
+  { title: '💰 Think about what you\'re saving', body: 'Not just money — your time, your peace, yourself.' },
+  { title: '🌊 Ride it out',                   body: 'If there\'s an urge tonight, it\'ll pass. It always does.' },
+  { title: '🏆 Future you is grateful',        body: 'The you of tomorrow thanks the you of tonight.' },
+  { title: '❤️ Someone\'s proud of you',       body: 'Even if you don\'t hear it enough — you\'re doing great.' },
+  { title: '🎯 Stay on target',                body: 'One more day. That\'s all it is.' },
+  { title: '✨ You made the right call today', body: 'Let tonight be proof that you can do this.' },
+  { title: '🌙 Rest easy tonight',             body: 'You chose your future over your habit. Sleep well.' },
+];
+
 export interface NotifPrefs {
   notif_milestone: boolean;
   notif_daily_streak: boolean;
@@ -149,10 +172,11 @@ export async function scheduleAllNotifications(
 
   // 3. Daily streak reminder — user-chosen hour (default 8 pm)
   if (prefs.notif_daily_streak) {
+    const streakMsg = STREAK_NOTIF_MESSAGES[Math.floor(Math.random() * STREAK_NOTIF_MESSAGES.length)];
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `💪 Keep the streak alive`,
-        body: `Every day counts. You're stronger than the urge.`,
+        title: streakMsg.title,
+        body: streakMsg.body,
         data: { screen: '/(tabs)/' },
       },
       trigger: androidTrigger({
