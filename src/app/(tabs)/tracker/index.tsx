@@ -510,6 +510,10 @@ export default function TrackerIndex() {
           await supabase.from('losses').update({
             amount, category: sessionCategory, note: sessionNote.trim() || null,
           }).eq('id', editingSession.id).eq('user_id', user.id);
+          await supabase.from('losses').insert({
+            user_id: user.id, type: 'session_edited', amount,
+            category: sessionCategory, note: sessionNote.trim() || null,
+          });
         } else {
           await supabase.from('losses').insert({
             user_id: user.id, type: 'session', amount,
@@ -654,7 +658,7 @@ export default function TrackerIndex() {
         value: seed,
         mode: 'date',
         minimumDate: new Date(),
-        onValueChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) saveDebtTargetDate(d); },
+        onChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) saveDebtTargetDate(d); },
       });
     }
   };
@@ -670,7 +674,7 @@ export default function TrackerIndex() {
         value: seed,
         mode: 'date',
         minimumDate: new Date(),
-        onValueChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) { setGoalTargetDateInput(d); } },
+        onChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) { setGoalTargetDateInput(d); } },
       });
     }
   };
