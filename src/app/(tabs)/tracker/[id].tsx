@@ -227,9 +227,10 @@ export default function DebtDetailScreen() {
   const isPaidOff = remaining === 0 && totalPaid > 0;
 
   let payoffEstimate: string | null = null;
-  if (!isPaidOff && totalPaid > 0) {
-    const daysSinceAdded = Math.max(1, (Date.now() - new Date(debt.created_at).getTime()) / 86400000);
-    const dailyRate = totalPaid / daysSinceAdded;
+  if (!isPaidOff && payments.length > 0) {
+    const firstPayment = new Date(payments[payments.length - 1].created_at);
+    const daysSinceFirst = Math.max(1, (Date.now() - firstPayment.getTime()) / 86400000);
+    const dailyRate = totalPaid / daysSinceFirst;
     if (dailyRate > 0) {
       payoffEstimate = fmtPayoffDate(new Date(Date.now() + (remaining / dailyRate) * 86400000));
     }
@@ -279,10 +280,11 @@ export default function DebtDetailScreen() {
               {isPaidOff ? '🎉 Fully paid off!' : `${Math.round(pct * 100)}% paid back`}
             </Text>
             {!isPaidOff && (() => {
-              const daysElapsed = Math.max(1, (Date.now() - new Date(debt.created_at).getTime()) / 86400000);
+              const firstPayment = payments.length > 0 ? new Date(payments[payments.length - 1].created_at) : null;
+              const daysElapsed = firstPayment ? Math.max(1, (Date.now() - firstPayment.getTime()) / 86400000) : 1;
               const daysRemaining = targetDate ? Math.ceil((targetDate.getTime() - Date.now()) / 86400000) : null;
               const requiredPerDay = daysRemaining && daysRemaining > 0 ? remaining / daysRemaining : null;
-              const actualPerDay = totalPaid > 0 ? totalPaid / daysElapsed : null;
+              const actualPerDay = payments.length > 0 ? totalPaid / daysElapsed : null;
               const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
               return (
                 <View style={s.targetSection}>

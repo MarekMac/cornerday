@@ -280,7 +280,7 @@ export async function scheduleAllNotifications(
       content: {
         title: weeklyMsg.title,
         body: weeklyMsg.body,
-        data: { screen: '/(tabs)/' },
+        data: { screen: '/analytics' },
       },
       trigger: androidTrigger({
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,

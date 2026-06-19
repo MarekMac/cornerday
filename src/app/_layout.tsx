@@ -44,7 +44,6 @@ function InnerLayout() {
   const [seenWelcome, setSeenWelcome] = useState<boolean>(false);
   const [locked, setLocked] = useState(false);
   const backgroundedAtRef = useRef<number | null>(null);
-  const lastScheduledUserIdRef = useRef<string | null>(null);
 
   const authenticate = useCallback(async () => {
     try {
@@ -65,9 +64,6 @@ function InnerLayout() {
   useEffect(() => {
     if (locked) authenticate();
   }, [locked, authenticate]);
-
-  // lastScheduledUserIdRef kept for potential future use; re-engagement scheduling
-  // moved to tabs layout so it always runs after cancelAllScheduledNotificationsAsync
 
   // Handle tap on check-in notification — premium goes to AI coach, free goes to mood check-in
   useEffect(() => {
