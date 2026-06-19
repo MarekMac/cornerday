@@ -1999,8 +1999,8 @@ export default function AccountScreen() {
             <Switch
               value={hapticsEnabled}
               onValueChange={handleHapticsToggle}
-              trackColor={{ true: c.primary, false: c.bgElement }}
-              thumbColor={c.white}
+              trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
+              thumbColor={hapticsEnabled ? '#0F6E6E' : '#bbb'}
             />
           </View>
           <View style={s.menuDivider} />
