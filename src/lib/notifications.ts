@@ -49,6 +49,52 @@ const CHECKIN_NOTIF_MESSAGES: { title: string; body: string }[] = [
   { title: '⭐ You made it to another day',        body: 'How does it feel? Log your mood and keep the momentum.' },
 ];
 
+const WEEKLY_NOTIF_MESSAGES: { title: string; body: string }[] = [
+  { title: '📊 Your weekly summary',              body: 'See how you did this week and keep building momentum.' },
+  { title: '📅 Week in review',                   body: 'Another week in the books. Check in and see your progress.' },
+  { title: '🌟 How was your week?',               body: 'Take a look at what you\'ve built — one week at a time.' },
+  { title: '💪 Seven more days behind you',       body: 'Every week clean is a week that changes your life. See the numbers.' },
+  { title: '📈 Your progress is adding up',       body: 'Check this week\'s summary — you might surprise yourself.' },
+  { title: '🏆 Weekly check-in',                  body: 'How did this week go? Your recovery journey is right here.' },
+  { title: '🌱 Growing week by week',             body: 'Another week of choosing differently. See where you stand.' },
+  { title: '🔍 Reflect on your week',             body: 'A moment to look back helps you move forward stronger.' },
+  { title: '✅ Week complete',                    body: 'You made it through another week. Here\'s how it looked.' },
+  { title: '💙 Check in with your progress',      body: 'Your weekly summary is ready — small wins make big changes.' },
+  { title: '🎯 Week by week, step by step',       body: 'See your mood, your streak, and your recovery this week.' },
+  { title: '🌅 New week starts now',              body: 'Before you move forward — take stock of where you\'ve been.' },
+  { title: '🔥 Keep the momentum going',          body: 'See what last week looked like and carry it into this one.' },
+  { title: '💰 Look what you\'re building',       body: 'Your weekly summary shows more than numbers — it shows you changing.' },
+  { title: '🧠 Awareness builds recovery',        body: 'Your weekly patterns are here. Understanding them is half the battle.' },
+  { title: '⭐ Seven days of choices',            body: 'Each one mattered. Your summary is ready.' },
+  { title: '🌊 Steady progress',                  body: 'Week after week. Check in and see the trend going your way.' },
+  { title: '❤️ You\'re doing better than you think', body: 'Open your weekly summary and see for yourself.' },
+  { title: '🏃 Don\'t stop now',                  body: 'Another week done. See the stats, feel the momentum, keep going.' },
+  { title: '🌻 Your week, your wins',             body: 'Big or small — every clean day this week counts. See the summary.' },
+];
+
+const URGE_PREDICTION_MESSAGES: { title: string; body: string }[] = [
+  { title: '🛡️ Your high-risk window is coming up',  body: 'This is usually when urges hit hardest. Have your plan ready.' },
+  { title: '⚠️ Heads up — this is your risk window', body: 'You\'ve logged urges around this time before. Stay sharp.' },
+  { title: '🧠 Know your patterns',                   body: 'Your data shows this hour can be tough. You\'re ready for it.' },
+  { title: '💪 Brace yourself — you\'ve got this',   body: 'Your high-risk window is near. Open the urge screen if you need it.' },
+  { title: '🌊 A wave might be coming',               body: 'This is your peak urge window. Ride it out — it always passes.' },
+  { title: '🛑 Pause before you act',                 body: 'If an urge hits in the next hour, remember: you\'ve beaten this before.' },
+  { title: '🔔 Your urge window is near',             body: 'Plan ahead. What will you do if the urge shows up today?' },
+  { title: '🎯 Stay focused right now',               body: 'This time of day is your toughest. You already know how to handle it.' },
+  { title: '🌿 Ground yourself',                      body: 'Your risk window is approaching. Take a breath and stay present.' },
+  { title: '💙 You\'ve beaten this hour before',      body: 'Your pattern shows this is hard — but you\'ve always come through.' },
+  { title: '🛡️ Defence mode: on',                    body: 'Your high-risk window starts soon. Urge screen is one tap away.' },
+  { title: '⏰ This is the hour to watch',            body: 'Your history says urges peak around now. Stay with your plan.' },
+  { title: '🧘 Stay with yourself',                   body: 'Your high-risk time is near. Don\'t go anywhere that tests you.' },
+  { title: '🌙 Hold it together',                     body: 'This is usually when it gets hard. You know what to do.' },
+  { title: '🔥 Don\'t let this hour win',             body: 'Your data flagged this window. Stay close to your why.' },
+  { title: '❤️ Check in before the urge does',        body: 'Open CornerDay now — better to prepare than to react.' },
+  { title: '🏃 Keep moving through it',               body: 'Your risk window is here. A walk, a call, a game — pick one.' },
+  { title: '⭐ You\'ve handled this before',          body: 'Same window, same choice. You already know you can do it.' },
+  { title: '🌊 Ride it out, don\'t give in',          body: 'Urges peak and pass in minutes. Stay the course.' },
+  { title: '🎯 One hour at a time',                   body: 'This is your toughest window. Get through this hour and you\'re free.' },
+];
+
 export interface NotifPrefs {
   notif_milestone: boolean;
   notif_daily_streak: boolean;
@@ -229,10 +275,11 @@ export async function scheduleAllNotifications(
 
   // 5. Weekly summary — Monday 9 am
   if (prefs.notif_weekly_summary) {
+    const weeklyMsg = WEEKLY_NOTIF_MESSAGES[Math.floor(Math.random() * WEEKLY_NOTIF_MESSAGES.length)];
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `📊 Your weekly summary`,
-        body: `See how you did this week and keep building momentum.`,
+        title: weeklyMsg.title,
+        body: weeklyMsg.body,
         data: { screen: '/(tabs)/' },
       },
       trigger: androidTrigger({
@@ -285,10 +332,11 @@ export async function scheduleAllNotifications(
         return;
       }
       const { hour, minute } = parsed;
+      const urgeRestoreMsg = URGE_PREDICTION_MESSAGES[Math.floor(Math.random() * URGE_PREDICTION_MESSAGES.length)];
       const restoredId = await Notifications.scheduleNotificationAsync({
         content: {
-          title: `🛡️ Your high-risk window is coming up`,
-          body: `This is usually when urges hit hardest. Have your plan ready.`,
+          title: urgeRestoreMsg.title,
+          body: urgeRestoreMsg.body,
           data: { screen: '/(tabs)/urge' },
         },
         trigger: androidTrigger({
@@ -357,10 +405,11 @@ export async function scheduleUrgePredictionNotification(
 
   await AsyncStorage.setItem(URGE_PREDICTION_SCHEDULE_KEY, JSON.stringify({ hour, minute }));
 
+  const urgeMsg = URGE_PREDICTION_MESSAGES[Math.floor(Math.random() * URGE_PREDICTION_MESSAGES.length)];
   const newId = await Notifications.scheduleNotificationAsync({
     content: {
-      title: `🛡️ Your high-risk window is coming up`,
-      body: `This is usually when urges hit hardest. Have your plan ready.`,
+      title: urgeMsg.title,
+      body: urgeMsg.body,
       data: { screen: '/(tabs)/urge' },
     },
     trigger: androidTrigger({
