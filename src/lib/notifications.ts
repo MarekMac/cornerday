@@ -26,6 +26,29 @@ const STREAK_NOTIF_MESSAGES: { title: string; body: string }[] = [
   { title: '🌙 Rest easy tonight',             body: 'You chose your future over your habit. Sleep well.' },
 ];
 
+const CHECKIN_NOTIF_MESSAGES: { title: string; body: string }[] = [
+  { title: '🌤 How are you feeling today?',       body: 'Take a moment to log your mood and check in with yourself.' },
+  { title: '☀️ Good morning — how\'s today?',     body: 'A quick mood check-in keeps you honest with yourself.' },
+  { title: '🌿 Start the day grounded',            body: 'How are you feeling right now? Log it and move forward.' },
+  { title: '💭 A moment for you',                  body: 'Before the day gets busy — how are you really doing?' },
+  { title: '🧘 Check in with yourself',            body: 'One tap. That\'s all it takes to track how you\'re going.' },
+  { title: '🌅 New day, fresh start',              body: 'How\'s your mood this morning? Let CornerDay know.' },
+  { title: '💙 How\'s your head today?',           body: 'Your recovery matters. Take 10 seconds to check in.' },
+  { title: '🎯 Stay aware, stay ahead',            body: 'Noticing how you feel is the first step to staying in control.' },
+  { title: '🌱 How are you growing today?',        body: 'Log your mood — it\'s part of building a stronger you.' },
+  { title: '👋 Morning check-in time',             body: 'How are you feeling? Honest answers only.' },
+  { title: '🔍 Quick self-check',                  body: 'Stressed? Calm? Somewhere in between? Log it.' },
+  { title: '💪 You\'re still here',                body: 'That counts for a lot. How are you feeling today?' },
+  { title: '🌻 How\'s your morning going?',        body: 'A mood check-in takes seconds and tells you a lot.' },
+  { title: '🧠 Know your patterns',                body: 'Tracking your mood helps you spot triggers before they hit.' },
+  { title: '❤️ Be honest with yourself',           body: 'Good day or tough one — log it. Both matter.' },
+  { title: '🌊 Ride the waves',                    body: 'How\'s the sea this morning? Calm, choppy, or stormy?' },
+  { title: '✅ Daily check-in',                    body: 'A few seconds now can save you a harder hour later.' },
+  { title: '🏃 How are you showing up today?',     body: 'Check in and set the tone for the rest of the day.' },
+  { title: '🌙 Good morning from CornerDay',       body: 'We\'re here. How are you doing today?' },
+  { title: '⭐ You made it to another day',        body: 'How does it feel? Log your mood and keep the momentum.' },
+];
+
 export interface NotifPrefs {
   notif_milestone: boolean;
   notif_daily_streak: boolean;
@@ -189,10 +212,11 @@ export async function scheduleAllNotifications(
 
   // 4. Daily check-in — user-chosen hour (default 9 am)
   if (prefs.notif_daily_checkin) {
+    const checkinMsg = CHECKIN_NOTIF_MESSAGES[Math.floor(Math.random() * CHECKIN_NOTIF_MESSAGES.length)];
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `🌤 How are you feeling today?`,
-        body: `Take a moment to log your mood and check in with yourself.`,
+        title: checkinMsg.title,
+        body: checkinMsg.body,
         data: { screen: '/(tabs)/' },
       },
       trigger: androidTrigger({
