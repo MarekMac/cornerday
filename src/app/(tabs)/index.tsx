@@ -1589,6 +1589,7 @@ export default function HomeScreen() {
   const handleMood = async (mood: number, note?: string) => {
     if (!data) return;
     setMoodSubmitting(true);
+    const isNewInsert = !data.todayMoodId;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -1606,6 +1607,10 @@ export default function HomeScreen() {
         setData(prev => {
           if (!prev) return prev;
           const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood, note: noteVal } : d);
+          if (isNewInsert) {
+            const newCurrent = prev.checkinStreak.current + 1;
+            return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods, moodCount: prev.moodCount + 1, checkinStreak: { current: newCurrent, best: Math.max(prev.checkinStreak.best, newCurrent) } };
+          }
           return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods };
         });
         hapticMedium();
