@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { AppState, AppStateStatus, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, AppStateStatus, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
 import { initHaptics } from '@/lib/haptics';
@@ -153,6 +153,25 @@ function InnerLayout() {
 
     init();
 
+    // Handle password-reset deep links (cornerday://reset-password#access_token=...&type=recovery)
+    const handleResetUrl = async (url: string) => {
+      if (!url.includes('reset-password')) return;
+      const paramStr = url.split('#')[1] ?? url.split('?')[1] ?? '';
+      const params: Record<string, string> = {};
+      paramStr.split('&').forEach(pair => {
+        const idx = pair.indexOf('=');
+        if (idx === -1) return;
+        params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1));
+      });
+      if (params.access_token && params.refresh_token) {
+        await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+        setPendingRoute('/(onboarding)/reset-password');
+      }
+    };
+
+    Linking.getInitialURL().then(url => { if (url) handleResetUrl(url); });
+    const urlSub = Linking.addEventListener('url', ({ url }) => { handleResetUrl(url); });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
       setSession(sess);
       if (event === 'SIGNED_OUT') {
@@ -164,7 +183,7 @@ function InnerLayout() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); urlSub.remove(); };
   }, []);
 
   useEffect(() => {

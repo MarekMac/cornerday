@@ -134,6 +134,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     backgroundColor: c.primary,
     borderRadius: 14,
     paddingVertical: 16,
+    paddingHorizontal: 32,
     alignItems: 'center',
     marginTop: 8,
   },
