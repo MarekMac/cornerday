@@ -34,7 +34,9 @@ export default function ForgotPasswordScreen() {
     }
     setLoading(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: 'cornerday://reset-password',
+    });
 
     if (error) {
       setError(error.message);

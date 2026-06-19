@@ -245,8 +245,8 @@ export default function AnalyticsScreen() {
 
   const fetchData = useCallback(async () => {
     setFetchError(false);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) return;
     try {
 
     const now = new Date();
@@ -254,14 +254,18 @@ export default function AnalyticsScreen() {
 
     const [profileRes, streakRes, lossesRes, debtsRes, paymentsRes, urgeRes, moodRes, checkinDatesRes] = await Promise.all([
       supabase.from('users').select('currency, quit_date, quit_timestamp, savings_target_date').eq('id', user.id).maybeSingle(),
-      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
+      supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
       supabase.from('debts').select('id, name, total_amount, target_date, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
+      supabase.from('debt_payments').select('debt_id, amount, created_at').eq('user_id', user.id),
       supabase.from('urge_journal').select('outcome, trigger, created_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', thirtyDaysAgo).order('created_at', { ascending: true }),
       supabase.from('mood_checkins').select('created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
     ]);
+
+    if (profileRes.error || streakRes.error || lossesRes.error || debtsRes.error || paymentsRes.error) {
+      throw new Error('Failed to load core analytics data');
+    }
 
     const [goalRaw, goalForRaw, goalIconRaw] = await Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
@@ -272,8 +276,7 @@ export default function AnalyticsScreen() {
     const profile  = profileRes.data;
     const currency = profile?.currency ?? 'USD';
     const quitDate = profile?.quit_timestamp ?? profile?.quit_date ?? null;
-    const currentStreakDays = quitDate
-      ? Math.floor(Math.max(0, Date.now() - parseQuitDate(quitDate).getTime()) / 86400000) : 0;
+    const currentStreakDays = streakRes.data?.current_streak ?? 0;
 
     const lossRows    = lossesRes.data ?? [];
     const savingRows  = lossRows.filter(r => r.type === 'saving');
@@ -317,17 +320,23 @@ export default function AnalyticsScreen() {
     const totalDebtPaid = Object.values(paidByDebt).reduce((s, v) => s + v, 0);
 
     const debtsWithPacing: DebtPacing[] = debtRows.map(d => {
-      const totalPaid = paidByDebt[d.id] ?? 0;
+      const debtPayments = payRows.filter(p => p.debt_id === d.id);
+      const totalPaid = debtPayments.reduce((s, p) => s + Number(p.amount), 0);
       const totalAmount = Number(d.total_amount);
       const remaining = Math.max(0, totalAmount - totalPaid);
       const pct = totalAmount > 0 ? Math.min(1, totalPaid / totalAmount) : 0;
       const isPaidOff = remaining === 0 && totalPaid > 0;
       const targetDate = d.target_date ? new Date(d.target_date) : null;
       const daysRemaining = targetDate ? Math.ceil((targetDate.getTime() - Date.now()) / 86400000) : null;
-      const daysElapsed = Math.max(1, (Date.now() - new Date(d.created_at).getTime()) / 86400000);
+      const firstPaymentMs = debtPayments.length > 0
+        ? Math.min(...debtPayments.map(p => new Date(p.created_at).getTime()))
+        : null;
+      const daysElapsed = firstPaymentMs !== null
+        ? Math.max(1, (Date.now() - firstPaymentMs) / 86400000)
+        : null;
       const requiredPerDay = !isPaidOff && daysRemaining && daysRemaining > 0 && remaining > 0
         ? remaining / daysRemaining : null;
-      const actualPerDay = totalPaid > 0 ? totalPaid / daysElapsed : null;
+      const actualPerDay = totalPaid > 0 && daysElapsed !== null ? totalPaid / daysElapsed : null;
       const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
       const projDays = !isPaidOff && actualPerDay && actualPerDay > 0 && remaining > 0
         ? Math.ceil(remaining / actualPerDay) : null;
@@ -552,7 +561,7 @@ export default function AnalyticsScreen() {
         value: seed,
         mode: 'date',
         minimumDate: new Date(),
-        onValueChange: (_evt: any, d?: Date) => {
+        onChange: (_evt: any, d?: Date) => {
           if (!d) return;
           saveTargetDate(d);
         },

@@ -126,7 +126,7 @@ export default function ReadyScreen() {
       const dy = String(quitTimestamp.getDate()).padStart(2, '0');
       const today = `${y}-${mo}-${dy}`;
 
-      const [updateResult, streakResult, journeyResult] = await Promise.all([
+      const [updateResult, streakResult] = await Promise.all([
         supabase.from('users').update({
           display_name: username,
           motivation: data.motivation ?? '',
@@ -146,19 +146,32 @@ export default function ReadyScreen() {
           streak_start_date: today,
           last_check_in: today,
         }, { onConflict: 'user_id' }),
+      ]);
 
-        supabase.from('losses').insert({
+      if (updateResult.error || streakResult.error) {
+        setError('Something went wrong. Please try again.');
+        return;
+      }
+
+      const { data: existingJourney } = await supabase
+        .from('losses')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('type', 'journey_started')
+        .maybeSingle();
+
+      if (!existingJourney) {
+        const { error: journeyErr } = await supabase.from('losses').insert({
           user_id: user.id,
           type: 'journey_started',
           amount: 0,
           category: 'Journal',
           note: null,
-        }),
-      ]);
-
-      if (updateResult.error || streakResult.error || journeyResult.error) {
-        setError('Something went wrong. Please try again.');
-        return;
+        });
+        if (journeyErr) {
+          setError('Something went wrong. Please try again.');
+          return;
+        }
       }
 
       if (wantsNotifs === true) await requestNotificationPermissions();
@@ -179,7 +192,7 @@ export default function ReadyScreen() {
       <SafeAreaView edges={['top']} style={s.safe}>
         <Pressable
           style={s.backBtn}
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q3')}>
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q5')}>
           <Ionicons name="chevron-back" size={26} color={c.white} />
         </Pressable>
 

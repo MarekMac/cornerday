@@ -1102,7 +1102,7 @@ export default function AccountScreen() {
         STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
         CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
         URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
-        GAME_BESTS_STORAGE_KEY,
+        CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
       ]);
       try { await supabase.auth.signOut(); } catch (_e) {}
     } finally {
@@ -1114,16 +1114,20 @@ export default function AccountScreen() {
 
   const executeSignOut = async () => {
     setSigningOut(true);
-    await AsyncStorage.multiRemove([
-      ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
-      MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY,
-      TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY,
-      STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
-      CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
-      URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
-      GAME_BESTS_STORAGE_KEY,
-    ]);
-    await supabase.auth.signOut();
+    try {
+      await AsyncStorage.multiRemove([
+        ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
+        MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY,
+        TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY,
+        STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
+        CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
+        URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
+        CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
+      ]);
+      try { await supabase.auth.signOut(); } catch (_e) {}
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const handleExport = async () => {
@@ -1391,7 +1395,7 @@ export default function AccountScreen() {
     );
   }
 
-  const initials = (profile?.displayName ?? profile?.email ?? '?')[0].toUpperCase();
+  const initials = (profile?.displayName?.trim() || profile?.email?.trim() || '?')[0].toUpperCase();
   const quitFormatted = formatQuitDate(profile?.quitTimestamp ?? null);
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
