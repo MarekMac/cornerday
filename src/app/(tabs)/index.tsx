@@ -2274,7 +2274,7 @@ export default function HomeScreen() {
           const dotColor = (day: typeof days[0] | null): string => {
             if (!day) return 'transparent';
             if (day.status === 'inactive') return c.bgElement;
-            if (day.status === 'relapse') return '#e07070';
+            if (day.status === 'relapse') return '#d94f4f';
             return c.primaryMid;
           };
           // Arrange into week columns (Sun→Sat going down each column)
