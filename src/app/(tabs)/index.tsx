@@ -1336,6 +1336,7 @@ export default function HomeScreen() {
       );
     }
 
+    if (!isMountedRef.current) return;
     if (pendingCelebration) setCelebrationBadge(pendingCelebration);
 
     // Compute peak urge hour for home screen card
@@ -1872,9 +1873,11 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [s.partnerMsgBanner, pressed && { opacity: 0.85 }]}
             onPress={async () => {
-              const { data: { user: msgUser } } = await supabase.auth.getUser();
-              const { error } = await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id).eq('user_id', msgUser?.id ?? '');
-              if (!error) setPartnerMsg(null);
+              try {
+                const { data: { user: msgUser } } = await supabase.auth.getUser();
+                const { error } = await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id).eq('user_id', msgUser?.id ?? '');
+                if (!error) setPartnerMsg(null);
+              } catch (_e) {}
             }}>
             <Text style={s.partnerMsgEmoji}>💙</Text>
             <View style={{ flex: 1 }}>
