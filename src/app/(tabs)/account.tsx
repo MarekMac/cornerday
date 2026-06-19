@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as Contacts from 'expo-contacts/legacy';
 import * as Sharing from 'expo-sharing';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -35,7 +35,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { setImagePickerActive } from '@/lib/image-picker-active';
 import { supabase } from '@/lib/supabase';
@@ -319,6 +319,7 @@ export default function AccountScreen() {
 
   const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
   const [recoveryMantra, setRecoveryMantra] = useState('');
+  const [checklistCount, setChecklistCount] = useState(0);
   const [showRecoveryPlanModal, setShowRecoveryPlanModal] = useState(false);
   const [planOptionsExpanded, setPlanOptionsExpanded] = useState(false);
   const [planDistractionsInput, setPlanDistractionsInput] = useState<string[]>([]);
@@ -549,7 +550,8 @@ export default function AccountScreen() {
       AsyncStorage.getItem(HAPTICS_KEY),
       AsyncStorage.getItem(STREAK_SHIELD_KEY),
       AsyncStorage.getItem(CUSTOM_MILESTONE_KEY),
-    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour, rawHaptics, rawShield, rawMilestone]) => {
+      AsyncStorage.getItem(CHECKLIST_KEY),
+    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour, rawHaptics, rawShield, rawMilestone, rawChecklist]) => {
       if (rawGoal) { const n = Number(rawGoal); if (!isNaN(n)) setSavingsGoal(n); }
       if (rawFor) setSavingsGoalFor(rawFor);
       if (rawIcon) setSavingsGoalIcon(rawIcon);
@@ -573,6 +575,10 @@ export default function AccountScreen() {
           if (!isNaN(n) && n > 0) setCustomMilestone({ type: 'days', target: n, icon: '📅' });
         }
       }
+      try {
+        const cl: Record<string, boolean> = rawChecklist ? JSON.parse(rawChecklist) : {};
+        setChecklistCount(Object.values(cl).filter(Boolean).length);
+      } catch { /* corrupted — leave at 0 */ }
     });
     return () => {
       if (emailCopyTimerRef.current) clearTimeout(emailCopyTimerRef.current);
@@ -590,6 +596,15 @@ export default function AccountScreen() {
       }
     }).catch(() => {});
   }, [isPremiumFromRC]);
+
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem(CHECKLIST_KEY).then(raw => {
+      try {
+        const cl: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+        setChecklistCount(Object.values(cl).filter(Boolean).length);
+      } catch { /* corrupted — leave unchanged */ }
+    });
+  }, []));
 
   const savePlan = async () => {
     setSavingPlan(true);
@@ -1034,10 +1049,14 @@ export default function AccountScreen() {
         AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
         AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
         AsyncStorage.removeItem(CHECKLIST_KEY),
+        AsyncStorage.removeItem(CUSTOM_MILESTONE_KEY),
+        AsyncStorage.removeItem(CUSTOM_MILESTONE_NOTIF_ID_KEY),
         AsyncStorage.removeItem(CUSTOM_MILESTONE_CELEBRATED_KEY),
         AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY),
         AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY),
       ]);
+      setCustomMilestone(null);
+      setChecklistCount(0);
       await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
       await scheduleOnboardingCheckin();
     } finally {
@@ -1087,15 +1106,21 @@ export default function AccountScreen() {
         if (rpcError) { Alert.alert('Reset failed', rpcError.message); return; }
         await AsyncStorage.multiRemove([
           MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY,
-          GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
+          GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY,
+          CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
           URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY,
           SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
+          STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
         ]);
         // Seed journal with a fresh start entry
         await supabase.from('losses').insert({
           user_id: user.id, type: 'journey_started', amount: 0, note: null, created_at: nowIso,
         });
         setQuitTimestamp(nowIso);
+        setCustomMilestone(null);
+        setRecoveryDistractions([]);
+        setRecoveryMantra('');
+        setChecklistCount(0);
         const granted = await requestNotificationPermissions();
         if (granted) {
           await scheduleAllNotifications(notifPrefs, nowIso, []);
@@ -1114,6 +1139,7 @@ export default function AccountScreen() {
       setSavingsGoal(null);
       setSavingsGoalFor('');
       setSavingsGoalIcon('🎯');
+      setProfile(prev => prev ? { ...prev, weeklyBet: null } : prev);
     } finally {
       setResetting(false);
     }
@@ -1812,13 +1838,23 @@ export default function AccountScreen() {
             <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="bulb-outline" size={17} color={c.primary} /></View>
             <View style={s.infoItemMain}>
               <Text style={s.infoItemLabel}>Distraction plan</Text>
-              <Text style={[s.infoItemValue, recoveryDistractions.length === 0 && !recoveryMantra && s.infoValueEmpty]}>
-                {recoveryDistractions.length > 0 || recoveryMantra
-                  ? recoveryDistractions.length > 0
-                    ? `${recoveryDistractions.length} distraction${recoveryDistractions.length !== 1 ? 's' : ''} set`
-                    : 'Mantra set'
-                  : 'Not set'}
-              </Text>
+              {recoveryDistractions.length > 0 || recoveryMantra ? (
+                <View style={{ gap: 1 }}>
+                  {recoveryDistractions.length > 0 && (
+                    <Text style={s.infoItemValue}>
+                      {recoveryDistractions.map(k => PLAN_DISTRACTION_OPTIONS.find(o => o.key === k)?.emoji ?? '').join(' ')}
+                      {' · '}{recoveryDistractions.length} distraction{recoveryDistractions.length !== 1 ? 's' : ''}
+                    </Text>
+                  )}
+                  {recoveryMantra ? (
+                    <Text style={[s.infoItemValue, { fontStyle: 'italic' }]} numberOfLines={1}>
+                      "{recoveryMantra}"
+                    </Text>
+                  ) : null}
+                </View>
+              ) : (
+                <Text style={[s.infoItemValue, s.infoValueEmpty]}>Not set</Text>
+              )}
             </View>
             <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
@@ -1858,6 +1894,13 @@ export default function AccountScreen() {
             <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="checkmark-circle-outline" size={17} color={c.primary} /></View>
             <View style={s.infoItemMain}>
               <Text style={s.infoItemLabel}>Prevention checklist</Text>
+              {checklistCount > 0 ? (
+                <Text style={[s.infoItemValue, checklistCount >= CHECKLIST_TOTAL && { color: c.primary }]}>
+                  {checklistCount >= CHECKLIST_TOTAL ? `✓ All ${CHECKLIST_TOTAL} steps done` : `${checklistCount} of ${CHECKLIST_TOTAL} steps done`}
+                </Text>
+              ) : (
+                <Text style={[s.infoItemValue, s.infoValueEmpty]}>Not started</Text>
+              )}
             </View>
             <Ionicons name="chevron-forward" size={15} color={c.textFaint} />
           </Pressable>
@@ -3014,7 +3057,7 @@ export default function AccountScreen() {
                 setResetDataModalVisible(false);
                 confirmReset(
                   'Reset everything?',
-                  'This will clear your streak, all badges, mood history, journal, losses and debts. Your account and settings are kept.',
+                  'This will clear your streak, all badges, mood history, journal, losses, debts, weekly spending, custom milestone, distraction plan and streak shield. Your account and settings are kept.',
                   resetEverything,
                 );
               }}
@@ -3022,7 +3065,7 @@ export default function AccountScreen() {
               <Ionicons name="nuclear-outline" size={20} color={c.error} style={{ marginRight: 12 }} />
               <View style={{ flex: 1 }}>
                 <Text style={s.resetNuclearLabel}>Reset everything</Text>
-                <Text style={s.resetRowDesc}>Streak, badges, mood, journal, losses & debts</Text>
+                <Text style={s.resetRowDesc}>Streak, badges, mood, journal, losses, debts & journey data</Text>
               </View>
             </Pressable>
 

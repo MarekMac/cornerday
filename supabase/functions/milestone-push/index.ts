@@ -99,16 +99,27 @@ Deno.serve(async (req: Request) => {
 
       if (!milestone) { skipped++; continue; }
 
-      // Dedup: skip if push already sent for this milestone
-      const { data: existing } = await supabase
+      // Atomically claim the milestone: insert badge first.
+      // The UNIQUE(user_id, badge_type) constraint means only one concurrent
+      // invocation can succeed — the loser gets a 23505 conflict and skips.
+      // This prevents duplicate pushes when two cron runs overlap in the window.
+      const { error: claimErr } = await supabase
         .from('badges')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('badge_type', milestone.badge)
-        .maybeSingle();
+        .insert({ user_id: user.id, badge_type: milestone.badge });
 
-      if (existing) { skipped++; continue; }
+      if (claimErr) {
+        if (claimErr.code === '23505') {
+          // Already claimed — duplicate cron invocation or window overlap. Skip silently.
+          skipped++;
+        } else {
+          console.error(`Badge claim failed for ${user.id} (${milestone.badge}):`, claimErr.message);
+          errors.push(`${user.id}: badge claim: ${claimErr.message}`);
+          failed++;
+        }
+        continue;
+      }
 
+      // Badge claimed — now send the push
       const firstName = user.display_name?.split(' ')?.[0] || 'there';
 
       const pushRes = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -143,7 +154,6 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      await supabase.from('badges').insert({ user_id: user.id, badge_type: milestone.badge });
       console.log(`Milestone push (${milestone.label}) sent to ${user.id}`);
       sent++;
     } catch (e) {

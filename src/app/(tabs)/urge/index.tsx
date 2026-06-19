@@ -628,26 +628,23 @@ export default function UrgeScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView ref={scrollRef} style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">
 
-          {/* Red urge hero button */}
-          <Pressable
-            style={({ pressed }) => [
-              s.urgeBtn,
-              timerRunning && s.urgeBtnRunning,
-              timerDone && s.urgeBtnDone,
-              pressed && !timerRunning && !timerDone && { opacity: 0.9 },
-            ]}
-            onPress={() => { if (!timerRunning && !timerDone) startTimer(); }}>
-            <Text style={[s.urgeBtnTxt, (timerRunning || timerDone) && s.urgeBtnTxtAlt]}>
-              {timerDone
-                ? '🎉  You made it through the urge'
-                : timerRunning
-                  ? '⏱  Timer running — hold on 💪'
-                  : "I'm feeling the urge right now"}
-            </Text>
-            {!timerRunning && !timerDone && (
-              <Text style={s.urgeBtnSub}>{`Tap to start your ${timerDuration / 60}-minute urge timer`}</Text>
-            )}
-          </Pressable>
+          {/* Red urge hero button — hidden while timer is counting */}
+          {!timerRunning && (
+            <Pressable
+              style={({ pressed }) => [
+                s.urgeBtn,
+                timerDone && s.urgeBtnDone,
+                pressed && !timerDone && { opacity: 0.9 },
+              ]}
+              onPress={() => { if (!timerDone) startTimer(); }}>
+              <Text style={[s.urgeBtnTxt, timerDone && s.urgeBtnTxtAlt]}>
+                {timerDone ? '🎉  You made it through the urge' : "I'm feeling the urge right now"}
+              </Text>
+              {!timerDone && (
+                <Text style={s.urgeBtnSub}>{`Tap to start your ${timerDuration / 60}-minute urge timer`}</Text>
+              )}
+            </Pressable>
+          )}
 
           {/* Urge delay timer */}
           <View style={[s.timerCard, timerDone && s.timerCardDone]}>
@@ -787,38 +784,13 @@ export default function UrgeScreen() {
             </View>
           </View>
 
-          {/* Journal */}
-          <Pressable
-            style={({ pressed }) => [s.logNowBtn, pressed && { opacity: 0.8 }]}
-            onPress={() => openLog('overcame')}>
-            <Text style={s.logNowBtnTxt}>✍️  Note how I'm feeling</Text>
-            <Text style={s.logNowBtnSub}>Track what's on your mind right now</Text>
-          </Pressable>
-
-          {/* Recovery plan — always visible as compact card; interactive when timer is active */}
-          {!timerRunning && (recoveryPlan.distractions.length > 0 || recoveryPlan.mantra) && (
-            <View style={[s.planCard, { opacity: 0.85 }]}>
-              <Text style={s.planCardTitle}>Your distraction plan</Text>
-              {!!recoveryPlan.mantra && (
-                <View style={s.planMantraBox}>
-                  <Text style={s.planMantraTxt}>"{recoveryPlan.mantra}"</Text>
-                </View>
-              )}
-              {recoveryPlan.distractions.length > 0 && (
-                <Text style={{ fontSize: 12, color: c.textMuted, marginTop: 6 }}>
-                  {recoveryPlan.distractions.slice(0, 4).map(key =>
-                    PLAN_DISTRACTION_OPTIONS.find(o => o.key === key)?.emoji ?? ''
-                  ).join('  ')}
-                  {recoveryPlan.distractions.length > 4 ? ` +${recoveryPlan.distractions.length - 4} more` : ''}
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Recovery plan — interactive only while timer is active */}
+          {/* Recovery plan — shown only while timer is running; disappears on pass/slip/cancel */}
           {timerRunning && (recoveryPlan.distractions.length > 0 || recoveryPlan.mantra) && (
             <View style={s.planCard}>
               <Text style={s.planCardTitle}>Your distraction plan</Text>
+              <Text style={s.planCardMotivation}>
+                Pick one and do it now. Urges pass — you just have to outlast this one.
+              </Text>
               {!!recoveryPlan.mantra && (
                 <View style={s.planMantraBox}>
                   <Text style={s.planMantraTxt}>"{recoveryPlan.mantra}"</Text>
@@ -849,6 +821,14 @@ export default function UrgeScreen() {
               )}
             </View>
           )}
+
+          {/* Journal */}
+          <Pressable
+            style={({ pressed }) => [s.logNowBtn, pressed && { opacity: 0.8 }]}
+            onPress={() => openLog('overcame')}>
+            <Text style={s.logNowBtnTxt}>✍️  Note how I'm feeling</Text>
+            <Text style={s.logNowBtnSub}>Track what's on your mind right now</Text>
+          </Pressable>
 
           {/* Urge pattern insight */}
           {urgeInsight && (
@@ -1258,7 +1238,7 @@ export default function UrgeScreen() {
               <Pressable
                 style={({ pressed }) => [s.distractionDismissBtn, pressed && { opacity: 0.7 }]}
                 onPress={() => setActiveDistraction(null)}>
-                <Text style={s.distractionDismissTxt}>Got it</Text>
+                <Text style={s.distractionDismissTxt}>Cancel</Text>
               </Pressable>
             </View>
           )}
@@ -1517,7 +1497,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   distractionCallBtnTxt: { color: c.white, fontWeight: '700', fontSize: 14 },
   distractionDismissBtn: {
-    backgroundColor: c.bgElement, borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+    backgroundColor: c.bgElement, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 12,
   },
   distractionDismissTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
 
@@ -1752,6 +1732,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   // Recovery plan card
   planCard: { backgroundColor: c.bgCard, borderRadius: 18, padding: 16, gap: 12 },
   planCardTitle: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  planCardMotivation: { fontSize: 14, color: c.textBody, lineHeight: 20 },
   planMantraBox: {
     backgroundColor: c.bgTealDeep, borderRadius: 12, padding: 14,
     borderLeftWidth: 3, borderLeftColor: c.primary,
