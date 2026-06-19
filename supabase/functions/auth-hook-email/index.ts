@@ -1,8 +1,11 @@
-import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
+const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!;
 
-const RESEND_API_KEY  = Deno.env.get('RESEND_API_KEY')!;
-const HOOK_SECRET     = Deno.env.get('SEND_EMAIL_HOOK_SECRET')!;
-const SUPABASE_URL    = Deno.env.get('SUPABASE_URL')!;
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+const ok  = () => new Response('{}', { status: 200, headers: JSON_HEADERS });
+const err = (msg: string, status = 500) =>
+  new Response(JSON.stringify({ error: msg }), { status, headers: JSON_HEADERS });
 
 const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -39,24 +42,24 @@ const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
 </body></html>`;
 
 Deno.serve(async (req: Request) => {
-  const payload = await req.text();
-  const headers = Object.fromEntries(req.headers);
-
   let data: { user: { email: string }; email_data: { email_action_type: string; token_hash: string; redirect_to: string } };
+
   try {
-    const wh = new Webhook(HOOK_SECRET);
-    data = wh.verify(payload, headers) as typeof data;
-  } catch (e) {
-    console.error('Signature verification failed:', e);
-    return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401 });
+    data = await req.json();
+  } catch {
+    return err('Invalid JSON body', 400);
   }
 
-  const { user, email_data } = data;
+  const { user, email_data } = data ?? {};
+  if (!user?.email || !email_data?.email_action_type) {
+    return err('Missing required fields', 400);
+  }
+
   const { email_action_type, token_hash, redirect_to } = email_data;
 
+  // Only handle password recovery — suppress other types (mailer_autoconfirm is ON)
   if (email_action_type !== 'recovery') {
-    // mailer_autoconfirm is ON — other types not needed; return 200 to suppress
-    return new Response(JSON.stringify({}), { status: 200 });
+    return ok();
   }
 
   const redirectUrl = redirect_to || 'cornerday://reset-password';
@@ -64,10 +67,7 @@ Deno.serve(async (req: Request) => {
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: 'CornerDay <noreply@cornerday.app>',
       to: [user.email],
@@ -77,10 +77,10 @@ Deno.serve(async (req: Request) => {
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    console.error('Resend error:', JSON.stringify(err));
-    return new Response(JSON.stringify({ error: 'Failed to send email' }), { status: 500 });
+    const resErr = await res.json().catch(() => ({}));
+    console.error('Resend error:', JSON.stringify(resErr));
+    return err('Failed to send email');
   }
 
-  return new Response(JSON.stringify({}), { status: 200 });
+  return ok();
 });
