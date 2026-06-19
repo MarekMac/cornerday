@@ -114,30 +114,30 @@ export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
 };
 
 const SCHEDULED_MILESTONES = [
-  { type: '1_hour',    days: 1/24,  emoji: '⏰', label: '1 Hour' },
-  { type: '3_hours',   days: 3/24,  emoji: '🌤️', label: '3 Hours' },
-  { type: '6_hours',   days: 6/24,  emoji: '☀️', label: '6 Hours' },
-  { type: '12_hours',  days: 12/24, emoji: '🌗', label: '12 Hours' },
-  { type: '1_day',     days: 1,     emoji: '🌱', label: '1 Day' },
-  { type: '3_days',    days: 3,     emoji: '🌿', label: '3 Days' },
-  { type: '1_week',    days: 7,     emoji: '⭐', label: '1 Week' },
-  { type: '10_days',   days: 10,    emoji: '✨', label: '10 Days' },
-  { type: '2_weeks',   days: 14,    emoji: '🌙', label: '2 Weeks' },
-  { type: '3_weeks',   days: 21,    emoji: '💫', label: '3 Weeks' },
-  { type: '1_month',   days: 30,    emoji: '🔥', label: '1 Month' },
-  { type: '45_days',   days: 45,    emoji: '⚡', label: '45 Days' },
-  { type: '2_months',  days: 60,    emoji: '🏅', label: '2 Months' },
-  { type: '3_months',  days: 90,    emoji: '🎯', label: '3 Months' },
-  { type: '4_months',  days: 120,   emoji: '🌊', label: '4 Months' },
-  { type: '5_months',  days: 150,   emoji: '🦋', label: '5 Months' },
-  { type: '6_months',  days: 180,   emoji: '💎', label: '6 Months' },
-  { type: '9_months',  days: 270,   emoji: '🌸', label: '9 Months' },
-  { type: '1_year',    days: 365,   emoji: '🏆', label: '1 Year' },
-  { type: '18_months', days: 548,   emoji: '🦅', label: '18 Months' },
-  { type: '2_years',   days: 730,   emoji: '👑', label: '2 Years' },
-  { type: '3_years',   days: 1095,  emoji: '🌟', label: '3 Years' },
-  { type: '4_years',   days: 1460,  emoji: '🔱', label: '4 Years' },
-  { type: '5_years',   days: 1825,  emoji: '🦁', label: '5 Years' },
+  { type: '1_hour',    days: 1/24,  emoji: '⏰', label: '1 Hour',     body: 'The first hour is the hardest. You did it — keep building.',                                              approachBody: 'Your first hour milestone is almost here. Hold tight.' },
+  { type: '3_hours',   days: 3/24,  emoji: '🌤️', label: '3 Hours',    body: 'Three hours clean. Every hour you hold on rewires something.',                                           approachBody: '3 Hours is nearly here. You\'re doing it.' },
+  { type: '6_hours',   days: 6/24,  emoji: '☀️', label: '6 Hours',    body: 'Six hours clean. Most people don\'t make it this far on day one. You did.',                              approachBody: 'Almost at 6 hours. Keep going — you\'re nearly there.' },
+  { type: '12_hours',  days: 12/24, emoji: '🌗', label: '12 Hours',   body: 'Half a day clean. You\'re proving to yourself this is possible.',                                        approachBody: '12 hours is one sleep away. Protect the rest of tonight.' },
+  { type: '1_day',     days: 1,     emoji: '🌱', label: '1 Day',      body: 'One full day without gambling. That\'s not small — that\'s everything right now.',                       approachBody: 'In 24 hours you\'ll have your first full day clean. Protect tonight.' },
+  { type: '3_days',    days: 3,     emoji: '🌿', label: '3 Days',     body: 'Three days. The hardest part is behind you. Your brain is already starting to reset.',                   approachBody: 'Three days is 24 hours away. Don\'t stop now — you\'re almost there.' },
+  { type: '1_week',    days: 7,     emoji: '⭐', label: '1 Week',     body: 'One week clean. Seven days of choosing yourself over the habit. That matters.',                          approachBody: 'Your 1 Week badge is 24 hours away. One more day — you\'ve got this.' },
+  { type: '10_days',   days: 10,    emoji: '✨', label: '10 Days',    body: 'Ten days. Double digits. You\'re building real momentum now.',                                           approachBody: 'Ten days is one day away. You\'re so close to double digits.' },
+  { type: '2_weeks',   days: 14,    emoji: '🌙', label: '2 Weeks',    body: 'Two weeks clean. You\'ve broken the daily cycle. Keep that going.',                                      approachBody: 'Two weeks clean is almost here. One more sleep.' },
+  { type: '3_weeks',   days: 21,    emoji: '💫', label: '3 Weeks',    body: 'Three weeks. You\'ve outlasted the toughest cravings. The next phase is yours.',                         approachBody: 'Your 3 Week milestone is 24 hours away. Keep holding the line.' },
+  { type: '1_month',   days: 30,    emoji: '🔥', label: '1 Month',    body: 'One month. 30 days of showing up for yourself. That\'s a life-changing number.',                         approachBody: 'Tomorrow you hit one month clean. That\'s worth protecting. Hold on tonight.' },
+  { type: '45_days',   days: 45,    emoji: '⚡', label: '45 Days',    body: '45 days clean. You\'re past the point where most people quit trying. You didn\'t.',                      approachBody: '45 days is one day away. You\'re in rare territory now.' },
+  { type: '2_months',  days: 60,    emoji: '🏅', label: '2 Months',   body: 'Two months. The version of you that started this journey would be proud.',                               approachBody: 'Two months is 24 hours away. Almost there — keep your guard up.' },
+  { type: '3_months',  days: 90,    emoji: '🎯', label: '3 Months',   body: 'Three months clean. A full quarter of a year — your recovery is real now.',                              approachBody: 'Three months clean starts tomorrow. Don\'t let anything get in the way tonight.' },
+  { type: '4_months',  days: 120,   emoji: '🌊', label: '4 Months',   body: 'Four months. The urges are quieter now, aren\'t they? That\'s what this looks like.',                   approachBody: 'Four months is almost yours. One more day of choosing right.' },
+  { type: '5_months',  days: 150,   emoji: '🦋', label: '5 Months',   body: 'Five months. Most habits take 66 days to break — you\'ve more than doubled that.',                      approachBody: 'Five months clean is 24 hours away. The finish line is visible.' },
+  { type: '6_months',  days: 180,   emoji: '💎', label: '6 Months',   body: 'Half a year clean. This is the kind of milestone that changes how you see yourself.',                    approachBody: 'Half a year clean starts tomorrow. You\'re about to cross a major line.' },
+  { type: '9_months',  days: 270,   emoji: '🌸', label: '9 Months',   body: 'Nine months. You\'ve been building a new life longer than most people keep a resolution.',               approachBody: 'Nine months is 24 hours away. You\'ve earned this.' },
+  { type: '1_year',    days: 365,   emoji: '🏆', label: '1 Year',     body: 'One year. 365 days of choosing differently. You are not who you were — you\'re stronger.',               approachBody: 'Tomorrow you hit one year clean. One more day. The most important one you\'ve had.' },
+  { type: '18_months', days: 548,   emoji: '🦅', label: '18 Months',  body: 'Eighteen months clean. This isn\'t a streak anymore — it\'s who you are.',                              approachBody: '18 months clean is one day away. You\'ve built something real.' },
+  { type: '2_years',   days: 730,   emoji: '👑', label: '2 Years',    body: 'Two years. You\'ve proven that the person you became is the real one.',                                  approachBody: 'Two years is 24 hours away. Almost everything changes from here.' },
+  { type: '3_years',   days: 1095,  emoji: '🌟', label: '3 Years',    body: 'Three years clean. Most people never get here. You did the work.',                                       approachBody: 'Three years clean starts tomorrow. Let that sink in.' },
+  { type: '4_years',   days: 1460,  emoji: '🔱', label: '4 Years',    body: 'Four years. Think about everything that\'s changed because of this one decision.',                       approachBody: 'Four years is one day away. You\'ve changed your life completely.' },
+  { type: '5_years',   days: 1825,  emoji: '🦁', label: '5 Years',    body: 'Five years. You didn\'t just stop gambling — you built a completely different life.',                    approachBody: 'Tomorrow you hit five years clean. Rest up — tomorrow is huge.' },
 ];
 
 const CHANNEL_ID = 'cornerday';
@@ -205,7 +205,7 @@ export async function scheduleAllNotifications(
       await Notifications.scheduleNotificationAsync({
         content: {
           title: `${m.emoji} ${m.label} milestone!`,
-          body: `You've been clean for ${m.label}. That's a real achievement — keep going.`,
+          body: m.body,
           data: { screen: '/(tabs)/' },
         },
         trigger: androidTrigger({
@@ -226,8 +226,8 @@ export async function scheduleAllNotifications(
       if (approachDate.getTime() > now) {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: `⏰ Almost there!`,
-            body: `Your ${next.label} milestone is just 24 hours away. Hold on.`,
+            title: `⏰ Almost there — ${next.label} tomorrow!`,
+            body: next.approachBody,
             data: { screen: '/(tabs)/' },
           },
           trigger: androidTrigger({
@@ -304,7 +304,7 @@ export async function scheduleAllNotifications(
               content: {
                 title: `🎯 ${milestone.target} Days Clean!`,
                 body: `You hit your personal ${milestone.target}-day milestone. This is a huge achievement. Keep going! 🏆`,
-                data: { type: 'custom_milestone' },
+                data: { type: 'custom_milestone', screen: '/(tabs)/' },
               },
               trigger: androidTrigger({
                 type: Notifications.SchedulableTriggerInputTypes.DATE,
