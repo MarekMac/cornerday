@@ -405,16 +405,20 @@ export default function CommunityFeed() {
     haptic();
     const isBookmarked = userBookmarks[postId] ?? false;
     setUserBookmarks(prev => ({ ...prev, [postId]: !isBookmarked }));
-    if (isBookmarked) {
-      const { error } = await supabase.from('community_bookmarks').delete().eq('post_id', postId).eq('user_id', uid);
-      if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: true })); return; }
-      if (activeTag === 'Saved') {
-        setPosts(prev => prev.filter(p => p.id !== postId));
-        postsRef.current = postsRef.current.filter(p => p.id !== postId);
+    try {
+      if (isBookmarked) {
+        const { error } = await supabase.from('community_bookmarks').delete().eq('post_id', postId).eq('user_id', uid);
+        if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: true })); return; }
+        if (activeTag === 'Saved') {
+          setPosts(prev => prev.filter(p => p.id !== postId));
+          postsRef.current = postsRef.current.filter(p => p.id !== postId);
+        }
+      } else {
+        const { error } = await supabase.from('community_bookmarks').insert({ post_id: postId, user_id: uid });
+        if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: false })); }
       }
-    } else {
-      const { error } = await supabase.from('community_bookmarks').insert({ post_id: postId, user_id: uid });
-      if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: false })); }
+    } catch {
+      setUserBookmarks(prev => ({ ...prev, [postId]: isBookmarked }));
     }
   };
 
@@ -424,16 +428,20 @@ export default function CommunityFeed() {
     haptic();
     const isFollowing = followedUsers[userId] ?? false;
     setFollowedUsers(prev => ({ ...prev, [userId]: !isFollowing }));
-    if (isFollowing) {
-      const { error } = await supabase.from('community_follows').delete().eq('follower_id', uid).eq('following_id', userId);
-      if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: true })); return; }
-      if (activeTag === 'Following') {
-        setPosts(prev => prev.filter(p => p.user_id !== userId));
-        postsRef.current = postsRef.current.filter(p => p.user_id !== userId);
+    try {
+      if (isFollowing) {
+        const { error } = await supabase.from('community_follows').delete().eq('follower_id', uid).eq('following_id', userId);
+        if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: true })); return; }
+        if (activeTag === 'Following') {
+          setPosts(prev => prev.filter(p => p.user_id !== userId));
+          postsRef.current = postsRef.current.filter(p => p.user_id !== userId);
+        }
+      } else {
+        const { error } = await supabase.from('community_follows').insert({ follower_id: uid, following_id: userId });
+        if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: false })); }
       }
-    } else {
-      const { error } = await supabase.from('community_follows').insert({ follower_id: uid, following_id: userId });
-      if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: false })); }
+    } catch {
+      setFollowedUsers(prev => ({ ...prev, [userId]: isFollowing }));
     }
   };
 
@@ -444,13 +452,16 @@ export default function CommunityFeed() {
     const postId = reportPostId;
     if (!uid || !postId || reportingInFeed) return;
     setReportingInFeed(true);
-    const { error } = await supabase.from('community_reports').insert({
-      target_type: 'post', target_id: postId, reporter_id: uid, reason,
-    });
-    setReportingInFeed(false);
-    setReportPostId(null);
-    if (error) { Alert.alert('Could not submit report', error.message); return; }
-    Alert.alert('Reported', 'Thank you — we will review this shortly.');
+    try {
+      const { error } = await supabase.from('community_reports').insert({
+        target_type: 'post', target_id: postId, reporter_id: uid, reason,
+      });
+      setReportPostId(null);
+      if (error) { Alert.alert('Could not submit report', error.message); return; }
+      Alert.alert('Reported', 'Thank you — we will review this shortly.');
+    } finally {
+      setReportingInFeed(false);
+    }
   };
 
   const handleAuthorPress = (item: Post) => {

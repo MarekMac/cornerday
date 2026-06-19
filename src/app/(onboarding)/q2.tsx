@@ -20,7 +20,7 @@ export default function Q2Screen() {
 
   useEffect(() => {
     if (isLoaded && data.trigger) setSelected(data.trigger);
-  }, [isLoaded]);
+  }, [isLoaded, data.trigger]);
 
   const handleContinue = () => {
     setField('trigger', selected);

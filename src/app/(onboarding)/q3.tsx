@@ -55,7 +55,7 @@ export default function Q3Screen() {
     if (data.currency) setCurrency(data.currency);
     if (data.weeklyBet) setSelected(data.weeklyBet);
     if (data.quitDate) { setQuitDate(new Date(data.quitDate)); setUserChangedDate(true); }
-  }, [isLoaded]);
+  }, [isLoaded, data.currency, data.weeklyBet, data.quitDate]);
 
   const symbol = CURRENCIES.find(c => c.code === currency)?.symbol ?? '$';
 

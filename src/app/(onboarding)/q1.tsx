@@ -30,7 +30,7 @@ export default function Q1Screen() {
     if (isLoaded && data.motivation) {
       setSelected(data.motivation.split(',').filter(Boolean));
     }
-  }, [isLoaded]);
+  }, [isLoaded, data.motivation]);
 
   const toggle = (value: string) => {
     setSelected(prev =>

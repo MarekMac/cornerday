@@ -121,6 +121,7 @@ function InnerLayout() {
         if (!userRow) {
           await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
           await supabase.auth.signOut();
+          setAuthChecked(true);
           return;
         }
         setPendingRoute('/(tabs)');
@@ -139,6 +140,7 @@ function InnerLayout() {
           // Ghost session: auth JWT still cached but user row was deleted
           await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
           await supabase.auth.signOut();
+          setAuthChecked(true);
           return;
         }
       }

@@ -1,7 +1,7 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -312,6 +312,8 @@ type FilterOutcome = 'all' | 'overcame' | 'slipped';
 export default function JournalScreen() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
+  const isMountedRef = useRef(true);
+  useEffect(() => () => { isMountedRef.current = false; }, []);
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
@@ -353,6 +355,7 @@ export default function JournalScreen() {
     (activityRes.data ?? []).forEach((e: any) => entries.push({ kind: e.type, id: e.id, amount: e.amount, note: e.note, created_at: e.created_at }));
 
     entries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    if (!isMountedRef.current) return;
     setFeed(entries);
   }, []);
 
@@ -394,9 +397,9 @@ export default function JournalScreen() {
         }
         await fetchFeed();
       }
-      setClearAllVisible(false);
     } finally {
       setClearingAll(false);
+      setClearAllVisible(false);
     }
   };
 

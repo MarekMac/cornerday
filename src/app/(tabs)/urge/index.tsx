@@ -280,7 +280,7 @@ export default function UrgeScreen() {
     if (timerDone && !timerPointsEarned) {
       awardTimerPoint(timerTotal);
     }
-  }, [timerDone]);
+  }, [timerDone, timerPointsEarned, timerTotal]);
 
   const fetchMotivation = useCallback(async () => {
     // Load cache immediately so the screen works offline
@@ -437,6 +437,7 @@ export default function UrgeScreen() {
         Alert.alert('Could not save', error.message);
         return;
       }
+      if (!isMounted.current) return;
       setSaved(true);
       if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
       closeLogTimeoutRef.current = setTimeout(() => { if (isMounted.current) closeLog(); }, 1500);
@@ -1174,7 +1175,7 @@ export default function UrgeScreen() {
                     </Text>
                     <Pressable
                       style={({ pressed }) => [s.distractionCallBtn, pressed && { opacity: 0.85 }]}
-                      onPress={() => { setActiveDistraction(null); setEditingContact(false); Linking.openURL(`tel:${trustedContact.phone}`); }}>
+                      onPress={() => { setActiveDistraction(null); setEditingContact(false); Linking.openURL(`tel:${trustedContact.phone}`).catch(() => Alert.alert('Cannot open phone', 'Please dial manually.')); }}>
                       <Text style={s.distractionCallBtnTxt}>📞  Call {trustedContact.name}</Text>
                     </Pressable>
                     <View style={s.contactEditRow}>
@@ -1345,14 +1346,14 @@ export default function UrgeScreen() {
                         {'phone' in item && item.phone ? (
                           <Pressable
                             style={({ pressed }) => [s.therapyCallBtn, pressed && { opacity: 0.7 }]}
-                            onPress={() => Linking.openURL(`tel:${item.phone}`)}>
+                            onPress={() => Linking.openURL(`tel:${item.phone}`).catch(() => Alert.alert('Cannot open phone', 'Please dial manually.'))}>
                             <Text style={s.therapyCallBtnTxt}>📞 Call</Text>
                           </Pressable>
                         ) : null}
                         {'web' in item && item.web ? (
                           <Pressable
                             style={({ pressed }) => [s.therapyWebBtn, pressed && { opacity: 0.7 }]}
-                            onPress={() => Linking.openURL(item.web!)}>
+                            onPress={() => Linking.openURL(item.web!).catch(() => Alert.alert('Cannot open website', 'Please visit the website manually.'))}>
                             <Text style={s.therapyWebBtnTxt}>🌐 Website</Text>
                           </Pressable>
                         ) : null}

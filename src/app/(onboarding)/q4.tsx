@@ -35,7 +35,7 @@ export default function Q4Screen() {
     if (isLoaded && data.goal) {
       setSelected(data.goal.split(',').filter(Boolean));
     }
-  }, [isLoaded]);
+  }, [isLoaded, data.goal]);
 
   const toggle = (value: string) => {
     setSelected(prev =>

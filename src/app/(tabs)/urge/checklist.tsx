@@ -26,10 +26,13 @@ export default function ChecklistScreen() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    let active = true;
     AsyncStorage.getItem(CHECKLIST_KEY).then(raw => {
+      if (!active) return;
       if (raw) { try { setChecked(JSON.parse(raw)); } catch { /* corrupted, start fresh */ } }
       setLoaded(true);
     });
+    return () => { active = false; };
   }, []);
 
   const toggle = async (id: string) => {
@@ -104,7 +107,7 @@ export default function ChecklistScreen() {
                     idx < section.items.length - 1 && s.itemBorder,
                     pressed && { opacity: 0.75 },
                   ]}
-                  onPress={() => toggle(item.id)}>
+                  onPress={() => toggle(item.id).catch(() => {})}>
                   <View style={[s.checkbox, done && s.checkboxDone]}>
                     {done && <Ionicons name="checkmark" size={14} color={c.white} />}
                   </View>

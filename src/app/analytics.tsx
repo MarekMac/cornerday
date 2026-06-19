@@ -498,8 +498,11 @@ export default function AnalyticsScreen() {
   const onRefresh = useCallback(async () => {
     if (!hasAccess) return;
     setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
+    try {
+      await fetchData();
+    } finally {
+      setRefreshing(false);
+    }
   }, [fetchData, hasAccess]);
 
   const confirmResetUrges = () => {
@@ -1294,7 +1297,7 @@ export default function AnalyticsScreen() {
                 mode="date"
                 display="spinner"
                 minimumDate={new Date()}
-                onValueChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
+                onChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
                 style={{ height: 200 }}
               />
               <View style={s.modalActions}>

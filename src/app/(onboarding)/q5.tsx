@@ -19,7 +19,7 @@ export default function Q5Screen() {
 
   useEffect(() => {
     if (isLoaded && data.supportType) setSelected(data.supportType);
-  }, [isLoaded]);
+  }, [isLoaded, data.supportType]);
 
   const handleContinue = () => {
     setField('supportType', selected);
