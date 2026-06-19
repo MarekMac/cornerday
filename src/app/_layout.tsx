@@ -51,6 +51,7 @@ function InnerLayout() {
         promptMessage: 'Unlock CornerDay',
         cancelLabel: 'Cancel',
         disableDeviceFallback: false,
+        requireConfirmation: false,
       });
       if (result.success) setLocked(false);
     } catch {
