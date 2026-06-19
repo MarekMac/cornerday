@@ -70,8 +70,10 @@ Deno.serve(async (req: Request) => {
     return err('Missing token', 400);
   }
 
-  const paramName = token_hash ? 'token_hash' : 'token';
-  const resetUrl = `${SUPABASE_URL}/auth/v1/verify?${paramName}=${verifyToken}&type=recovery&redirect_to=${encodeURIComponent('cornerday://reset-password')}`;
+  // GoTrue's GET /verify endpoint does not accept token_hash — use our
+  // redirect function which does POST verify internally and returns a
+  // cornerday:// deep link with the session tokens.
+  const resetUrl = `${SUPABASE_URL}/functions/v1/auth-reset-redirect?token_hash=${verifyToken}&type=recovery`;
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
