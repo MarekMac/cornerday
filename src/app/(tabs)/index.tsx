@@ -850,7 +850,7 @@ function MilestoneCelebrationModal({
 export default function HomeScreen() {
   const { colors: c, colorScheme } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
-  const { checkin } = useLocalSearchParams<{ checkin?: string }>();
+  const { checkin, scrollTo } = useLocalSearchParams<{ checkin?: string; scrollTo?: string }>();
   const cc = colorScheme === 'dark' ? {
     gradient:        ['#062e2e', '#0F6E6E', '#1a9a9a'] as const,
     brand:           'rgba(255,255,255,0.7)',
@@ -913,6 +913,7 @@ export default function HomeScreen() {
   const isMountedRef = useRef(true);
   const moodScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [moodCardY, setMoodCardY] = useState(0);
+  const [badgesCardY, setBadgesCardY] = useState(0);
 
   // Auto-scroll to mood check-in when arriving from 3-day check-in notification
   useEffect(() => {
@@ -921,6 +922,14 @@ export default function HomeScreen() {
       return () => clearTimeout(t);
     }
   }, [checkin, moodCardY]);
+
+  // Auto-scroll to badges/milestones section when arriving from milestone notification
+  useEffect(() => {
+    if (scrollTo === 'badges' && badgesCardY > 0) {
+      const t = setTimeout(() => bodyScrollRef.current?.scrollTo({ y: badgesCardY, animated: true }), 500);
+      return () => clearTimeout(t);
+    }
+  }, [scrollTo, badgesCardY]);
 
   useFocusEffect(useCallback(() => {
     AsyncStorage.getItem(PROFILE_NUDGE_SHOWN_KEY).then(v => {
@@ -1875,7 +1884,7 @@ export default function HomeScreen() {
         <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalPaid={data.totalPaid} nowMs={nowMs} />
 
         {/* Badges */}
-        <View style={s.card}>
+        <View style={s.card} onLayout={e => setBadgesCardY(e.nativeEvent.layout.y)}>
           <View style={s.milestonesHeader}>
             <Text style={s.weekStripTitle}>Milestones</Text>
             <Text style={s.milestonesHint}>Tap to celebrate</Text>

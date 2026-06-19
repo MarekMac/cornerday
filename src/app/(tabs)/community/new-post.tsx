@@ -73,43 +73,43 @@ export default function NewPost() {
     if (!tag) { Alert.alert('Pick a tag', 'Select a tag that fits your story.'); return; }
     if (!content.trim()) { Alert.alert('Empty story', "Your story can't be empty."); return; }
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSubmitting(false); return; }
-    const { data: profile } = await supabase.from('users').select('is_banned, ban_reason, ban_expires_at, ban_appeal_note').eq('id', user.id).maybeSingle();
-    if (profile?.is_banned && (profile.ban_expires_at === null || new Date(profile.ban_expires_at) > new Date())) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from('users').select('is_banned, ban_reason, ban_expires_at, ban_appeal_note').eq('id', user.id).maybeSingle();
+      if (profile?.is_banned && (profile.ban_expires_at === null || new Date(profile.ban_expires_at) > new Date())) {
+        const lines = ['Your community access is currently restricted.'];
+        if (profile.ban_reason) lines.push(`\nReason: ${profile.ban_reason}`);
+        lines.push(profile.ban_expires_at
+          ? `Until: ${new Date(profile.ban_expires_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}`
+          : 'Duration: Permanent');
+        if (profile.ban_appeal_note) lines.push(`\nTo appeal: ${profile.ban_appeal_note}`);
+        Alert.alert('Posting restricted', lines.join('\n'));
+        return;
+      }
+      const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+      const { count: recentCount } = await supabase
+        .from('community_posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', oneHourAgo);
+      if ((recentCount ?? 0) >= 3) {
+        Alert.alert('Slow down', 'You can post up to 3 stories per hour. Try again shortly.');
+        return;
+      }
+      const { error } = await supabase.from('community_posts').insert({
+        user_id: user.id,
+        content: content.trim(),
+        tag,
+        is_anonymous: isAnonymous,
+      });
+      if (error) { Alert.alert('Error', 'Could not post. Please try again.'); return; }
+      hapticMedium();
+      showInterstitialIfReady(isPremium);
+      router.back();
+    } finally {
       setSubmitting(false);
-      const lines = ['Your community access is currently restricted.'];
-      if (profile.ban_reason) lines.push(`\nReason: ${profile.ban_reason}`);
-      lines.push(profile.ban_expires_at
-        ? `Until: ${new Date(profile.ban_expires_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}`
-        : 'Duration: Permanent');
-      if (profile.ban_appeal_note) lines.push(`\nTo appeal: ${profile.ban_appeal_note}`);
-      Alert.alert('Posting restricted', lines.join('\n'));
-      return;
     }
-    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
-    const { count: recentCount } = await supabase
-      .from('community_posts')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .gte('created_at', oneHourAgo);
-    if ((recentCount ?? 0) >= 3) {
-      setSubmitting(false);
-      Alert.alert('Slow down', 'You can post up to 3 stories per hour. Try again shortly.');
-      return;
-    }
-
-    const { error } = await supabase.from('community_posts').insert({
-      user_id: user.id,
-      content: content.trim(),
-      tag,
-      is_anonymous: isAnonymous,
-    });
-    setSubmitting(false);
-    if (error) { Alert.alert('Error', 'Could not post. Please try again.'); return; }
-    hapticMedium();
-    showInterstitialIfReady(isPremium);
-    router.back();
   };
 
   const canSubmit = !!tag && content.trim().length > 0 && !submitting;

@@ -406,13 +406,15 @@ export default function CommunityFeed() {
     const isBookmarked = userBookmarks[postId] ?? false;
     setUserBookmarks(prev => ({ ...prev, [postId]: !isBookmarked }));
     if (isBookmarked) {
-      await supabase.from('community_bookmarks').delete().eq('post_id', postId).eq('user_id', uid);
+      const { error } = await supabase.from('community_bookmarks').delete().eq('post_id', postId).eq('user_id', uid);
+      if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: true })); return; }
       if (activeTag === 'Saved') {
         setPosts(prev => prev.filter(p => p.id !== postId));
         postsRef.current = postsRef.current.filter(p => p.id !== postId);
       }
     } else {
-      await supabase.from('community_bookmarks').insert({ post_id: postId, user_id: uid });
+      const { error } = await supabase.from('community_bookmarks').insert({ post_id: postId, user_id: uid });
+      if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: false })); }
     }
   };
 
@@ -423,13 +425,15 @@ export default function CommunityFeed() {
     const isFollowing = followedUsers[userId] ?? false;
     setFollowedUsers(prev => ({ ...prev, [userId]: !isFollowing }));
     if (isFollowing) {
-      await supabase.from('community_follows').delete().eq('follower_id', uid).eq('following_id', userId);
+      const { error } = await supabase.from('community_follows').delete().eq('follower_id', uid).eq('following_id', userId);
+      if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: true })); return; }
       if (activeTag === 'Following') {
         setPosts(prev => prev.filter(p => p.user_id !== userId));
         postsRef.current = postsRef.current.filter(p => p.user_id !== userId);
       }
     } else {
-      await supabase.from('community_follows').insert({ follower_id: uid, following_id: userId });
+      const { error } = await supabase.from('community_follows').insert({ follower_id: uid, following_id: userId });
+      if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: false })); }
     }
   };
 

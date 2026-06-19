@@ -505,20 +505,22 @@ export default function AnalyticsScreen() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user || !data) return;
             setResettingUrges(true);
-            const { error: urgeDelErr } = await supabase.from('urge_journal').delete().eq('user_id', user.id);
-            if (urgeDelErr) {
-              Alert.alert('Could not reset urge logs', urgeDelErr.message);
+            try {
+              const { error: urgeDelErr } = await supabase.from('urge_journal').delete().eq('user_id', user.id);
+              if (urgeDelErr) {
+                Alert.alert('Could not reset urge logs', urgeDelErr.message);
+                return;
+              }
+              setData(prev => prev ? {
+                ...prev,
+                urgeCount: 0, urgesOvercome: 0,
+                urgesByDay: [0, 0, 0, 0, 0, 0, 0],
+                urgesByTimeOfDay: [0, 0, 0, 0],
+                topTriggers: [],
+              } : prev);
+            } finally {
               setResettingUrges(false);
-              return;
             }
-            setData(prev => prev ? {
-              ...prev,
-              urgeCount: 0, urgesOvercome: 0,
-              urgesByDay: [0, 0, 0, 0, 0, 0, 0],
-              urgesByTimeOfDay: [0, 0, 0, 0],
-              topTriggers: [],
-            } : prev);
-            setResettingUrges(false);
           },
         },
       ]
@@ -530,7 +532,8 @@ export default function AnalyticsScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+        const { error: updateErr } = await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+        if (updateErr) { Alert.alert('Could not save date', updateErr.message); return; }
         setSavingsTargetDate(date);
       }
       setShowTargetModal(false);
@@ -572,24 +575,6 @@ export default function AnalyticsScreen() {
   );
 
   if (loading) return <View style={s.loadingWrap}><ActivityIndicator color={c.primary} size="large" /></View>;
-
-  if (fetchError && !data) {
-    return (
-      <View style={s.root}>
-        {renderHeader()}
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
-          <Text style={{ fontSize: 40 }}>⚠️</Text>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: c.textPrimary, textAlign: 'center' }}>Couldn't load analytics</Text>
-          <Text style={{ fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 }}>Check your connection and try again.</Text>
-          <Pressable
-            style={({ pressed }) => [{ marginTop: 8, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: c.primary, borderRadius: 20 }, pressed && { opacity: 0.8 }]}
-            onPress={() => fetchData().finally(() => setLoading(false))}>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Retry</Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
 
   if (isLoadingPurchases) {
     return (
@@ -643,6 +628,24 @@ export default function AnalyticsScreen() {
     );
   }
 
+  if (fetchError && !data) {
+    return (
+      <View style={s.root}>
+        {renderHeader()}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
+          <Text style={{ fontSize: 40 }}>⚠️</Text>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: c.textPrimary, textAlign: 'center' }}>Couldn't load analytics</Text>
+          <Text style={{ fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 }}>Check your connection and try again.</Text>
+          <Pressable
+            style={({ pressed }) => [{ marginTop: 8, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: c.primary, borderRadius: 20 }, pressed && { opacity: 0.8 }]}
+            onPress={() => { if (!hasAccess) return; setLoading(true); fetchData().finally(() => setLoading(false)); }}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Retry</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   if (!data) return null;
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -655,7 +658,7 @@ export default function AnalyticsScreen() {
 
   const elapsedMs         = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
 
-  const maxUrgeCount    = Math.max(...data.urgesByDay);
+  const maxUrgeCount    = Math.max(1, ...data.urgesByDay);
   const maxUrgeDay      = data.urgesByDay.indexOf(maxUrgeCount);
   const daysToGoal      = goalPct !== null && data.dailySavingsRate > 0 && goalPct < 1
     ? Math.ceil((data.savingsGoal! - data.totalSavings) / data.dailySavingsRate) : null;

@@ -206,7 +206,7 @@ export async function scheduleAllNotifications(
         content: {
           title: `${m.emoji} ${m.label} milestone!`,
           body: m.body,
-          data: { screen: '/(tabs)/' },
+          data: { screen: '/(tabs)?scrollTo=badges' },
         },
         trigger: androidTrigger({
           type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -228,7 +228,7 @@ export async function scheduleAllNotifications(
           content: {
             title: `⏰ Almost there — ${next.label} tomorrow!`,
             body: next.approachBody,
-            data: { screen: '/(tabs)/' },
+            data: { screen: '/(tabs)?scrollTo=badges' },
           },
           trigger: androidTrigger({
             type: Notifications.SchedulableTriggerInputTypes.DATE,

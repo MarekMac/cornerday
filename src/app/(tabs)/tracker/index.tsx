@@ -109,13 +109,6 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function fmtPayoffDate(d: Date): string {
-  const days = Math.round((d.getTime() - Date.now()) / 86400000);
-  if (days <= 1) return 'Very soon';
-  if (days < 8) return `In ${days} days`;
-  if (days < 60) return `In ~${Math.round(days / 7)} weeks`;
-  return `~${d.toLocaleDateString([], { month: 'short', year: 'numeric' })}`;
-}
 
 function debtProgressColor(pct: number): string {
   if (pct >= 1) return '#0a7a4e';
@@ -223,6 +216,7 @@ export default function TrackerIndex() {
   const [savingTargetDate, setSavingTargetDate] = useState(false);
   type DebtSort = 'default' | 'progress' | 'due';
   const [debtSort, setDebtSort] = useState<DebtSort>('default');
+  const [savingGoalBusy, setSavingGoalBusy] = useState(false);
 
   // Swipe refs — one per debt card
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
@@ -461,15 +455,18 @@ export default function TrackerIndex() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSavingTarget.id).eq('user_id', user.id);
-        if (delErr) { Alert.alert('Could not delete saving', delErr.message); return; }
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'saving_deleted', amount: deleteSavingTarget.amount,
-          category: 'Saving', note: deleteSavingTarget.note,
-        });
+        if (delErr) {
+          Alert.alert('Could not delete saving', delErr.message);
+        } else {
+          await supabase.from('losses').insert({
+            user_id: user.id, type: 'saving_deleted', amount: deleteSavingTarget.amount,
+            category: 'Saving', note: deleteSavingTarget.note,
+          });
+          haptic();
+          await fetchAll();
+        }
       }
-      haptic();
       setDeleteSavingTarget(null);
-      await fetchAll();
     } finally {
       setDeleting(false);
     }
@@ -536,12 +533,16 @@ export default function TrackerIndex() {
     setDeleting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSessionTarget.id).eq('user_id', user.id);
-      if (delErr) { Alert.alert('Could not delete session', delErr.message); return; }
-      haptic();
+      if (user) {
+        const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSessionTarget.id).eq('user_id', user.id);
+        if (delErr) {
+          Alert.alert('Could not delete session', delErr.message);
+        } else {
+          haptic();
+          await fetchAll();
+        }
+      }
       setDeleteSessionTarget(null);
-      await fetchAll();
     } finally {
       setDeleting(false);
     }
@@ -586,39 +587,44 @@ export default function TrackerIndex() {
       Alert.alert('Invalid amount', 'Please enter a valid goal amount.');
       return;
     }
-    if (!goalInput) {
-      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
-      await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
-      setSavingsGoal(null);
-      setSavingsGoalFor('');
-      setSavingsGoalIcon('🎯');
-    } else {
-      const forVal = goalForInput.trim();
-      const iconVal = goalIconInput || '🎯';
-      await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
-      await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
-      if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
-      else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
-      const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
-      await logGoalEvent(eventType, val, forVal || null);
-      setSavingsGoal(val);
-      setSavingsGoalFor(forVal);
-      setSavingsGoalIcon(iconVal);
-    }
-    // Persist savings target date to DB
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error: dateErr } = await supabase.from('users').update({
-        savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
-      }).eq('id', user.id);
-      if (dateErr) {
-        Alert.alert('Could not save target date', dateErr.message);
-        return;
+    setSavingGoalBusy(true);
+    try {
+      if (!goalInput) {
+        await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+        await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
+        setSavingsGoal(null);
+        setSavingsGoalFor('');
+        setSavingsGoalIcon('🎯');
+      } else {
+        const forVal = goalForInput.trim();
+        const iconVal = goalIconInput || '🎯';
+        await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
+        await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
+        if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
+        else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
+        const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
+        await logGoalEvent(eventType, val, forVal || null);
+        setSavingsGoal(val);
+        setSavingsGoalFor(forVal);
+        setSavingsGoalIcon(iconVal);
       }
-      setSavingsTargetDate(goalTargetDateInput);
+      // Persist savings target date to DB
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error: dateErr } = await supabase.from('users').update({
+          savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
+        }).eq('id', user.id);
+        if (dateErr) {
+          Alert.alert('Could not save target date', dateErr.message);
+          return;
+        }
+        setSavingsTargetDate(goalTargetDateInput);
+      }
+      haptic();
+      closeGoalModal();
+    } finally {
+      setSavingGoalBusy(false);
     }
-    haptic();
-    closeGoalModal();
   };
 
   const saveDebtTargetDate = async (date: Date) => {
@@ -740,7 +746,7 @@ export default function TrackerIndex() {
     }
   };
 
-  const sortedDebts = [...debts].sort((a, b) => {
+  const sortedDebts = useMemo(() => [...debts].sort((a, b) => {
     const paidA = paidByDebt[a.id] ?? 0;
     const paidB = paidByDebt[b.id] ?? 0;
     const totalA = Number(a.total_amount) || 0;
@@ -762,7 +768,7 @@ export default function TrackerIndex() {
       return dueA - dueB;
     }
     return 0;
-  });
+  }), [debts, paidByDebt, debtSort]);
 
   const firstUnpaidDebtId = sortedDebts.find(d => {
     const paid = paidByDebt[d.id] ?? 0;
@@ -1521,8 +1527,8 @@ export default function TrackerIndex() {
                 <Pressable style={s.cancelBtn} onPress={closeGoalModal}>
                   <Text style={s.cancelBtnTxt}>Cancel</Text>
                 </Pressable>
-                <Pressable style={s.saveBtn} onPress={saveGoal}>
-                  <Text style={s.saveBtnTxt}>Save goal</Text>
+                <Pressable style={[s.saveBtn, savingGoalBusy && { opacity: 0.6 }]} onPress={saveGoal} disabled={savingGoalBusy}>
+                  <Text style={s.saveBtnTxt}>{savingGoalBusy ? 'Saving…' : 'Save goal'}</Text>
                 </Pressable>
               </View>
             </Pressable>
