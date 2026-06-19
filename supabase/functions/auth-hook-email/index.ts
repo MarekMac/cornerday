@@ -1,0 +1,86 @@
+import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
+
+const RESEND_API_KEY  = Deno.env.get('RESEND_API_KEY')!;
+const HOOK_SECRET     = Deno.env.get('SEND_EMAIL_HOOK_SECRET')!;
+const SUPABASE_URL    = Deno.env.get('SUPABASE_URL')!;
+
+const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+  <tr><td align="center">
+    <table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
+      <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
+        <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
+        <div style="font-size:40px;margin-bottom:14px;">&#x1F511;</div>
+        <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">Reset your password</div>
+        <div style="font-size:14px;opacity:0.8;line-height:1.5;">Click the button below to choose a new password.</div>
+      </td></tr>
+      <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:28px 28px 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
+            You requested a password reset for your CornerDay account. This link expires in 1 hour.
+          </td></tr>
+          <tr><td style="text-align:center;padding-bottom:20px;">
+            <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#0F6E6E,#1a9a9a);color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:10px;">Reset password</a>
+          </td></tr>
+          <tr><td style="font-size:13px;color:#999;text-align:center;padding-bottom:16px;line-height:1.6;">
+            If you did not request this, you can safely ignore this email. Your account is secure.
+          </td></tr>
+          <tr><td style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
+            CornerDay &mdash; The day you turn it around starts today.
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="height:24px;"></td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+
+Deno.serve(async (req: Request) => {
+  const payload = await req.text();
+  const headers = Object.fromEntries(req.headers);
+
+  let data: { user: { email: string }; email_data: { email_action_type: string; token_hash: string; redirect_to: string } };
+  try {
+    const wh = new Webhook(HOOK_SECRET);
+    data = wh.verify(payload, headers) as typeof data;
+  } catch (e) {
+    console.error('Signature verification failed:', e);
+    return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401 });
+  }
+
+  const { user, email_data } = data;
+  const { email_action_type, token_hash, redirect_to } = email_data;
+
+  if (email_action_type !== 'recovery') {
+    // mailer_autoconfirm is ON — other types not needed; return 200 to suppress
+    return new Response(JSON.stringify({}), { status: 200 });
+  }
+
+  const redirectUrl = redirect_to || 'cornerday://reset-password';
+  const resetUrl = `${SUPABASE_URL}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${encodeURIComponent(redirectUrl)}`;
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'CornerDay <noreply@cornerday.app>',
+      to: [user.email],
+      subject: 'Reset your CornerDay password',
+      html: recoveryHtml(resetUrl),
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    console.error('Resend error:', JSON.stringify(err));
+    return new Response(JSON.stringify({ error: 'Failed to send email' }), { status: 500 });
+  }
+
+  return new Response(JSON.stringify({}), { status: 200 });
+});
