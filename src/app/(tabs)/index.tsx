@@ -1638,7 +1638,8 @@ export default function HomeScreen() {
       setData(prev => {
         if (!prev) return prev;
         const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood: null, note: null } : d);
-        return { ...prev, todayMood: null, todayMoodNote: null, todayMoodId: null, weekMoods };
+        const newCurrent = Math.max(0, prev.checkinStreak.current - 1);
+        return { ...prev, todayMood: null, todayMoodNote: null, todayMoodId: null, weekMoods, moodCount: Math.max(0, prev.moodCount - 1), checkinStreak: { current: newCurrent, best: prev.checkinStreak.best } };
       });
       setEditingMood(false);
       setMoodNote('');
