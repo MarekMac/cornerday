@@ -55,7 +55,10 @@ function InnerLayout() {
         disableDeviceFallback: false,
       });
       if (result.success) setLocked(false);
-    } catch {}
+    } catch {
+      // Biometric hardware unavailable or permission denied — don't trap the user
+      setLocked(false);
+    }
   }, []);
 
   useEffect(() => { initHaptics(); }, []);
@@ -75,6 +78,7 @@ function InnerLayout() {
   // Handle tap on check-in notification — premium goes to AI coach, free goes to mood check-in
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      if (!session) return;
       if (response.notification.request.content.data?.type === 'ai_checkin') {
         if (isPremium) {
           router.push('/(tabs)/coach?checkin=true' as any);
@@ -84,7 +88,7 @@ function InnerLayout() {
       }
     });
     return () => sub.remove();
-  }, [router, isPremium]);
+  }, [router, isPremium, session]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state: AppStateStatus) => {
