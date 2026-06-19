@@ -2275,7 +2275,7 @@ export default function HomeScreen() {
             if (!day) return 'transparent';
             if (day.status === 'inactive') return c.bgElement;
             if (day.status === 'relapse') return '#e07070';
-            return c.primary;
+            return c.primaryMid;
           };
           // Arrange into week columns (Sun→Sat going down each column)
           const firstDate = new Date(days[0].iso + 'T00:00:00');
