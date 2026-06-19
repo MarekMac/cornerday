@@ -100,38 +100,41 @@ export default function ModerationScreen() {
 
   const loadReports = useCallback(async () => {
     setReportsLoading(true);
-    const { data, error } = await supabase
-      .from('community_reports')
-      .select('id, target_type, target_id, reason, created_at, status')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    if (error || !data) { setReportsLoading(false); return; }
-
-    const enriched = await Promise.all(data.map(async (r) => {
-      if (r.target_type === 'post') {
-        const { data: post } = await supabase
-          .from('community_posts').select('content').eq('id', r.target_id).maybeSingle();
-        return { ...r, content: post?.content ?? '[Post deleted]' };
-      } else {
-        const { data: comment } = await supabase
-          .from('community_comments').select('content').eq('id', r.target_id).maybeSingle();
-        return { ...r, content: comment?.content ?? '[Comment deleted]' };
-      }
-    }));
-
-    setReports(enriched as Report[]);
-    setReportsLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('community_reports')
+        .select('id, target_type, target_id, reason, created_at, status')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (error || !data) return;
+      const enriched = await Promise.all(data.map(async (r) => {
+        if (r.target_type === 'post') {
+          const { data: post } = await supabase
+            .from('community_posts').select('content').eq('id', r.target_id).maybeSingle();
+          return { ...r, content: post?.content ?? '[Post deleted]' };
+        } else {
+          const { data: comment } = await supabase
+            .from('community_comments').select('content').eq('id', r.target_id).maybeSingle();
+          return { ...r, content: comment?.content ?? '[Comment deleted]' };
+        }
+      }));
+      setReports(enriched as Report[]);
+    } finally {
+      setReportsLoading(false);
+    }
   }, []);
 
   const dismiss = async (reportId: string) => {
     setActioning(reportId);
-    await supabase
-      .from('community_reports')
-      .update({ status: 'dismissed', reviewed_at: new Date().toISOString() })
-      .eq('id', reportId);
-    setReports(prev => prev.filter(r => r.id !== reportId));
-    setActioning(null);
+    try {
+      await supabase
+        .from('community_reports')
+        .update({ status: 'dismissed', reviewed_at: new Date().toISOString() })
+        .eq('id', reportId);
+      setReports(prev => prev.filter(r => r.id !== reportId));
+    } finally {
+      setActioning(null);
+    }
   };
 
   const deleteContent = async (report: Report) => {
@@ -145,14 +148,17 @@ export default function ModerationScreen() {
           style: 'destructive',
           onPress: async () => {
             setActioning(report.id);
-            const table = report.target_type === 'post' ? 'community_posts' : 'community_comments';
-            await supabase.from(table).delete().eq('id', report.target_id);
-            await supabase
-              .from('community_reports')
-              .update({ status: 'actioned', reviewed_at: new Date().toISOString() })
-              .eq('target_id', report.target_id);
-            setReports(prev => prev.filter(r => r.target_id !== report.target_id));
-            setActioning(null);
+            try {
+              const table = report.target_type === 'post' ? 'community_posts' : 'community_comments';
+              await supabase.from(table).delete().eq('id', report.target_id);
+              await supabase
+                .from('community_reports')
+                .update({ status: 'actioned', reviewed_at: new Date().toISOString() })
+                .eq('target_id', report.target_id);
+              setReports(prev => prev.filter(r => r.target_id !== report.target_id));
+            } finally {
+              setActioning(null);
+            }
           },
         },
       ]
@@ -188,15 +194,18 @@ export default function ModerationScreen() {
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
-    const [{ data: { user } }, { data }] = await Promise.all([
-      supabase.auth.getUser(),
-      supabase.from('users')
-        .select('id, display_name, email, created_at, is_premium, is_admin, is_banned, ban_reason, ban_expires_at, ban_appeal_note')
-        .order('created_at', { ascending: false }),
-    ]);
-    if (user) setCurrentUserId(user.id);
-    setUsers((data ?? []) as UserRow[]);
-    setUsersLoading(false);
+    try {
+      const [{ data: { user } }, { data }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('users')
+          .select('id, display_name, email, created_at, is_premium, is_admin, is_banned, ban_reason, ban_expires_at, ban_appeal_note')
+          .order('created_at', { ascending: false }),
+      ]);
+      if (user) setCurrentUserId(user.id);
+      setUsers((data ?? []) as UserRow[]);
+    } finally {
+      setUsersLoading(false);
+    }
   }, []);
 
   const filteredUsers = useMemo(() => {
@@ -216,7 +225,7 @@ export default function ModerationScreen() {
     setDetailUser(user);
     setDetailData(null);
     setDetailLoading(true);
-
+    try {
     const [streakRes, postRes, commentRes, urgeRes, lossRes] = await Promise.all([
       supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
@@ -233,7 +242,9 @@ export default function ModerationScreen() {
       urgeCount: urgeRes.count ?? 0,
       lossCount: lossRes.count ?? 0,
     });
-    setDetailLoading(false);
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const closeDetail = () => {
@@ -252,15 +263,18 @@ export default function ModerationScreen() {
     if (!banFormUser) return;
     if (!banReason.trim()) return;
     setBanSubmitting(true);
-    const ms = BAN_DURATION_MS[banDuration];
-    const expiresAt = ms ? new Date(Date.now() + ms).toISOString() : null;
-    const patch = { is_banned: true, ban_reason: banReason.trim() || null, ban_expires_at: expiresAt, ban_appeal_note: banAppeal.trim() || null };
-    await supabase.from('users').update(patch).eq('id', banFormUser.id);
-    const updated = { ...banFormUser, ...patch };
-    setUsers(prev => prev.map(u => u.id === banFormUser.id ? updated : u));
-    if (detailUser?.id === banFormUser.id) setDetailUser(updated);
-    setBanSubmitting(false);
-    setBanFormUser(null);
+    try {
+      const ms = BAN_DURATION_MS[banDuration];
+      const expiresAt = ms ? new Date(Date.now() + ms).toISOString() : null;
+      const patch = { is_banned: true, ban_reason: banReason.trim() || null, ban_expires_at: expiresAt, ban_appeal_note: banAppeal.trim() || null };
+      await supabase.from('users').update(patch).eq('id', banFormUser.id);
+      const updated = { ...banFormUser, ...patch };
+      setUsers(prev => prev.map(u => u.id === banFormUser.id ? updated : u));
+      if (detailUser?.id === banFormUser.id) setDetailUser(updated);
+      setBanFormUser(null);
+    } finally {
+      setBanSubmitting(false);
+    }
   };
 
   const unban = (user: UserRow) => {
@@ -271,12 +285,15 @@ export default function ModerationScreen() {
         text: 'Unban',
         onPress: async () => {
           setUserActioning(user.id);
-          const patch = { is_banned: false, ban_reason: null, ban_expires_at: null, ban_appeal_note: null };
-          await supabase.from('users').update(patch).eq('id', user.id);
-          const updated = { ...user, ...patch };
-          setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
-          if (detailUser?.id === user.id) setDetailUser(updated);
-          setUserActioning(null);
+          try {
+            const patch = { is_banned: false, ban_reason: null, ban_expires_at: null, ban_appeal_note: null };
+            await supabase.from('users').update(patch).eq('id', user.id);
+            const updated = { ...user, ...patch };
+            setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
+            if (detailUser?.id === user.id) setDetailUser(updated);
+          } finally {
+            setUserActioning(null);
+          }
         },
       },
     ]);
@@ -291,17 +308,20 @@ export default function ModerationScreen() {
   const confirmDeleteContent = async () => {
     if (!deleteTarget || (!deletePosts && !deleteComments)) return;
     setDeleting(true);
-    if (deletePosts) await supabase.from('community_posts').delete().eq('user_id', deleteTarget.id);
-    if (deleteComments) await supabase.from('community_comments').delete().eq('user_id', deleteTarget.id);
-    if (detailData) {
-      setDetailData(prev => prev ? {
-        ...prev,
-        postCount: deletePosts ? 0 : prev.postCount,
-        commentCount: deleteComments ? 0 : prev.commentCount,
-      } : prev);
+    try {
+      if (deletePosts) await supabase.from('community_posts').delete().eq('user_id', deleteTarget.id);
+      if (deleteComments) await supabase.from('community_comments').delete().eq('user_id', deleteTarget.id);
+      if (detailData) {
+        setDetailData(prev => prev ? {
+          ...prev,
+          postCount: deletePosts ? 0 : prev.postCount,
+          commentCount: deleteComments ? 0 : prev.commentCount,
+        } : prev);
+      }
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
     }
-    setDeleting(false);
-    setDeleteTarget(null);
   };
 
   // ── Feedback ─────────────────────────────────────────────────────────────────
@@ -311,13 +331,16 @@ export default function ModerationScreen() {
 
   const loadFeedback = useCallback(async () => {
     setFeedbackLoading(true);
-    const { data } = await supabase
-      .from('feedback')
-      .select('id, type, message, app_version, created_at, user_id')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    setFeedbackItems((data ?? []) as FeedbackItem[]);
-    setFeedbackLoading(false);
+    try {
+      const { data } = await supabase
+        .from('feedback')
+        .select('id, type, message, app_version, created_at, user_id')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      setFeedbackItems((data ?? []) as FeedbackItem[]);
+    } finally {
+      setFeedbackLoading(false);
+    }
   }, []);
 
   const deleteFeedback = (item: FeedbackItem) => {
@@ -331,9 +354,12 @@ export default function ModerationScreen() {
           style: 'destructive',
           onPress: async () => {
             setDeletingFeedback(item.id);
-            await supabase.from('feedback').delete().eq('id', item.id);
-            setFeedbackItems(prev => prev.filter(f => f.id !== item.id));
-            setDeletingFeedback(null);
+            try {
+              await supabase.from('feedback').delete().eq('id', item.id);
+              setFeedbackItems(prev => prev.filter(f => f.id !== item.id));
+            } finally {
+              setDeletingFeedback(null);
+            }
           },
         },
       ]

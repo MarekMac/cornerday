@@ -116,15 +116,14 @@ export default function DebtDetailScreen() {
   const executeDeletePayment = async () => {
     if (!deletePayTarget) return;
     setDeleting(true);
-    const { error } = await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id);
-    if (error) {
-      Alert.alert('Could not delete payment', error.message);
+    try {
+      const { error } = await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id);
+      if (error) { Alert.alert('Could not delete payment', error.message); return; }
+      setDeletePayTarget(null);
+      await fetchData();
+    } finally {
       setDeleting(false);
-      return;
     }
-    setDeletePayTarget(null);
-    setDeleting(false);
-    await fetchData();
   };
 
   const addPayment = async () => {
@@ -145,50 +144,48 @@ export default function DebtDetailScreen() {
     const isPayingOff = Math.round(val * 100) === Math.round(remaining * 100);
 
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setSubmitting(false);
-      Alert.alert('Session expired', 'Please sign in again.');
-      return;
-    }
-    const { error: insertError } = await supabase.from('debt_payments').insert({
-      user_id: user.id, debt_id: debt.id,
-      amount: val, note: note.trim() || null,
-    });
-    if (insertError) {
-      Alert.alert('Could not save payment', insertError.message);
-      setSubmitting(false);
-      return;
-    }
-    if (isPayingOff) {
-      const { status: notifStatus } = await Notifications.getPermissionsAsync();
-      if (notifStatus === 'granted') {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '🎉 Debt paid off!',
-            body: `You've fully paid off "${debt.name}". That's a huge step — well done.`,
-            data: { screen: '/(tabs)/tracker' },
-          },
-          trigger: null,
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { Alert.alert('Session expired', 'Please sign in again.'); return; }
+      const { error: insertError } = await supabase.from('debt_payments').insert({
+        user_id: user.id, debt_id: debt.id,
+        amount: val, note: note.trim() || null,
+      });
+      if (insertError) { Alert.alert('Could not save payment', insertError.message); return; }
+      if (isPayingOff) {
+        const { status: notifStatus } = await Notifications.getPermissionsAsync();
+        if (notifStatus === 'granted') {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '🎉 Debt paid off!',
+              body: `You've fully paid off "${debt.name}". That's a huge step — well done.`,
+              data: { screen: '/(tabs)/tracker' },
+            },
+            trigger: null,
+          });
+        }
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'debt_paid_off', amount: Number(debt.total_amount),
+          category: 'Debt', note: debt.name,
         });
       }
-      await supabase.from('losses').insert({
-        user_id: user.id, type: 'debt_paid_off', amount: Number(debt.total_amount),
-        category: 'Debt', note: debt.name,
-      });
+      setAmount(''); setNote('');
+      await fetchData();
+    } finally {
+      setSubmitting(false);
     }
-    setAmount(''); setNote('');
-    await fetchData();
-    setSubmitting(false);
   };
 
   const saveTargetDate = async (date: Date) => {
     setSavingTarget(true);
-    const { error } = await supabase.from('debts').update({ target_date: date.toISOString().split('T')[0] }).eq('id', id);
-    if (error) { Alert.alert('Could not save date', error.message); setSavingTarget(false); return; }
-    setTargetDate(date);
-    setShowTargetModal(false);
-    setSavingTarget(false);
+    try {
+      const { error } = await supabase.from('debts').update({ target_date: date.toISOString().split('T')[0] }).eq('id', id);
+      if (error) { Alert.alert('Could not save date', error.message); return; }
+      setTargetDate(date);
+      setShowTargetModal(false);
+    } finally {
+      setSavingTarget(false);
+    }
   };
 
   const clearTargetDate = async () => {

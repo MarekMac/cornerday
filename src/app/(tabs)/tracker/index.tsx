@@ -633,18 +633,17 @@ export default function TrackerIndex() {
 
   const saveDebtTargetDate = async (date: Date) => {
     setSavingTargetDate(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase.from('users').update({ debt_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
-      if (error) {
-        Alert.alert('Could not save target date', error.message);
-        setSavingTargetDate(false);
-        return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('users').update({ debt_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+        if (error) { Alert.alert('Could not save target date', error.message); return; }
+        setDebtTargetDate(date);
       }
-      setDebtTargetDate(date);
+      setShowDebtTargetModal(false);
+    } finally {
+      setSavingTargetDate(false);
     }
-    setSavingTargetDate(false);
-    setShowDebtTargetModal(false);
   };
 
   const openDebtTargetPicker = () => {
@@ -1724,7 +1723,7 @@ export default function TrackerIndex() {
                 mode="date"
                 display="spinner"
                 minimumDate={new Date()}
-                onValueChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
+                onChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
                 style={{ height: 200 }}
               />
               <View style={s.iosModalActions}>
@@ -1754,7 +1753,7 @@ export default function TrackerIndex() {
                 mode="date"
                 display="spinner"
                 minimumDate={new Date()}
-                onValueChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
+                onChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
                 style={{ height: 200 }}
               />
               <View style={s.iosModalActions}>

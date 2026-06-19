@@ -453,32 +453,35 @@ export default function AccountScreen() {
   const generateAndShare = async () => {
     setPartnerLinkLoading(true);
     let token = partnerToken;
-    if (!token) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('partner_links').delete().eq('user_id', user.id);
-        const { data, error } = await supabase
-          .from('partner_links')
-          .insert({
-            user_id: user.id,
-            share_mood: shareSettings.mood,
-            share_milestones: shareSettings.milestones,
-            share_recovery: shareSettings.recovery,
-            notify_urge: notifySettings.urge,
-            notify_relapse: notifySettings.relapse,
-            notify_milestone: notifySettings.milestone,
-          })
-          .select('id, token, expires_at')
-          .maybeSingle();
-        if (!error && data) {
-          setPartnerToken(data.token);
-          setPartnerLinkId(data.id);
-          setPartnerExpiresAt(data.expires_at ?? null);
-          token = data.token;
+    try {
+      if (!token) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('partner_links').delete().eq('user_id', user.id);
+          const { data, error } = await supabase
+            .from('partner_links')
+            .insert({
+              user_id: user.id,
+              share_mood: shareSettings.mood,
+              share_milestones: shareSettings.milestones,
+              share_recovery: shareSettings.recovery,
+              notify_urge: notifySettings.urge,
+              notify_relapse: notifySettings.relapse,
+              notify_milestone: notifySettings.milestone,
+            })
+            .select('id, token, expires_at')
+            .maybeSingle();
+          if (!error && data) {
+            setPartnerToken(data.token);
+            setPartnerLinkId(data.id);
+            setPartnerExpiresAt(data.expires_at ?? null);
+            token = data.token;
+          }
         }
       }
+    } finally {
+      setPartnerLinkLoading(false);
     }
-    setPartnerLinkLoading(false);
     if (token) {
       const url = `https://cornerday.app/partner.html?t=${token}`;
       await Share.share({ message: url, url }).catch(() => {});
@@ -490,22 +493,21 @@ export default function AccountScreen() {
   const executeRevokePartnerLink = async () => {
     setRevokePartnerVisible(false);
     setPartnerLinkLoading(true);
-    if (partnerLinkId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setPartnerLinkLoading(false); return; }
-      const { error } = await supabase.from('partner_links').delete().eq('id', partnerLinkId).eq('user_id', user.id);
-      if (error) {
-        Alert.alert('Could not revoke link', error.message);
-        setPartnerLinkLoading(false);
-        return;
+    try {
+      if (partnerLinkId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { error } = await supabase.from('partner_links').delete().eq('id', partnerLinkId).eq('user_id', user.id);
+        if (error) { Alert.alert('Could not revoke link', error.message); return; }
+        setPartnerToken(null);
+        setPartnerLinkId(null);
+        setPartnerExpiresAt(null);
+        setShareSettings({ mood: true, milestones: true, recovery: true });
+        setNotifySettings({ urge: false, relapse: false, milestone: false });
       }
-      setPartnerToken(null);
-      setPartnerLinkId(null);
-      setPartnerExpiresAt(null);
-      setShareSettings({ mood: true, milestones: true, recovery: true });
-      setNotifySettings({ urge: false, relapse: false, milestone: false });
+    } finally {
+      setPartnerLinkLoading(false);
     }
-    setPartnerLinkLoading(false);
   };
 
   useEffect(() => {
@@ -583,46 +585,55 @@ export default function AccountScreen() {
 
   const savePlan = async () => {
     setSavingPlan(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const distractionsVal = planDistractionsInput.join(',') || null;
-      const mantraVal = planMantraInput.trim() || null;
-      const { error } = await supabase.from('users').update({
-        recovery_distractions: distractionsVal,
-        recovery_mantra: mantraVal,
-      }).eq('id', user.id);
-      if (error) { Alert.alert('Could not save', error.message); setSavingPlan(false); return; }
-      setRecoveryDistractions(planDistractionsInput);
-      setRecoveryMantra(planMantraInput.trim());
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const distractionsVal = planDistractionsInput.join(',') || null;
+        const mantraVal = planMantraInput.trim() || null;
+        const { error } = await supabase.from('users').update({
+          recovery_distractions: distractionsVal,
+          recovery_mantra: mantraVal,
+        }).eq('id', user.id);
+        if (error) { Alert.alert('Could not save', error.message); return; }
+        setRecoveryDistractions(planDistractionsInput);
+        setRecoveryMantra(planMantraInput.trim());
+      }
+      setShowRecoveryPlanModal(false);
+    } finally {
+      setSavingPlan(false);
     }
-    setSavingPlan(false);
-    setShowRecoveryPlanModal(false);
   };
 
   const clearPlan = async () => {
     setSavingPlan(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase.from('users').update({ recovery_distractions: null, recovery_mantra: null }).eq('id', user.id);
-      if (error) { Alert.alert('Could not clear plan', error.message); setSavingPlan(false); return; }
-      setRecoveryDistractions([]);
-      setRecoveryMantra('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('users').update({ recovery_distractions: null, recovery_mantra: null }).eq('id', user.id);
+        if (error) { Alert.alert('Could not clear plan', error.message); return; }
+        setRecoveryDistractions([]);
+        setRecoveryMantra('');
+      }
+      setShowRecoveryPlanModal(false);
+    } finally {
+      setSavingPlan(false);
     }
-    setSavingPlan(false);
-    setShowRecoveryPlanModal(false);
   };
 
   const saveGoalTargetDate = async (kind: 'debt' | 'savings', date: Date) => {
     setSavingGoalTarget(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const col = kind === 'debt' ? 'debt_target_date' : 'savings_target_date';
-      const { error } = await supabase.from('users').update({ [col]: date.toISOString().split('T')[0] }).eq('id', user.id);
-      if (error) { Alert.alert('Could not save date', error.message); setSavingGoalTarget(false); return; }
-      if (kind === 'debt') { setDebtTargetDate(date); setShowDebtTargetModal(false); }
-      else { setSavingsTargetDate(date); setShowSavingsTargetModal(false); }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const col = kind === 'debt' ? 'debt_target_date' : 'savings_target_date';
+        const { error } = await supabase.from('users').update({ [col]: date.toISOString().split('T')[0] }).eq('id', user.id);
+        if (error) { Alert.alert('Could not save date', error.message); return; }
+        if (kind === 'debt') { setDebtTargetDate(date); setShowDebtTargetModal(false); }
+        else { setSavingsTargetDate(date); setShowSavingsTargetModal(false); }
+      }
+    } finally {
+      setSavingGoalTarget(false);
     }
-    setSavingGoalTarget(false);
   };
 
   const openGoalTargetPicker = (kind: 'debt' | 'savings') => {
@@ -748,21 +759,24 @@ export default function AccountScreen() {
     if (!editField) return;
     const config = FIELD_CONFIG[editField];
     setSavingField(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const value = config.multi ? editModalSelections.join(',') : (editModalSelections[0] ?? '');
-      const { error } = await supabase.from('users').update({ [config.dbField]: value }).eq('id', user.id);
-      if (error) { Alert.alert('Could not save', error.message); setSavingField(false); return; }
-      setProfile(prev => {
-        if (!prev) return prev;
-        if (editField === 'motivation') return { ...prev, motivation: value };
-        if (editField === 'trigger') return { ...prev, trigger: value };
-        if (editField === 'goal') return { ...prev, goal: value };
-        return { ...prev, supportType: value };
-      });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const value = config.multi ? editModalSelections.join(',') : (editModalSelections[0] ?? '');
+        const { error } = await supabase.from('users').update({ [config.dbField]: value }).eq('id', user.id);
+        if (error) { Alert.alert('Could not save', error.message); return; }
+        setProfile(prev => {
+          if (!prev) return prev;
+          if (editField === 'motivation') return { ...prev, motivation: value };
+          if (editField === 'trigger') return { ...prev, trigger: value };
+          if (editField === 'goal') return { ...prev, goal: value };
+          return { ...prev, supportType: value };
+        });
+      }
+      setEditField(null);
+    } finally {
+      setSavingField(false);
     }
-    setSavingField(false);
-    setEditField(null);
   };
 
   const openSpendingModal = () => {
@@ -785,14 +799,17 @@ export default function AccountScreen() {
     }
     const value = raw || spendingChip || null;
     setSavingSpending(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase.from('users').update({ weekly_bet: value, currency: spendingCurrency }).eq('id', user.id);
-      if (error) { Alert.alert('Could not save', error.message); setSavingSpending(false); return; }
-      setProfile(prev => prev ? { ...prev, weeklyBet: value, currency: spendingCurrency } : prev);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('users').update({ weekly_bet: value, currency: spendingCurrency }).eq('id', user.id);
+        if (error) { Alert.alert('Could not save', error.message); return; }
+        setProfile(prev => prev ? { ...prev, weeklyBet: value, currency: spendingCurrency } : prev);
+      }
+      setShowSpendingModal(false);
+    } finally {
+      setSavingSpending(false);
     }
-    setSavingSpending(false);
-    setShowSpendingModal(false);
   };
 
   const handleAvatarPress = () => {
@@ -895,14 +912,17 @@ export default function AccountScreen() {
     const trimmed = nameInput.trim();
     if (!trimmed) return;
     setSavingName(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase.from('users').update({ display_name: trimmed }).eq('id', user.id);
-      if (error) { Alert.alert('Could not save name', error.message); setSavingName(false); return; }
-      setProfile(prev => prev ? { ...prev, displayName: trimmed } : prev);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('users').update({ display_name: trimmed }).eq('id', user.id);
+        if (error) { Alert.alert('Could not save name', error.message); return; }
+        setProfile(prev => prev ? { ...prev, displayName: trimmed } : prev);
+      }
+      setEditingName(false);
+    } finally {
+      setSavingName(false);
     }
-    setSavingName(false);
-    setEditingName(false);
   };
 
   const openEdit = () => {
@@ -920,7 +940,7 @@ export default function AccountScreen() {
       value: current,
       mode: 'date',
       maximumDate: new Date(),
-      onValueChange: (_evt: any, rawDate?: Date) => {
+      onChange: (_evt: any, rawDate?: Date) => {
         if (!rawDate) return;
         const selectedDate = new Date(rawDate.getTime());
         if (isNaN(selectedDate.getTime())) return;
@@ -931,7 +951,7 @@ export default function AccountScreen() {
           value: timePickerSeed,
           mode: 'time',
           is24Hour: true,
-          onValueChange: (_tevt: any, rawTime?: Date) => {
+          onChange: (_tevt: any, rawTime?: Date) => {
             if (!rawTime) return;
             const selectedTime = new Date(rawTime.getTime());
             if (isNaN(selectedTime.getTime())) return;
@@ -946,135 +966,149 @@ export default function AccountScreen() {
 
   const saveQuitDate = async (date: Date) => {
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const now = new Date();
-      const clamped = date > now ? now : date;
-      const iso = clamped.toISOString();
-      const dateOnly = iso.split('T')[0];
-      const { error } = await supabase.rpc('reset_streak', {
-        p_user_id: user.id,
-        p_quit_date: dateOnly,
-        p_quit_timestamp: iso,
-      });
-      if (error) { Alert.alert('Could not save date', error.message); setSaving(false); return; }
-      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
-      await supabase.from('losses').insert({
-        user_id: user.id, type: 'quit_date_changed', amount: 0,
-        category: 'Account', note: iso,
-      });
-      setProfile(prev => prev ? { ...prev, quitTimestamp: iso } : prev);
-      setQuitTimestamp(iso);
-      const granted = await requestNotificationPermissions();
-      if (granted) {
-        await scheduleAllNotifications(notifPrefs, iso, []);
-        await scheduleOnboardingCheckin();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const now = new Date();
+        const clamped = date > now ? now : date;
+        const iso = clamped.toISOString();
+        const dateOnly = iso.split('T')[0];
+        const { error } = await supabase.rpc('reset_streak', {
+          p_user_id: user.id,
+          p_quit_date: dateOnly,
+          p_quit_timestamp: iso,
+        });
+        if (error) { Alert.alert('Could not save date', error.message); return; }
+        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'quit_date_changed', amount: 0,
+          category: 'Account', note: iso,
+        });
+        setProfile(prev => prev ? { ...prev, quitTimestamp: iso } : prev);
+        setQuitTimestamp(iso);
+        const granted = await requestNotificationPermissions();
+        if (granted) {
+          await scheduleAllNotifications(notifPrefs, iso, []);
+          await scheduleOnboardingCheckin();
+        }
       }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
 
   const resetJournal = async () => {
     setResetting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await Promise.all([
-        supabase.from('urge_journal').delete().eq('user_id', user.id),
-        supabase.from('mood_checkins').delete().eq('user_id', user.id),
-        AsyncStorage.removeItem(CHECKLIST_KEY),
-        AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
-      ]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await Promise.all([
+          supabase.from('urge_journal').delete().eq('user_id', user.id),
+          supabase.from('mood_checkins').delete().eq('user_id', user.id),
+          AsyncStorage.removeItem(CHECKLIST_KEY),
+          AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
+        ]);
+      }
+    } finally {
+      setResetting(false);
     }
-    setResetting(false);
   };
 
   const resetMilestones = async () => {
     setResetting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('badges').delete().eq('user_id', user.id);
-    await Promise.all([
-      AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
-      AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
-      AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
-      AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
-      AsyncStorage.removeItem(CHECKLIST_KEY),
-      AsyncStorage.removeItem(CUSTOM_MILESTONE_CELEBRATED_KEY),
-      AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY),
-      AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY),
-    ]);
-    await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
-    await scheduleOnboardingCheckin();
-    setResetting(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await supabase.from('badges').delete().eq('user_id', user.id);
+      await Promise.all([
+        AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
+        AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
+        AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
+        AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
+        AsyncStorage.removeItem(CHECKLIST_KEY),
+        AsyncStorage.removeItem(CUSTOM_MILESTONE_CELEBRATED_KEY),
+        AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY),
+        AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY),
+      ]);
+      await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
+      await scheduleOnboardingCheckin();
+    } finally {
+      setResetting(false);
+    }
   };
 
   const resetLossTracker = async () => {
     setResetting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await Promise.all([
-        supabase.from('losses').delete().eq('user_id', user.id),
-        supabase.from('debts').delete().eq('user_id', user.id),
-        supabase.from('debt_payments').delete().eq('user_id', user.id),
-      ]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await Promise.all([
+          supabase.from('losses').delete().eq('user_id', user.id),
+          supabase.from('debts').delete().eq('user_id', user.id),
+          supabase.from('debt_payments').delete().eq('user_id', user.id),
+        ]);
+      }
+    } finally {
+      setResetting(false);
     }
-    setResetting(false);
   };
 
   const resetGameScores = async () => {
     setResetting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('game_scores').delete().eq('user_id', user.id);
-    await AsyncStorage.removeItem(GAME_BESTS_STORAGE_KEY);
-    setResetting(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await supabase.from('game_scores').delete().eq('user_id', user.id);
+      await AsyncStorage.removeItem(GAME_BESTS_STORAGE_KEY);
+    } finally {
+      setResetting(false);
+    }
   };
 
   const resetEverything = async () => {
     setResetting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const today = new Date().toISOString().split('T')[0];
-      const nowIso = new Date().toISOString();
-      const { error: rpcError } = await supabase.rpc('reset_everything', {
-        p_user_id: user.id,
-        p_quit_date: today,
-        p_quit_timestamp: nowIso,
-      });
-      if (rpcError) {
-        Alert.alert('Reset failed', rpcError.message);
-        setResetting(false);
-        return;
-      }
-      await AsyncStorage.multiRemove([
-        MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY,
-        GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
-        URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY,
-        SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
-      ]);
-      // Seed journal with a fresh start entry
-      await supabase.from('losses').insert({
-        user_id: user.id, type: 'journey_started', amount: 0, note: null, created_at: nowIso,
-      });
-      setQuitTimestamp(nowIso);
-      const granted = await requestNotificationPermissions();
-      if (granted) {
-        await scheduleAllNotifications(notifPrefs, nowIso, []);
-        await scheduleOnboardingCheckin();
-        // Fire a confirmation notification in 5 seconds so the user knows scheduling works
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '🌱 Journey restarted',
-            body: 'Your streak is reset. Milestone notifications are set — your 1-hour milestone is on its way.',
-            data: { screen: '/(tabs)/' },
-          },
-          trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, repeats: false } as any,
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const today = new Date().toISOString().split('T')[0];
+        const nowIso = new Date().toISOString();
+        const { error: rpcError } = await supabase.rpc('reset_everything', {
+          p_user_id: user.id,
+          p_quit_date: today,
+          p_quit_timestamp: nowIso,
         });
+        if (rpcError) { Alert.alert('Reset failed', rpcError.message); return; }
+        await AsyncStorage.multiRemove([
+          MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY,
+          GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
+          URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY,
+          SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
+        ]);
+        // Seed journal with a fresh start entry
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'journey_started', amount: 0, note: null, created_at: nowIso,
+        });
+        setQuitTimestamp(nowIso);
+        const granted = await requestNotificationPermissions();
+        if (granted) {
+          await scheduleAllNotifications(notifPrefs, nowIso, []);
+          await scheduleOnboardingCheckin();
+          // Fire a confirmation notification in 5 seconds so the user knows scheduling works
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '🌱 Journey restarted',
+              body: 'Your streak is reset. Milestone notifications are set — your 1-hour milestone is on its way.',
+              data: { screen: '/(tabs)/' },
+            },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, repeats: false } as any,
+          });
+        }
       }
+      setSavingsGoal(null);
+      setSavingsGoalFor('');
+      setSavingsGoalIcon('🎯');
+    } finally {
+      setResetting(false);
     }
-    setSavingsGoal(null);
-    setSavingsGoalFor('');
-    setSavingsGoalIcon('🎯');
-    setResetting(false);
   };
 
   const confirmReset = (title: string, body: string, onConfirm: () => void) => {
@@ -1233,13 +1267,16 @@ export default function AccountScreen() {
     const email = profile?.email;
     if (!email) return;
     setSendingPassReset(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    setSendingPassReset(false);
-    setShowPassModal(false);
-    if (error) {
-      Alert.alert('Error', 'Could not send reset email. Please try again.');
-    } else {
-      Alert.alert('Check your inbox', `A password reset link has been sent to ${email}.`);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      setShowPassModal(false);
+      if (error) {
+        Alert.alert('Error', 'Could not send reset email. Please try again.');
+      } else {
+        Alert.alert('Check your inbox', `A password reset link has been sent to ${email}.`);
+      }
+    } finally {
+      setSendingPassReset(false);
     }
   };
 
@@ -1516,7 +1553,7 @@ export default function AccountScreen() {
                     <Text style={s.heroBadgeFree}>Free plan</Text>
                     {restoringPurchases
                       ? <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" style={{ marginLeft: 8 }} />
-                      : <Pressable onPress={async () => { setRestoringPurchases(true); await restorePurchases(); setRestoringPurchases(false); }}>
+                      : <Pressable onPress={async () => { setRestoringPurchases(true); try { await restorePurchases(); } finally { setRestoringPurchases(false); } }}>
                           <Text style={s.heroRestore}>· Restore</Text>
                         </Pressable>}
                   </>

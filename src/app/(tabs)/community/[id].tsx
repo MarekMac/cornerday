@@ -102,9 +102,9 @@ export default function PostDetail() {
           if (data && isMountedRef.current) {
             setComments(prev => {
               if (prev.some(c => c.id === (data as any).id)) return prev;
-              setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
               return [...prev, data as Comment];
             });
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
           }
         }
       )
@@ -158,7 +158,7 @@ export default function PostDetail() {
       if (uid && loadedPost && loadedPost.user_id !== uid && !loadedPost.is_anonymous) {
         supabase.from('community_follows').select('id')
           .eq('follower_id', uid).eq('following_id', loadedPost.user_id)
-          .maybeSingle().then(({ data }) => setIsFollowing(!!data)).catch(e => console.warn('[Follow check]', e));
+          .maybeSingle().then(({ data }) => { if (isMountedRef.current) setIsFollowing(!!data); }).catch(e => console.warn('[Follow check]', e));
       }
 
       const counts: Record<string, number> = {};
@@ -266,6 +266,7 @@ export default function PostDetail() {
       if (error) {
         Alert.alert('Could not post comment', error.message);
       } else if (data) {
+        if (!isMountedRef.current) return;
         setCommentText('');
         const newComment: Comment = {
           ...(data as any),

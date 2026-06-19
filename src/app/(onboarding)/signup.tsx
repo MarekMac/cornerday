@@ -141,81 +141,51 @@ export default function SignupScreen() {
       return;
     }
     setLoading(true);
-
-    if (isSignIn) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-      const { data: { user: authUser }, error: getUserErr } = await supabase.auth.getUser();
-      if (getUserErr || !authUser) {
-        setError('Sign-in succeeded but could not verify your account. Please try again.');
-        setLoading(false);
-        return;
-      }
-      const { data: profile, error: profileErr } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', authUser.id)
-        .maybeSingle();
-      if (profileErr) {
-        setError('Sign-in succeeded but we could not load your profile. Please try again.');
-        setLoading(false);
-        return;
-      }
-      if (profile !== null) {
-        router.replace('/(tabs)');
+    try {
+      if (isSignIn) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { setError(error.message); return; }
+        const { data: { user: authUser }, error: getUserErr } = await supabase.auth.getUser();
+        if (getUserErr || !authUser) { setError('Sign-in succeeded but could not verify your account. Please try again.'); return; }
+        const { data: profile, error: profileErr } = await supabase
+          .from('users').select('id').eq('id', authUser.id).maybeSingle();
+        if (profileErr) { setError('Sign-in succeeded but we could not load your profile. Please try again.'); return; }
+        if (profile !== null) {
+          router.replace('/(tabs)');
+        } else {
+          router.push('/(onboarding)/q1');
+        }
       } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) {
+          const alreadyExists =
+            error.message.toLowerCase().includes('already registered') ||
+            error.message.toLowerCase().includes('already exists') ||
+            error.message.toLowerCase().includes('user already');
+          if (alreadyExists) {
+            // Account exists — sign them in and continue where they left off
+            const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+            if (signInError) { setError('This email is already registered. Please sign in with your password.'); return; }
+            const { data: { user: authUser }, error: getUserErr2 } = await supabase.auth.getUser();
+            if (getUserErr2 || !authUser) { setError('Sign-in succeeded but could not verify your account. Please try again.'); return; }
+            const { data: profile, error: profileErr } = await supabase
+              .from('users').select('id').eq('id', authUser.id).maybeSingle();
+            if (profileErr) { setError('Sign-in succeeded but we could not load your profile. Please try again.'); return; }
+            if (profile !== null) {
+              router.replace('/(tabs)');
+            } else {
+              router.push('/(onboarding)/q1');
+            }
+          } else {
+            setError(error.message);
+          }
+          return;
+        }
         router.push('/(onboarding)/q1');
       }
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) {
-        const alreadyExists =
-          error.message.toLowerCase().includes('already registered') ||
-          error.message.toLowerCase().includes('already exists') ||
-          error.message.toLowerCase().includes('user already');
-        if (alreadyExists) {
-          // Account exists — sign them in and continue where they left off
-          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-          if (signInError) {
-            setError('This email is already registered. Please sign in with your password.');
-            setLoading(false);
-            return;
-          }
-          const { data: { user: authUser }, error: getUserErr2 } = await supabase.auth.getUser();
-          if (getUserErr2 || !authUser) {
-            setError('Sign-in succeeded but could not verify your account. Please try again.');
-            setLoading(false);
-            return;
-          }
-          const { data: profile, error: profileErr } = await supabase
-            .from('users')
-            .select('id')
-            .eq('id', authUser.id)
-            .maybeSingle();
-          if (profileErr) {
-            setError('Sign-in succeeded but we could not load your profile. Please try again.');
-            setLoading(false);
-            return;
-          }
-          if (profile !== null) {
-            router.replace('/(tabs)');
-          } else {
-            router.push('/(onboarding)/q1');
-          }
-        } else {
-          setError(error.message);
-        }
-        setLoading(false);
-        return;
-      }
-      router.push('/(onboarding)/q1');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
