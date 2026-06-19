@@ -1235,6 +1235,18 @@ export default function HomeScreen() {
     if (newActivityBadges.length > 0) {
       await supabase.from('badges').upsert(newActivityBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       newActivityBadges.forEach(b => earnedBadges.push(b.badge_type));
+      if (!pendingCelebration) {
+        const celebBadge = ACTIVITY_BADGE_DEFS.find(b => b.type === newActivityBadges[newActivityBadges.length - 1].badge_type);
+        if (celebBadge) {
+          pendingCelebration = {
+            type: celebBadge.type,
+            emoji: celebBadge.emoji,
+            label: celebBadge.label,
+            celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
+            msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
+          };
+        }
+      }
     }
 
     // Savings goal badges
@@ -1676,6 +1688,13 @@ export default function HomeScreen() {
           note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
         });
         if (journalErr) console.warn('[doRelapse] journal insert failed:', journalErr.message);
+        const { error: urgeJournalErr } = await supabase.from('urge_journal').insert({
+          user_id: user.id,
+          trigger: 'Relapse',
+          outcome: 'slipped',
+          note: days > 0 ? `Had a slip after ${days} day${days !== 1 ? 's' : ''} clean` : 'Had a slip',
+        });
+        if (urgeJournalErr) console.warn('[doRelapse] urge journal insert failed:', urgeJournalErr.message);
         // Save shield undo state if shield is enabled
         if (shieldEnabled && data?.quitDate) {
           const undoData = { prevQuit: data.quitDate, prevStreakDays: days, expiresAt: Date.now() + 24 * 60 * 60 * 1000 };

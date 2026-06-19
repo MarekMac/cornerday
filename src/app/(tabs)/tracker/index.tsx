@@ -193,6 +193,8 @@ export default function TrackerIndex() {
   const [submittingSession, setSubmittingSession] = useState(false);
   const [menuSession, setMenuSession] = useState<SessionEntry | null>(null);
   const [deleteSessionTarget, setDeleteSessionTarget] = useState<SessionEntry | null>(null);
+  const [sessionDate, setSessionDate] = useState<Date>(() => new Date());
+  const [showSessionDateModal, setShowSessionDateModal] = useState(false);
 
   // Pull-to-refresh
   const [refreshing, setRefreshing] = useState(false);
@@ -477,6 +479,7 @@ export default function TrackerIndex() {
   const openAddSession = () => {
     setEditingSession(null);
     setSessionAmount(''); setSessionCategory('sports_betting'); setSessionNote('');
+    setSessionDate(new Date());
     setSessionModalVisible(true);
   };
 
@@ -485,6 +488,7 @@ export default function TrackerIndex() {
     setSessionAmount(String(entry.amount));
     setSessionCategory(entry.category);
     setSessionNote(entry.note ?? '');
+    setSessionDate(new Date(entry.created_at));
     setSessionModalVisible(true);
   };
 
@@ -494,6 +498,7 @@ export default function TrackerIndex() {
     setSessionModalVisible(false);
     setEditingSession(null);
     setSessionAmount(''); setSessionCategory('sports_betting'); setSessionNote('');
+    setSessionDate(new Date());
   };
 
   const saveSession = async () => {
@@ -506,9 +511,11 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        const sessionDateIso = sessionDate.toISOString();
         if (editingSession) {
           await supabase.from('losses').update({
             amount, category: sessionCategory, note: sessionNote.trim() || null,
+            created_at: sessionDateIso,
           }).eq('id', editingSession.id).eq('user_id', user.id);
           await supabase.from('losses').insert({
             user_id: user.id, type: 'session_edited', amount,
@@ -518,6 +525,7 @@ export default function TrackerIndex() {
           await supabase.from('losses').insert({
             user_id: user.id, type: 'session', amount,
             category: sessionCategory, note: sessionNote.trim() || null,
+            created_at: sessionDateIso,
           });
           showInterstitialIfReady(isPremium, 0.2);
         }
@@ -975,6 +983,8 @@ export default function TrackerIndex() {
                   const pct = Number(debt.total_amount) > 0
                     ? Math.min(1, paid / Number(debt.total_amount)) : 0;
                   const isPaidOff = remaining === 0 && paid > 0;
+                  const overdueTd = debt.target_date ? new Date(debt.target_date) : null;
+                  const isOverdue = !isPaidOff && overdueTd !== null && Math.ceil((overdueTd.getTime() - Date.now()) / 86400000) <= 0;
 
                   return (
                     <Swipeable
@@ -1001,7 +1011,7 @@ export default function TrackerIndex() {
                         </View>
                       )}>
                       <Pressable
-                        style={({ pressed }) => [s.debtCard, isPaidOff && s.debtCardPaidOff, pressed && { opacity: 0.85 }]}
+                        style={({ pressed }) => [s.debtCard, isPaidOff && s.debtCardPaidOff, isOverdue && s.debtCardOverdue, pressed && { opacity: 0.85 }]}
                         onPress={() => router.push(`/tracker/${debt.id}`)}>
                         <View style={s.debtTop}>
                           <Text style={s.debtEmoji}>{categoryEmoji(debt.category)}</Text>
@@ -1136,6 +1146,24 @@ export default function TrackerIndex() {
           {/* Session log tab */}
           {tab === 'session' && (
             <>
+              {/* Summary card — only shown once there are entries */}
+              {sessions.length > 0 && (
+                <View style={s.sessionSummaryCard}>
+                  <View style={s.sessionSummaryRow}>
+                    <View style={s.sessionSummaryCol}>
+                      <Text style={[s.sessionSummaryVal, { color: c.error }]}>
+                        -{fmt(sessions.reduce((sum, e) => sum + Number(e.amount), 0), currency)}
+                      </Text>
+                      <Text style={s.sessionSummaryLbl}>Total lost</Text>
+                    </View>
+                    <View style={[s.sessionSummaryCol, { borderLeftWidth: 1, borderLeftColor: c.borderSubtle }]}>
+                      <Text style={s.sessionSummaryVal}>{sessions.length}</Text>
+                      <Text style={s.sessionSummaryLbl}>{sessions.length === 1 ? 'Session' : 'Sessions'}</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
               {/* Info card — only shown before first entry */}
               {sessions.length === 0 && <View style={s.sessionInfoCard}>
                 <View style={s.sessionInfoHeader}>
@@ -1633,6 +1661,29 @@ export default function TrackerIndex() {
                   onChangeText={setSessionNote}
                   maxLength={120}
                 />
+                <Text style={s.fieldLbl}>
+                  Date <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional — defaults to today)</Text>
+                </Text>
+                <Pressable style={s.dateRow} onPress={() => {
+                  setEditTargetDate(sessionDate);
+                  if (Platform.OS === 'ios') {
+                    setShowSessionDateModal(true);
+                  } else {
+                    nativePickerOpen.current = true;
+                    DateTimePickerAndroid.open({
+                      value: sessionDate,
+                      mode: 'date',
+                      maximumDate: new Date(),
+                      onChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) setSessionDate(d); },
+                    });
+                  }
+                }}>
+                  <Ionicons name="calendar-outline" size={16} color={c.textMuted} />
+                  <Text style={s.dateRowTxt}>
+                    {sessionDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {sessionDate.toDateString() === new Date().toDateString() ? '  ·  today' : ''}
+                  </Text>
+                </Pressable>
               </ScrollView>
               <View style={s.sheetActions}>
                 <Pressable style={s.cancelBtn} onPress={closeSessionModal}>
@@ -1742,6 +1793,35 @@ export default function TrackerIndex() {
         </Modal>
       )}
 
+      {/* iOS session date picker */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={showSessionDateModal} transparent animationType="slide">
+          <View style={s.iosModalOverlay}>
+            <View style={s.iosModalSheet}>
+              <Text style={s.iosModalTitle}>When did this happen?</Text>
+              <DateTimePicker
+                value={editTargetDate}
+                mode="date"
+                display="spinner"
+                maximumDate={new Date()}
+                onChange={(_evt: any, d?: Date) => d && setEditTargetDate(new Date(d.getTime()))}
+                style={{ height: 200 }}
+              />
+              <View style={s.iosModalActions}>
+                <Pressable style={s.iosModalBtn} onPress={() => setShowSessionDateModal(false)}>
+                  <Text style={s.iosModalCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[s.iosModalBtn, s.iosModalSave]}
+                  onPress={() => { setSessionDate(editTargetDate); setShowSessionDateModal(false); }}>
+                  <Text style={s.iosModalSaveTxt}>Confirm</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* iOS savings target date picker (inside goal modal flow) */}
       {Platform.OS === 'ios' && (
         <Modal visible={showSavingsTargetModal} transparent animationType="slide">
@@ -1840,6 +1920,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   debtCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
   debtCardPaidOff: { borderWidth: 1.5, borderColor: c.primaryLight },
+  debtCardOverdue: { borderLeftWidth: 3, borderLeftColor: c.error },
   debtTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   debtEmoji: { fontSize: 26 },
   debtInfo: { flex: 1 },
@@ -2031,6 +2112,12 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   sessionInfoBold: { fontWeight: '700', color: c.textSecondary },
   sessionInfoTip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   sessionInfoTipTxt: { fontSize: 12, color: '#7b5ea7', fontWeight: '500' },
+
+  sessionSummaryCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
+  sessionSummaryRow: { flexDirection: 'row' },
+  sessionSummaryCol: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+  sessionSummaryVal: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
+  sessionSummaryLbl: { fontSize: 11, color: c.textMuted, marginTop: 2 },
 
   sessionCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
   sessionCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
