@@ -171,6 +171,7 @@ const ACTIVITY_BADGE_THRESHOLDS: Record<string, number> = {
 };
 
 const MOODS = ['😢', '😕', '😐', '🙂', '😄'];
+const MOOD_LABELS = ['Rough', 'Meh', 'Okay', 'Good', 'Great'];
 
 const QUOTES = [
   "Every day without gambling is a win.",
@@ -1002,6 +1003,7 @@ export default function HomeScreen() {
   const [shieldUndo, setShieldUndo] = useState<{ prevQuit: string; prevStreakDays: number; expiresAt: number } | null>(null);
   const [customMilestone, setCustomMilestone] = useState<{ type: string; target: number; icon?: string } | null>(null);
   const [customMilestoneCelebVisible, setCustomMilestoneCelebVisible] = useState(false);
+  const [calDayModal, setCalDayModal] = useState<{ iso: string; status: 'clean' | 'relapse' | 'inactive'; mood: number | null } | null>(null);
   const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string } | null>(null);
   const shareCardRef = useRef<View>(null);
 
@@ -2159,6 +2161,9 @@ export default function HomeScreen() {
                         style={({ pressed }) => [s.moodBtn, pressed && s.pressed,
                           editMoodValue === i + 1 && s.moodBtnSelected]}>
                         <Text style={s.moodEmoji}>{emoji}</Text>
+                        <Text style={[s.moodLabelTxt, editMoodValue === i + 1 && s.moodLabelTxtSelected]}>
+                          {MOOD_LABELS[i]}
+                        </Text>
                       </Pressable>
                     ))}
                   </View>
@@ -2327,7 +2332,11 @@ export default function HomeScreen() {
                 {calWeeks.map((week, wi) => (
                   <View key={wi} style={s.homCalCol}>
                     {week.map((day, di) => (
-                      <View key={di} style={[s.homCalDot, { backgroundColor: dotColor(day) }]} />
+                      <Pressable
+                        key={di}
+                        style={({ pressed }) => [s.homCalDot, { backgroundColor: dotColor(day) }, pressed && day && day.status !== 'inactive' && { opacity: 0.7 }]}
+                        onPress={() => { if (day && day.status !== 'inactive') setCalDayModal(day); }}
+                      />
                     ))}
                   </View>
                 ))}
@@ -2391,6 +2400,34 @@ export default function HomeScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Calendar day detail modal */}
+      <Modal visible={!!calDayModal} transparent animationType="fade" onRequestClose={() => setCalDayModal(null)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setCalDayModal(null)}>
+          <Pressable style={[s.confirmSheet, { paddingBottom: 28 }]} onPress={() => {}}>
+            {calDayModal && (() => {
+              const d = new Date(calDayModal.iso + 'T00:00:00');
+              const dateStr = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+              const isClean = calDayModal.status === 'clean';
+              return (
+                <>
+                  <Text style={{ fontSize: 36, textAlign: 'center', marginBottom: 8 }}>
+                    {isClean ? (calDayModal.mood ? MOODS[calDayModal.mood - 1] : '✅') : '😔'}
+                  </Text>
+                  <Text style={[s.confirmTitle, { marginBottom: 4 }]}>{dateStr}</Text>
+                  <Text style={[s.confirmBody, { marginBottom: 0 }]}>
+                    {isClean
+                      ? calDayModal.mood
+                        ? `You felt ${MOOD_LABELS[calDayModal.mood - 1].toLowerCase()} and stayed clean.`
+                        : 'A clean day — no mood logged.'
+                      : 'You had a slip this day. Every day after is progress.'}
+                  </Text>
+                </>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Custom milestone celebration modal */}
       <Modal visible={customMilestoneCelebVisible} transparent animationType="fade" onRequestClose={() => setCustomMilestoneCelebVisible(false)}>
@@ -3012,10 +3049,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   streakRight: { flex: 1, gap: 8 },
   streakTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  streakTitle: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.9 },
+  streakTitle: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.9 },
   separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)' },
   milestoneTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
-  liveCounter: { fontSize: 16, fontWeight: '800', color: c.white, fontVariant: ['tabular-nums'], lineHeight: 21 },
+  liveCounter: { fontSize: 15, fontWeight: '800', color: c.white, fontVariant: ['tabular-nums'], lineHeight: 21, marginTop: 2 },
   streakMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   longestTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
   personalBestTxt: { fontSize: 11, color: 'rgba(168,216,208,0.9)', fontWeight: '600' },
@@ -3075,8 +3112,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   moodCardTitleRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   moodCardTitle:     { fontSize: 12, fontWeight: '600', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
   moodStreakBadge:   { fontSize: 12, fontWeight: '700', color: c.primary },
-  moodRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12 },
-  moodBtn: { padding: 4 },
+  moodRow: { flexDirection: 'row', paddingHorizontal: 12 },
+  moodBtn: { flex: 1, alignItems: 'center', paddingHorizontal: 4, paddingVertical: 6 },
   moodEmoji: { fontSize: 26 },
   moodDone: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   moodDoneRow: { flexDirection: 'row', alignItems: 'center', flex: 1, flexWrap: 'nowrap' },
@@ -3089,7 +3126,9 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   moodStreakTxt: { fontSize: 12, color: c.primary, fontWeight: '600', opacity: 0.85 },
   moodAvgTxt: { fontSize: 12, color: c.textFaint, textAlign: 'center', marginTop: 10 },
   moodBtnSelected: { backgroundColor: c.bgTeal, borderRadius: 8 },
-  moodInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  moodLabelTxt: { fontSize: 10, color: c.textFaint, marginTop: 2 },
+  moodLabelTxtSelected: { color: c.primary, fontWeight: '600' },
+  moodInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   moodInputInline: {
     flex: 1, borderWidth: 1, borderColor: c.borderLight, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: c.textSecondary,
