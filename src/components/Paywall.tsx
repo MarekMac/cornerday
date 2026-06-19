@@ -43,7 +43,9 @@ export function Paywall() {
     return order(a.packageType) - order(b.packageType);
   });
 
-  const selectedPkg = sorted[selectedIndex] ?? sorted[0] ?? null;
+  // Clamp selectedIndex when fewer packages load than expected
+  const safeIndex = sorted.length > 0 ? Math.min(selectedIndex, sorted.length - 1) : selectedIndex;
+  const selectedPkg = sorted[safeIndex] ?? null;
 
   const handlePurchase = async () => {
     if (!selectedPkg) {

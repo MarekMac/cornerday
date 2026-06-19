@@ -69,7 +69,7 @@ export default function Q3Screen() {
         value: quitDate,
         mode: 'date',
         maximumDate: new Date(),
-        onValueChange: (_evt, raw) => {
+        onChange: (_evt, raw) => {
           if (!raw) return;
           const date = new Date(raw.getTime());
           if (isNaN(date.getTime())) return;
@@ -78,7 +78,7 @@ export default function Q3Screen() {
               value: date,
               mode: 'time',
               is24Hour: true,
-              onValueChange: (_tevt, rawTime) => {
+              onChange: (_tevt, rawTime) => {
                 if (!rawTime) return;
                 const time = new Date(rawTime.getTime());
                 if (isNaN(time.getTime())) return;
@@ -94,7 +94,9 @@ export default function Q3Screen() {
   };
 
   const handleContinue = () => {
-    const value = custom.trim() ? custom.trim() : selected || null;
+    const rawCustom = custom.trim();
+    if (rawCustom && !Number.isFinite(parseFloat(rawCustom))) return;
+    const value = rawCustom ? rawCustom : selected || null;
     setField('weeklyBet', value);
     setField('currency', currency);
     setField('quitDate', userChangedDate ? quitDate.toISOString() : null);

@@ -45,7 +45,7 @@ function computeCheckinStreak(rows: { created_at: string }[]): { current: number
     .sort().reverse();
   if (unique.length === 0) return { current: 0, best: 0 };
   const todayStr = new Date().toLocaleDateString('en-CA');
-  const yesterStr = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+  const yest = new Date(); yest.setDate(yest.getDate() - 1); const yesterStr = yest.toLocaleDateString('en-CA');
   let current = 0;
   if (unique[0] === todayStr || unique[0] === yesterStr) {
     let d = new Date(unique[0] + 'T12:00:00');
@@ -667,7 +667,7 @@ export default function AnalyticsScreen() {
 
   const elapsedMs         = data.quitDate ? Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime()) : 0;
 
-  const maxUrgeCount    = Math.max(1, ...data.urgesByDay);
+  const maxUrgeCount    = Math.max(0, ...data.urgesByDay);
   const maxUrgeDay      = data.urgesByDay.indexOf(maxUrgeCount);
   const daysToGoal      = goalPct !== null && data.dailySavingsRate > 0 && goalPct < 1
     ? Math.ceil((data.savingsGoal! - data.totalSavings) / data.dailySavingsRate) : null;
@@ -712,7 +712,7 @@ export default function AnalyticsScreen() {
   const wkSavingsDelta = data.weekSummary.thisWeek.savings - data.weekSummary.lastWeek.savings;
 
   // Time of day
-  const maxTodCount = Math.max(1, ...data.urgesByTimeOfDay);
+  const maxTodCount = Math.max(0, ...data.urgesByTimeOfDay);
   const hardestTod  = data.urgesByTimeOfDay.indexOf(Math.max(...data.urgesByTimeOfDay));
 
   const insights: { emoji: string; text: string; bg: string; tc: string }[] = [];
@@ -881,7 +881,7 @@ export default function AnalyticsScreen() {
             </Text>
           </View>
           <View style={s.progressBarBg}>
-            <View style={[s.progressBarFill, { width: `${Math.round((data.checkInDays / 30) * 100)}%` as any }]} />
+            <View style={[s.progressBarFill, { width: `${Math.min(100, Math.round((data.checkInDays / 30) * 100))}%` as any }]} />
           </View>
         </View>
 

@@ -1594,7 +1594,7 @@ export default function HomeScreen() {
         const noteVal = note?.trim() || null;
         if (data.todayMoodId) {
           const { error: updateErr } = await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId).eq('user_id', user.id);
-          if (updateErr) { Alert.alert('Could not save mood', updateErr.message); return; }
+          if (updateErr) { Alert.alert('Could not save mood', updateErr.message); setEditingMood(false); setMoodNote(''); setEditMoodValue(null); return; }
         } else {
           const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
           if (insertErr) { Alert.alert('Could not save mood', insertErr.message); return; }
@@ -1714,10 +1714,14 @@ export default function HomeScreen() {
       if (!user) return;
       const { prevQuit, prevStreakDays } = shieldUndo;
       const prevDate = prevQuit.split('T')[0];
-      await Promise.all([
+      const [undoUserRes, undoStreakRes] = await Promise.all([
         supabase.from('users').update({ quit_timestamp: prevQuit, quit_date: prevDate }).eq('id', user.id),
         supabase.from('streaks').update({ current_streak: prevStreakDays, streak_start_date: prevDate }).eq('user_id', user.id),
       ]);
+      if (undoUserRes.error || undoStreakRes.error) {
+        Alert.alert('Could not undo reset', 'Please try again.');
+        return;
+      }
       // Remove the streak_reset loss row that was created by doRelapse
       const { data: resetRow } = await supabase
         .from('losses')
@@ -1868,7 +1872,8 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [s.partnerMsgBanner, pressed && { opacity: 0.85 }]}
             onPress={async () => {
-              const { error } = await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id);
+              const { data: { user: msgUser } } = await supabase.auth.getUser();
+              const { error } = await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id).eq('user_id', msgUser?.id ?? '');
               if (!error) setPartnerMsg(null);
             }}>
             <Text style={s.partnerMsgEmoji}>💙</Text>
