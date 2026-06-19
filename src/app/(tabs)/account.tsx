@@ -2454,7 +2454,7 @@ export default function AccountScreen() {
                   {profile?.email}
                 </Text>
                 <Pressable
-                  style={({ pressed }) => [s.modalBtn, s.modalBtnSave, pressed && { opacity: 0.85 }]}
+                  style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { alignSelf: 'stretch', flex: undefined }, pressed && { opacity: 0.85 }]}
                   onPress={() => setShowPassModal(false)}>
                   <Text style={s.modalBtnSaveTxt}>Done</Text>
                 </Pressable>
