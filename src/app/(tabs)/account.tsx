@@ -235,6 +235,7 @@ export default function AccountScreen() {
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState('Fingerprint or face unlock on reopen');
   const [debtTargetDate, setDebtTargetDate] = useState<Date | null>(null);
   const [savingsTargetDate, setSavingsTargetDate] = useState<Date | null>(null);
   const [showDebtTargetModal, setShowDebtTargetModal] = useState(false);
@@ -515,10 +516,16 @@ export default function AccountScreen() {
     Promise.all([
       LocalAuthentication.hasHardwareAsync(),
       LocalAuthentication.isEnrolledAsync(),
+      LocalAuthentication.supportedAuthenticationTypesAsync(),
       AsyncStorage.getItem(BIOMETRIC_LOCK_KEY),
-    ]).then(([hasHardware, isEnrolled, stored]) => {
+    ]).then(([hasHardware, isEnrolled, types, stored]) => {
       setBiometricAvailable(hasHardware && isEnrolled);
       setBiometricEnabled(stored === 'true');
+      const hasFace = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION);
+      const hasFingerprint = types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT);
+      if (hasFace && !hasFingerprint) setBiometricLabel('Face unlock on reopen');
+      else if (hasFingerprint && !hasFace) setBiometricLabel('Fingerprint unlock on reopen');
+      else setBiometricLabel('Biometric unlock on reopen');
     });
   }, []);
 
@@ -2011,9 +2018,7 @@ export default function AccountScreen() {
             <View style={{ flex: 1 }}>
               <Text style={s.menuRowLabel}>Biometric lock</Text>
               <Text style={s.notifDesc}>
-                {biometricAvailable
-                  ? 'Fingerprint or face unlock on reopen'
-                  : 'Set up biometrics on your device first'}
+                {biometricAvailable ? biometricLabel : 'Set up biometrics on your device first'}
               </Text>
             </View>
             <Switch
