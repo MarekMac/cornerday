@@ -573,7 +573,7 @@ export default function AnalyticsScreen() {
   };
 
   const renderHeader = () => (
-    <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+    <View style={[s.header, { backgroundColor: c.primary }]}>
       <SafeAreaView edges={['top']}>
         <View style={s.headerRow}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>
@@ -583,7 +583,7 @@ export default function AnalyticsScreen() {
           <View style={s.backBtn} />
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 
   if (loading) return <View style={s.loadingWrap}><ActivityIndicator color={c.primary} size="large" /></View>;

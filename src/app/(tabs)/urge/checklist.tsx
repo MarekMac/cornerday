@@ -1,6 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -53,7 +52,7 @@ export default function ChecklistScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Pressable onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
@@ -65,7 +64,7 @@ export default function ChecklistScreen() {
             </View>
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
 

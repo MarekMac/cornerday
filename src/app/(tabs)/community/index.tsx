@@ -579,7 +579,7 @@ export default function CommunityFeed() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Text style={s.headerTitle}>Community</Text>
@@ -593,7 +593,7 @@ export default function CommunityFeed() {
             )}
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       <View style={s.tagBar}>
         {/* Sort button */}

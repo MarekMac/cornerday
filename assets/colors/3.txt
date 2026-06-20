@@ -1,0 +1,31 @@
+/* Coolors Exported Palette - https://coolors.co/19575f-a6ebc9-61ff7e-5eeb5b-62ab37 */
+
+- CSV
+
+19575f,a6ebc9,61ff7e,5eeb5b,62ab37
+
+- With #
+
+#19575f, #a6ebc9, #61ff7e, #5eeb5b, #62ab37
+
+- Array
+
+["19575f","a6ebc9","61ff7e","5eeb5b","62ab37"]
+
+- Object
+
+{"Dark Teal":"19575f","Celadon":"a6ebc9","Mint Glow":"61ff7e","Radioactive Grass":"5eeb5b","Bright Fern":"62ab37"}
+
+- Extended Array
+
+[{"name":"Dark Teal","hex":"19575f","rgb":[25,87,95],"cmyk":[74,8,0,63],"hsb":[187,74,37],"hsl":[187,58,24],"lab":[34,-16,-10]},{"name":"Celadon","hex":"a6ebc9","rgb":[166,235,201],"cmyk":[29,0,14,8],"hsb":[150,29,92],"hsl":[150,63,79],"lab":[88,-28,10]},{"name":"Mint Glow","hex":"61ff7e","rgb":[97,255,126],"cmyk":[62,0,51,0],"hsb":[131,62,100],"hsl":[131,100,69],"lab":[90,-67,49]},{"name":"Radioactive Grass","hex":"5eeb5b","rgb":[94,235,91],"cmyk":[60,0,61,8],"hsb":[119,61,92],"hsl":[119,78,64],"lab":[83,-65,57]},{"name":"Bright Fern","hex":"62ab37","rgb":[98,171,55],"cmyk":[43,0,68,33],"hsb":[98,68,67],"hsl":[98,51,44],"lab":[63,-43,51]}]
+
+- XML
+
+<palette>
+  <color name="Dark Teal" hex="19575f" r="25" g="87" b="95" />
+  <color name="Celadon" hex="a6ebc9" r="166" g="235" b="201" />
+  <color name="Mint Glow" hex="61ff7e" r="97" g="255" b="126" />
+  <color name="Radioactive Grass" hex="5eeb5b" r="94" g="235" b="91" />
+  <color name="Bright Fern" hex="62ab37" r="98" g="171" b="55" />
+</palette>

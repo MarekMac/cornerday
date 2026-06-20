@@ -98,8 +98,7 @@ export function Paywall() {
       onRequestClose={hidePaywall}
     >
       <View style={[s.root, { paddingBottom: insets.bottom }]}>
-        {/* Header gradient */}
-        <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+        <View style={[s.header, { backgroundColor: c.primary }]}>
           <View style={[s.headerRow, { paddingTop: insets.top + 16 }]}>
             <View style={s.headerTextCol}>
               <Text style={s.headerTitle}>Go Premium</Text>
@@ -109,7 +108,7 @@ export function Paywall() {
               <Text style={s.closeBtnTxt}>✕</Text>
             </Pressable>
           </View>
-        </LinearGradient>
+        </View>
 
         <ScrollView
           style={s.scroll}

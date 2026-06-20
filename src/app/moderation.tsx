@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -389,7 +388,7 @@ export default function ModerationScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Pressable onPress={() => router.back()} hitSlop={10} style={s.backBtn}>
@@ -410,7 +409,7 @@ export default function ModerationScreen() {
             ))}
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       {/* ── Reports tab ── */}
       {tab === 'reports' && (

@@ -98,7 +98,8 @@ Deno.serve(async (req: Request) => {
   const type: string = body.type ?? '';
   const milestoneLabel: string = body.milestone_label ?? '';
 
-  const { data: { user }, error: authErr } = await sb.auth.getUser(authHeader.replace('Bearer ', ''));
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+  const { data: { user }, error: authErr } = await sb.auth.getUser(bearerToken);
   if (authErr || !user) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
       status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },

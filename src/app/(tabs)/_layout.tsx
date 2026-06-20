@@ -203,9 +203,11 @@ export default function TabsLayout() {
             .from('users')
             .update({ expo_push_token: tokenData.data })
             .eq('id', user.id);
+          if (__DEV__) console.log('[CornerDay] Push token saved:', tokenData.data);
         }
-      } catch (_e) {
-        // Push token unavailable (e.g. simulator) — non-fatal
+      } catch (e) {
+        // Push token unavailable — non-fatal, but log in dev so FCM issues are visible
+        if (__DEV__) console.warn('[CornerDay] Push token registration failed:', e);
       }
     };
     init();

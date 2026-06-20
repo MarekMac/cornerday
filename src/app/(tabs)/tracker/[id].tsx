@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -235,7 +234,7 @@ export default function DebtDetailScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={12}>
@@ -247,7 +246,7 @@ export default function DebtDetailScreen() {
             <View style={{ width: 36 }} />
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">

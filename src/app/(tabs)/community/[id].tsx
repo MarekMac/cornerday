@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { haptic, hapticMedium } from '@/lib/haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -341,10 +340,10 @@ export default function PostDetail() {
     setEditSaving(true);
     let error;
     if (editTarget.kind === 'post') {
-      ({ error } = await supabase.from('community_posts').update({ content: editText.trim() }).eq('id', editTarget.id));
+      ({ error } = await supabase.from('community_posts').update({ content: editText.trim() }).eq('id', editTarget.id).eq('user_id', currentUserId!));
       if (!error) setPost(p => p ? { ...p, content: editText.trim() } : p);
     } else {
-      ({ error } = await supabase.from('community_comments').update({ content: editText.trim() }).eq('id', editTarget.id));
+      ({ error } = await supabase.from('community_comments').update({ content: editText.trim() }).eq('id', editTarget.id).eq('user_id', currentUserId!));
       if (!error) setComments(prev => prev.map(c => c.id === editTarget.id ? { ...c, content: editText.trim() } : c));
     }
     setEditSaving(false);
@@ -360,12 +359,12 @@ export default function PostDetail() {
     setDeleting(true);
     try {
       if (deleteTarget.kind === 'post') {
-        const { error } = await supabase.from('community_posts').delete().eq('id', deleteTarget.id);
+        const { error } = await supabase.from('community_posts').delete().eq('id', deleteTarget.id).eq('user_id', currentUserId!);
         if (error) { Alert.alert('Could not delete', error.message); return; }
         setDeleteTarget(null);
         router.back();
       } else {
-        const { error } = await supabase.from('community_comments').delete().eq('id', deleteTarget.id);
+        const { error } = await supabase.from('community_comments').delete().eq('id', deleteTarget.id).eq('user_id', currentUserId!);
         if (error) { Alert.alert('Could not delete', error.message); return; }
         setComments(prev => prev.filter(c => c.id !== deleteTarget.id));
         setDeleteTarget(null);
@@ -510,7 +509,7 @@ export default function PostDetail() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Pressable onPress={() => { showInterstitialIfReady(isPremium); router.back(); }} style={s.backBtn} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
@@ -520,7 +519,7 @@ export default function PostDetail() {
             <View style={{ width: 30 }} />
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}

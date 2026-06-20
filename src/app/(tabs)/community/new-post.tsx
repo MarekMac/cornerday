@@ -1,6 +1,5 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
 import { hapticMedium } from '@/lib/haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -117,7 +116,7 @@ export default function NewPost() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.root}>
-        <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+        <View style={[s.header, { backgroundColor: c.primary }]}>
           <SafeAreaView edges={['top']}>
             <View style={s.headerRow}>
               <Pressable onPress={handleBack} style={s.backBtn}>
@@ -127,7 +126,7 @@ export default function NewPost() {
               <View style={{ width: 30 }} />
             </View>
           </SafeAreaView>
-        </LinearGradient>
+        </View>
 
         <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
           <Text style={s.label}>Pick a tag</Text>

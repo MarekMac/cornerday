@@ -1833,7 +1833,7 @@ export default function HomeScreen() {
   return (
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* ── Header ── */}
-      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <View style={s.headerTop}>
@@ -1885,7 +1885,7 @@ export default function HomeScreen() {
             </View>
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       {/* ── Body ── */}
       <ScrollView

@@ -309,10 +309,7 @@ export default function CoachScreen() {
   );
 
   const header = (
-    <LinearGradient
-      colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]}
-      style={s.header}
-    >
+    <View style={[s.header, { backgroundColor: c.primary }]}>
       <SafeAreaView edges={['top']}>
         <View style={s.headerContent}>
           <Text style={s.headerTitle}>AI Corner</Text>
@@ -323,7 +320,7 @@ export default function CoachScreen() {
           )}
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 
   if (isLoadingPurchases) {

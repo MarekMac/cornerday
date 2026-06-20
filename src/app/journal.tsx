@@ -1,5 +1,4 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -405,7 +404,7 @@ export default function JournalScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back" accessibilityRole="button">
@@ -423,7 +422,7 @@ export default function JournalScreen() {
             )}
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       {loading ? (
         <View style={s.center}>

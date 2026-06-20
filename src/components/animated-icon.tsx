@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
@@ -33,10 +32,7 @@ export function AnimatedSplashOverlay() {
         if (finished) scheduleOnRN(setVisible, false);
       })}
       style={styles.overlay}>
-      <LinearGradient
-        colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']}
-        style={StyleSheet.absoluteFill}
-      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0F6E6E' }]} />
       <Animated.View entering={logoKeyframe.duration(SPLASH_DURATION * 0.55)} style={styles.content}>
         <Logo size={96} />
         <Text style={styles.appName}>CornerDay</Text>

@@ -1,0 +1,31 @@
+/* Coolors Exported Palette - https://coolors.co/19575f-d7dae5-b9cdda-a6d8d4-8eaf9d */
+
+- CSV
+
+19575f,d7dae5,b9cdda,a6d8d4,8eaf9d
+
+- With #
+
+#19575f, #d7dae5, #b9cdda, #a6d8d4, #8eaf9d
+
+- Array
+
+["19575f","d7dae5","b9cdda","a6d8d4","8eaf9d"]
+
+- Object
+
+{"Dark Teal":"19575f","Lavender":"d7dae5","Pale Sky":"b9cdda","Pearl Aqua":"a6d8d4","Muted Teal":"8eaf9d"}
+
+- Extended Array
+
+[{"name":"Dark Teal","hex":"19575f","rgb":[25,87,95],"cmyk":[74,8,0,63],"hsb":[187,74,37],"hsl":[187,58,24],"lab":[34,-16,-10]},{"name":"Lavender","hex":"d7dae5","rgb":[215,218,229],"cmyk":[6,5,0,10],"hsb":[227,6,90],"hsl":[227,21,87],"lab":[87,1,-6]},{"name":"Pale Sky","hex":"b9cdda","rgb":[185,205,218],"cmyk":[15,6,0,15],"hsb":[204,15,85],"hsl":[204,31,79],"lab":[81,-4,-9]},{"name":"Pearl Aqua","hex":"a6d8d4","rgb":[166,216,212],"cmyk":[23,0,2,15],"hsb":[175,23,85],"hsl":[175,39,75],"lab":[83,-17,-3]},{"name":"Muted Teal","hex":"8eaf9d","rgb":[142,175,157],"cmyk":[19,0,10,31],"hsb":[147,19,69],"hsl":[147,17,62],"lab":[69,-15,6]}]
+
+- XML
+
+<palette>
+  <color name="Dark Teal" hex="19575f" r="25" g="87" b="95" />
+  <color name="Lavender" hex="d7dae5" r="215" g="218" b="229" />
+  <color name="Pale Sky" hex="b9cdda" r="185" g="205" b="218" />
+  <color name="Pearl Aqua" hex="a6d8d4" r="166" g="216" b="212" />
+  <color name="Muted Teal" hex="8eaf9d" r="142" g="175" b="157" />
+</palette>

@@ -1,5 +1,4 @@
 ﻿import * as Contacts from 'expo-contacts/legacy';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -617,13 +616,13 @@ export default function UrgeScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Support</Text>
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView ref={scrollRef} style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">

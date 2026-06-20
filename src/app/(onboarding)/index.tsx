@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -20,7 +19,7 @@ export default function WelcomeScreen() {
   }, []);
 
   return (
-    <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']} style={s.gradient}>
+    <View style={s.gradient}>
       <SafeAreaView style={s.safe}>
         <View style={s.hero}>
           <Logo size={100} />
@@ -42,13 +41,14 @@ export default function WelcomeScreen() {
           </Pressable>
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const makeStyles = (c: AppColors) => StyleSheet.create({
   gradient: {
     flex: 1,
+    backgroundColor: c.primary,
   },
   safe: {
     flex: 1,

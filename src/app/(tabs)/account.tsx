@@ -8,7 +8,6 @@ import { setHapticsEnabled as setGlobalHaptics } from '@/lib/haptics';
 import { parseQuitDate } from '@/lib/parseQuitDate';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as Contacts from 'expo-contacts/legacy';
 import * as Sharing from 'expo-sharing';
@@ -460,7 +459,6 @@ export default function AccountScreen() {
       if (!token) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await supabase.from('partner_links').delete().eq('user_id', user.id);
           const { data, error } = await supabase
             .from('partner_links')
             .insert({
@@ -475,6 +473,8 @@ export default function AccountScreen() {
             .select('id, token, expires_at')
             .maybeSingle();
           if (!error && data) {
+            // Delete any previous links only after the new one is confirmed
+            await supabase.from('partner_links').delete().eq('user_id', user.id).neq('id', data.id);
             setPartnerToken(data.token);
             setPartnerLinkId(data.id);
             setPartnerExpiresAt(data.expires_at ?? null);
@@ -1512,7 +1512,7 @@ export default function AccountScreen() {
 
   return (
     <View style={s.root}>
-      <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} style={s.header}>
+      <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Account</Text>
@@ -1612,7 +1612,7 @@ export default function AccountScreen() {
             </View>
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
 

@@ -390,7 +390,7 @@ export async function scheduleOnboardingCheckin(): Promise<void> {
     for (const s of REENGAGEMENT_SCHEDULE) {
       const id = await Notifications.scheduleNotificationAsync({
         content: { title: s.title, body: s.body, data: { type: 'ai_checkin' } },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: s.seconds, repeats: false },
+        trigger: androidTrigger({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: s.seconds, repeats: false }) as any,
       });
       if (id) ids.push(id);
     }
