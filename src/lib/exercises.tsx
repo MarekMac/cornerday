@@ -227,7 +227,7 @@ function Gratitude() {
             value={v}
             onChangeText={t => set(i, t)}
             placeholder={GRATITUDE_PLACEHOLDERS[i]}
-            placeholderTextColor="#bbb"
+            placeholderTextColor="#aaa"
             maxLength={100}
           />
         </View>
@@ -401,7 +401,7 @@ function WorryDrop() {
           value={text}
           onChangeText={setText}
           placeholder="Write it here…"
-          placeholderTextColor="#bbb"
+          placeholderTextColor="#aaa"
           multiline
           numberOfLines={5}
           textAlignVertical="top"

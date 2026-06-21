@@ -339,7 +339,7 @@ export default function CoachScreen() {
       <View style={s.root}>
         {header}
         <ScrollView contentContainerStyle={s.paywallScroll} style={s.paywallBg}>
-          <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.paywallIcon}>
+          <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.paywallIcon}>
             <Text style={s.paywallIconEmoji}>🤖</Text>
           </LinearGradient>
           <Text style={s.paywallTitle}>AI Corner</Text>
@@ -363,7 +363,7 @@ export default function CoachScreen() {
             style={({ pressed }) => [s.upgradeBtnWrap, pressed && { opacity: 0.88 }]}
             onPress={showPaywall}
           >
-            <LinearGradient colors={['#0F6E6E', '#1a9a9a']} style={s.upgradeBtn}>
+            <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.upgradeBtn}>
               <Text style={s.upgradeBtnTxt}>Upgrade to Premium</Text>
             </LinearGradient>
           </Pressable>

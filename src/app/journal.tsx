@@ -414,7 +414,7 @@ export default function JournalScreen() {
               <Text style={s.headerTitle}>My Journal</Text>
             </View>
             {feed.length > 0 ? (
-              <Pressable onPress={clearAllLogs} hitSlop={12} style={s.clearBtn}>
+              <Pressable onPress={clearAllLogs} hitSlop={12} style={s.clearBtn} accessibilityLabel="Clear all entries" accessibilityRole="button">
                 <Ionicons name="trash-outline" size={20} color="rgba(255,255,255,0.8)" />
               </Pressable>
             ) : (

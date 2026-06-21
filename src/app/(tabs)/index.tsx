@@ -837,9 +837,9 @@ function MilestoneCelebrationModal({
             onPress={onShare}
             style={({ pressed }) => ({ backgroundColor: '#fff', borderRadius: 14, paddingVertical: 15, width: '100%', alignItems: 'center', marginBottom: 12, opacity: pressed ? 0.85 : 1 })}
           >
-            <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F6E6E' }}>Share milestone</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: c.primary }}>Share milestone</Text>
           </Pressable>
-          <Pressable onPress={onClose} style={({ pressed }) => ({ padding: 12, opacity: pressed ? 0.6 : 1 })}>
+          <Pressable onPress={onClose} style={({ pressed }) => ({ padding: 12, opacity: pressed ? 0.6 : 1 })} accessibilityLabel="Dismiss" accessibilityRole="button">
             <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.65)', fontWeight: '600' }}>Maybe later</Text>
           </Pressable>
         </View>
@@ -2316,7 +2316,7 @@ export default function HomeScreen() {
           const dotColor = (day: typeof days[0] | null): string => {
             if (!day) return 'transparent';
             if (day.status === 'inactive') return c.bgElement;
-            if (day.status === 'relapse') return '#d94f4f';
+            if (day.status === 'relapse') return c.error;
             return c.primaryMid;
           };
           // Arrange into week columns (Sun→Sat going down each column)
@@ -2357,7 +2357,7 @@ export default function HomeScreen() {
               </View>
               <View style={s.homCalLegend}>
                 <View style={s.homCalLegendItem}><View style={[s.homCalLegendDot, { backgroundColor: c.primary }]} /><Text style={s.homCalLegendTxt}>Clean</Text></View>
-                <View style={s.homCalLegendItem}><View style={[s.homCalLegendDot, { backgroundColor: '#e07070' }]} /><Text style={s.homCalLegendTxt}>Slip</Text></View>
+                <View style={s.homCalLegendItem}><View style={[s.homCalLegendDot, { backgroundColor: c.error }]} /><Text style={s.homCalLegendTxt}>Slip</Text></View>
                 <View style={s.homCalLegendItem}><View style={[s.homCalLegendDot, { backgroundColor: c.bgElement }]} /><Text style={s.homCalLegendTxt}>Before start</Text></View>
               </View>
             </View>
@@ -2448,7 +2448,7 @@ export default function HomeScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setCustomMilestoneCelebVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: '#fff7e0' }]}>
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgWarm }]}>
                 <Text style={{ fontSize: 28 }}>{customMilestone?.icon ?? '🎯'}</Text>
               </View>
             </View>
@@ -3072,7 +3072,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   personalBestTxt: { fontSize: 11, color: 'rgba(168,216,208,0.9)', fontWeight: '600' },
   startedTxt: { fontSize: 10, color: 'rgba(255,255,255,0.38)' },
   resetLink: { marginTop: 2 },
-  resetLinkTxt: { fontSize: 11, color: '#ff8a80', fontWeight: '600' },
+  resetLinkTxt: { fontSize: 11, color: c.textError, fontWeight: '600' },
 
   // Circular
   circPct: { fontSize: 32, fontWeight: '800', color: c.white, lineHeight: 36 },
@@ -3277,10 +3277,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     borderLeftWidth: 3,
-    borderLeftColor: '#e67e22',
+    borderLeftColor: c.warn,
   },
   urgePredEmoji: { fontSize: 22 },
-  urgePredTitle: { fontSize: 12, fontWeight: '700', color: '#e67e22', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
+  urgePredTitle: { fontSize: 12, fontWeight: '700', color: c.warn, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
   urgePredTime: { fontSize: 18, fontWeight: '700', color: c.textPrimary, marginBottom: 2 },
   urgePredSub: { fontSize: 12, color: c.textMuted, lineHeight: 16 },
 
@@ -3334,7 +3334,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   modalRowLabel: { fontSize: 14, color: c.textMuted },
   modalRowValue: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
   modalProgressBar: { height: 6, backgroundColor: c.borderSubtle, borderRadius: 3, overflow: 'hidden', marginTop: 4 },
-  modalProgressFill: { height: '100%', backgroundColor: '#22c55e', borderRadius: 3 },
+  modalProgressFill: { height: '100%', backgroundColor: c.success, borderRadius: 3 },
   modalMessage: { fontSize: 13, color: c.textMuted, fontStyle: 'italic', textAlign: 'center', lineHeight: 18, marginTop: 8 },
   modalActions: { flexDirection: 'column', gap: 10, marginTop: 16 },
   modalShareRow: { flexDirection: 'row', gap: 10 },
@@ -3358,7 +3358,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   confirmIconRow: { alignItems: 'center', marginBottom: 12 },
   confirmIconCircle: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#fff8f0', borderWidth: 1.5, borderColor: '#f5d0a0',
+    backgroundColor: c.bgWarm, borderWidth: 1.5, borderColor: c.primaryLight,
     alignItems: 'center', justifyContent: 'center',
   },
   confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
@@ -3424,14 +3424,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   shareCardActions: { marginTop: 20, gap: 10, width: 320 },
   shareCardShareBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#0F6E6E', borderRadius: 14, paddingVertical: 15,
+    backgroundColor: c.primary, borderRadius: 14, paddingVertical: 15,
   },
-  shareCardShareTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  shareCardShareTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
   shareCardCommunityBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 15,
+    backgroundColor: c.white, borderRadius: 14, paddingVertical: 15,
   },
-  shareCardCommunityTxt: { color: '#0F6E6E', fontWeight: '700', fontSize: 16 },
+  shareCardCommunityTxt: { color: c.primary, fontWeight: '700', fontSize: 16 },
   shareCardCloseBtn: { alignItems: 'center', paddingVertical: 10 },
   shareCardCloseTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
   shareCardProgressTrack: {
@@ -3439,7 +3439,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderRadius: 3, overflow: 'hidden', marginTop: 16,
   },
   shareCardProgressFill: {
-    height: '100%', backgroundColor: '#a8d8d0', borderRadius: 3,
+    height: '100%', backgroundColor: c.primaryLight, borderRadius: 3,
   },
   shareCardDetailBox: {
     backgroundColor: 'rgba(255,255,255,0.08)',

@@ -44,8 +44,10 @@ export const Colors = {
     headerGradEnd:    '#1a9a9a',
 
     // ── Status ─────────────────────────────────────────────────────────────────
-    success: '#0a7a4e',
-    error:   '#c0392b',
+    success:   '#0a7a4e',
+    error:     '#c0392b',
+    warn:      '#e67e22',
+    bgSuccess: '#f0fdf4',
 
     // ── Fixed values (never flip — used on gradients / overlays) ───────────────
     white:        '#ffffff',
@@ -93,8 +95,10 @@ export const Colors = {
     headerGradEnd:    '#0F6E6E',
 
     // ── Status ─────────────────────────────────────────────────────────────────
-    success: '#18a86a',
-    error:   '#e05040',
+    success:   '#18a86a',
+    error:     '#e05040',
+    warn:      '#f0963a',
+    bgSuccess: '#0a2418',
 
     // ── Fixed ─────────────────────────────────────────────────────────────────
     white:       '#ffffff',

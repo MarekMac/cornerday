@@ -586,7 +586,12 @@ export default function AnalyticsScreen() {
     </View>
   );
 
-  if (loading) return <View style={s.loadingWrap}><ActivityIndicator color={c.primary} size="large" /></View>;
+  if (loading) return (
+    <View style={s.root}>
+      {renderHeader()}
+      <View style={s.loadingWrap}><ActivityIndicator color={c.primary} size="large" /></View>
+    </View>
+  );
 
   if (isLoadingPurchases) {
     return (
@@ -722,9 +727,9 @@ export default function AnalyticsScreen() {
   if (data.currentStreakDays > 0 && data.currentStreakDays >= data.longestStreak)
     insights.push({ emoji: '🏆', text: 'This is your longest streak ever!', bg: '#fef3c7', tc: '#92400e' });
   if (urgeResistPct !== null && data.urgeCount >= 3)
-    insights.push({ emoji: '💪', text: `${urgeResistPct}% urge resistance — ${data.urgesOvercome} of ${data.urgeCount} beaten`, bg: '#dcfce7', tc: '#166534' });
+    insights.push({ emoji: '💪', text: `${urgeResistPct}% urge resistance — ${data.urgesOvercome} of ${data.urgeCount} beaten`, bg: c.bgSuccess, tc: c.success });
   if (maxUrgeCount >= 2)
-    insights.push({ emoji: '📅', text: `${DAY_LABELS[maxUrgeDay]}s are your most challenging day`, bg: '#fef2f2', tc: '#b91c1c' });
+    insights.push({ emoji: '📅', text: `${DAY_LABELS[maxUrgeDay]}s are your most challenging day`, bg: c.bgError, tc: c.textError });
   if (maxTodCount >= 2)
     insights.push({ emoji: '🕐', text: `${TOD_LABELS[hardestTod]} (${TOD_TIMES[hardestTod]}) is your highest-risk window`, bg: '#fff7ed', tc: '#9a3412' });
   if (data.moodLast30.length >= 6) {
@@ -732,29 +737,29 @@ export default function AnalyticsScreen() {
     const earlyAvg  = data.moodLast30.slice(0, mid).reduce((a, r) => a + r.mood, 0) / mid;
     const recentAvg = data.moodLast30.slice(mid).reduce((a, r) => a + r.mood, 0) / (data.moodLast30.length - mid);
     if (recentAvg - earlyAvg >= 0.5)
-      insights.push({ emoji: '📈', text: 'Your mood has been climbing — recovery is working', bg: '#f0fdf4', tc: '#166534' });
+      insights.push({ emoji: '📈', text: 'Your mood has been climbing — recovery is working', bg: c.bgSuccess, tc: c.success });
     else if (earlyAvg - recentAvg >= 0.5)
       insights.push({ emoji: '📉', text: 'Your mood has dipped lately — lean on your support plan', bg: '#fff7ed', tc: '#9a3412' });
     else if (avgMoodVal !== null && avgMoodVal >= 3.5)
       insights.push({ emoji: '😊', text: `Average mood ${avgMoodVal.toFixed(1)}/5 — you're doing well`, bg: '#eff6ff', tc: '#1d4ed8' });
   }
   if (data.relapseCount === 0 && data.currentStreakDays >= 7)
-    insights.push({ emoji: '🌟', text: 'Clean run — no relapses on record', bg: '#f0fdf4', tc: '#166534' });
+    insights.push({ emoji: '🌟', text: 'Clean run — no relapses on record', bg: c.bgSuccess, tc: c.success });
   if (data.weekSummary.lastWeek.urges > 2 && data.weekSummary.thisWeek.urges < data.weekSummary.lastWeek.urges)
-    insights.push({ emoji: '📉', text: `Fewer urges this week vs last (${data.weekSummary.thisWeek.urges} vs ${data.weekSummary.lastWeek.urges})`, bg: '#f0fdf4', tc: '#166534' });
+    insights.push({ emoji: '📉', text: `Fewer urges this week vs last (${data.weekSummary.thisWeek.urges} vs ${data.weekSummary.lastWeek.urges})`, bg: c.bgSuccess, tc: c.success });
   if (data.dailySavingsRate > 0)
-    insights.push({ emoji: '💰', text: `Saving ${fmt(data.dailySavingsRate, data.currency)} per clean day`, bg: '#e6f7f7', tc: '#0F6E6E' });
+    insights.push({ emoji: '💰', text: `Saving ${fmt(data.dailySavingsRate, data.currency)} per clean day`, bg: c.bgTeal, tc: c.primary });
   if (isStreakImproving)
-    insights.push({ emoji: '📈', text: 'Your streaks are getting longer over time', bg: '#f0fdf4', tc: '#166534' });
+    insights.push({ emoji: '📈', text: 'Your streaks are getting longer over time', bg: c.bgSuccess, tc: c.success });
   if (data.checkinStreak.current >= 7)
     insights.push({ emoji: '🔥', text: `${data.checkinStreak.current}-day check-in streak — showing up every single day`, bg: '#fef9c3', tc: '#92400e' });
   if (data.dailySavingsRate > 0 && data.totalSavings > 0)
-    insights.push({ emoji: '💸', text: `On track to save ${fmt(data.dailySavingsRate * 30, data.currency)} this month`, bg: '#e6f7f7', tc: '#0F6E6E' });
+    insights.push({ emoji: '💸', text: `On track to save ${fmt(data.dailySavingsRate * 30, data.currency)} this month`, bg: c.bgTeal, tc: c.primary });
   if (cleanDaysCount >= 52)
-    insights.push({ emoji: '🗓️', text: `${cleanDaysCount} of your last 60 days were clean — remarkable`, bg: '#f0fdf4', tc: '#15803d' });
+    insights.push({ emoji: '🗓️', text: `${cleanDaysCount} of your last 60 days were clean — remarkable`, bg: c.bgSuccess, tc: c.success });
   const aheadDebt = data.debtsWithPacing.find(d => !d.isPaidOff && d.isAhead === true);
   if (aheadDebt)
-    insights.push({ emoji: '🏦', text: `Ahead of schedule on "${aheadDebt.name}" — great pacing`, bg: '#f0fdf4', tc: '#166534' });
+    insights.push({ emoji: '🏦', text: `Ahead of schedule on "${aheadDebt.name}" — great pacing`, bg: c.bgSuccess, tc: c.success });
   if (wkCiDelta > 0)
     insights.push({ emoji: '📆', text: `${wkCiDelta} more check-in${wkCiDelta > 1 ? 's' : ''} this week than last — building momentum`, bg: '#eff6ff', tc: '#1d4ed8' });
 
@@ -866,7 +871,7 @@ export default function AnalyticsScreen() {
               <View style={s.sparklineRow}>
                 {data.moodSparkline.map((mood, i) => {
                   const h  = mood !== null ? Math.max(4, (mood / 5) * 34) : 4;
-                  const bg = mood === null ? c.bgElement : mood >= 4 ? c.primaryMid : mood === 3 ? c.primaryLight : '#e0a0a0';
+                  const bg = mood === null ? c.bgElement : mood >= 4 ? c.primaryMid : mood === 3 ? c.primaryLight : c.textError;
                   return (
                     <View key={i} style={s.sparklineBar}>
                       <View style={[s.sparklineBarFill, { height: h, backgroundColor: bg }]} />
@@ -1086,7 +1091,7 @@ export default function AnalyticsScreen() {
                 <View style={s.debtItemBarBg}>
                   <View style={[s.debtItemBarFill, {
                     width: `${Math.round(debt.pct * 100)}%` as any,
-                    backgroundColor: debt.isPaidOff ? c.success : debt.pct >= 0.7 ? c.primaryMid : debt.pct >= 0.3 ? '#e67e22' : c.error,
+                    backgroundColor: debt.isPaidOff ? c.success : debt.pct >= 0.7 ? c.primaryMid : debt.pct >= 0.3 ? c.warn : c.error,
                   }]} />
                 </View>
                 <Text style={[s.debtItemPct, debt.isPaidOff && { color: c.success }]}>
@@ -1184,7 +1189,7 @@ export default function AnalyticsScreen() {
               return data.topTriggers.map((item, i) => {
                 const freqPct = Math.round((item.count / maxCount) * 100);
                 const winPct  = item.count > 0 ? Math.round((item.overcame / item.count) * 100) : 0;
-                const barColor = winPct >= 70 ? '#27ae60' : winPct >= 40 ? '#e67e22' : '#c0392b';
+                const barColor = winPct >= 70 ? c.success : winPct >= 40 ? c.warn : c.error;
                 return (
                   <View key={i} style={s.triggerRow}>
                     <View style={s.triggerLabelRow}>
@@ -1401,7 +1406,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   calDot:        { width: 10, height: 10, borderRadius: 2 },
   calDotNull:    { backgroundColor: 'transparent' },
   calDotClean:   { backgroundColor: c.primaryMid },
-  calDotRelapse: { backgroundColor: '#e07070' },
+  calDotRelapse: { backgroundColor: c.error },
   calDotInactive:{ backgroundColor: c.bgElement },
   calLegend:     { flexDirection: 'row', gap: 16, justifyContent: 'center' },
   calLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -1443,7 +1448,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   urgeDayCount:       { fontSize: 10, color: c.textMuted, height: 14 },
   urgeDayBarBg:       { width: '100%', height: 44, justifyContent: 'flex-end', backgroundColor: c.bgElement, borderRadius: 4, overflow: 'hidden' },
   urgeDayBarFill:     { width: '100%', backgroundColor: c.primaryLight, borderRadius: 4 },
-  urgeDayBarHardest:  { backgroundColor: '#e07070' },
+  urgeDayBarHardest:  { backgroundColor: c.error },
   urgeDayLabel:       { fontSize: 10, color: c.textFaint },
   urgeDayLabelHardest:{ color: c.error, fontWeight: '700' },
   urgeDayInsight:     { fontSize: 12, color: c.textMuted, textAlign: 'center', marginTop: 2 },
@@ -1454,7 +1459,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   urgeTodLabelHardest: { color: c.error, fontWeight: '700' },
   urgeTodBarBg:        { flex: 1, height: 10, backgroundColor: c.bgElement, borderRadius: 5, overflow: 'hidden' },
   urgeTodBarFill:      { height: '100%', backgroundColor: c.primaryLight, borderRadius: 5 },
-  urgeTodBarHardest:   { backgroundColor: '#e07070' },
+  urgeTodBarHardest:   { backgroundColor: c.error },
   urgeTodCount:        { fontSize: 12, color: c.textMuted, width: 20, textAlign: 'right', fontWeight: '600' },
   urgeTodCountHardest: { color: c.error },
 
@@ -1525,11 +1530,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   modalBtnSaveTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   // Aggregate debt-free projection
-  debtFreeCard:  { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#f0fff4', borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: '#27ae60' },
+  debtFreeCard:  { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.bgSuccess, borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: c.success },
   debtFreeEmoji: { fontSize: 26 },
-  debtFreeLabel: { fontSize: 11, fontWeight: '700', color: '#27ae60', textTransform: 'uppercase', letterSpacing: 0.8 },
-  debtFreeDate:  { fontSize: 18, fontWeight: '900', color: '#27ae60', marginTop: 2 },
-  debtFreeSub:   { fontSize: 11, color: '#5a8a6a', marginTop: 2 },
+  debtFreeLabel: { fontSize: 11, fontWeight: '700', color: c.success, textTransform: 'uppercase', letterSpacing: 0.8 },
+  debtFreeDate:  { fontSize: 18, fontWeight: '900', color: c.success, marginTop: 2 },
+  debtFreeSub:   { fontSize: 11, color: c.success, opacity: 0.75, marginTop: 2 },
 
   // Streak history
   streakSingle:         { gap: 10 },

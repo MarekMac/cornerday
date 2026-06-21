@@ -373,13 +373,13 @@ export default function ModerationScreen() {
     general: '💬 General',
   };
   const FEEDBACK_TYPE_COLOR: Record<string, string> = {
-    bug: '#fef2f2',
-    feature: '#f0fdf4',
+    bug: c.bgError,
+    feature: c.bgSuccess,
     general: '#eff6ff',
   };
   const FEEDBACK_TYPE_TEXT: Record<string, string> = {
-    bug: '#b91c1c',
-    feature: '#166534',
+    bug: c.textError,
+    feature: c.success,
     general: '#1d4ed8',
   };
 
@@ -927,7 +927,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   userEmail: { fontSize: 12, color: c.textFaint },
   userMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   userJoined: { fontSize: 11, color: c.textFaint },
-  banRemaining: { fontSize: 11, color: '#b91c1c', fontWeight: '600' },
+  banRemaining: { fontSize: 11, color: c.textError, fontWeight: '600' },
 
   // Search + filter bar
   userControls: { backgroundColor: c.bgCard, borderBottomWidth: 1, borderBottomColor: c.borderSubtle, paddingBottom: 8 },
@@ -961,18 +961,18 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   tierPillTxtPremium: { color: '#b45309' },
   tierPillTxtAdmin: { color: '#6d28d9' },
 
-  bannedPill: { backgroundColor: '#fef2f2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  bannedPill: { backgroundColor: c.bgError, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   bannedPillTxt: { fontSize: 11, fontWeight: '700', color: c.error },
 
   banBtn: {
     flex: 1, paddingVertical: 9, borderRadius: 10,
     backgroundColor: c.error, alignItems: 'center', justifyContent: 'center',
   },
-  unbanBtn: { backgroundColor: '#27ae60' },
+  unbanBtn: { backgroundColor: c.success },
   banBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
   contentBtn: {
     flex: 2, flexDirection: 'row', paddingVertical: 9, borderRadius: 10,
-    backgroundColor: '#e67e22', alignItems: 'center', justifyContent: 'center', gap: 5,
+    backgroundColor: c.warn, alignItems: 'center', justifyContent: 'center', gap: 5,
   },
   contentBtnTxt: { fontSize: 13, fontWeight: '600', color: c.white },
 
@@ -1015,8 +1015,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     paddingVertical: 14, borderRadius: 12,
   },
   modalActionBan: { backgroundColor: c.error },
-  modalActionUnban: { backgroundColor: '#27ae60' },
-  modalActionDelete: { backgroundColor: '#e67e22' },
+  modalActionUnban: { backgroundColor: c.success },
+  modalActionDelete: { backgroundColor: c.warn },
   modalActionBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
 
   // Delete content modal
@@ -1036,7 +1036,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: c.borderLight,
     alignItems: 'center', justifyContent: 'center',
   },
-  checkboxOn: { backgroundColor: '#e67e22', borderColor: '#e67e22' },
+  checkboxOn: { backgroundColor: c.warn, borderColor: c.warn },
   checkLabel: { fontSize: 15, fontWeight: '600', color: c.textPrimary },
   checkSub: { fontSize: 12, color: c.textFaint, marginTop: 2 },
 
@@ -1048,15 +1048,15 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   deleteModalCancelTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
   deleteModalConfirm: {
     flex: 2, paddingVertical: 13, borderRadius: 12,
-    backgroundColor: '#e67e22', alignItems: 'center',
+    backgroundColor: c.warn, alignItems: 'center',
   },
   deleteModalConfirmTxt: { fontSize: 14, fontWeight: '700', color: c.white },
 
   // Ban details in user modal
-  banDetailsBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 12, gap: 8, borderWidth: 1, borderColor: '#fca5a5' },
+  banDetailsBox: { backgroundColor: c.bgError, borderRadius: 12, padding: 12, gap: 8, borderWidth: 1, borderColor: c.borderError },
   banDetailRow: { flexDirection: 'row', gap: 8 },
-  banDetailLabel: { fontSize: 12, fontWeight: '700', color: '#b91c1c', width: 54 },
-  banDetailValue: { fontSize: 13, color: '#7f1d1d' },
+  banDetailLabel: { fontSize: 12, fontWeight: '700', color: c.textError, width: 54 },
+  banDetailValue: { fontSize: 13, color: c.textError },
 
   // Ban form
   banFieldLabel: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
@@ -1071,7 +1071,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
     backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: 'transparent',
   },
-  banDurationChipActive: { backgroundColor: '#fef2f2', borderColor: c.error },
+  banDurationChipActive: { backgroundColor: c.bgError, borderColor: c.error },
   banDurationChipTxt: { fontSize: 13, fontWeight: '600', color: c.textMuted },
   banDurationChipTxtActive: { color: c.error },
 });

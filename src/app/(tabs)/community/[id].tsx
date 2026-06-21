@@ -448,11 +448,11 @@ export default function PostDetail() {
             <Text style={[s.tagTxt, { color: TAG_COLORS[post.tag] ?? '#0F6E6E' }]}>{post.tag}</Text>
           </View>
         ) : null}
-        <Pressable onPress={showPostMenu} style={s.menuBtn} hitSlop={8}>
+        <Pressable onPress={showPostMenu} style={s.menuBtn} hitSlop={8} accessibilityLabel={isPostOwner ? 'Post options' : 'Report post'} accessibilityRole="button">
           <Ionicons
             name={isPostOwner ? 'ellipsis-horizontal' : 'flag-outline'}
             size={18}
-            color={isPostOwner ? '#999' : '#f59e0b'}
+            color={isPostOwner ? c.textMuted : c.warn}
           />
         </Pressable>
       </View>
@@ -550,11 +550,11 @@ export default function PostDetail() {
                   <View style={s.commentBodyHeader}>
                     <Text style={s.commentAuthor}>{cName}</Text>
                     <Text style={s.commentTime}>{timeAgo(item.created_at)}</Text>
-                    <Pressable onPress={() => showCommentMenu(item)} hitSlop={8}>
+                    <Pressable onPress={() => showCommentMenu(item)} hitSlop={8} accessibilityLabel={isOwner ? 'Comment options' : 'Report comment'} accessibilityRole="button">
                       <Ionicons
                         name={isOwner ? 'ellipsis-horizontal' : 'flag-outline'}
                         size={14}
-                        color={isOwner ? c.textDisabled : '#f59e0b'}
+                        color={isOwner ? c.textDisabled : c.warn}
                       />
                     </Pressable>
                   </View>

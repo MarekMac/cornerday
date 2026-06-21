@@ -556,6 +556,8 @@ export default function CommunityFeed() {
               <Pressable
                 onPress={(e) => { e.stopPropagation(); reportPost(item.id); }}
                 hitSlop={8}
+                accessibilityLabel="Report post"
+                accessibilityRole="button"
               >
                 <Ionicons name="flag-outline" size={16} color={c.textFaint} />
               </Pressable>
@@ -564,6 +566,8 @@ export default function CommunityFeed() {
               style={s.bookmarkBtn}
               onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id); }}
               hitSlop={8}
+              accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark post'}
+              accessibilityRole="button"
             >
               <Ionicons
                 name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
@@ -1006,12 +1010,12 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   stat: { fontSize: 13, color: c.textBody },
   bookmarkBtn: { paddingLeft: 8 },
 
-  banNotice: { margin: 12, backgroundColor: '#fef2f2', borderRadius: 14, padding: 14, gap: 6, borderWidth: 1, borderColor: '#fca5a5' },
-  banNoticeTitle: { fontSize: 14, fontWeight: '700', color: '#b91c1c', marginBottom: 2 },
-  banNoticeRow: { fontSize: 13, color: '#7f1d1d', lineHeight: 19 },
+  banNotice: { margin: 12, backgroundColor: c.bgError, borderRadius: 14, padding: 14, gap: 6, borderWidth: 1, borderColor: c.borderError },
+  banNoticeTitle: { fontSize: 14, fontWeight: '700', color: c.textError, marginBottom: 2 },
+  banNoticeRow: { fontSize: 13, color: c.textError, lineHeight: 19 },
   banNoticeLabel: { fontWeight: '700' },
-  banContactBtn: { marginTop: 6, alignSelf: 'flex-start', backgroundColor: '#b91c1c', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
-  banContactTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  banContactBtn: { marginTop: 6, alignSelf: 'flex-start', backgroundColor: c.error, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  banContactTxt: { fontSize: 13, fontWeight: '700', color: c.white },
 
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32, gap: 8 },
   emptyEmoji: { fontSize: 48, marginBottom: 4 },
@@ -1019,7 +1023,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 },
   emptyBody: { fontSize: 14, color: c.textMuted, textAlign: 'center', marginTop: 6 },
   retryBtn: { marginTop: 16, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: c.primary, borderRadius: 20 },
-  retryBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  retryBtnTxt: { color: c.white, fontWeight: '700', fontSize: 14 },
 
   // Report modal
   reportSheet: {

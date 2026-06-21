@@ -20,6 +20,11 @@ import {
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// Tab bar is intentionally always dark regardless of app theme — it floats over content.
+const TAB_BAR_BG   = '#1a1a1a';
+const TAB_PILL_BG  = '#0F6E6E'; // brand primary
+const TAB_TIMER_BG = '#c0392b'; // always-red for the in-progress urge timer
+
 const TAB_ICONS: Record<string, IoniconName> = {
   index: 'home',
   tracker: 'wallet',
@@ -129,11 +134,11 @@ const tbs = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 14,
     paddingTop: 6,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: TAB_BAR_BG,
   },
   bar: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: TAB_BAR_BG,
     borderRadius: 28,
     padding: 5,
     alignItems: 'center',
@@ -152,8 +157,8 @@ const tbs = StyleSheet.create({
     overflow: 'hidden',
   },
   tabActive: { flex: 2 },
-  pillBg: { borderRadius: 22, backgroundColor: '#0F6E6E' },
-  pillBgTimer: { backgroundColor: '#c0392b' },
+  pillBg: { borderRadius: 22, backgroundColor: TAB_PILL_BG },
+  pillBgTimer: { backgroundColor: TAB_TIMER_BG },
   tabInner: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 4 },
   label: { color: '#fff', fontSize: 12, fontWeight: '700', flexShrink: 1 },
 });
@@ -230,7 +235,7 @@ export default function TabsLayout() {
         tabBar={props => <CustomTabBar {...props} />}
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { backgroundColor: '#1a1a1a', borderTopWidth: 0, elevation: 0 },
+          tabBarStyle: { backgroundColor: TAB_BAR_BG, borderTopWidth: 0, elevation: 0 },
         }}
       >
         <Tabs.Screen name="index" options={{ title: 'Home' }} />

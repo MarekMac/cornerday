@@ -55,6 +55,8 @@ import { useAppTheme } from '@/context/theme';
 import type { ThemePref } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
+const ADMIN_BADGE_COLOR = '#7c5700'; // amber — admin-only, no theme equivalent
+
 interface Profile {
   displayName: string | null;
   email: string | null;
@@ -1880,8 +1882,8 @@ export default function AccountScreen() {
               <Switch
                 value={streakShieldEnabled}
                 onValueChange={handleShieldToggle}
-                trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-                thumbColor={streakShieldEnabled ? '#0F6E6E' : '#bbb'}
+                trackColor={{ false: c.borderMid, true: c.primaryLight }}
+                thumbColor={streakShieldEnabled ? c.primary : c.textFaint}
               />
             ) : (
               <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
@@ -2051,8 +2053,8 @@ export default function AccountScreen() {
             <Switch
               value={hapticsEnabled}
               onValueChange={handleHapticsToggle}
-              trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-              thumbColor={hapticsEnabled ? '#0F6E6E' : '#bbb'}
+              trackColor={{ false: c.borderMid, true: c.primaryLight }}
+              thumbColor={hapticsEnabled ? c.primary : c.textFaint}
             />
           </View>
           <View style={s.menuDivider} />
@@ -2070,8 +2072,8 @@ export default function AccountScreen() {
               value={biometricEnabled}
               onValueChange={handleBiometricToggle}
               disabled={!biometricAvailable}
-              trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-              thumbColor={biometricEnabled ? '#0F6E6E' : '#bbb'}
+              trackColor={{ false: c.borderMid, true: c.primaryLight }}
+              thumbColor={biometricEnabled ? c.primary : c.textFaint}
             />
           </View>
         </View>
@@ -2283,7 +2285,7 @@ export default function AccountScreen() {
               value={contactNameInput}
               onChangeText={setContactNameInput}
               placeholder="e.g. Mum, John"
-              placeholderTextColor="#bbb"
+              placeholderTextColor={c.textFaint}
               autoCapitalize="words"
             />
             <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Phone number</Text>
@@ -2292,7 +2294,7 @@ export default function AccountScreen() {
               value={contactPhoneInput}
               onChangeText={setContactPhoneInput}
               placeholder="+1 555 000 0000"
-              placeholderTextColor="#bbb"
+              placeholderTextColor={c.textFaint}
               keyboardType="phone-pad"
               autoComplete="off"
               textContentType="none"
@@ -2303,7 +2305,7 @@ export default function AccountScreen() {
               value={contactEmailInput}
               onChangeText={setContactEmailInput}
               placeholder="their@email.com"
-              placeholderTextColor="#bbb"
+              placeholderTextColor={c.textFaint}
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="off"
@@ -2608,8 +2610,8 @@ export default function AccountScreen() {
                   <Switch
                     value={notifPrefs[key]}
                     onValueChange={v => handleNotifToggle(key, v)}
-                    trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-                    thumbColor={notifPrefs[key] ? '#0F6E6E' : '#bbb'}
+                    trackColor={{ false: c.borderMid, true: c.primaryLight }}
+                    thumbColor={notifPrefs[key] ? c.primary : c.textFaint}
                   />
                 </View>
                 {key === 'notif_daily_streak' && notifPrefs.notif_daily_streak && (
@@ -2643,8 +2645,8 @@ export default function AccountScreen() {
               <View style={s.notifText}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={s.notifLabel}>Urge prediction</Text>
-                  <View style={{ backgroundColor: '#0F6E6E', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 10, color: c.white, fontWeight: '700' }}>PREMIUM</Text>
                   </View>
                 </View>
                 <Text style={s.notifDesc}>Daily heads-up before your riskiest window based on your urge patterns</Text>
@@ -2653,12 +2655,12 @@ export default function AccountScreen() {
                 <Switch
                   value={notifPrefs.notif_urge_prediction}
                   onValueChange={v => handleNotifToggle('notif_urge_prediction', v)}
-                  trackColor={{ false: '#e0e0e0', true: '#a8d8d0' }}
-                  thumbColor={notifPrefs.notif_urge_prediction ? '#0F6E6E' : '#bbb'}
+                  trackColor={{ false: c.borderMid, true: c.primaryLight }}
+                  thumbColor={notifPrefs.notif_urge_prediction ? c.primary : c.textFaint}
                 />
               ) : (
                 <Pressable onPress={() => { setNotifModalVisible(false); showPaywall(); }} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
-                  <Text style={{ fontSize: 12, color: '#0F6E6E', fontWeight: '600' }}>Upgrade</Text>
+                  <Text style={{ fontSize: 12, color: c.primary, fontWeight: '600' }}>Upgrade</Text>
                 </Pressable>
               )}
             </View>
@@ -3407,7 +3409,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   profileSubLeft: { gap: 2 },
   profileSubBadge: { fontSize: 14, fontWeight: '700', color: c.primary },
-  profileAdminBadge: { fontSize: 14, fontWeight: '700', color: '#7c5700' },
+  profileAdminBadge: { fontSize: 14, fontWeight: '700', color: ADMIN_BADGE_COLOR },
   profileSubMeta: { fontSize: 12, color: c.textFaint },
   profileSubFree: { fontSize: 14, fontWeight: '600', color: c.textBody },
   profileSubRestore: { fontSize: 12, color: c.primary },

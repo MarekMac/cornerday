@@ -649,7 +649,7 @@ export default function UrgeScreen() {
           <View style={[s.timerCard, timerDone && s.timerCardDone]}>
             <View style={s.timerTop}>
               <View style={{ flex: 1 }}>
-                <Text style={[s.timerTitle, timerDone && { color: '#27ae60' }]}>
+                <Text style={[s.timerTitle, timerDone && { color: c.success }]}>
                   {timerDone ? 'You made it! 🎉' : timerRunning ? 'Holding on...' : `Hold on for ${timerDuration / 60} minutes`}
                 </Text>
                 <Text style={s.timerSub}>
@@ -671,7 +671,7 @@ export default function UrgeScreen() {
                   <Text style={s.timerDigitsHint}>tap to change</Text>
                 </Pressable>
               ) : (
-                <Text style={[s.timerDigits, timerDone && { color: '#27ae60' }]}>{timerDisplay}</Text>
+                <Text style={[s.timerDigits, timerDone && { color: c.success }]}>{timerDisplay}</Text>
               )}
             </View>
             <View style={s.timerTrack}>
@@ -1029,7 +1029,9 @@ export default function UrgeScreen() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [s.slipClose, pressed && { opacity: 0.6 }]}
-              onPress={() => setShowSlip(false)}>
+              onPress={() => setShowSlip(false)}
+              accessibilityLabel="Dismiss"
+              accessibilityRole="button">
               <Text style={s.slipCloseTxt}>Skip for now</Text>
             </Pressable>
           </Pressable>
@@ -1059,7 +1061,9 @@ export default function UrgeScreen() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [s.slipClose, pressed && { opacity: 0.6 }]}
-              onPress={() => setShowCongrats(false)}>
+              onPress={() => setShowCongrats(false)}
+              accessibilityLabel="Dismiss"
+              accessibilityRole="button">
               <Text style={s.slipCloseTxt}>Skip for now</Text>
             </Pressable>
           </Pressable>
@@ -1180,7 +1184,7 @@ export default function UrgeScreen() {
                     <TextInput
                       style={s.contactInput}
                       placeholder="e.g. Mum, John"
-                      placeholderTextColor="#bbb"
+                      placeholderTextColor={c.textFaint}
                       value={contactNameInput}
                       onChangeText={setContactNameInput}
                       autoCapitalize="words"
@@ -1190,7 +1194,7 @@ export default function UrgeScreen() {
                     <TextInput
                       style={s.contactInput}
                       placeholder="+1 555 000 0000"
-                      placeholderTextColor="#bbb"
+                      placeholderTextColor={c.textFaint}
                       value={contactPhoneInput}
                       onChangeText={setContactPhoneInput}
                       keyboardType="phone-pad"
@@ -1374,8 +1378,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     shadowColor: c.primary,
   },
   urgeBtnDone: {
-    backgroundColor: '#27ae60',
-    shadowColor: '#27ae60',
+    backgroundColor: c.success,
+    shadowColor: c.success,
   },
   urgeBtnTxt: { color: c.white, fontWeight: '800', fontSize: 16, textAlign: 'center' },
   urgeBtnTxtAlt: { fontWeight: '700' },
@@ -1389,18 +1393,18 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderWidth: 1, borderColor: c.borderSubtle,
   },
   timerCardDone: {
-    borderColor: '#27ae60', borderWidth: 1.5,
-    shadowColor: '#27ae60', shadowOpacity: 0.15,
+    borderColor: c.success, borderWidth: 1.5,
+    shadowColor: c.success, shadowOpacity: 0.15,
   },
   timerReward: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#f0fdf4', borderRadius: 12,
+    backgroundColor: c.bgSuccess, borderRadius: 12,
     padding: 12, marginBottom: 14,
-    borderWidth: 1, borderColor: '#bbf7d0',
+    borderWidth: 1, borderColor: c.success,
   },
   timerRewardEmoji: { fontSize: 26 },
-  timerRewardTitle: { fontSize: 15, fontWeight: '700', color: '#166534' },
-  timerRewardSub: { fontSize: 12, color: '#16a34a', marginTop: 1 },
+  timerRewardTitle: { fontSize: 15, fontWeight: '700', color: c.success },
+  timerRewardSub: { fontSize: 12, color: c.success, marginTop: 1, opacity: 0.8 },
   timerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   timerTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, marginBottom: 3, marginTop: 10 },
   timerSub: { fontSize: 13, color: c.textMuted, lineHeight: 18 },
@@ -1409,7 +1413,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   timerDigitsHint: { fontSize: 10, color: c.primary, opacity: 0.6, fontWeight: '500', marginTop: -6 },
   timerTrack: { height: 6, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden', marginBottom: 16 },
   timerFill: { height: 6, backgroundColor: c.primary, borderRadius: 3 },
-  timerFillDone: { backgroundColor: '#27ae60' },
+  timerFillDone: { backgroundColor: c.success },
   timerBtns: { flexDirection: 'row', gap: 10 },
   timerStartBtn: {
     flex: 1, backgroundColor: c.primary, borderRadius: 14,
@@ -1417,11 +1421,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   timerStartBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   timerPastBtn: {
-    flex: 2, backgroundColor: '#e6f7f0', borderRadius: 14,
+    flex: 2, backgroundColor: c.bgSuccess, borderRadius: 14,
     paddingVertical: 13, alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#27ae60',
+    borderWidth: 1.5, borderColor: c.success,
   },
-  timerPastBtnTxt: { color: '#27ae60', fontWeight: '700', fontSize: 15 },
+  timerPastBtnTxt: { color: c.success, fontWeight: '700', fontSize: 15 },
   timerCancelBtn: { flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
   timerCancelBtnTxt: { color: c.textMuted, fontWeight: '600', fontSize: 14 },
   timerCancelLink: { alignSelf: 'center', marginTop: 10 },
@@ -1578,10 +1582,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   slipResetBtnTxt: { fontSize: 14, fontWeight: '600', color: c.error },
   slipResetDone: {
-    backgroundColor: '#f0faf5', borderRadius: 14, paddingVertical: 12,
+    backgroundColor: c.bgSuccess, borderRadius: 14, paddingVertical: 12,
     paddingHorizontal: 24, width: '100%', alignItems: 'center',
   },
-  slipResetDoneTxt: { fontSize: 14, fontWeight: '600', color: '#27ae60' },
+  slipResetDoneTxt: { fontSize: 14, fontWeight: '600', color: c.success },
   slipLogBtn: {
     backgroundColor: c.primary, borderRadius: 14,
     paddingVertical: 14, paddingHorizontal: 24, width: '100%', alignItems: 'center',
@@ -1595,7 +1599,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   logCardExpanded: {},
   logBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
   logBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', borderWidth: 1.5 },
-  logBtnGreen: { backgroundColor: '#e6f7f0', borderColor: '#0a7a4e' },
+  logBtnGreen: { backgroundColor: c.bgSuccess, borderColor: c.success },
   logBtnRed: { backgroundColor: c.bgError, borderColor: c.error },
   logBtnTxtGreen: { fontSize: 14, fontWeight: '700', color: c.success },
   logBtnTxtRed: { fontSize: 14, fontWeight: '700', color: c.error },
@@ -1664,7 +1668,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
     backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: c.borderLight,
   },
-  outcomeBtnGreen: { backgroundColor: '#e6f7f0', borderColor: '#0a7a4e' },
+  outcomeBtnGreen: { backgroundColor: c.bgSuccess, borderColor: c.success },
   outcomeBtnRed: { backgroundColor: c.bgError, borderColor: c.error },
   outcomeBtnTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
   outcomeBtnTxtActive: { color: c.textPrimary },
@@ -1692,7 +1696,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
   cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
   saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.primary },
-  saveBtnDisabled: { backgroundColor: '#b0cece' },
+  saveBtnDisabled: { backgroundColor: c.primaryLight },
   saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   // ── Congrats overlay ─────────────────────────────────────────────────────────
   congratsEmoji: { fontSize: 52 },

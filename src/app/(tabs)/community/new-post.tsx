@@ -174,8 +174,8 @@ export default function NewPost() {
             <Switch
               value={isAnonymous}
               onValueChange={setIsAnonymous}
-              trackColor={{ false: '#ddd', true: '#0F6E6E' }}
-              thumbColor={isAnonymous ? '#fff' : '#fff'}
+              trackColor={{ false: c.borderMid, true: c.primary }}
+              thumbColor={c.white}
             />
           </View>
 

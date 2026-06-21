@@ -53,11 +53,11 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function debtProgressColor(pct: number): string {
-  if (pct >= 1) return '#0a7a4e';
-  if (pct >= 0.7) return '#0F6E6E';
-  if (pct >= 0.4) return '#e67e22';
-  return '#c0392b';
+function debtProgressColor(pct: number, c: import('@/constants/theme').AppColors): string {
+  if (pct >= 1) return c.success;
+  if (pct >= 0.7) return c.primary;
+  if (pct >= 0.4) return c.warn;
+  return c.error;
 }
 
 function fmtPayoffDate(d: Date): string {
@@ -270,9 +270,9 @@ export default function DebtDetailScreen() {
               </View>
             </View>
             <View style={s.progressTrack}>
-              <View style={[s.progressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct) }]} />
+              <View style={[s.progressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct, c) }]} />
             </View>
-            <Text style={[s.progressLbl, { color: debtProgressColor(pct) }]}>
+            <Text style={[s.progressLbl, { color: debtProgressColor(pct, c) }]}>
               {isPaidOff ? '🎉 Fully paid off!' : `${Math.round(pct * 100)}% paid back`}
             </Text>
             {!isPaidOff && (() => {

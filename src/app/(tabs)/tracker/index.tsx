@@ -38,6 +38,10 @@ import { SkeletonBox } from '@/components/skeleton';
 
 type MainTab = 'debts' | 'saving' | 'session';
 
+// Deliberate purple brand color for the session tab — no theme token since it's category-specific.
+const SESSION_COLOR = '#7b5ea7';
+const SESSION_CHIP_BG = 'rgba(123, 94, 167, 0.12)';
+
 interface Debt {
   id: string;
   name: string;
@@ -109,11 +113,11 @@ function fmtDate(iso: string) {
 }
 
 
-function debtProgressColor(pct: number): string {
-  if (pct >= 1) return '#0a7a4e';
-  if (pct >= 0.7) return '#0F6E6E';
-  if (pct >= 0.4) return '#e67e22';
-  return '#c0392b';
+function debtProgressColor(pct: number, c: import('@/constants/theme').AppColors): string {
+  if (pct >= 1) return c.success;
+  if (pct >= 0.7) return c.primary;
+  if (pct >= 0.4) return c.warn;
+  return c.error;
 }
 
 
@@ -822,7 +826,7 @@ export default function TrackerIndex() {
           style={s.body}
           contentContainerStyle={s.bodyContent}
           keyboardShouldPersistTaps="handled"
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F6E6E" colors={['#0F6E6E']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} />}
         >
 
           {/* Debt recovery card */}
@@ -930,15 +934,15 @@ export default function TrackerIndex() {
           <View style={s.tabBar}>
             <Pressable style={s.tabBtn} onPress={() => setTab('debts')}>
               <Text style={[s.tabTxt, tab === 'debts' && s.tabTxtDebt]}>Debts</Text>
-              {tab === 'debts' && <View style={[s.tabIndicator, { backgroundColor: '#c0392b' }]} />}
+              {tab === 'debts' && <View style={[s.tabIndicator, { backgroundColor: c.error }]} />}
             </Pressable>
             <Pressable style={s.tabBtn} onPress={() => setTab('saving')}>
               <Text style={[s.tabTxt, tab === 'saving' && s.tabTxtSaving]}>Savings</Text>
-              {tab === 'saving' && <View style={[s.tabIndicator, { backgroundColor: '#0F6E6E' }]} />}
+              {tab === 'saving' && <View style={[s.tabIndicator, { backgroundColor: c.primary }]} />}
             </Pressable>
             <Pressable style={s.tabBtn} onPress={() => setTab('session')}>
               <Text style={[s.tabTxt, tab === 'session' && s.tabTxtSession]}>Session log</Text>
-              {tab === 'session' && <View style={[s.tabIndicator, { backgroundColor: '#7b5ea7' }]} />}
+              {tab === 'session' && <View style={[s.tabIndicator, { backgroundColor: SESSION_COLOR }]} />}
             </Pressable>
           </View>
 
@@ -946,7 +950,7 @@ export default function TrackerIndex() {
           {tab === 'debts' && (
             <>
               <Pressable
-                style={({ pressed }) => [s.addBtn, { borderColor: '#c0392b' }, pressed && { opacity: 0.85 }]}
+                style={({ pressed }) => [s.addBtn, { borderColor: c.error }, pressed && { opacity: 0.85 }]}
                 onPress={openAddDebt}>
                 <Ionicons name="add-circle-outline" size={18} color={c.error} />
                 <Text style={[s.addBtnTxt, { color: c.error }]}>Add a debt</Text>
@@ -963,7 +967,7 @@ export default function TrackerIndex() {
               )}
 
               {debts.length === 0 ? (
-                <View style={[s.sessionInfoCard, { borderLeftColor: '#c0392b' }]}>
+                <View style={[s.sessionInfoCard, { borderLeftColor: c.error }]}>
                   <View style={s.sessionInfoHeader}>
                     <Text style={s.sessionInfoIcon}>💳</Text>
                     <Text style={s.sessionInfoTitle}>Track what you owe</Text>
@@ -975,8 +979,8 @@ export default function TrackerIndex() {
                     For each debt you can log repayments, set a payoff target date, and watch your recovery progress grow.
                   </Text>
                   <View style={s.sessionInfoTip}>
-                    <Ionicons name="information-circle-outline" size={15} color="#c0392b" />
-                    <Text style={[s.sessionInfoTipTxt, { color: '#c0392b' }]}>Only you can see your debt amounts.</Text>
+                    <Ionicons name="information-circle-outline" size={15} color={c.error} />
+                    <Text style={[s.sessionInfoTipTxt, { color: c.error }]}>Only you can see your debt amounts.</Text>
                   </View>
                 </View>
               ) : (
@@ -1040,7 +1044,7 @@ export default function TrackerIndex() {
                           </View>
                         </View>
                         <View style={s.debtProgressTrack}>
-                          <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct) }]} />
+                          <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct, c) }]} />
                         </View>
                         {!isPaidOff && (() => {
                           const td = debt.target_date ? new Date(debt.target_date) : null;
@@ -1181,16 +1185,16 @@ export default function TrackerIndex() {
                   <Text style={s.sessionInfoBold}>not</Text> affect your streak, your debt recovery progress, or your savings — it's purely for self-awareness.
                 </Text>
                 <View style={s.sessionInfoTip}>
-                  <Ionicons name="information-circle-outline" size={15} color="#7b5ea7" />
+                  <Ionicons name="information-circle-outline" size={15} color={SESSION_COLOR} />
                   <Text style={s.sessionInfoTipTxt}>Only you can see these entries.</Text>
                 </View>
               </View>}
 
               <Pressable
-                style={({ pressed }) => [s.addBtn, { borderColor: '#7b5ea7' }, pressed && { opacity: 0.85 }]}
+                style={({ pressed }) => [s.addBtn, { borderColor: SESSION_COLOR }, pressed && { opacity: 0.85 }]}
                 onPress={openAddSession}>
-                <Ionicons name="add-circle-outline" size={18} color="#7b5ea7" />
-                <Text style={[s.addBtnTxt, { color: '#7b5ea7' }]}>Log a session</Text>
+                <Ionicons name="add-circle-outline" size={18} color={SESSION_COLOR} />
+                <Text style={[s.addBtnTxt, { color: SESSION_COLOR }]}>Log a session</Text>
               </Pressable>
 
               {sessions.length === 0 ? (
@@ -1207,7 +1211,7 @@ export default function TrackerIndex() {
                       <Text style={s.sessionCardEmoji}>{sessionEmoji(entry.category)}</Text>
                       <View style={s.sessionCardInfo}>
                         <Text style={s.sessionCardLabel}>{sessionLabel(entry.category)}</Text>
-                        {entry.note ? <Text style={s.sessionCardNote}>{entry.note}</Text> : null}
+                        {entry.note ? <Text style={s.sessionCardNote} numberOfLines={2} ellipsizeMode="tail">{entry.note}</Text> : null}
                         <Text style={s.sessionCardDate}>{fmtDate(entry.created_at)}</Text>
                       </View>
                       <View style={s.sessionCardRight}>
@@ -1935,7 +1939,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   debtProgressTrack: { height: 5, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden' },
   debtProgressFill: { height: '100%', backgroundColor: c.primary, borderRadius: 3 },
 
-  paidOffBadge: { backgroundColor: '#e8f5e9', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  paidOffBadge: { backgroundColor: c.bgSuccess, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   paidOffBadgeTxt: { fontSize: 11, fontWeight: '700', color: c.success },
 
   quickPayBtn: {
@@ -1952,8 +1956,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   debtTargetUnset: { fontSize: 11, color: c.primary, fontWeight: '500' },
 
   swipeHint: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  swipeHintDelete: { fontSize: 10, color: '#e8a89e', fontWeight: '500' },
-  swipeHintPay: { fontSize: 10, color: '#8cc8c0', fontWeight: '500' },
+  swipeHintDelete: { fontSize: 10, color: c.textError, fontWeight: '500', opacity: 0.6 },
+  swipeHintPay: { fontSize: 10, color: c.primaryLight, fontWeight: '500' },
 
   menuBtn: { padding: 4 },
 
@@ -2102,11 +2106,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   iosModalCancel: { fontSize: 15, fontWeight: '600', color: c.textSecondary },
   iosModalSaveTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
-  tabTxtSession: { color: '#7b5ea7' },
+  tabTxtSession: { color: SESSION_COLOR },
 
   sessionInfoCard: {
     backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10,
-    borderLeftWidth: 3, borderLeftColor: '#7b5ea7',
+    borderLeftWidth: 3, borderLeftColor: SESSION_COLOR,
   },
   sessionInfoHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 },
   sessionInfoIcon: { fontSize: 22 },
@@ -2114,7 +2118,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   sessionInfoBody: { fontSize: 13, color: c.textBody, lineHeight: 20 },
   sessionInfoBold: { fontWeight: '700', color: c.textSecondary },
   sessionInfoTip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  sessionInfoTipTxt: { fontSize: 12, color: '#7b5ea7', fontWeight: '500' },
+  sessionInfoTipTxt: { fontSize: 12, color: SESSION_COLOR, fontWeight: '500' },
 
   sessionSummaryCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
   sessionSummaryRow: { flexDirection: 'row' },
@@ -2132,9 +2136,9 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   sessionCardRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sessionCardAmt: { fontSize: 15, fontWeight: '700', color: c.error },
 
-  sessionChipActive: { borderColor: '#7b5ea7', backgroundColor: '#f0ebfa' },
-  sessionChipTxtActive: { color: '#7b5ea7', fontWeight: '600' },
-  sessionSaveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: '#7b5ea7' },
+  sessionChipActive: { borderColor: SESSION_COLOR, backgroundColor: SESSION_CHIP_BG },
+  sessionChipTxtActive: { color: SESSION_COLOR, fontWeight: '600' },
+  sessionSaveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: SESSION_COLOR },
 
   payInFullBtn: {
     alignSelf: 'flex-start', marginTop: 6,
