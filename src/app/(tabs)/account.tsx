@@ -472,7 +472,9 @@ export default function AccountScreen() {
             })
             .select('id, token, expires_at')
             .maybeSingle();
-          if (!error && data) {
+          if (error) {
+            Alert.alert('Could not generate link', error.message);
+          } else if (data) {
             // Delete any previous links only after the new one is confirmed
             await supabase.from('partner_links').delete().eq('user_id', user.id).neq('id', data.id);
             setPartnerToken(data.token);

@@ -510,12 +510,16 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const sessionDateIso = sessionDate.toISOString();
+        // Use local noon to keep the date stable across all timezones when stored as UTC
+        const sessionDateIso = new Date(
+          sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate(), 12, 0, 0,
+        ).toISOString();
         if (editingSession) {
-          await supabase.from('losses').update({
+          const { error: updateErr } = await supabase.from('losses').update({
             amount, category: sessionCategory, note: sessionNote.trim() || null,
             created_at: sessionDateIso,
           }).eq('id', editingSession.id).eq('user_id', user.id);
+          if (updateErr) { Alert.alert('Could not save session', updateErr.message); return; }
           await supabase.from('losses').insert({
             user_id: user.id, type: 'session_edited', amount,
             category: sessionCategory, note: sessionNote.trim() || null,

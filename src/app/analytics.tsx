@@ -258,7 +258,7 @@ export default function AnalyticsScreen() {
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
       supabase.from('debts').select('id, name, total_amount, target_date, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
       supabase.from('debt_payments').select('debt_id, amount, created_at').eq('user_id', user.id),
-      supabase.from('urge_journal').select('outcome, trigger, created_at').eq('user_id', user.id),
+      supabase.from('urge_journal').select('outcome, trigger, created_at').eq('user_id', user.id).neq('trigger', 'Relapse'),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', thirtyDaysAgo).order('created_at', { ascending: true }),
       supabase.from('mood_checkins').select('created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
     ]);

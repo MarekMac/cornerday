@@ -326,7 +326,7 @@ export default function JournalScreen() {
     if (!user) return;
 
     const [urgeRes, debtsRes, paymentsRes, savingsRes, resetsRes, activityRes, profileRes] = await Promise.all([
-      supabase.from('urge_journal').select('*').eq('user_id', user.id),
+      supabase.from('urge_journal').select('*').eq('user_id', user.id).neq('trigger', 'Relapse'),
       supabase.from('debts').select('id, name, total_amount, category, created_at').eq('user_id', user.id),
       supabase.from('debt_payments').select('id, amount, note, created_at, debts(name)').eq('user_id', user.id),
       supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving'),
