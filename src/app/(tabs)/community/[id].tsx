@@ -275,6 +275,7 @@ export default function PostDetail() {
           if (prev.some(c => c.id === (data as any).id)) return prev;
           return [...prev, newComment];
         });
+        setPost(p => p ? { ...p, comments_count: p.comments_count + 1 } : p);
         hapticMedium();
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
       }
