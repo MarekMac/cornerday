@@ -1621,11 +1621,12 @@ export default function HomeScreen() {
         setData(prev => {
           if (!prev) return prev;
           const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood, note: noteVal } : d);
+          const calendarDays = prev.calendarDays.map(d => d.iso === todayKey ? { ...d, mood } : d);
           if (isNewInsert) {
             const newCurrent = prev.checkinStreak.current + 1;
-            return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods, moodCount: prev.moodCount + 1, checkinStreak: { current: newCurrent, best: Math.max(prev.checkinStreak.best, newCurrent) } };
+            return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods, calendarDays, moodCount: prev.moodCount + 1, checkinStreak: { current: newCurrent, best: Math.max(prev.checkinStreak.best, newCurrent) } };
           }
-          return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods };
+          return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods, calendarDays };
         });
         hapticMedium();
         setEditingMood(false);
@@ -1652,8 +1653,9 @@ export default function HomeScreen() {
       setData(prev => {
         if (!prev) return prev;
         const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood: null, note: null } : d);
+        const calendarDays = prev.calendarDays.map(d => d.iso === todayKey ? { ...d, mood: null } : d);
         const newCurrent = Math.max(0, prev.checkinStreak.current - 1);
-        return { ...prev, todayMood: null, todayMoodNote: null, todayMoodId: null, weekMoods, moodCount: Math.max(0, prev.moodCount - 1), checkinStreak: { current: newCurrent, best: prev.checkinStreak.best } };
+        return { ...prev, todayMood: null, todayMoodNote: null, todayMoodId: null, weekMoods, calendarDays, moodCount: Math.max(0, prev.moodCount - 1), checkinStreak: { current: newCurrent, best: prev.checkinStreak.best } };
       });
       setEditingMood(false);
       setMoodNote('');
