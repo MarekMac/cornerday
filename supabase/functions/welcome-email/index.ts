@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const WEBHOOK_SECRET   = Deno.env.get('WEBHOOK_SECRET')!;
+const WEBHOOK_SECRET   = Deno.env.get('WEBHOOK_SECRET') ?? '';
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@cornerday.app>';
 
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
@@ -115,12 +115,21 @@ function buildHtml(firstName: string, whyLabel: string): string {
 }
 
 Deno.serve(async (req: Request) => {
+  if (!WEBHOOK_SECRET) {
+    console.error('WEBHOOK_SECRET env var not set');
+    return new Response(JSON.stringify({ error: 'server_misconfigured' }), { status: 500 });
+  }
+
   const auth = req.headers.get('Authorization') ?? '';
   if (auth !== `Bearer ${WEBHOOK_SECRET}`) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 
-  const body   = await req.json().catch(() => ({}));
+  const rawBody = await req.text();
+  if (rawBody.length > 65536) {
+    return new Response(JSON.stringify({ error: 'payload_too_large' }), { status: 413 });
+  }
+  const body   = JSON.parse(rawBody.length > 0 ? rawBody : '{}');
   const record = body.record ?? body;
   const userId = record.user_id;
   if (!userId) return new Response(JSON.stringify({ error: 'no user_id' }), { status: 400 });

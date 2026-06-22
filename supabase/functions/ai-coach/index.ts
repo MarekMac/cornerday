@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://cornerday.app',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
@@ -73,7 +73,11 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const { messages, checklistState } = await req.json() as {
+    const rawBody = await req.text();
+    if (rawBody.length > 65536) {
+      return json({ error: 'payload_too_large' }, 413);
+    }
+    const { messages, checklistState } = JSON.parse(rawBody) as {
       messages: { role: string; content: string }[];
       checklistState?: Record<string, boolean>;
     };
@@ -90,14 +94,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'no valid messages' }, 400);
     }
 
-    const isFirstTurn = validatedMessages.length === 1;
-
-    // Always verify premium status
+    // Always fetch full profile — context is injected into system prompt on every request
     const { data: profile } = await admin
       .from('users')
-      .select(isFirstTurn
-        ? 'is_premium, is_admin, display_name, motivation, trigger, goal, support_type, quit_date, quit_timestamp'
-        : 'is_premium, is_admin')
+      .select('is_premium, is_admin, display_name, motivation, trigger, goal, support_type, quit_date, quit_timestamp')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -105,91 +105,86 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Premium required' }, 403);
     }
 
-    let finalMessages: { role: string; content: string }[] = validatedMessages;
+    // Fetch supporting data in parallel
+    const [streakRes, lossesRes, moodRes] = await Promise.all([
+      admin.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
+      admin.from('losses').select('type, amount').eq('user_id', user.id).in('type', ['loss', 'payment']).limit(500),
+      admin.from('mood_checkins').select('mood').eq('user_id', user.id).order('created_at', { ascending: false }).limit(7),
+    ]);
 
-    if (isFirstTurn) {
-      // Fetch supporting data in parallel
-      const [streakRes, lossesRes, moodRes] = await Promise.all([
-        admin.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
-        admin.from('losses').select('type, amount').eq('user_id', user.id).in('type', ['loss', 'payment']).limit(500),
-        admin.from('mood_checkins').select('mood').eq('user_id', user.id).order('created_at', { ascending: false }).limit(7),
-      ]);
+    const { days: daysClean, label: cleanLabel } = daysCleanLabel(
+      profile.quit_timestamp ?? null,
+      profile.quit_date ?? null,
+    );
+    const longestStreak = Math.max(
+      streakRes.data?.longest_streak ?? 0,
+      streakRes.data?.current_streak ?? 0,
+      daysClean,
+    );
 
-      const { days: daysClean, label: cleanLabel } = daysCleanLabel(
-        profile.quit_timestamp ?? null,
-        profile.quit_date ?? null,
-      );
-      const longestStreak = Math.max(
-        streakRes.data?.longest_streak ?? 0,
-        streakRes.data?.current_streak ?? 0,
-        daysClean,
-      );
-
-      let totalLost = 0, totalPaid = 0;
-      for (const row of lossesRes.data ?? []) {
-        if (row.type === 'loss') totalLost += Number(row.amount);
-        else if (row.type === 'payment') totalPaid += Number(row.amount);
-      }
-      const stillOwed = Math.max(0, totalLost - totalPaid);
-
-      const moods = moodRes.data ?? [];
-      const avgMood = moods.length > 0
-        ? (moods.reduce((s, m) => s + m.mood, 0) / moods.length).toFixed(1)
-        : null;
-
-      // Checklist summary (sent from client)
-      const CHECKLIST_IDS = [
-        'delete_apps', 'remove_cards', 'delete_accounts',
-        'website_blocker', 'bank_block', 'spending_limit',
-        'self_exclude_operators', 'national_exclusion',
-        'tell_someone', 'save_helpline',
-        'unsubscribe_emails', 'unfollow_social', 'clear_bookmarks',
-      ];
-      const CHECKLIST_LABELS: Record<string, string> = {
-        delete_apps: 'deleted gambling apps',
-        remove_cards: 'removed saved payment details',
-        delete_accounts: 'closed gambling accounts',
-        website_blocker: 'installed website blocker',
-        bank_block: 'blocked gambling at bank',
-        spending_limit: 'set spending limit',
-        self_exclude_operators: 'self-excluded from operators',
-        national_exclusion: 'joined national exclusion scheme',
-        tell_someone: 'told a trusted person',
-        save_helpline: 'saved helpline number',
-        unsubscribe_emails: 'unsubscribed from promo emails',
-        unfollow_social: 'unfollowed gambling accounts',
-        clear_bookmarks: 'cleared gambling bookmarks',
-      };
-      const checkedIds = checklistState ? Object.entries(checklistState).filter(([, v]) => v).map(([k]) => k) : [];
-      const uncheckedIds = CHECKLIST_IDS.filter(id => !checkedIds.includes(id));
-      const checklistSummary = checkedIds.length === 0
-        ? 'none completed yet'
-        : `${checkedIds.length}/${CHECKLIST_IDS.length} complete — done: ${checkedIds.map(id => CHECKLIST_LABELS[id] ?? id).join(', ')}${uncheckedIds.length > 0 ? `; still to do: ${uncheckedIds.map(id => CHECKLIST_LABELS[id] ?? id).join(', ')}` : ''}`;
-
-      const contextLines: string[] = [
-        `[User context — use naturally in conversation, do not quote verbatim]`,
-        `Name: ${profile.display_name ?? 'there'}`,
-        `Recovery: ${cleanLabel}${longestStreak > daysClean ? ` (longest streak: ${longestStreak} days)` : ''}`,
-        `Why they quit: ${profile.motivation ?? 'a better life'}`,
-        `Biggest trigger: ${profile.trigger ?? 'urges'}`,
-        `Main goal: ${profile.goal ?? 'stay free from gambling'}`,
-        `Support: ${supportLabel(profile.support_type)}`,
-      ];
-      if (totalLost > 0) {
-        contextLines.push(`Finances: lost ${totalLost.toLocaleString()} total — paid back ${totalPaid.toLocaleString()} — still owed ${stillOwed.toLocaleString()}`);
-      }
-      if (avgMood !== null) {
-        contextLines.push(`Recent mood (last ${moods.length} check-ins): ${avgMood}/5`);
-      }
-      contextLines.push(`Prevention checklist: ${checklistSummary}`);
-      contextLines.push(`[End context]`);
-
-      const contextBlock = contextLines.join('\n');
-      const firstContent = `${contextBlock}\n\n${validatedMessages[0].content}`;
-      finalMessages = [{ role: 'user', content: firstContent }, ...validatedMessages.slice(1)];
+    let totalLost = 0, totalPaid = 0;
+    for (const row of lossesRes.data ?? []) {
+      if (row.type === 'loss') totalLost += Number(row.amount);
+      else if (row.type === 'payment') totalPaid += Number(row.amount);
     }
+    const stillOwed = Math.max(0, totalLost - totalPaid);
 
-    const upstream = await callAnthropic(finalMessages);
+    const moods = moodRes.data ?? [];
+    const avgMood = moods.length > 0
+      ? (moods.reduce((s, m) => s + m.mood, 0) / moods.length).toFixed(1)
+      : null;
+
+    // Checklist summary (sent from client)
+    const CHECKLIST_IDS = [
+      'delete_apps', 'remove_cards', 'delete_accounts',
+      'website_blocker', 'bank_block', 'spending_limit',
+      'self_exclude_operators', 'national_exclusion',
+      'tell_someone', 'save_helpline',
+      'unsubscribe_emails', 'unfollow_social', 'clear_bookmarks',
+    ];
+    const CHECKLIST_LABELS: Record<string, string> = {
+      delete_apps: 'deleted gambling apps',
+      remove_cards: 'removed saved payment details',
+      delete_accounts: 'closed gambling accounts',
+      website_blocker: 'installed website blocker',
+      bank_block: 'blocked gambling at bank',
+      spending_limit: 'set spending limit',
+      self_exclude_operators: 'self-excluded from operators',
+      national_exclusion: 'joined national exclusion scheme',
+      tell_someone: 'told a trusted person',
+      save_helpline: 'saved helpline number',
+      unsubscribe_emails: 'unsubscribed from promo emails',
+      unfollow_social: 'unfollowed gambling accounts',
+      clear_bookmarks: 'cleared gambling bookmarks',
+    };
+    const checkedIds = checklistState ? Object.entries(checklistState).filter(([, v]) => v).map(([k]) => k) : [];
+    const uncheckedIds = CHECKLIST_IDS.filter(id => !checkedIds.includes(id));
+    const checklistSummary = checkedIds.length === 0
+      ? 'none completed yet'
+      : `${checkedIds.length}/${CHECKLIST_IDS.length} complete — done: ${checkedIds.map(id => CHECKLIST_LABELS[id] ?? id).join(', ')}${uncheckedIds.length > 0 ? `; still to do: ${uncheckedIds.map(id => CHECKLIST_LABELS[id] ?? id).join(', ')}` : ''}`;
+
+    const contextLines: string[] = [
+      `[User context — use naturally in conversation, do not quote verbatim]`,
+      `Name: ${profile.display_name ?? 'there'}`,
+      `Recovery: ${cleanLabel}${longestStreak > daysClean ? ` (longest streak: ${longestStreak} days)` : ''}`,
+      `Why they quit: ${profile.motivation ?? 'a better life'}`,
+      `Biggest trigger: ${profile.trigger ?? 'urges'}`,
+      `Main goal: ${profile.goal ?? 'stay free from gambling'}`,
+      `Support: ${supportLabel(profile.support_type)}`,
+    ];
+    if (totalLost > 0) {
+      contextLines.push(`Finances: lost ${totalLost.toLocaleString()} total — paid back ${totalPaid.toLocaleString()} — still owed ${stillOwed.toLocaleString()}`);
+    }
+    if (avgMood !== null) {
+      contextLines.push(`Recent mood (last ${moods.length} check-ins): ${avgMood}/5`);
+    }
+    contextLines.push(`Prevention checklist: ${checklistSummary}`);
+    contextLines.push(`[End context]`);
+
+    const contextBlock = contextLines.join('\n');
+    const systemPromptWithContext = `${SYSTEM_PROMPT}\n\n${contextBlock}`;
+
+    const upstream = await callAnthropic(validatedMessages, systemPromptWithContext);
     if (!upstream.ok) {
       const err = await upstream.text();
       console.error('Anthropic error:', err);
@@ -210,7 +205,7 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function callAnthropic(messages: { role: string; content: string }[]) {
+async function callAnthropic(messages: { role: string; content: string }[], systemPrompt: string) {
   const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!anthropicKey) throw new Error('ANTHROPIC_API_KEY not set');
 
@@ -225,8 +220,9 @@ async function callAnthropic(messages: { role: string; content: string }[]) {
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       stream: true,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages,
     }),
+    signal: AbortSignal.timeout(25_000),
   });
 }
