@@ -102,6 +102,7 @@ export interface NotifPrefs {
   notif_weekly_summary: boolean;
   notif_milestone_approaching: boolean;
   notif_urge_prediction: boolean;
+  notif_community: boolean;
 }
 
 export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
@@ -111,6 +112,7 @@ export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
   notif_weekly_summary: false,
   notif_milestone_approaching: false,
   notif_urge_prediction: false,
+  notif_community: true,
 };
 
 const SCHEDULED_MILESTONES = [

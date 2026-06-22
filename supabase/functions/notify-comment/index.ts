@@ -67,16 +67,19 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, skipped: 'self-comment' }), { status: 200 });
     }
 
-    // Fetch post owner's push token
+    // Fetch post owner's push token and notification preferences
     const { data: owner, error: ownerError } = await supabase
       .from('users')
-      .select('expo_push_token, display_name')
+      .select('expo_push_token, display_name, notif_community')
       .eq('id', post_owner_id)
       .maybeSingle();
 
     if (ownerError || !owner?.expo_push_token) {
-      // Owner has no push token — silently skip
       return new Response(JSON.stringify({ ok: true, skipped: 'no_token' }), { status: 200 });
+    }
+
+    if (owner.notif_community === false) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'notif_community_off' }), { status: 200 });
     }
 
     // Fetch commenter's display name for the notification body

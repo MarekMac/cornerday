@@ -74,14 +74,16 @@ Deno.serve(async (req: Request) => {
     const followerIds = follows.map((f: { follower_id: string }) => f.follower_id);
 
     // Fetch push tokens for all followers (keep id→token mapping for error handling)
+    // Filter out followers who have turned off community push notifications
     const { data: followerUsers } = await supabase
       .from('users')
-      .select('id, expo_push_token')
+      .select('id, expo_push_token, notif_community')
       .in('id', followerIds)
-      .not('expo_push_token', 'is', null);
+      .not('expo_push_token', 'is', null)
+      .neq('notif_community', false);
 
     const recipients: { userId: string; token: string }[] = (followerUsers ?? [])
-      .filter((u: { id: string; expo_push_token: string | null }) => !!u.expo_push_token)
+      .filter((u: { id: string; expo_push_token: string | null; notif_community: boolean }) => !!u.expo_push_token)
       .map((u: { id: string; expo_push_token: string }) => ({ userId: u.id, token: u.expo_push_token }));
 
     if (recipients.length === 0) {

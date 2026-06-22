@@ -335,7 +335,7 @@ export default function AccountScreen() {
     const [{ data }, { data: streakData }, { data: savingsRows }] = await Promise.all([
       supabase
         .from('users')
-        .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, debt_target_date, savings_target_date')
+        .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, debt_target_date, savings_target_date')
         .eq('id', user.id)
         .maybeSingle(),
       supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
@@ -395,6 +395,7 @@ export default function AccountScreen() {
       notif_weekly_summary: data?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
       notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
       notif_urge_prediction: data?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+      notif_community: data?.notif_community ?? DEFAULT_NOTIF_PREFS.notif_community,
     });
     setGlobalAvatarUrl(resolvedAvatar);
   }, []);
@@ -2609,6 +2610,7 @@ export default function AccountScreen() {
               { key: 'notif_daily_checkin',         label: 'Daily check-in',        desc: 'Morning prompt to log your mood' },
               { key: 'notif_weekly_summary',        label: 'Weekly summary',        desc: 'Monday morning overview of your progress' },
               { key: 'notif_milestone_approaching', label: 'Milestone approaching', desc: '24 hours before your next milestone' },
+              { key: 'notif_community',             label: 'Community activity',    desc: 'Comments on your posts and new posts from people you follow' },
             ] as { key: keyof NotifPrefs; label: string; desc: string }[]).map(({ key, label, desc }) => (
               <View key={key}>
                 <View style={s.notifRow}>
