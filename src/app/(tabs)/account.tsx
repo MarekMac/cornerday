@@ -3466,7 +3466,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   statCol: { flex: 1, alignItems: 'center', gap: 2 },
   statIcon: { fontSize: 20, marginBottom: 2 },
-  statValue: { fontSize: 20, fontWeight: '800', color: c.primary },
+  statValue: { fontSize: 16, fontWeight: '800', color: c.primary },
   statLabel: { fontSize: 11, color: c.textMuted, fontWeight: '600' },
   statDivider: { width: 1, height: 52, backgroundColor: c.borderSubtle, marginHorizontal: 8 },
 
