@@ -914,6 +914,7 @@ export default function HomeScreen() {
   const fetchingRef = useRef(false);
   const isMountedRef = useRef(true);
   const moodScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScrolledBadgeCountRef = useRef(0);
   const [moodCardY, setMoodCardY] = useState(0);
   const [badgesCardY, setBadgesCardY] = useState(0);
 
@@ -1258,13 +1259,11 @@ export default function HomeScreen() {
     }
 
     // Savings goal badges
-    const [savingsGoalRaw, savingsGoalForRaw, savingsGoalIconRaw, checklistRaw, checklistBadgeSent, goalReachedBadgeSent] = await Promise.all([
+    const [savingsGoalRaw, savingsGoalForRaw, savingsGoalIconRaw, checklistRaw] = await Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
       AsyncStorage.getItem(CHECKLIST_KEY),
-      AsyncStorage.getItem(CHECKLIST_BADGE_SENT_KEY),
-      AsyncStorage.getItem(GOAL_REACHED_BADGE_SENT_KEY),
     ]);
     const _rawGoal = savingsGoalRaw ? Number(savingsGoalRaw) : null;
     const savingsGoalAmount = _rawGoal !== null && !isNaN(_rawGoal) ? _rawGoal : null;
@@ -1291,10 +1290,9 @@ export default function HomeScreen() {
         });
       }
     }
-    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !goalReachedBadgeSent) {
+    if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !earnedBadges.includes('goal_reached')) {
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_reached' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: savingsGoalAmount, category: 'Milestone', note: '🎊 Savings goal reached' });
-      await AsyncStorage.setItem(GOAL_REACHED_BADGE_SENT_KEY, '1');
       earnedBadges.push('goal_reached');
       maybeRequestReview('savings_goal');
       if (!pendingCelebration) pendingCelebration = {
@@ -1315,17 +1313,18 @@ export default function HomeScreen() {
       }
     }
 
-    // Prevention checklist badge — driven by AsyncStorage, no DB insert needed
+    // Prevention checklist badge — guard via DB earnedBadges (source of truth)
     let checklistData: Record<string, boolean> = {};
     try { checklistData = checklistRaw ? JSON.parse(checklistRaw) : {}; } catch { /* corrupted, treat as empty */ }
     const checklistChecked = Object.values(checklistData).filter(Boolean).length;
     const checklistCompleted = checklistChecked >= CHECKLIST_TOTAL;
-    if (checklistCompleted && !checklistBadgeSent) {
+    if (checklistCompleted && !earnedBadges.includes('checklist_complete')) {
+      await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'checklist_complete' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
+      earnedBadges.push('checklist_complete');
       await supabase.from('losses').insert({
         user_id: user.id, type: 'milestone_earned', amount: 0,
         category: 'Milestone', note: '🛡️ Safe Zone — prevention checklist completed',
       });
-      await AsyncStorage.setItem(CHECKLIST_BADGE_SENT_KEY, '1');
       if (!pendingCelebration) pendingCelebration = {
         emoji: '🛡️', label: 'Safe Zone',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
@@ -1492,6 +1491,9 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!data) return;
+    const currentCount = data.earnedBadges.length;
+    if (currentCount === lastScrolledBadgeCountRef.current) return;
+    lastScrolledBadgeCountRef.current = currentCount;
     const unearnedStart = BADGE_DEFS.findIndex(b => b.days > 0 && !data.earnedBadges.includes(b.type));
     const visibleBadges = BADGE_DEFS.filter((b, i) => {
       const earned = b.days === 0 || data.earnedBadges.includes(b.type);
@@ -1622,7 +1624,8 @@ export default function HomeScreen() {
         } else {
           const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
           if (insertErr) { Alert.alert('Could not save mood', insertErr.message); return; }
-          setData(prev => prev ? { ...prev, todayMoodId: inserted?.id ?? null } : prev);
+          if (!inserted?.id) { Alert.alert('Could not save mood', 'No row ID returned. Please try again.'); return; }
+          setData(prev => prev ? { ...prev, todayMoodId: inserted.id } : prev);
           showInterstitialIfReady(isPremium);
         }
         const todayKey = todayStr();
@@ -1692,18 +1695,25 @@ export default function HomeScreen() {
           Alert.alert('Could not reset streak', rpcError.message);
           return;
         }
-        const { error: journalErr } = await supabase.from('losses').insert({
+        let relapseRowId: string | null = null;
+        const { data: journalRow, error: journalErr } = await supabase.from('losses').insert({
           user_id: user.id, type: 'streak_reset', amount: 0,
           category: 'Streak Reset',
           note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
-        });
-        if (journalErr) console.warn('[doRelapse] journal insert failed:', journalErr.message);
+        }).select('id').maybeSingle();
+        if (journalErr) {
+          console.warn('[doRelapse] journal insert failed:', journalErr.message);
+        } else if (journalRow?.id) {
+          relapseRowId = journalRow.id;
+        }
         // Save shield undo state if shield is enabled
         if (shieldEnabled && data?.quitDate) {
-          const undoData = { prevQuit: data.quitDate, prevStreakDays: days, expiresAt: Date.now() + 24 * 60 * 60 * 1000 };
+          const undoData = { prevQuit: data.quitDate, prevStreakDays: days, expiresAt: Date.now() + 24 * 60 * 60 * 1000, relapseRowId };
           await AsyncStorage.setItem(SHIELD_UNDO_KEY, JSON.stringify(undoData));
-          setShieldUndo(undoData);
+          setShieldUndo({ prevQuit: undoData.prevQuit, prevStreakDays: undoData.prevStreakDays, expiresAt: undoData.expiresAt });
         }
+        // Delete badges from DB so they are re-awarded cleanly on the new streak
+        await supabase.from('badges').delete().eq('user_id', user.id);
         // Clear AsyncStorage badge/notification flags so everything resets cleanly after a relapse
         await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         // Reschedule notifications against the new quit timestamp
@@ -1753,17 +1763,15 @@ export default function HomeScreen() {
         Alert.alert('Could not undo reset', 'Please try again.');
         return;
       }
-      // Remove the streak_reset loss row that was created by doRelapse
-      const { data: resetRow } = await supabase
-        .from('losses')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('type', 'streak_reset')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (resetRow?.id) {
-        await supabase.from('losses').delete().eq('id', resetRow.id);
+      // Remove the specific streak_reset loss row that was created by doRelapse
+      // Use the stored row ID to avoid deleting the wrong row if the user relapses twice
+      const rawUndo = await AsyncStorage.getItem(SHIELD_UNDO_KEY);
+      let storedRelapseRowId: string | null = null;
+      if (rawUndo) {
+        try { storedRelapseRowId = JSON.parse(rawUndo)?.relapseRowId ?? null; } catch { /* ignore */ }
+      }
+      if (storedRelapseRowId) {
+        await supabase.from('losses').delete().eq('id', storedRelapseRowId).eq('user_id', user.id);
       }
       await AsyncStorage.removeItem(SHIELD_UNDO_KEY);
       setShieldUndo(null);
@@ -1940,7 +1948,10 @@ export default function HomeScreen() {
               const streakFrac = streakMs / 86400000;
               const progress = earned ? 1 : badge.days > 0 ? Math.min(1, streakFrac / badge.days) : 1;
               return (
-                <Pressable key={badge.type} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]} onPress={() => {
+                <Pressable key={badge.type} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  accessibilityLabel={`${badge.label} — ${earned ? 'earned' : 'locked'}`}
+                  accessibilityRole="button"
+                  onPress={() => {
                   if (earned) {
                     const earnedAt = data.badgeTimestamps[badge.type];
                     const dailyRate = weeklyToDaily(data.weeklyBet);
@@ -1999,6 +2010,8 @@ export default function HomeScreen() {
               const progress = debt.earned ? 1 : debt.totalAmount > 0 ? Math.min(1, debt.paidAmount / debt.totalAmount) : 0;
               return (
                 <Pressable key={debt.id} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  accessibilityLabel={`${debt.name} paid — ${debt.earned ? 'earned' : 'locked'}`}
+                  accessibilityRole="button"
                   onPress={() => { if (debt.earned) { openShareCard({ emoji: '🏦', label: `${debt.name} paid` }, true, [{ label: 'Total paid off', value: fmt(debt.totalAmount, data.currency), highlight: true }]); } else { const owed = Math.max(0, debt.totalAmount - debt.paidAmount); openShareCard({ emoji: '🏦', label: `${debt.name} paid` }, true, [{ label: 'Total', value: fmt(debt.totalAmount, data.currency) }, { label: 'Paid back', value: fmt(debt.paidAmount, data.currency), highlight: true }, ...(owed > 0 ? [{ label: 'Still owed', value: fmt(owed, data.currency) }] : [])], true, debt.totalAmount > 0 ? Math.min(1, debt.paidAmount / debt.totalAmount) : 0, "Keep making payments and this badge will be yours."); } }}>
                   <View style={[s.badgeCircle, debt.earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={progress} />
@@ -2012,6 +2025,8 @@ export default function HomeScreen() {
               const earned = data.checklistCompleted;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  accessibilityLabel={`Safe Zone — ${earned ? 'earned' : 'locked'}`}
+                  accessibilityRole="button"
                   onPress={() => {
                     if (earned) {
                       openShareCard({ emoji: '🛡️', label: 'Safe Zone' }, true, [{ label: 'Achievement', value: 'All prevention steps completed' }]);
@@ -2039,6 +2054,8 @@ export default function HomeScreen() {
               const earned = data.earnedBadges.includes('goal_set');
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  accessibilityLabel={`Goal Setter — ${earned ? 'earned' : 'locked'}`}
+                  accessibilityRole="button"
                   onPress={() => { if (earned) { openShareCard({ emoji: '📍', label: 'Goal Setter' }, true, [{ label: 'Saving towards', value: data.savingsGoalFor || 'My goal' }, { label: 'Goal amount', value: fmt(data.savingsGoal ?? 0, data.currency) }]); } else { openShareCard({ emoji: '📍', label: 'Goal Setter' }, true, [], true, 0, "Set a savings goal in the Tracker tab to earn this badge."); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : 0} />
@@ -2054,6 +2071,8 @@ export default function HomeScreen() {
                 ? Math.min(1, data.totalPaid / data.savingsGoal) : 0;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  accessibilityLabel={`Goal Met — ${earned ? 'earned' : 'locked'}`}
+                  accessibilityRole="button"
                   onPress={() => { if (earned) { openShareCard({ emoji: '🎊', label: 'Goal Met' }, true, [{ label: 'Goal', value: data.savingsGoalFor || 'My goal' }, { label: 'Amount saved', value: fmt(data.totalPaid, data.currency), highlight: true }]); } else { const prog = data.savingsGoal && data.savingsGoal > 0 ? Math.min(1, data.totalPaid / data.savingsGoal) : 0; const det = data.savingsGoal ? [{ label: 'Goal', value: fmt(data.savingsGoal, data.currency) }, { label: 'Saved so far', value: fmt(data.totalPaid, data.currency), highlight: true as const }, { label: 'Remaining', value: fmt(Math.max(0, data.savingsGoal - data.totalPaid), data.currency) }] : [{ label: 'Next step', value: 'Set a savings goal in Tracker' }]; openShareCard({ emoji: '🎊', label: 'Goal Met' }, true, det, true, prog, "Every saving logged brings you closer to this milestone."); } }}>
                   <View style={[s.badgeCircle, earned ? s.badgeEarned : s.badgeLocked]}>
                     <BadgeRing progress={earned ? 1 : progress} />
@@ -2090,6 +2109,8 @@ export default function HomeScreen() {
               const progress = earned ? 1 : Math.min(1, activityCount / (ACTIVITY_BADGE_THRESHOLDS[badge.type] ?? 1));
               return (
                 <Pressable key={badge.type} style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
+                  accessibilityLabel={`${badge.label} — ${earned ? 'earned' : 'locked'}`}
+                  accessibilityRole="button"
                   onPress={() => {
                     if (earned) {
                       const det: Array<{ label: string; value: string }> = [{ label: 'Achievement', value: badge.earned }];
@@ -2176,18 +2197,29 @@ export default function HomeScreen() {
               ) : (
                 <>
                   <View style={s.moodRow}>
-                    {MOODS.map((emoji, i) => (
-                      <Pressable
-                        key={i}
-                        onPress={() => { haptic(); setEditMoodValue(i + 1); }}
-                        style={({ pressed }) => [s.moodBtn, pressed && s.pressed,
-                          editMoodValue === i + 1 && s.moodBtnSelected]}>
-                        <Text style={s.moodEmoji}>{emoji}</Text>
-                        <Text style={[s.moodLabelTxt, editMoodValue === i + 1 && s.moodLabelTxtSelected]}>
-                          {MOOD_LABELS[i]}
-                        </Text>
-                      </Pressable>
-                    ))}
+                    {MOODS.map((emoji, i) => {
+                      const moodAccessibilityLabels = [
+                        'Mood 1 — Very bad',
+                        'Mood 2 — Bad',
+                        'Mood 3 — Neutral',
+                        'Mood 4 — Good',
+                        'Mood 5 — Great',
+                      ];
+                      return (
+                        <Pressable
+                          key={i}
+                          onPress={() => { haptic(); setEditMoodValue(i + 1); }}
+                          accessibilityLabel={moodAccessibilityLabels[i]}
+                          accessibilityRole="button"
+                          style={({ pressed }) => [s.moodBtn, pressed && s.pressed,
+                            editMoodValue === i + 1 && s.moodBtnSelected]}>
+                          <Text style={s.moodEmoji}>{emoji}</Text>
+                          <Text style={[s.moodLabelTxt, editMoodValue === i + 1 && s.moodLabelTxtSelected]}>
+                            {MOOD_LABELS[i]}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
                   </View>
                   <View style={s.moodInputRow}>
                     <TextInput
