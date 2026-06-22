@@ -259,8 +259,8 @@ export default function TrackerIndex() {
         setCurrency(profileRes.data.currency ?? 'USD');
         setWeeklyBet(profileRes.data.weekly_bet ?? null);
         setQuitTs(profileRes.data.quit_timestamp ?? profileRes.data.quit_date ?? null);
-        setDebtTargetDate(profileRes.data.debt_target_date ? new Date(profileRes.data.debt_target_date) : null);
-        setSavingsTargetDate(profileRes.data.savings_target_date ? new Date(profileRes.data.savings_target_date) : null);
+        setDebtTargetDate(profileRes.data.debt_target_date ? new Date(profileRes.data.debt_target_date + 'T12:00:00') : null);
+        setSavingsTargetDate(profileRes.data.savings_target_date ? new Date(profileRes.data.savings_target_date + 'T12:00:00') : null);
       }
       const _rawGoalN = rawGoal ? Number(rawGoal) : null;
       setSavingsGoal(_rawGoalN !== null && !isNaN(_rawGoalN) ? _rawGoalN : null);
@@ -312,7 +312,7 @@ export default function TrackerIndex() {
     setDebtName(debt.name);
     setDebtAmount(String(debt.total_amount));
     setDebtCategory(debt.category);
-    const perDebtDate = debt.target_date ? new Date(debt.target_date) : null;
+    const perDebtDate = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
     debtTargetDateBeforeEdit.current = perDebtDate;
     setDebtTargetDate(perDebtDate);
     setDebtModalVisible(true);
@@ -990,7 +990,7 @@ export default function TrackerIndex() {
                   const pct = Number(debt.total_amount) > 0
                     ? Math.min(1, paid / Number(debt.total_amount)) : 0;
                   const isPaidOff = remaining === 0 && paid > 0;
-                  const overdueTd = debt.target_date ? new Date(debt.target_date) : null;
+                  const overdueTd = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
                   const isOverdue = !isPaidOff && overdueTd !== null && Math.ceil((overdueTd.getTime() - Date.now()) / 86400000) <= 0;
 
                   return (
@@ -1047,7 +1047,7 @@ export default function TrackerIndex() {
                           <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct, c) }]} />
                         </View>
                         {!isPaidOff && (() => {
-                          const td = debt.target_date ? new Date(debt.target_date) : null;
+                          const td = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
                           const daysRemaining = td ? Math.ceil((td.getTime() - Date.now()) / 86400000) : null;
                           const daysElapsed = Math.max(1, (Date.now() - new Date(debt.created_at).getTime()) / 86400000);
                           const requiredPerDay = td && daysRemaining && daysRemaining > 0 ? remaining / daysRemaining : null;

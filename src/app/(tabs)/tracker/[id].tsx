@@ -101,7 +101,7 @@ export default function DebtDetailScreen() {
 
     if (debtRes.data) {
       setDebt(debtRes.data as Debt);
-      if (debtRes.data.target_date) setTargetDate(new Date(debtRes.data.target_date));
+      if (debtRes.data.target_date) setTargetDate(new Date(debtRes.data.target_date + 'T12:00:00'));
     }
     setPayments((paymentsRes.data ?? []) as Payment[]);
     if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
