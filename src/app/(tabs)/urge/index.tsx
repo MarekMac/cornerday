@@ -1266,7 +1266,7 @@ export default function UrgeScreen() {
                   )}
                 </View>
               </View>
-              <Pressable style={s.gameCloseBtn} onPress={() => { showInterstitialIfReady(isPremium, 0.4); setActiveGame(null); }}>
+              <Pressable style={s.gameCloseBtn} onPress={() => { showInterstitialIfReady(isPremium, 0.33); setActiveGame(null); }}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
               </Pressable>
             </View>
@@ -1289,7 +1289,7 @@ export default function UrgeScreen() {
                 <Text style={{ fontSize: 20 }}>{EXERCISES.find(e => e.key === activeExercise)?.emoji}</Text>
                 <Text style={s.gameOverlayTitle}>{EXERCISES.find(e => e.key === activeExercise)?.title}</Text>
               </View>
-              <Pressable style={s.gameCloseBtn} onPress={() => { showInterstitialIfReady(isPremium, 0.4); setActiveExercise(null); }}>
+              <Pressable style={s.gameCloseBtn} onPress={() => { showInterstitialIfReady(isPremium, 0.33); setActiveExercise(null); }}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
               </Pressable>
             </View>

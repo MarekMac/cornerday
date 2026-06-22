@@ -3032,7 +3032,7 @@ export default function HomeScreen() {
             openShareCard({ emoji: b.emoji, label: b.label });
           }}
           onClose={async () => {
-            showInterstitialIfReady(isPremium, 0.4);
+            showInterstitialIfReady(isPremium, 0.33);
             const badgeType = celebrationBadge?.type;
             setCelebrationBadge(null);
             if (badgeType === '1_week') maybeRequestReview('7_day');
