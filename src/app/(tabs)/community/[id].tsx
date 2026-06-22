@@ -513,7 +513,7 @@ export default function PostDetail() {
       <View style={[s.header, { backgroundColor: c.primary }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
-            <Pressable onPress={() => { showInterstitialIfReady(isPremium); router.back(); }} style={s.backBtn} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+            <Pressable onPress={() => { showInterstitialIfReady(isPremium, 0.2); router.back(); }} style={s.backBtn} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
               <Ionicons name="arrow-back" size={22} color={c.white} />
             </Pressable>
             <Text style={s.headerTitle}>Story</Text>

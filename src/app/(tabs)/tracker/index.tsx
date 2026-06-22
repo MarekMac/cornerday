@@ -534,7 +534,7 @@ export default function TrackerIndex() {
             category: sessionCategory, note: sessionNote.trim() || null,
             created_at: sessionDateIso,
           });
-          showInterstitialIfReady(isPremium, 0.2);
+          showInterstitialIfReady(isPremium, 0.1);
         }
         hapticMedium();
         closeSessionModal();
