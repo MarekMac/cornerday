@@ -140,6 +140,7 @@ export default function TrackerIndex() {
   const [weeklyBet, setWeeklyBet] = useState<string | null>(null);
   const [quitTs, setQuitTs] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 1000);
@@ -266,12 +267,16 @@ export default function TrackerIndex() {
       setSavingsGoal(_rawGoalN !== null && !isNaN(_rawGoalN) ? _rawGoalN : null);
       setSavingsGoalFor(rawFor ?? '');
       setSavingsGoalIcon(rawIcon ?? '🎯');
+    } catch (e) {
+      console.warn('fetchAll error:', e);
+      setLoadError(true);
     } finally {
       fetchingRef.current = false;
+      setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchAll().finally(() => { setLoading(false); initialFetchDone.current = true; fetchingRef.current = false; }); }, [fetchAll]);
+  useEffect(() => { fetchAll().finally(() => { initialFetchDone.current = true; fetchingRef.current = false; }); }, [fetchAll]);
   useFocusEffect(useCallback(() => { if (initialFetchDone.current) fetchAll(); }, [fetchAll]));
 
   const onRefresh = useCallback(async () => {
@@ -378,8 +383,17 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id).eq('user_id', user.id);
-        await supabase.from('debts').delete().eq('id', deleteDebtTarget.id).eq('user_id', user.id);
+        // Delete the debt row first — if there is a FK cascade, payments are cleaned up automatically.
+        const { error: debtDelErr } = await supabase.from('debts').delete().eq('id', deleteDebtTarget.id).eq('user_id', user.id);
+        if (debtDelErr) {
+          Alert.alert('Could not delete debt', debtDelErr.message);
+          return;
+        }
+        // Delete orphaned payments in case there is no FK cascade.
+        const { error: paymentsDelErr } = await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id).eq('user_id', user.id);
+        if (paymentsDelErr) {
+          Alert.alert('Debt deleted but payments may remain', paymentsDelErr.message);
+        }
         await supabase.from('losses').insert({
           user_id: user.id, type: 'debt_deleted', amount: deleteDebtTarget.total_amount,
           category: 'Debt', note: deleteDebtTarget.name,
@@ -608,24 +622,29 @@ export default function TrackerIndex() {
     }
     setSavingGoalBusy(true);
     try {
-      if (!goalInput) {
-        await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
-        await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
-        setSavingsGoal(null);
-        setSavingsGoalFor('');
-        setSavingsGoalIcon('🎯');
-      } else {
-        const forVal = goalForInput.trim();
-        const iconVal = goalIconInput || '🎯';
-        await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
-        await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
-        if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
-        else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
-        const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
-        await logGoalEvent(eventType, val, forVal || null);
-        setSavingsGoal(val);
-        setSavingsGoalFor(forVal);
-        setSavingsGoalIcon(iconVal);
+      try {
+        if (!goalInput) {
+          await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+          await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
+          setSavingsGoal(null);
+          setSavingsGoalFor('');
+          setSavingsGoalIcon('🎯');
+        } else {
+          const forVal = goalForInput.trim();
+          const iconVal = goalIconInput || '🎯';
+          await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
+          await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
+          if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
+          else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
+          const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
+          await logGoalEvent(eventType, val, forVal || null);
+          setSavingsGoal(val);
+          setSavingsGoalFor(forVal);
+          setSavingsGoalIcon(iconVal);
+        }
+      } catch (storageErr) {
+        Alert.alert('Save failed', 'Could not save goal. Please try again.');
+        return;
       }
       // Persist savings target date to DB
       const { data: { user } } = await supabase.auth.getUser();
@@ -807,6 +826,21 @@ export default function TrackerIndex() {
           <SkeletonBox height={120} />
           <SkeletonBox height={120} />
         </View>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <Text style={{ fontSize: 15, color: c.textBody, textAlign: 'center', marginBottom: 16 }}>
+          Could not load data. Tap to retry.
+        </Text>
+        <Pressable
+          style={({ pressed }) => ({ backgroundColor: c.primary, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12, opacity: pressed ? 0.8 : 1 })}
+          onPress={() => { setLoadError(false); setLoading(true); fetchAll(); }}>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Retry</Text>
+        </Pressable>
       </View>
     );
   }
