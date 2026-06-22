@@ -471,8 +471,7 @@ function todayStr() {
 
 
 function localMidnight(): string {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString();
+  return new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString();
 }
 
 function formatStartDate(quitDate: string | null): string {
@@ -1719,7 +1718,7 @@ export default function HomeScreen() {
         // Reschedule notifications against the new quit timestamp
         const { data: prefsRow } = await supabase
           .from('users')
-          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
+          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
           .eq('id', user.id)
           .maybeSingle();
         const prefs = {
@@ -1729,6 +1728,7 @@ export default function HomeScreen() {
           notif_weekly_summary: prefsRow?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
           notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
           notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+          notif_community: prefsRow?.notif_community ?? DEFAULT_NOTIF_PREFS.notif_community,
         };
         await scheduleAllNotifications(prefs, newQuitTimestamp);
         await scheduleOnboardingCheckin();
@@ -1778,7 +1778,7 @@ export default function HomeScreen() {
       // Restore badge/notification flags so milestones can re-fire
       await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]);
       // Reschedule notifications against the restored quit timestamp
-      const { data: prefsRow } = await supabase.from('users').select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction').eq('id', user.id).maybeSingle();
+      const { data: prefsRow } = await supabase.from('users').select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community').eq('id', user.id).maybeSingle();
       const prefs = {
         notif_milestone: prefsRow?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
         notif_daily_streak: prefsRow?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
@@ -1786,6 +1786,7 @@ export default function HomeScreen() {
         notif_weekly_summary: prefsRow?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
         notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
         notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+        notif_community: prefsRow?.notif_community ?? DEFAULT_NOTIF_PREFS.notif_community,
       };
       await scheduleAllNotifications(prefs, prevQuit);
       await scheduleOnboardingCheckin();

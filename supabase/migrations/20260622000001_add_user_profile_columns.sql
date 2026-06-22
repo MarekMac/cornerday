@@ -7,4 +7,5 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS distraction_choices TEXT[],
   ADD COLUMN IF NOT EXISTS trusted_contact_name TEXT,
   ADD COLUMN IF NOT EXISTS trusted_contact_phone TEXT,
-  ADD COLUMN IF NOT EXISTS trusted_contact_relationship TEXT;
+  ADD COLUMN IF NOT EXISTS trusted_contact_relationship TEXT,
+  ADD COLUMN IF NOT EXISTS trusted_contact_email TEXT;
