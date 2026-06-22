@@ -32,7 +32,8 @@ Deno.serve(async (req: Request) => {
   const { access_token, refresh_token } = await verifyRes.json();
 
   // Redirect to app with session tokens in the URL fragment
-  const deepLink = `cornerday://reset-password#access_token=${access_token}&refresh_token=${refresh_token}&type=recovery`;
+  const screen = type === 'signup' ? 'confirm-email' : 'reset-password';
+  const deepLink = `cornerday://${screen}#access_token=${access_token}&refresh_token=${refresh_token}&type=${type}`;
   return new Response(null, {
     status: 302,
     headers: { 'Location': deepLink },
