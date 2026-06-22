@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://cornerday.app',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
@@ -154,7 +154,13 @@ Deno.serve(async (req: Request) => {
     const ct = req.headers.get('content-type') ?? '';
     let parsedBody: Record<string, unknown> = {};
     if (ct.includes('application/json')) {
-      parsedBody = await req.json().catch(() => ({}));
+      const rawBody = await req.text();
+      if (rawBody.length > 65536) {
+        return new Response(JSON.stringify({ error: 'payload_too_large' }), {
+          status: 413, headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      parsedBody = JSON.parse(rawBody.length > 0 ? rawBody : '{}');
     } else {
       const form = await req.formData().catch(() => new FormData());
       parsedBody = { email: form.get('email') ?? '', message: form.get('message') ?? '' };

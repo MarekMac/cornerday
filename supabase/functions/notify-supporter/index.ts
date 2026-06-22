@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://cornerday.app',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
@@ -94,7 +94,13 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get('Authorization') ?? '';
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  const body = await req.json().catch(() => ({}));
+  const rawBody = await req.text();
+  if (rawBody.length > 65536) {
+    return new Response(JSON.stringify({ error: 'payload_too_large' }), {
+      status: 413, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
+  const body = JSON.parse(rawBody.length > 0 ? rawBody : '{}');
   const type: string = body.type ?? '';
   const milestoneLabel: string = body.milestone_label ?? '';
 
