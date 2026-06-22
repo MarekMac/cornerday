@@ -799,6 +799,7 @@ function MilestoneCelebrationModal({
   onShare: () => void;
   onClose: () => void;
 }) {
+  const { colors: c } = useAppTheme();
   const scale = useSharedValue(0);
   const rotate = useSharedValue(-12);
 
