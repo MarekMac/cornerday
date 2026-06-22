@@ -77,6 +77,7 @@ export default function PostDetail() {
   const [reportTarget, setReportTarget] = useState<ActionTarget | null>(null);
   const [reporting, setReporting] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [androidKbOffset, setAndroidKbOffset] = useState(0);
 
   const inputRef = useRef<TextInput>(null);
@@ -174,6 +175,9 @@ export default function PostDetail() {
         myHelpful.add(r.comment_id);
       }
       setMyHelpfulReactions(myHelpful);
+    } catch (e) {
+      console.warn('[CornerDay] loadAll error:', e);
+      if (isMountedRef.current) setLoadError(true);
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
@@ -407,6 +411,22 @@ export default function PostDetail() {
     return (
       <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator color={c.primary} />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[s.root, { justifyContent: 'center', alignItems: 'center', gap: 12, padding: 32 }]}>
+        <Text style={{ color: c.textBody, fontSize: 16, textAlign: 'center' }}>Could not load post.</Text>
+        <Pressable
+          onPress={() => { setLoadError(false); loadAll(); }}
+          style={{ paddingHorizontal: 24, paddingVertical: 10, backgroundColor: c.primary, borderRadius: 20 }}
+          accessibilityLabel="Retry loading post"
+          accessibilityRole="button"
+        >
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Retry</Text>
+        </Pressable>
       </View>
     );
   }
