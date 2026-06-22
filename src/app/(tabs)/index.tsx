@@ -36,6 +36,7 @@ import { parseQuitDate } from '@/lib/parseQuitDate';
 import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleOnboardingCheckin, scheduleUrgePredictionNotification } from '@/lib/notifications';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { haptic, hapticMedium } from '@/lib/haptics';
+import { maybeRequestReview } from '@/lib/review';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
 import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, PROFILE_NUDGE_SHOWN_KEY, MOTIVATION_PHOTO_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY } from '@/constants/storage-keys';
@@ -1160,6 +1161,10 @@ export default function HomeScreen() {
       // Notify supporter for the highest milestone earned this run (last = most significant)
       const notifyBadge = toLog[toLog.length - 1];
       if (notifyBadge) notifySupporter('milestone', notifyBadge.label).catch(e => console.warn('[milestone] notifySupporter error:', e));
+
+      // Prompt for a store review at meaningful milestones
+      if (newlyAwarded.some(b => b.type === '1_week'))  maybeRequestReview('7_day').catch(() => {});
+      if (newlyAwarded.some(b => b.type === '1_month')) maybeRequestReview('1_month').catch(() => {});
     }
 
     // Update longest streak
