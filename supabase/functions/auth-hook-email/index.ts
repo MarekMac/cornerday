@@ -12,14 +12,14 @@ const confirmationHtml = (confirmUrl: string) => `<!DOCTYPE html>
 <body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
   <tr><td align="center">
-    <table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
-      <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
+    <table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
+      <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 36px 36px;text-align:center;color:#fff;">
         <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
         <div style="font-size:40px;margin-bottom:14px;">&#x1F331;</div>
         <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">Confirm your email</div>
         <div style="font-size:14px;opacity:0.8;line-height:1.5;">One tap and you're on your way.</div>
       </td></tr>
-      <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:28px 28px 24px;">
+      <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:32px 36px 28px;">
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
             Thanks for signing up. Tap the button below to confirm your email address and start your recovery journey.
@@ -46,14 +46,14 @@ const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
 <body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
   <tr><td align="center">
-    <table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
-      <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
+    <table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
+      <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 36px 36px;text-align:center;color:#fff;">
         <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
         <div style="font-size:40px;margin-bottom:14px;">&#x1F511;</div>
         <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">Reset your password</div>
         <div style="font-size:14px;opacity:0.8;line-height:1.5;">Click the button below to choose a new password.</div>
       </td></tr>
-      <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:28px 28px 24px;">
+      <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:32px 36px 28px;">
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
             You requested a password reset for your CornerDay account. This link expires in 1 hour.
@@ -104,7 +104,13 @@ Deno.serve(async (req: Request) => {
     return err('Missing token', 400);
   }
 
-  const redirectUrl = `${SUPABASE_URL}/functions/v1/auth-reset-redirect?token_hash=${verifyToken}&type=${email_action_type}`;
+  const appDeepLink = email_action_type === 'signup'
+    ? 'cornerday://confirm-email'
+    : 'cornerday://reset-password';
+
+  // Use Supabase's native verify endpoint — it verifies the token and redirects
+  // to the deep link with access_token + refresh_token in the URL fragment.
+  const redirectUrl = `${SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(verifyToken)}&type=${email_action_type}&redirect_to=${encodeURIComponent(appDeepLink)}`;
 
   const isSignup = email_action_type === 'signup';
   const res = await fetch('https://api.resend.com/emails', {

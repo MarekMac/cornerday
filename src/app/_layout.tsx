@@ -129,6 +129,15 @@ function InnerLayout() {
       });
       if (params.access_token && params.refresh_token) {
         await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+        // Email confirmation is a signup action — only skip onboarding if this
+        // device already has the ONBOARDED_KEY flag (i.e. returning user who
+        // re-confirmed). Otherwise always send to q1.
+        const localOnboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
+        if (localOnboarded === 'true') {
+          setPendingRoute('/(tabs)');
+        } else {
+          setPendingRoute('/(onboarding)/q1');
+        }
         return true;
       }
       return false;
@@ -141,8 +150,11 @@ function InnerLayout() {
         setAuthChecked(true);
         return;
       }
-      // Email confirmation deep link — sets session then falls through to normal init
-      if (initialUrl) await handleConfirmEmailUrl(initialUrl);
+      // Email confirmation — handle fully here so init() doesn't race with it
+      if (initialUrl && await handleConfirmEmailUrl(initialUrl)) {
+        setAuthChecked(true);
+        return;
+      }
 
       const [sessionResult, onboarded, savedStep, seenWelcomeVal, biometricFlag] = await Promise.all([
         supabase.auth.getSession().catch(() => ({ data: { session: null }, error: null })),
@@ -202,7 +214,10 @@ function InnerLayout() {
     // Handle deep links when the app is already foregrounded
     const urlSub = Linking.addEventListener('url', async ({ url }) => {
       if (await handleResetUrl(url)) return;
-      await handleConfirmEmailUrl(url);
+      if (await handleConfirmEmailUrl(url)) {
+        if (!authCheckedRef.current) setAuthChecked(true);
+        return;
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
@@ -213,17 +228,6 @@ function InnerLayout() {
         setSeenWelcome(seen);
         setPendingRoute(seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
         setAuthChecked(true);
-      } else if (event === 'EMAIL_CONFIRMED' || event === 'SIGNED_IN') {
-        // Only handle here when triggered by the confirm-email deep link
-        // (normal SIGNED_IN during init is handled by init() itself)
-        if (!sess || !authCheckedRef.current) return;
-        const { data: userRow } = await supabase.from('users').select('id').eq('id', sess.user.id).maybeSingle();
-        if (userRow) {
-          await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
-          setPendingRoute('/(tabs)');
-        } else {
-          setPendingRoute('/(onboarding)/q1');
-        }
       }
     });
 

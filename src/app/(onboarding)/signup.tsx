@@ -238,7 +238,7 @@ export default function SignupScreen() {
             {'\n\n'}Tap the link in the email to continue setting up your account.
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.submitBtn, { marginTop: 32 }, pressed && styles.pressed, (resendCooldown > 0 || resendLoading) && { opacity: 0.5 }]}
+            style={({ pressed }) => [styles.submitBtn, { marginTop: 32, alignSelf: 'stretch' }, pressed && styles.pressed, (resendCooldown > 0 || resendLoading) && { opacity: 0.5 }]}
             onPress={handleResend}
             disabled={resendCooldown > 0 || resendLoading}
             accessibilityLabel="Resend confirmation email"
