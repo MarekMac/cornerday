@@ -1098,6 +1098,7 @@ export default function HomeScreen() {
       : 0;
 
     const dedupeGuard = new Set([...earnedBadges]);
+    const quitTs = quitStr ? parseQuitDate(quitStr).getTime() : Date.now();
 
     const toAward = BADGE_DEFS.filter(b => streakDaysFloat >= b.days && !dedupeGuard.has(b.type));
     if (toAward.length > 0) {
@@ -1105,7 +1106,9 @@ export default function HomeScreen() {
       // This is reliable even when the SELECT above returns stale/empty data due to RLS.
       const newlyAwarded: typeof toAward = [];
       for (const b of toAward) {
-        const { error } = await supabase.from('badges').insert({ user_id: user.id, badge_type: b.type });
+        // Use the actual moment the milestone was reached, not now
+        const earnedAt = new Date(quitTs + b.days * 86400000).toISOString();
+        const { error } = await supabase.from('badges').insert({ user_id: user.id, badge_type: b.type, earned_at: earnedAt });
         if (!error) {
           newlyAwarded.push(b);
         } else if (error.code !== '23505') {
@@ -1119,6 +1122,7 @@ export default function HomeScreen() {
         const { error: journalErr } = await supabase.from('losses').insert(toLog.map(b => ({
           user_id: user.id, type: 'milestone_earned', amount: Math.floor(b.days),
           category: 'Milestone', note: `${b.emoji} ${b.label}`,
+          created_at: new Date(quitTs + b.days * 86400000).toISOString(),
         })));
         if (journalErr) console.warn('Milestone journal insert failed:', journalErr.message);
 
