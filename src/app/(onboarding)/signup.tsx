@@ -65,6 +65,27 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
+  const handleResend = async () => {
+    setResendLoading(true);
+    try {
+      await supabase.auth.resend({ type: 'signup', email: sentEmail, options: { emailRedirectTo: 'cornerday://confirm-email' } });
+      setResendCooldown(60);
+    } catch (_e) {
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -144,7 +165,15 @@ export default function SignupScreen() {
     try {
       if (isSignIn) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) { setError(error.message); return; }
+        if (error) {
+          if (error.message.toLowerCase().includes('email not confirmed')) {
+            setSentEmail(email);
+            setEmailSent(true);
+            return;
+          }
+          setError(error.message);
+          return;
+        }
         const { data: { user: authUser }, error: getUserErr } = await supabase.auth.getUser();
         if (getUserErr || !authUser) { setError('Sign-in succeeded but could not verify your account. Please try again.'); return; }
         const { data: profile, error: profileErr } = await supabase
@@ -156,7 +185,10 @@ export default function SignupScreen() {
           router.push('/(onboarding)/q1');
         }
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: 'cornerday://confirm-email' },
+        });
         if (error) {
           const alreadyExists =
             error.message.toLowerCase().includes('already registered') ||
@@ -181,12 +213,51 @@ export default function SignupScreen() {
           }
           return;
         }
+        // session is null when Supabase requires email confirmation
+        if (!data.session) {
+          setSentEmail(email);
+          setEmailSent(true);
+          return;
+        }
         router.push('/(onboarding)/q1');
       }
     } finally {
       setLoading(false);
     }
   };
+
+  if (emailSent) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.emailSentWrap}>
+          <Text style={styles.emailSentEmoji}>📧</Text>
+          <Text style={styles.emailSentTitle}>Check your email</Text>
+          <Text style={styles.emailSentBody}>
+            We sent a confirmation link to{'\n'}
+            <Text style={styles.emailSentAddress}>{sentEmail}</Text>
+            {'\n\n'}Tap the link in the email to continue setting up your account.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [styles.submitBtn, { marginTop: 32 }, pressed && styles.pressed, (resendCooldown > 0 || resendLoading) && { opacity: 0.5 }]}
+            onPress={handleResend}
+            disabled={resendCooldown > 0 || resendLoading}
+            accessibilityLabel="Resend confirmation email"
+            accessibilityRole="button">
+            {resendLoading
+              ? <ActivityIndicator color={c.white} />
+              : <Text style={styles.submitBtnText}>{resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend email'}</Text>}
+          </Pressable>
+          <Pressable
+            style={{ marginTop: 20, padding: 8 }}
+            onPress={() => { setEmailSent(false); setError(''); }}
+            accessibilityLabel="Go back to sign up"
+            accessibilityRole="button">
+            <Text style={styles.toggleText}>Wrong email? <Text style={styles.toggleLink}>Start over</Text></Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -320,6 +391,11 @@ export default function SignupScreen() {
 const makeStyles = (c: AppColors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: c.bgCard },
   flex: { flex: 1 },
+  emailSentWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  emailSentEmoji: { fontSize: 56, marginBottom: 20 },
+  emailSentTitle: { fontSize: 26, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 16 },
+  emailSentBody: { fontSize: 15, color: c.textBody, textAlign: 'center', lineHeight: 24 },
+  emailSentAddress: { fontWeight: '700', color: c.primary },
   scroll: {
     paddingHorizontal: 28,
     paddingTop: 32,

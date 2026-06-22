@@ -40,6 +40,7 @@ function InnerLayout() {
   const navigationState = useRootNavigationState();
   const [session, setSession] = useState<Session | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const authCheckedRef = useRef(false);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
   const [seenWelcome, setSeenWelcome] = useState<boolean>(false);
   const [locked, setLocked] = useState(false);
@@ -60,6 +61,7 @@ function InnerLayout() {
     }
   }, []);
 
+  useEffect(() => { authCheckedRef.current = authChecked; }, [authChecked]);
   useEffect(() => { initHaptics(); }, []);
 
   useEffect(() => {
@@ -116,6 +118,22 @@ function InnerLayout() {
       return false;
     };
 
+    const handleConfirmEmailUrl = async (url: string): Promise<boolean> => {
+      if (!url.includes('confirm-email')) return false;
+      const paramStr = url.split('#')[1] ?? url.split('?')[1] ?? '';
+      const params: Record<string, string> = {};
+      paramStr.split('&').forEach(pair => {
+        const idx = pair.indexOf('=');
+        if (idx === -1) return;
+        params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1));
+      });
+      if (params.access_token && params.refresh_token) {
+        await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+        return true;
+      }
+      return false;
+    };
+
     const init = async () => {
       // Check for password-reset deep link first — must win over normal auth flow
       const initialUrl = await Linking.getInitialURL();
@@ -123,6 +141,8 @@ function InnerLayout() {
         setAuthChecked(true);
         return;
       }
+      // Email confirmation deep link — sets session then falls through to normal init
+      if (initialUrl) await handleConfirmEmailUrl(initialUrl);
 
       const [sessionResult, onboarded, savedStep, seenWelcomeVal, biometricFlag] = await Promise.all([
         supabase.auth.getSession().catch(() => ({ data: { session: null }, error: null })),
@@ -179,8 +199,11 @@ function InnerLayout() {
 
     init();
 
-    // Handle password-reset deep links when the app is already foregrounded
-    const urlSub = Linking.addEventListener('url', ({ url }) => { handleResetUrl(url); });
+    // Handle deep links when the app is already foregrounded
+    const urlSub = Linking.addEventListener('url', async ({ url }) => {
+      if (await handleResetUrl(url)) return;
+      await handleConfirmEmailUrl(url);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
       setSession(sess);
@@ -190,6 +213,17 @@ function InnerLayout() {
         setSeenWelcome(seen);
         setPendingRoute(seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
         setAuthChecked(true);
+      } else if (event === 'EMAIL_CONFIRMED' || event === 'SIGNED_IN') {
+        // Only handle here when triggered by the confirm-email deep link
+        // (normal SIGNED_IN during init is handled by init() itself)
+        if (!sess || !authCheckedRef.current) return;
+        const { data: userRow } = await supabase.from('users').select('id').eq('id', sess.user.id).maybeSingle();
+        if (userRow) {
+          await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+          setPendingRoute('/(tabs)');
+        } else {
+          setPendingRoute('/(onboarding)/q1');
+        }
       }
     });
 
