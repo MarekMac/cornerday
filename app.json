@@ -23,6 +23,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "googleServicesFile": "./google-services.json",
       "package": "com.cornerday.app",
       "versionCode": 1,
       "permissions": [
