@@ -1187,6 +1187,9 @@ export default function AccountScreen() {
 
   const confirmSignOut = () => setSignOutVisible(true);
 
+  // NOTE: PROFILE_NUDGE_SHOWN_KEY is intentionally NOT in executeSignOut —
+  // it persists across sign-out so the nudge doesn't repeat for returning users.
+
   const executeSignOut = async () => {
     setSigningOut(true);
     try {
@@ -1195,7 +1198,7 @@ export default function AccountScreen() {
         MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY,
         TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, MOTIVATION_PHOTO_KEY,
         COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY,
-        STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY,
+        STORE_REVIEW_ASKED_KEY,
         STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
         CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
         URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
