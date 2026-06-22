@@ -218,6 +218,7 @@ export default function AccountScreen() {
   const { isPremium: isPremiumFromRC, showPaywall, restorePurchases } = usePurchases();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -328,76 +329,94 @@ export default function AccountScreen() {
   const [savingPlan, setSavingPlan] = useState(false);
 
   const fetchProfile = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const identities = user.identities ?? [];
-    setIsPasswordUser(identities.some(id => id.provider === 'email'));
-    const [{ data }, { data: streakData }, { data: savingsRows }] = await Promise.all([
-      supabase
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const identities = user.identities ?? [];
+      setIsPasswordUser(identities.some(id => id.provider === 'email'));
+      const [{ data }, { data: streakData }, { data: savingsRows }] = await Promise.all([
+        supabase
+          .from('users')
+          .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, debt_target_date, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon')
+          .eq('id', user.id)
+          .maybeSingle(),
+        supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
+        supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
+      ]);
+      const quitTs = data?.quit_timestamp ?? data?.quit_date;
+      const streakDays = quitTs ? Math.max(0, Date.now() - parseQuitDate(quitTs).getTime()) / 86400000 : 0;
+      const MILESTONE_DAYS = [0, 1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
+      const badgeCount = MILESTONE_DAYS.filter(d => streakDays >= d).length;
+      setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
+      const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
+      let resolvedAvatar = data?.avatar_url ?? null;
+      if (!resolvedAvatar && googleAvatar) {
+        const { error: avatarErr } = await supabase.from('users').update({ avatar_url: googleAvatar }).eq('id', user.id);
+        if (!avatarErr) resolvedAvatar = googleAvatar;
+      }
+
+      setProfile({
+        displayName: data?.display_name ?? null,
+        email: user.email ?? null,
+        quitTimestamp: data?.quit_timestamp ?? data?.quit_date ?? null,
+        motivation: data?.motivation ?? null,
+        trigger: data?.trigger ?? null,
+        goal: data?.goal ?? null,
+        supportType: data?.support_type ?? null,
+        weeklyBet: data?.weekly_bet ?? null,
+        currency: data?.currency ?? 'USD',
+        isPremium: data?.is_premium ?? false,
+        avatarUrl: resolvedAvatar,
+        longestStreak: streakData?.longest_streak ?? 0,
+        longestStreakMs: streakData?.longest_streak_ms ?? 0,
+        milestonesEarned: badgeCount ?? 0,
+      });
+      setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
+      if (data?.debt_target_date) setDebtTargetDate(new Date(data.debt_target_date));
+      if (data?.savings_target_date) setSavingsTargetDate(new Date(data.savings_target_date));
+
+      // Savings goal — prefer Supabase value if present
+      if (data?.savings_goal_amount != null) {
+        setSavingsGoal(Number(data.savings_goal_amount));
+        if (data.savings_goal_label) setSavingsGoalFor(data.savings_goal_label);
+        if (data.savings_goal_icon) setSavingsGoalIcon(data.savings_goal_icon);
+      }
+
+      // Trusted contact and recovery plan in a separate query so schema-cache misses never break the profile fetch
+      const { data: contactData } = await supabase
         .from('users')
-        .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, debt_target_date, savings_target_date')
+        .select('trusted_contact_name, trusted_contact_phone, trusted_contact_email, recovery_distractions, recovery_mantra, distraction_choices')
         .eq('id', user.id)
-        .maybeSingle(),
-      supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
-      supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
-    ]);
-    const quitTs = data?.quit_timestamp ?? data?.quit_date;
-    const streakDays = quitTs ? Math.max(0, Date.now() - parseQuitDate(quitTs).getTime()) / 86400000 : 0;
-    const MILESTONE_DAYS = [0, 1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
-    const badgeCount = MILESTONE_DAYS.filter(d => streakDays >= d).length;
-    setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
-    const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
-    let resolvedAvatar = data?.avatar_url ?? null;
-    if (!resolvedAvatar && googleAvatar) {
-      const { error: avatarErr } = await supabase.from('users').update({ avatar_url: googleAvatar }).eq('id', user.id);
-      if (!avatarErr) resolvedAvatar = googleAvatar;
+        .maybeSingle();
+      // U-07: prefer Supabase for trusted contact — only set if Supabase returned a value
+      if (contactData?.trusted_contact_name || contactData?.trusted_contact_phone) {
+        setTrustedContactName(contactData.trusted_contact_name ?? '');
+        setTrustedContactPhone(contactData.trusted_contact_phone ?? '');
+      }
+      setTrustedContactEmail(contactData?.trusted_contact_email ?? '');
+      // U-06: prefer Supabase for recovery plan — distraction_choices (TEXT[]) takes priority over recovery_distractions (TEXT)
+      if (contactData?.distraction_choices && contactData.distraction_choices.length > 0) {
+        setRecoveryDistractions(contactData.distraction_choices);
+      } else if (contactData?.recovery_distractions) {
+        setRecoveryDistractions(contactData.recovery_distractions.split(',').filter(Boolean));
+      }
+      setRecoveryMantra(contactData?.recovery_mantra ?? '');
+      setNotifPrefs({
+        notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+        notif_daily_streak: data?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+        notif_daily_checkin: data?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+        notif_weekly_summary: data?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+        notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+        notif_urge_prediction: data?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+        notif_community: data?.notif_community ?? DEFAULT_NOTIF_PREFS.notif_community,
+      });
+      setGlobalAvatarUrl(resolvedAvatar);
+    } catch (e) {
+      console.warn('[CornerDay] fetchProfile error:', e);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
-
-    setProfile({
-      displayName: data?.display_name ?? null,
-      email: user.email ?? null,
-      quitTimestamp: data?.quit_timestamp ?? data?.quit_date ?? null,
-      motivation: data?.motivation ?? null,
-      trigger: data?.trigger ?? null,
-      goal: data?.goal ?? null,
-      supportType: data?.support_type ?? null,
-      weeklyBet: data?.weekly_bet ?? null,
-      currency: data?.currency ?? 'USD',
-      isPremium: data?.is_premium ?? false,
-      avatarUrl: resolvedAvatar,
-      longestStreak: streakData?.longest_streak ?? 0,
-      longestStreakMs: streakData?.longest_streak_ms ?? 0,
-      milestonesEarned: badgeCount ?? 0,
-    });
-    setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
-    if (data?.debt_target_date) setDebtTargetDate(new Date(data.debt_target_date));
-    if (data?.savings_target_date) setSavingsTargetDate(new Date(data.savings_target_date));
-
-    // Trusted contact and recovery plan in a separate query so schema-cache misses never break the profile fetch
-    const { data: contactData } = await supabase
-      .from('users')
-      .select('trusted_contact_name, trusted_contact_phone, trusted_contact_email, recovery_distractions, recovery_mantra')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (contactData?.trusted_contact_name || contactData?.trusted_contact_phone) {
-      setTrustedContactName(contactData.trusted_contact_name ?? '');
-      setTrustedContactPhone(contactData.trusted_contact_phone ?? '');
-    }
-    setTrustedContactEmail(contactData?.trusted_contact_email ?? '');
-    if (contactData?.recovery_distractions) {
-      setRecoveryDistractions(contactData.recovery_distractions.split(',').filter(Boolean));
-    }
-    setRecoveryMantra(contactData?.recovery_mantra ?? '');
-    setNotifPrefs({
-      notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
-      notif_daily_streak: data?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
-      notif_daily_checkin: data?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
-      notif_weekly_summary: data?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
-      notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
-      notif_urge_prediction: data?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
-      notif_community: data?.notif_community ?? DEFAULT_NOTIF_PREFS.notif_community,
-    });
-    setGlobalAvatarUrl(resolvedAvatar);
   }, []);
 
   const loadPartnerLink = useCallback(async () => {
@@ -543,7 +562,8 @@ export default function AccountScreen() {
   }, []);
 
   useEffect(() => {
-    fetchProfile().finally(() => setLoading(false));
+    // fetchProfile now calls setLoading(false) in its own finally block
+    fetchProfile();
     loadPartnerLink();
     Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
@@ -557,14 +577,20 @@ export default function AccountScreen() {
       AsyncStorage.getItem(CUSTOM_MILESTONE_KEY),
       AsyncStorage.getItem(CHECKLIST_KEY),
     ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour, rawHaptics, rawShield, rawMilestone, rawChecklist]) => {
-      if (rawGoal) { const n = Number(rawGoal); if (!isNaN(n)) setSavingsGoal(n); }
-      if (rawFor) setSavingsGoalFor(rawFor);
-      if (rawIcon) setSavingsGoalIcon(rawIcon);
+      // U-06: savings goal — AsyncStorage is the offline fallback; Supabase value (set in fetchProfile) wins if present
+      setSavingsGoal(prev => {
+        if (prev !== null) return prev; // Supabase already set a value — keep it
+        if (rawGoal) { const n = Number(rawGoal); if (!isNaN(n)) return n; }
+        return prev;
+      });
+      setSavingsGoalFor(prev => prev || (rawFor ?? ''));
+      setSavingsGoalIcon(prev => prev !== '🎯' ? prev : (rawIcon ?? '🎯'));
+      // U-07: trusted contact — AsyncStorage is the offline fallback; Supabase value (set in fetchProfile) wins if present
       if (rawContact) {
         try {
           const contact = JSON.parse(rawContact);
-          setTrustedContactName(contact.name ?? '');
-          setTrustedContactPhone(contact.phone ?? '');
+          setTrustedContactName(prev => prev || (contact.name ?? ''));
+          setTrustedContactPhone(prev => prev || (contact.phone ?? ''));
         } catch { /* corrupted storage — ignore */ }
       }
       if (rawStreakHour) { const n = Number(rawStreakHour); if (!isNaN(n)) setNotifStreakHour(n); }
@@ -705,8 +731,12 @@ export default function AccountScreen() {
       Alert.alert('Invalid amount', 'Please enter a valid amount between 0 and 999,999,999.');
       return;
     }
+    const { data: { user } } = await supabase.auth.getUser();
     if (!goalInput) {
       await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+      if (user) {
+        await supabase.from('users').update({ savings_goal_amount: null, savings_goal_label: null, savings_goal_icon: null }).eq('id', user.id);
+      }
       await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
       setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
     } else {
@@ -716,6 +746,9 @@ export default function AccountScreen() {
       await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
       if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
       else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
+      if (user) {
+        await supabase.from('users').update({ savings_goal_amount: val, savings_goal_label: forVal || null, savings_goal_icon: iconVal }).eq('id', user.id);
+      }
       const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
       await logGoalEvent(eventType, val, forVal || null);
       setSavingsGoal(val); setSavingsGoalFor(forVal); setSavingsGoalIcon(iconVal);
@@ -871,6 +904,14 @@ export default function AccountScreen() {
       if (!user) return;
 
       const uri = result.assets[0].uri;
+
+      // E-03: pre-check file size before uploading
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (fileInfo.exists && fileInfo.size != null && fileInfo.size > 5 * 1024 * 1024) {
+        Alert.alert('Image too large', 'Please choose a smaller photo (under 5MB).');
+        return;
+      }
+
       const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
       const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
       const path = `${user.id}-${Date.now()}.${ext}`;

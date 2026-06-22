@@ -118,7 +118,7 @@ export default function SignupScreen() {
       if (accessToken) {
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
-          refresh_token: refreshToken ?? '',
+          refresh_token: refreshToken ?? undefined,
         });
 
         if (sessionError) {

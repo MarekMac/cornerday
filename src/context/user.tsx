@@ -25,19 +25,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
     isMounted.current = true;
 
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !isMounted.current) return;
-      const { data } = await supabase
-        .from('users')
-        .select('avatar_url, display_name, is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (!isMounted.current) return;
-      const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
-      setAvatarUrl(data?.avatar_url ?? googleAvatar ?? null);
-      const name = data?.display_name ?? user.email ?? '?';
-      setInitial((name[0] ?? '?').toUpperCase());
-      setIsAdmin(data?.is_admin ?? false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !isMounted.current) return;
+        const { data } = await supabase
+          .from('users')
+          .select('avatar_url, display_name, is_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (!isMounted.current) return;
+        const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
+        setAvatarUrl(data?.avatar_url ?? googleAvatar ?? null);
+        const name = data?.display_name ?? user.email ?? '?';
+        setInitial((name[0] ?? '?').toUpperCase());
+        setIsAdmin(data?.is_admin ?? false);
+      } catch (e) {
+        console.warn('[CornerDay] UserContext load error:', e);
+      }
     };
 
     load();
