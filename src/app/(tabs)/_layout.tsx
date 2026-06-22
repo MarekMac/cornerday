@@ -203,12 +203,23 @@ export default function TabsLayout() {
         const tokenData = await Notifications.getExpoPushTokenAsync(
           projectId ? { projectId } : undefined
         );
-        if (tokenData?.data) {
-          await supabase
+        const newToken = tokenData?.data;
+        if (newToken && newToken.startsWith('ExponentPushToken[')) {
+          // Only write to DB if the token has changed — avoids a redundant update on every app open
+          const { data: existing } = await supabase
             .from('users')
-            .update({ expo_push_token: tokenData.data })
-            .eq('id', user.id);
-          if (__DEV__) console.log('[CornerDay] Push token saved:', tokenData.data);
+            .select('expo_push_token')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (existing?.expo_push_token !== newToken) {
+            await supabase
+              .from('users')
+              .update({ expo_push_token: newToken })
+              .eq('id', user.id);
+            if (__DEV__) console.log('[CornerDay] Push token saved:', newToken);
+          }
+        } else if (newToken) {
+          if (__DEV__) console.warn('[CornerDay] Unexpected push token format (FCM misconfigured?):', newToken);
         }
       } catch (e) {
         // Push token unavailable — non-fatal, but log in dev so FCM issues are visible

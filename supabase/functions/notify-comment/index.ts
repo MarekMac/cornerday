@@ -113,8 +113,20 @@ Deno.serve(async (req: Request) => {
       console.error('Expo push API error:', JSON.stringify(expoBody));
       return new Response(JSON.stringify({ ok: false, error: 'push_api_error', expo: expoBody }), { status: 200 });
     }
-    console.log('Expo push response:', JSON.stringify(expoBody));
 
+    // Single-message response: { data: { status, id } } or { data: { status: 'error', ... } }
+    const ticket = expoBody?.data;
+    if (ticket?.status === 'error') {
+      if (ticket?.details?.error === 'DeviceNotRegistered') {
+        await supabase.from('users').update({ expo_push_token: null }).eq('id', post_owner_id);
+        console.warn('Cleared stale push token for user:', post_owner_id);
+      } else {
+        console.error('Expo push error:', JSON.stringify(ticket));
+      }
+      return new Response(JSON.stringify({ ok: false, error: ticket?.message }), { status: 200 });
+    }
+
+    console.log('Push sent to', post_owner_id, '— ticket:', ticket?.id);
     return new Response(JSON.stringify({ ok: true, expo: expoBody }), { status: 200 });
   } catch (err) {
     console.error('notify-comment error:', err);

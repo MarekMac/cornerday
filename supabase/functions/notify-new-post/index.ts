@@ -73,25 +73,25 @@ Deno.serve(async (req: Request) => {
 
     const followerIds = follows.map((f: { follower_id: string }) => f.follower_id);
 
-    // Fetch push tokens for all followers
+    // Fetch push tokens for all followers (keep id→token mapping for error handling)
     const { data: followerUsers } = await supabase
       .from('users')
       .select('id, expo_push_token')
       .in('id', followerIds)
       .not('expo_push_token', 'is', null);
 
-    const tokens = (followerUsers ?? [])
-      .map((u: { expo_push_token: string | null }) => u.expo_push_token)
-      .filter((t): t is string => !!t);
+    const recipients: { userId: string; token: string }[] = (followerUsers ?? [])
+      .filter((u: { id: string; expo_push_token: string | null }) => !!u.expo_push_token)
+      .map((u: { id: string; expo_push_token: string }) => ({ userId: u.id, token: u.expo_push_token }));
 
-    if (tokens.length === 0) {
+    if (recipients.length === 0) {
       return new Response(JSON.stringify({ ok: true, skipped: 'no_tokens' }), { status: 200 });
     }
 
     const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
 
-    const messages: ExpoPushMessage[] = tokens.map(token => ({
-      to: token,
+    const messages: ExpoPushMessage[] = recipients.map(r => ({
+      to: r.token,
       sound: 'default',
       title: `${authorName} posted a new story`,
       body: preview,
@@ -99,12 +99,14 @@ Deno.serve(async (req: Request) => {
     }));
 
     // Expo supports up to 100 messages per batch
-    const chunks: ExpoPushMessage[][] = [];
-    for (let i = 0; i < messages.length; i += 100) {
-      chunks.push(messages.slice(i, i + 100));
-    }
+    const CHUNK = 100;
+    let notified = 0;
+    const staleTokenUserIds: string[] = [];
 
-    for (const chunk of chunks) {
+    for (let i = 0; i < messages.length; i += CHUNK) {
+      const chunkMessages = messages.slice(i, i + CHUNK);
+      const chunkRecipients = recipients.slice(i, i + CHUNK);
+
       const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
@@ -112,13 +114,40 @@ Deno.serve(async (req: Request) => {
           'Accept-Encoding': 'gzip, deflate',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(chunk),
+        body: JSON.stringify(chunkMessages),
       });
+
+      if (!expoRes.ok) {
+        console.error('Expo push API HTTP error:', expoRes.status);
+        continue;
+      }
+
+      // Batch response: { data: [ ticket, ticket, ... ] } — one ticket per message, same order
       const expoBody = await expoRes.json();
-      console.log('Expo push response:', JSON.stringify(expoBody));
+      const tickets: Array<{ status: string; id?: string; message?: string; details?: { error?: string } }> =
+        expoBody?.data ?? [];
+
+      for (let j = 0; j < tickets.length; j++) {
+        const ticket = tickets[j];
+        if (ticket?.status === 'error') {
+          if (ticket?.details?.error === 'DeviceNotRegistered') {
+            staleTokenUserIds.push(chunkRecipients[j].userId);
+          } else {
+            console.error('Push error for', chunkRecipients[j].userId, ':', ticket?.message);
+          }
+        } else {
+          notified++;
+        }
+      }
     }
 
-    return new Response(JSON.stringify({ ok: true, notified: tokens.length }), { status: 200 });
+    // Clear stale tokens in bulk
+    if (staleTokenUserIds.length > 0) {
+      await supabase.from('users').update({ expo_push_token: null }).in('id', staleTokenUserIds);
+      console.warn('Cleared stale push tokens for users:', staleTokenUserIds);
+    }
+
+    return new Response(JSON.stringify({ ok: true, notified, stale_cleared: staleTokenUserIds.length }), { status: 200 });
   } catch (err) {
     console.error('notify-new-post error:', err);
     return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 200 });
