@@ -26,11 +26,12 @@ const MILESTONES: Milestone[] = [
 ];
 
 
-function fmtAmount(amount: number): string {
-  return Math.round(amount).toLocaleString('en');
+function fmtCurrency(amount: number, currency: string): string {
+  const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'z&#322;', AUD: 'A$', CAD: 'C$' };
+  return `${syms[currency] ?? currency + ' '}${Math.round(amount).toLocaleString('en')}`;
 }
 
-function buildHtml(firstName: string, m: Milestone, totalPaid: number, totalLost: number): string {
+function buildHtml(firstName: string, m: Milestone, totalPaid: number, totalLost: number, currency: string): string {
   const remaining = Math.max(0, totalLost - totalPaid);
   const nextM = MILESTONES.find(n => n.pct > m.pct);
 
@@ -46,7 +47,7 @@ function buildHtml(firstName: string, m: Milestone, totalPaid: number, totalLost
     <tr><td style="background:#f9fdfd;border-radius:12px;padding:16px;text-align:center;">
       <div style="font-size:12px;color:#5a8a8a;margin-bottom:4px;">Next milestone</div>
       <div style="font-size:18px;font-weight:700;color:#0F6E6E;">${nextM.emoji} ${nextM.pct}% paid back</div>
-      <div style="font-size:13px;color:#888;margin-top:4px;">${fmtAmount(remaining)} to go</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">${fmtCurrency(remaining, currency)} to go</div>
     </td></tr>` : '';
 
   return `<!DOCTYPE html>
@@ -61,7 +62,7 @@ function buildHtml(firstName: string, m: Milestone, totalPaid: number, totalLost
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
     <div style="font-size:48px;margin-bottom:14px;">${m.emoji}</div>
     <div style="font-size:26px;font-weight:900;line-height:1.15;margin-bottom:8px;">${m.heading}</div>
-    <div style="font-size:16px;opacity:0.85;font-weight:600;">${fmtAmount(totalPaid)} paid back</div>
+    <div style="font-size:16px;opacity:0.85;font-weight:600;">${fmtCurrency(totalPaid, currency)} paid back</div>
   </td></tr>
 
   <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:28px 28px 24px;">
@@ -76,15 +77,15 @@ function buildHtml(firstName: string, m: Milestone, totalPaid: number, totalLost
         <tr>
           <td style="text-align:center;padding:0 12px;">
             <div style="font-size:11px;color:#5a8a8a;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Paid back</div>
-            <div style="font-size:22px;font-weight:900;color:#0F6E6E;">${fmtAmount(totalPaid)}</div>
+            <div style="font-size:22px;font-weight:900;color:#0F6E6E;">${fmtCurrency(totalPaid, currency)}</div>
           </td>
           <td style="text-align:center;padding:0 12px;border-left:1px solid #e0eded;">
             <div style="font-size:11px;color:#5a8a8a;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Still owed</div>
-            <div style="font-size:22px;font-weight:900;color:${remaining > 0 ? '#c0392b' : '#0F6E6E'};">${fmtAmount(remaining)}</div>
+            <div style="font-size:22px;font-weight:900;color:${remaining > 0 ? '#c0392b' : '#0F6E6E'};">${fmtCurrency(remaining, currency)}</div>
           </td>
           <td style="text-align:center;padding:0 12px;border-left:1px solid #e0eded;">
             <div style="font-size:11px;color:#5a8a8a;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Total logged</div>
-            <div style="font-size:22px;font-weight:900;color:#333;">${fmtAmount(totalLost)}</div>
+            <div style="font-size:22px;font-weight:900;color:#333;">${fmtCurrency(totalLost, currency)}</div>
           </td>
         </tr>
         <tr><td colspan="3" style="padding-top:12px;">${progressBar}</td></tr>
@@ -125,7 +126,7 @@ Deno.serve(async (req: Request) => {
     const [debtsRes, paymentsRes, userRes] = await Promise.all([
       supabase.from('debts').select('total_amount').eq('user_id', userId),
       supabase.from('debt_payments').select('amount').eq('user_id', userId),
-      supabase.from('users').select('email, display_name').eq('id', userId).maybeSingle(),
+      supabase.from('users').select('email, display_name, currency').eq('id', userId).maybeSingle(),
     ]);
 
     const totalLost = ((debtsRes.data ?? []) as { total_amount: number }[]).reduce((s, r) => s + Number(r.total_amount), 0);
@@ -135,6 +136,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const recoveryPct = (totalPaid / totalLost) * 100;
+    const currency = (userRes.data as { currency?: string }).currency ?? 'USD';
     let sent = 0;
 
     for (const m of MILESTONES) {
@@ -153,7 +155,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const firstName = esc(userRes.data.display_name?.split(' ')?.[0] || 'there');
-      const html = buildHtml(firstName, m, totalPaid, totalLost);
+      const html = buildHtml(firstName, m, totalPaid, totalLost, currency);
       const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -176,13 +178,13 @@ Deno.serve(async (req: Request) => {
 
     const { data: user } = await supabase
       .from('users')
-      .select('email, display_name')
+      .select('email, display_name, currency')
       .eq('id', body.direct_user_id)
       .maybeSingle();
     if (!user?.email) return new Response(JSON.stringify({ error: 'user not found' }), { status: 404 });
 
     const firstName = esc(user.display_name?.split(' ')?.[0] || 'there');
-    const html = buildHtml(firstName, m, testPaid, testLost);
+    const html = buildHtml(firstName, m, testPaid, testLost, (user as { currency?: string }).currency ?? 'USD');
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -224,10 +226,12 @@ Deno.serve(async (req: Request) => {
     try {
       const { data: user } = await supabase
         .from('users')
-        .select('email, display_name')
+        .select('email, display_name, currency')
         .eq('id', userId)
         .maybeSingle();
       if (!user?.email) { skipped++; continue; }
+
+      const userCurrency = (user as { currency?: string }).currency ?? 'USD';
 
       for (const m of MILESTONES) {
         if (recoveryPct < m.pct) continue;
@@ -253,7 +257,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const firstName = esc(user.display_name?.split(' ')?.[0] || 'there');
-        const html = buildHtml(firstName, m, stats.totalPaid, stats.totalLost);
+        const html = buildHtml(firstName, m, stats.totalPaid, stats.totalLost, userCurrency);
 
         const emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',

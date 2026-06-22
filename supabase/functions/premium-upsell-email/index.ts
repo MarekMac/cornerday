@@ -174,7 +174,7 @@ Deno.serve(async (req: Request) => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const firstName = user.display_name?.split(' ')[0] || 'there';
+      const firstName = esc(user.display_name?.split(' ')[0] || 'there');
       const html = buildHtml(firstName, streak?.current_streak ?? 0);
 
       // Upsert so earned_at refreshes each cycle, giving a rolling 30-day window
