@@ -90,7 +90,7 @@ function InnerLayout() {
       } else if (state === 'active' && backgroundedAtRef.current !== null) {
         const elapsed = Date.now() - backgroundedAtRef.current;
         backgroundedAtRef.current = null;
-        if (elapsed > 2000) {
+        if (elapsed > 30000) {
           const flag = await AsyncStorage.getItem(BIOMETRIC_LOCK_KEY);
           if (flag === 'true' && !getImagePickerActive()) setLocked(true);
         }

@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase';
 import { CHECKLIST_KEY } from '@/constants/storage-keys';
 
 const FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1`;
+const COACH_HISTORY_KEY = 'coach_chat_history';
 
 const FEATURES = [
   { icon: '💬', text: 'Chat any time, day or night' },
@@ -132,6 +133,29 @@ export default function CoachScreen() {
   const isMountedRef = useRef(true);
   useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
 
+  // Load persisted chat history on mount
+  useEffect(() => {
+    AsyncStorage.getItem(COACH_HISTORY_KEY).then(raw => {
+      if (!raw || !isMountedRef.current) return;
+      try {
+        const saved: ChatMessage[] = JSON.parse(raw);
+        if (Array.isArray(saved) && saved.length > 0) {
+          setMessages([randomGreeting(isCheckin), ...saved]);
+        }
+      } catch {
+        // Corrupted storage — ignore and keep default greeting
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist chat history whenever messages change (skip greeting, limit to 100)
+  useEffect(() => {
+    const toSave = messages.filter(m => m.id !== 'greeting' && !m.pending).slice(-100);
+    if (toSave.length === 0) return;
+    AsyncStorage.setItem(COACH_HISTORY_KEY, JSON.stringify(toSave)).catch(() => {});
+  }, [messages]);
+
   const scrollToBottom = useCallback((animated = true) => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated }), 80);
   }, []);
@@ -183,8 +207,21 @@ export default function CoachScreen() {
       });
 
       if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error((errBody as any).error ?? 'Request failed');
+        const errData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        if (isMountedRef.current) {
+          setMessages(prev => prev.map(m =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  content: errData?.error === 'premium_required'
+                    ? 'This feature requires a premium subscription. Upgrade in Settings.'
+                    : 'Something went wrong. Please try again.',
+                  pending: false,
+                }
+              : m,
+          ));
+        }
+        return;
       }
 
       reader = response.body!.getReader();

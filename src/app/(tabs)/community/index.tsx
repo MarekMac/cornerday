@@ -380,10 +380,11 @@ export default function CommunityFeed() {
             [emoji]: (prev[postId]?.[emoji] ?? 0) + 1,
           },
         }));
-        const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
-        if (delErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); return; }
-        const { error } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
-        if (error) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+        // Insert first — only delete the old reaction if the insert succeeds
+        const { error: insErr } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
+        if (insErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); return; }
+        const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid).eq('emoji', current);
+        if (delErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
       } else {
         setUserReactions(prev => ({ ...prev, [postId]: emoji }));
         setAllEmojiCounts(prev => ({
@@ -533,6 +534,8 @@ export default function CommunityFeed() {
                     key={emoji}
                     style={[s.reactBtn, isMyReaction && s.reactBtnActive]}
                     onPress={() => toggleFeedReaction(item.id, emoji)}
+                    accessibilityLabel={`React with ${emoji}, ${count} reaction${count !== 1 ? 's' : ''}`}
+                    accessibilityRole="button"
                   >
                     <Text style={[s.reactBtnTxt, isMyReaction && { color: c.primary }]}>
                       {emoji} {count}
@@ -544,6 +547,8 @@ export default function CommunityFeed() {
               <Pressable
                 style={s.reactBtn}
                 onPress={() => toggleFeedReaction(item.id, '❤️')}
+                accessibilityLabel={`React with ❤️, 0 reactions`}
+                accessibilityRole="button"
               >
                 <Text style={s.reactBtnTxt}>🤝 React</Text>
               </Pressable>
@@ -676,6 +681,14 @@ export default function CommunityFeed() {
           >
             <Text style={s.banContactTxt}>Contact Support</Text>
           </Pressable>
+        </View>
+      )}
+
+      {activeTag === 'Mine' && (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 }}>
+          <Text style={{ fontSize: 12, color: c.textFaint, textAlign: 'center' }}>
+            Anonymous posts are not shown here.
+          </Text>
         </View>
       )}
 
