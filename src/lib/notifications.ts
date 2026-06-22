@@ -186,17 +186,24 @@ export async function scheduleAllNotifications(
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') return;
 
-  try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-  } catch (_e) {
-    // cancellation can fail if permissions were revoked — continue scheduling anyway
-  }
   await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
-  if (!quitTimestamp) return;
+  if (!quitTimestamp) {
+    try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {}
+    return;
+  }
 
   const quitMs = new Date(quitTimestamp).getTime();
   const now = Date.now();
   const earnedSet = new Set(earnedBadgeTypes);
+
+  // Pre-fetch AsyncStorage values needed to build the full schedule before cancelling
+  const [milestoneRaw, urgeSavedRaw] = await Promise.all([
+    prefs.notif_milestone ? AsyncStorage.getItem(CUSTOM_MILESTONE_KEY) : Promise.resolve(null),
+    prefs.notif_urge_prediction ? AsyncStorage.getItem(URGE_PREDICTION_SCHEDULE_KEY) : Promise.resolve(null),
+  ]);
+
+  // Build all schedule jobs as thunks so we can cancel first, then fire them all
+  const scheduleJobs: Array<() => Promise<void>> = [];
 
   // 1. Milestone reached — scheduled at the exact future time each milestone is hit
   if (prefs.notif_milestone) {
@@ -204,17 +211,16 @@ export async function scheduleAllNotifications(
       const fireAt = quitMs + m.days * 86400000;
       if (fireAt <= now) continue;       // already passed
       if (earnedSet.has(m.type)) continue; // already earned
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `${m.emoji} ${m.label} milestone!`,
-          body: m.body,
-          data: { screen: '/(tabs)?scrollTo=badges' },
-        },
-        trigger: androidTrigger({
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: new Date(fireAt),
-        }) as any,
-      });
+      const content = {
+        title: `${m.emoji} ${m.label} milestone!`,
+        body: m.body,
+        data: { screen: '/(tabs)?scrollTo=badges' },
+      };
+      const trigger = androidTrigger({
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(fireAt),
+      }) as any;
+      scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
     }
   }
 
@@ -226,17 +232,16 @@ export async function scheduleAllNotifications(
     if (next) {
       const approachDate = new Date(quitMs + next.days * 86400000 - 86400000);
       if (approachDate.getTime() > now) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `⏰ Almost there — ${next.label} tomorrow!`,
-            body: next.approachBody,
-            data: { screen: '/(tabs)?scrollTo=badges' },
-          },
-          trigger: androidTrigger({
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: approachDate,
-          }) as any,
-        });
+        const content = {
+          title: `⏰ Almost there — ${next.label} tomorrow!`,
+          body: next.approachBody,
+          data: { screen: '/(tabs)?scrollTo=badges' },
+        };
+        const trigger = androidTrigger({
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: approachDate,
+        }) as any;
+        scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
       }
     }
   }
@@ -244,112 +249,112 @@ export async function scheduleAllNotifications(
   // 3. Daily streak reminder — user-chosen hour (default 8 pm)
   if (prefs.notif_daily_streak) {
     const streakMsg = STREAK_NOTIF_MESSAGES[Math.floor(Math.random() * STREAK_NOTIF_MESSAGES.length)];
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: streakMsg.title,
-        body: streakMsg.body,
-        data: { screen: '/(tabs)/' },
-      },
-      trigger: androidTrigger({
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: timeOverrides.streakHour ?? 20,
-        minute: 0,
-      }) as any,
-    });
+    const content = {
+      title: streakMsg.title,
+      body: streakMsg.body,
+      data: { screen: '/(tabs)/' },
+    };
+    const trigger = androidTrigger({
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: timeOverrides.streakHour ?? 20,
+      minute: 0,
+    }) as any;
+    scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
   }
 
   // 4. Daily check-in — user-chosen hour (default 9 am)
   if (prefs.notif_daily_checkin) {
     const checkinMsg = CHECKIN_NOTIF_MESSAGES[Math.floor(Math.random() * CHECKIN_NOTIF_MESSAGES.length)];
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: checkinMsg.title,
-        body: checkinMsg.body,
-        data: { screen: '/(tabs)/' },
-      },
-      trigger: androidTrigger({
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: timeOverrides.checkinHour ?? 9,
-        minute: 0,
-      }) as any,
-    });
+    const content = {
+      title: checkinMsg.title,
+      body: checkinMsg.body,
+      data: { screen: '/(tabs)/' },
+    };
+    const trigger = androidTrigger({
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: timeOverrides.checkinHour ?? 9,
+      minute: 0,
+    }) as any;
+    scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
   }
 
   // 5. Weekly summary — Monday 9 am
   if (prefs.notif_weekly_summary) {
     const weeklyMsg = WEEKLY_NOTIF_MESSAGES[Math.floor(Math.random() * WEEKLY_NOTIF_MESSAGES.length)];
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: weeklyMsg.title,
-        body: weeklyMsg.body,
-        data: { screen: '/analytics' },
-      },
-      trigger: androidTrigger({
-        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: 2, // 1 = Sunday, 2 = Monday
-        hour: 9,
-        minute: 0,
-      }) as any,
-    });
+    const content = {
+      title: weeklyMsg.title,
+      body: weeklyMsg.body,
+      data: { screen: '/analytics' },
+    };
+    const trigger = androidTrigger({
+      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+      weekday: 2, // 1 = Sunday, 2 = Monday
+      hour: 9,
+      minute: 0,
+    }) as any;
+    scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
   }
 
   // 6. Custom milestone — restore if set and in the future
-  if (prefs.notif_milestone && quitTimestamp) {
-    const milestoneRaw = await AsyncStorage.getItem(CUSTOM_MILESTONE_KEY);
-    if (milestoneRaw) {
-      try {
-        const milestone = JSON.parse(milestoneRaw);
-        if (milestone?.type === 'days' && typeof milestone.target === 'number') {
-          const targetMs = new Date(quitTimestamp).getTime() + milestone.target * 86400000;
-          if (targetMs > now) {
-            const newId = await Notifications.scheduleNotificationAsync({
-              content: {
-                title: `🎯 ${milestone.target} Days Clean!`,
-                body: `You hit your personal ${milestone.target}-day milestone. This is a huge achievement. Keep going! 🏆`,
-                data: { type: 'custom_milestone', screen: '/(tabs)/' },
-              },
-              trigger: androidTrigger({
-                type: Notifications.SchedulableTriggerInputTypes.DATE,
-                date: new Date(targetMs),
-              }) as any,
-            });
-            await AsyncStorage.setItem(CUSTOM_MILESTONE_NOTIF_ID_KEY, newId);
-          } else {
-            await AsyncStorage.removeItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
-          }
+  if (prefs.notif_milestone && milestoneRaw) {
+    try {
+      const milestone = JSON.parse(milestoneRaw);
+      if (milestone?.type === 'days' && typeof milestone.target === 'number') {
+        const targetMs = new Date(quitTimestamp).getTime() + milestone.target * 86400000;
+        if (targetMs > now) {
+          const content = {
+            title: `🎯 ${milestone.target} Days Clean!`,
+            body: `You hit your personal ${milestone.target}-day milestone. This is a huge achievement. Keep going! 🏆`,
+            data: { type: 'custom_milestone', screen: '/(tabs)/' },
+          };
+          const trigger = androidTrigger({
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: new Date(targetMs),
+          }) as any;
+          scheduleJobs.push(() =>
+            Notifications.scheduleNotificationAsync({ content, trigger }).then(newId =>
+              AsyncStorage.setItem(CUSTOM_MILESTONE_NOTIF_ID_KEY, newId),
+            ),
+          );
+        } else {
+          await AsyncStorage.removeItem(CUSTOM_MILESTONE_NOTIF_ID_KEY);
         }
-      } catch { /* corrupt entry — leave as is */ }
-    }
+      }
+    } catch { /* corrupt entry — leave as is */ }
   }
 
   // 7. Urge prediction — restore saved schedule (computed from urge journal patterns)
-  if (prefs.notif_urge_prediction) {
-    const saved = await AsyncStorage.getItem(URGE_PREDICTION_SCHEDULE_KEY);
-    if (saved) {
-      let parsed: { hour: number; minute: number } | null = null;
-      try { parsed = JSON.parse(saved); } catch {}
-      if (!parsed || typeof parsed.hour !== 'number' || typeof parsed.minute !== 'number') {
-        await AsyncStorage.removeItem(URGE_PREDICTION_SCHEDULE_KEY);
-        await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
-        return;
-      }
+  if (prefs.notif_urge_prediction && urgeSavedRaw) {
+    let parsed: { hour: number; minute: number } | null = null;
+    try { parsed = JSON.parse(urgeSavedRaw); } catch {}
+    if (!parsed || typeof parsed.hour !== 'number' || typeof parsed.minute !== 'number') {
+      await AsyncStorage.multiRemove([URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
+    } else {
       const { hour, minute } = parsed;
       const urgeRestoreMsg = URGE_PREDICTION_MESSAGES[Math.floor(Math.random() * URGE_PREDICTION_MESSAGES.length)];
-      const restoredId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: urgeRestoreMsg.title,
-          body: urgeRestoreMsg.body,
-          data: { screen: '/(tabs)/urge' },
-        },
-        trigger: androidTrigger({
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour,
-          minute,
-        }) as any,
-      });
-      await AsyncStorage.setItem(URGE_PREDICTION_NOTIF_ID_KEY, restoredId);
+      const content = {
+        title: urgeRestoreMsg.title,
+        body: urgeRestoreMsg.body,
+        data: { screen: '/(tabs)/urge' },
+      };
+      const trigger = androidTrigger({
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute,
+      }) as any;
+      scheduleJobs.push(() =>
+        Notifications.scheduleNotificationAsync({ content, trigger }).then(restoredId =>
+          AsyncStorage.setItem(URGE_PREDICTION_NOTIF_ID_KEY, restoredId),
+        ),
+      );
     }
   }
+
+  // Cancel existing notifications only after all jobs are prepared, then schedule
+  try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {
+    // cancellation can fail if permissions were revoked — continue scheduling anyway
+  }
+  await Promise.allSettled(scheduleJobs.map(job => job()));
 }
 
 const REENGAGEMENT_SCHEDULE: { seconds: number; title: string; body: string }[] = [

@@ -6,19 +6,20 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "cornerday",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.cornerday.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSContactsUsageDescription": "CornerDay uses your contacts to let you quickly set a trusted person to call when you feel an urge.",
-        "NSFaceIDUsageDescription": "CornerDay uses Face ID to protect your recovery data."
+        "NSFaceIDUsageDescription": "CornerDay uses Face ID to protect your recovery data.",
+        "NSPhotoLibraryUsageDescription": "CornerDay uses your photo library to let you set a profile avatar."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#e6f7f7",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -30,10 +31,9 @@
         "SCHEDULE_EXACT_ALARM",
         "USE_EXACT_ALARM",
         "RECEIVE_BOOT_COMPLETED",
-        "READ_CONTACTS",
+        "android.permission.READ_CONTACTS",
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT",
-        "android.permission.READ_CONTACTS"
+        "USE_FINGERPRINT"
       ]
     },
     "web": {
