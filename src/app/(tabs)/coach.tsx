@@ -454,7 +454,9 @@ export default function CoachScreen() {
             ))}
           </ScrollView>
         )}
-        <Text style={s.chatPrivacyNote}>🔒 Not saved · Not shared · Private to you</Text>
+        {showStarters && (
+          <Text style={s.chatPrivacyNote}>🔒 Not saved · Not shared · Private to you</Text>
+        )}
         <View style={s.inputBar}>
           <TextInput
             style={s.textInput}
