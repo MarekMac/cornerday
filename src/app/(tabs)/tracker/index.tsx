@@ -389,16 +389,16 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Delete the debt row first — if there is a FK cascade, payments are cleaned up automatically.
+        // Delete payments first — FK constraint on debt_payments.debt_id → debts.id is RESTRICT.
+        const { error: paymentsDelErr } = await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id).eq('user_id', user.id);
+        if (paymentsDelErr) {
+          Alert.alert('Could not delete debt', paymentsDelErr.message);
+          return;
+        }
         const { error: debtDelErr } = await supabase.from('debts').delete().eq('id', deleteDebtTarget.id).eq('user_id', user.id);
         if (debtDelErr) {
           Alert.alert('Could not delete debt', debtDelErr.message);
           return;
-        }
-        // Delete orphaned payments in case there is no FK cascade.
-        const { error: paymentsDelErr } = await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id).eq('user_id', user.id);
-        if (paymentsDelErr) {
-          Alert.alert('Debt deleted but payments may remain', paymentsDelErr.message);
         }
         await supabase.from('losses').insert({
           user_id: user.id, type: 'debt_deleted', amount: deleteDebtTarget.total_amount,

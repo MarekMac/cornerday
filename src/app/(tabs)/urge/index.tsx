@@ -589,6 +589,10 @@ export default function UrgeScreen() {
           p_quit_timestamp: newQuitTimestamp,
         });
         if (rpcError) { console.warn('[doStreakReset] rpc error:', rpcError.message); return; }
+        await Promise.all([
+          supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null }),
+          supabase.from('badges').delete().eq('user_id', user.id),
+        ]);
         await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
 
