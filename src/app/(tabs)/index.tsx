@@ -1154,27 +1154,7 @@ export default function HomeScreen() {
         })));
         if (journalErr) console.warn('Milestone journal insert failed:', journalErr.message);
 
-        // Fire an immediate notification only if the milestone was just crossed (app was open).
-        // If earned more than 90s ago, the DATE-scheduled notification already delivered.
-        const NOW = Date.now();
-        const justCrossed = toLog.filter(b => NOW - (quitTs + b.days * 86400000) < 90_000);
-        if (justCrossed.length > 0 && profile?.notif_milestone) {
-          const { status } = await Notifications.getPermissionsAsync();
-          if (status === 'granted') {
-            for (const b of justCrossed) {
-              await Notifications.scheduleNotificationAsync({
-                content: {
-                  title: `${b.emoji} ${b.label} milestone!`,
-                  body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
-                  data: { screen: '/(tabs)/' },
-                },
-                trigger: Platform.OS === 'android'
-                  ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
-                  : null,
-              });
-            }
-          }
-        }
+
       }
 
       newlyAwarded.forEach(b => earnedBadges.push(b.type));
@@ -1312,19 +1292,6 @@ export default function HomeScreen() {
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
       };
-      const { status: notifStatus } = await Notifications.getPermissionsAsync();
-      if (notifStatus === 'granted') {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '📍 Goal Setter badge earned!',
-            body: "You've set a savings goal. Having a target makes recovery real — keep saving.",
-            data: { screen: '/(tabs)/' },
-          },
-          trigger: Platform.OS === 'android'
-            ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
-            : null,
-        });
-      }
     }
     if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !earnedBadges.includes('goal_reached')) {
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_reached' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
@@ -1336,19 +1303,6 @@ export default function HomeScreen() {
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
       };
-      const { status: notifStatus } = await Notifications.getPermissionsAsync();
-      if (notifStatus === 'granted') {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '🎊 Goal Reached badge earned!',
-            body: "You've reached your savings goal. That's a massive achievement — be proud.",
-            data: { screen: '/(tabs)/' },
-          },
-          trigger: Platform.OS === 'android'
-            ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
-            : null,
-        });
-      }
     }
 
     // Prevention checklist badge — guard via DB earnedBadges (source of truth)
@@ -1368,19 +1322,6 @@ export default function HomeScreen() {
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
       };
-      const { status } = await Notifications.getPermissionsAsync();
-      if (status === 'granted') {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '🛡️ Safe Zone badge earned!',
-            body: "You've completed every step of the prevention checklist. Your recovery is protected.",
-            data: { screen: '/(tabs)/' },
-          },
-          trigger: Platform.OS === 'android'
-            ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
-            : null,
-        });
-      }
     }
 
     const notifPrefs = {

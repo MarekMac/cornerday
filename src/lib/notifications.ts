@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '../constants/storage-keys';
 
 const STREAK_NOTIF_MESSAGES: { title: string; body: string }[] = [
@@ -146,12 +146,16 @@ const CHANNEL_ID = 'cornerday';
 
 export function configureNotificationHandler() {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async (notification) => {
+      const data = notification.request.content.data as Record<string, unknown> | undefined;
+      const suppress = data?.type === 'milestone' && AppState.currentState === 'active';
+      return {
+        shouldShowBanner: !suppress,
+        shouldShowList: !suppress,
+        shouldPlaySound: !suppress,
+        shouldSetBadge: false,
+      };
+    },
   });
 }
 
@@ -214,7 +218,7 @@ export async function scheduleAllNotifications(
       const content = {
         title: `${m.emoji} ${m.label} milestone!`,
         body: m.body,
-        data: { screen: '/(tabs)?scrollTo=badges' },
+        data: { type: 'milestone', screen: '/(tabs)?scrollTo=badges' },
       };
       const trigger = androidTrigger({
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -235,7 +239,7 @@ export async function scheduleAllNotifications(
         const content = {
           title: `⏰ Almost there — ${next.label} tomorrow!`,
           body: next.approachBody,
-          data: { screen: '/(tabs)?scrollTo=badges' },
+          data: { type: 'milestone', screen: '/(tabs)?scrollTo=badges' },
         };
         const trigger = androidTrigger({
           type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -305,7 +309,7 @@ export async function scheduleAllNotifications(
           const content = {
             title: `🎯 ${milestone.target} Days Clean!`,
             body: `You hit your personal ${milestone.target}-day milestone. This is a huge achievement. Keep going! 🏆`,
-            data: { type: 'custom_milestone', screen: '/(tabs)/' },
+            data: { type: 'milestone', screen: '/(tabs)/' },
           };
           const trigger = androidTrigger({
             type: Notifications.SchedulableTriggerInputTypes.DATE,
