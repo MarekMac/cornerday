@@ -253,7 +253,7 @@ export default function AnalyticsScreen() {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
 
     const [profileRes, streakRes, lossesRes, debtsRes, paymentsRes, urgeRes, moodRes, checkinDatesRes] = await Promise.all([
-      supabase.from('users').select('currency, quit_date, quit_timestamp, savings_target_date').eq('id', user.id).maybeSingle(),
+      supabase.from('users').select('currency, quit_date, quit_timestamp, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
       supabase.from('debts').select('id, name, total_amount, target_date, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
@@ -263,8 +263,9 @@ export default function AnalyticsScreen() {
       supabase.from('mood_checkins').select('created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
     ]);
 
-    if (profileRes.error || streakRes.error || lossesRes.error || debtsRes.error || paymentsRes.error) {
-      throw new Error('Failed to load core analytics data');
+    if (profileRes.error || streakRes.error || lossesRes.error || debtsRes.error || paymentsRes.error ||
+        urgeRes.error || moodRes.error || checkinDatesRes.error) {
+      throw new Error('Failed to load analytics data');
     }
 
     const [goalRaw, goalForRaw, goalIconRaw] = await Promise.all([
@@ -372,7 +373,11 @@ export default function AnalyticsScreen() {
 
     const moodRows   = moodRes.data ?? [];
     const moodByDate: Record<string, number> = {};
-    moodRows.forEach(r => { moodByDate[new Date(r.created_at).toLocaleDateString('en-CA')] = r.mood; });
+    moodRows.forEach(r => {
+      const d = new Date(r.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      moodByDate[key] = r.mood;
+    });
     const moodLast30 = Object.entries(moodByDate)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, mood]) => ({ date, mood }));
@@ -381,7 +386,8 @@ export default function AnalyticsScreen() {
     const moodSparkline: (number | null)[] = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 86400000);
-      moodSparkline.push(moodByDate[d.toLocaleDateString('en-CA')] ?? null);
+      const sk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      moodSparkline.push(moodByDate[sk] ?? null);
     }
 
     const today = new Date();
@@ -472,9 +478,12 @@ export default function AnalyticsScreen() {
       currency, quitDate,
       longestStreak: streakRes.data?.longest_streak ?? 0,
       currentStreakDays, totalSavings,
-      savingsGoal: (() => { const n = goalRaw ? Number(goalRaw) : null; return n !== null && !isNaN(n) ? n : null; })(),
-      savingsGoalFor: goalForRaw ?? '',
-      savingsGoalIcon: goalIconRaw ?? '🎯',
+      savingsGoal: (() => {
+        const n = profile?.savings_goal_amount != null ? Number(profile.savings_goal_amount) : (goalRaw ? Number(goalRaw) : null);
+        return n !== null && !isNaN(n) ? n : null;
+      })(),
+      savingsGoalFor: profile?.savings_goal_label ?? goalForRaw ?? '',
+      savingsGoalIcon: profile?.savings_goal_icon ?? goalIconRaw ?? '🎯',
       totalDebts, totalDebtPaid, debtsWithPacing,
       urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByTimeOfDay, topTriggers,
       moodLast30, moodSparkline, checkInDays,

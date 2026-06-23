@@ -350,12 +350,13 @@ export async function scheduleAllNotifications(
     }
   }
 
-  // Cancel existing notifications only after all jobs are prepared, then schedule
+  // Cancel existing notifications only after all jobs are prepared, then schedule.
+  // Clear the urge prediction ID BEFORE cancelAll so a concurrent
+  // scheduleUrgePredictionNotification can't write a new ID that we then delete.
+  await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
   try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {
     // cancellation can fail if permissions were revoked — continue scheduling anyway
   }
-  // Clear the urge prediction ID after cancellation so section 7 gets a clean slate
-  await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
   await Promise.allSettled(scheduleJobs.map(job => job()));
 }
 

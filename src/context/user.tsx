@@ -52,6 +52,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     load();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED') return;
       if (session?.user) {
         load();
       } else {

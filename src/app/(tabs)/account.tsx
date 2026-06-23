@@ -334,7 +334,7 @@ export default function AccountScreen() {
       if (!user) return;
       const identities = user.identities ?? [];
       setIsPasswordUser(identities.some(id => id.provider === 'email'));
-      const [{ data }, { data: streakData }, { data: savingsRows }] = await Promise.all([
+      const [{ data, error: profileErr }, { data: streakData }, { data: savingsRows }] = await Promise.all([
         supabase
           .from('users')
           .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, debt_target_date, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon')
@@ -343,6 +343,7 @@ export default function AccountScreen() {
         supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
         supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
       ]);
+      if (profileErr) throw profileErr;
       const quitTs = data?.quit_timestamp ?? data?.quit_date;
       const streakDays = quitTs ? Math.max(0, Date.now() - parseQuitDate(quitTs).getTime()) / 86400000 : 0;
       const MILESTONE_DAYS = [0, 1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
@@ -680,7 +681,10 @@ export default function AccountScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const col = kind === 'debt' ? 'debt_target_date' : 'savings_target_date';
-        const { error } = await supabase.from('users').update({ [col]: date.toISOString().split('T')[0] }).eq('id', user.id);
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const { error } = await supabase.from('users').update({ [col]: `${y}-${m}-${d}` }).eq('id', user.id);
         if (error) { Alert.alert('Could not save date', error.message); return; }
         if (kind === 'debt') { setDebtTargetDate(date); setShowDebtTargetModal(false); }
         else { setSavingsTargetDate(date); setShowSavingsTargetModal(false); }
@@ -1081,12 +1085,16 @@ export default function AccountScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await Promise.all([
+        const [urgeRes, moodRes] = await Promise.all([
           supabase.from('urge_journal').delete().eq('user_id', user.id),
           supabase.from('mood_checkins').delete().eq('user_id', user.id),
           AsyncStorage.removeItem(CHECKLIST_KEY),
           AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
         ]);
+        if (urgeRes.error || moodRes.error) {
+          Alert.alert('Could not clear journal', (urgeRes.error ?? moodRes.error)!.message);
+          return;
+        }
       }
     } finally {
       setResetting(false);
@@ -1112,8 +1120,10 @@ export default function AccountScreen() {
       ]);
       setCustomMilestone(null);
       setChecklistCount(0);
-      await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
-      await scheduleOnboardingCheckin();
+      if (quitTimestamp) {
+        await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
+        await scheduleOnboardingCheckin();
+      }
     } finally {
       setResetting(false);
     }
@@ -1124,11 +1134,13 @@ export default function AccountScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await Promise.all([
-          supabase.from('losses').delete().eq('user_id', user.id),
-          supabase.from('debts').delete().eq('user_id', user.id),
-          supabase.from('debt_payments').delete().eq('user_id', user.id),
-        ]);
+        // debt_payments must be deleted before debts to avoid FK constraint failures
+        const { error: paymentsErr } = await supabase.from('debt_payments').delete().eq('user_id', user.id);
+        if (paymentsErr) { Alert.alert('Could not reset tracker', paymentsErr.message); return; }
+        const { error: debtsErr } = await supabase.from('debts').delete().eq('user_id', user.id);
+        if (debtsErr) { Alert.alert('Could not reset tracker', debtsErr.message); return; }
+        const { error: lossesErr } = await supabase.from('losses').delete().eq('user_id', user.id);
+        if (lossesErr) { Alert.alert('Could not reset tracker', lossesErr.message); return; }
       }
     } finally {
       setResetting(false);

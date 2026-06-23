@@ -130,9 +130,24 @@ export default function ReadyScreen() {
         }, { onConflict: 'user_id' }),
       ]);
 
-      if (updateResult.error || streakResult.error || !updateResult.data?.length) {
+      if (updateResult.error || !updateResult.data?.length) {
         setError('Something went wrong. Please try again.');
         return;
+      }
+      if (streakResult.error) {
+        // users.update succeeded but streaks.upsert failed — retry once so the user isn't
+        // left with a users row but no streaks row (which causes null-dereference on home screen)
+        const { error: retryErr } = await supabase.from('streaks').upsert({
+          user_id: user.id,
+          current_streak: 0,
+          longest_streak: 0,
+          streak_start_date: today,
+          last_check_in: today,
+        }, { onConflict: 'user_id' });
+        if (retryErr) {
+          setError('Something went wrong. Please try again.');
+          return;
+        }
       }
 
       const { data: existingJourney } = await supabase

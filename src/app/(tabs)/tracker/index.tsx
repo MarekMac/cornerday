@@ -229,17 +229,20 @@ export default function TrackerIndex() {
   // Prevent useFocusEffect from duplicating the initial useEffect fetch
   const initialFetchDone = useRef(false);
   const fetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
   // Prevent Modal's onRequestClose firing while a native Android picker is open
   const nativePickerOpen = useRef(false);
   // Snapshot of debt target date when modal opens — restored on Cancel
   const debtTargetDateBeforeEdit = useRef<Date | null>(null);
+
+  useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
 
   const fetchAll = useCallback(async () => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !isMountedRef.current) return;
 
       const [debtsRes, paymentsRes, savingsRes, sessionsRes, profileRes, rawGoal, rawFor, rawIcon] = await Promise.all([
         supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -252,6 +255,7 @@ export default function TrackerIndex() {
         AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
       ]);
 
+      if (!isMountedRef.current) return;
       setDebts((debtsRes.data ?? []) as Debt[]);
       setPayments((paymentsRes.data ?? []) as DebtPayment[]);
       setSavings((savingsRes.data ?? []) as SavingEntry[]);
@@ -269,10 +273,10 @@ export default function TrackerIndex() {
       setSavingsGoalIcon(rawIcon ?? '🎯');
     } catch (e) {
       console.warn('fetchAll error:', e);
-      setLoadError(true);
+      if (isMountedRef.current) setLoadError(true);
     } finally {
       fetchingRef.current = false;
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, []);
 
@@ -351,18 +355,20 @@ export default function TrackerIndex() {
       if (user) {
         const targetDateStr = debtTargetDate ? debtTargetDate.toISOString().split('T')[0] : null;
         if (editingDebt) {
-          await supabase.from('debts').update({
+          const { error: updateErr } = await supabase.from('debts').update({
             name: debtName.trim(), total_amount: amount, category: debtCategory,
             target_date: targetDateStr,
           }).eq('id', editingDebt.id).eq('user_id', user.id);
+          if (updateErr) { Alert.alert('Could not save', updateErr.message); return; }
           await supabase.from('losses').insert({
             user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
           });
         } else {
-          await supabase.from('debts').insert({
+          const { error: insertErr } = await supabase.from('debts').insert({
             user_id: user.id, name: debtName.trim(),
             total_amount: amount, category: debtCategory, target_date: targetDateStr,
           });
+          if (insertErr) { Alert.alert('Could not save', insertErr.message); return; }
         }
         hapticMedium();
         closeDebtModal();

@@ -316,6 +316,7 @@ export default function JournalScreen() {
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [clearAllVisible, setClearAllVisible] = useState(false);
   const [clearingAll, setClearingAll] = useState(false);
   const [filterKind, setFilterKind] = useState<FilterKind>('all');
@@ -356,9 +357,11 @@ export default function JournalScreen() {
 
       entries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       if (!isMountedRef.current) return;
+      setFetchError(false);
       setFeed(entries);
     } catch (e) {
       console.warn('[journal] fetchFeed error:', e);
+      if (isMountedRef.current) setFetchError(true);
     }
   }, []);
 
@@ -385,15 +388,16 @@ export default function JournalScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         // debt_payments must be deleted before debts to avoid FK constraint conflicts
-        const debtPaymentsRes = await supabase.from('debt_payments').delete().eq('user_id', user.id);
-        const debtsRes = await supabase.from('debts').delete().eq('user_id', user.id);
+        const { error: debtPaymentsErr } = await supabase.from('debt_payments').delete().eq('user_id', user.id);
+        if (debtPaymentsErr) { Alert.alert('Could not clear journal', debtPaymentsErr.message); return; }
+        const { error: debtsErr } = await supabase.from('debts').delete().eq('user_id', user.id);
+        if (debtsErr) { Alert.alert('Could not clear journal', debtsErr.message); return; }
         const [urgeRes, moodRes, lossRes] = await Promise.all([
           supabase.from('urge_journal').delete().eq('user_id', user.id),
           supabase.from('mood_checkins').delete().eq('user_id', user.id),
           supabase.from('losses').delete().eq('user_id', user.id).in('type', ['saving', 'streak_reset', 'debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
         ]);
-        const results = [debtPaymentsRes, debtsRes, urgeRes, moodRes, lossRes];
-        const dbError = results.find(r => r.error)?.error;
+        const dbError = [urgeRes, moodRes, lossRes].find(r => r.error)?.error;
         if (dbError) {
           Alert.alert('Could not clear journal', dbError.message);
           return;
@@ -434,6 +438,12 @@ export default function JournalScreen() {
       {loading ? (
         <View style={s.center}>
           <ActivityIndicator size="large" color={c.primary} />
+        </View>
+      ) : fetchError ? (
+        <View style={s.empty}>
+          <Text style={s.emptyIcon}>⚠️</Text>
+          <Text style={s.emptyTitle}>Could not load journal</Text>
+          <Text style={s.emptySub}>Check your connection and pull down to retry.</Text>
         </View>
       ) : feed.length === 0 ? (
         <View style={s.empty}>

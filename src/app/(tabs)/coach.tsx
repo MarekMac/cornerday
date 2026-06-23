@@ -131,7 +131,13 @@ export default function CoachScreen() {
   const [isStreaming, setIsStreaming] = useState(false);
   const listRef = useRef<FlatList>(null);
   const isMountedRef = useRef(true);
-  useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   // Load persisted chat history on mount
   useEffect(() => {
@@ -182,7 +188,8 @@ export default function CoachScreen() {
     const isFirstTurn = apiMessages.length === 1;
 
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-    const abortController = new AbortController();
+    abortControllerRef.current = new AbortController();
+    const abortController = abortControllerRef.current;
     const streamTimeout = setTimeout(() => abortController.abort(), 30_000);
     try {
       const [{ data: { session } }, checklistRaw] = await Promise.all([
@@ -215,7 +222,9 @@ export default function CoachScreen() {
                   ...m,
                   content: errData?.error === 'premium_required'
                     ? 'This feature requires a premium subscription. Upgrade in Settings.'
-                    : 'Something went wrong. Please try again.',
+                    : response.status === 401
+                      ? 'Your session has expired. Please sign out and back in, then try again.'
+                      : 'Something went wrong. Please try again.',
                   pending: false,
                 }
               : m,

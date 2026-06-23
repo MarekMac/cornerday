@@ -300,7 +300,8 @@ export default function ModerationScreen() {
           setUserActioning(user.id);
           try {
             const patch = { is_banned: false, ban_reason: null, ban_expires_at: null, ban_appeal_note: null };
-            await supabase.from('users').update(patch).eq('id', user.id);
+            const { error: unbanErr } = await supabase.from('users').update(patch).eq('id', user.id);
+            if (unbanErr) { Alert.alert('Unban failed', unbanErr.message); return; }
             const updated = { ...user, ...patch };
             setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
             if (detailUser?.id === user.id) setDetailUser(updated);
@@ -374,7 +375,8 @@ export default function ModerationScreen() {
           onPress: async () => {
             setDeletingFeedback(item.id);
             try {
-              await supabase.from('feedback').delete().eq('id', item.id);
+              const { error: delErr } = await supabase.from('feedback').delete().eq('id', item.id);
+              if (delErr) { Alert.alert('Delete failed', delErr.message); return; }
               setFeedbackItems(prev => prev.filter(f => f.id !== item.id));
             } finally {
               setDeletingFeedback(null);

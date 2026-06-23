@@ -18,9 +18,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { supabase } from '@/lib/supabase';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
+import { ONBOARDED_KEY } from '@/constants/storage-keys';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -145,6 +148,7 @@ export default function SignupScreen() {
           return;
         }
         if (profile !== null) {
+          await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           router.replace('/(tabs)');
         } else {
           router.push('/(onboarding)/q1');
@@ -184,6 +188,7 @@ export default function SignupScreen() {
           .from('users').select('id').eq('id', authUser.id).maybeSingle();
         if (profileErr) { setError('Sign-in succeeded but we could not load your profile. Please try again.'); return; }
         if (profile !== null) {
+          await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           router.replace('/(tabs)');
         } else {
           router.push('/(onboarding)/q1');
@@ -208,6 +213,7 @@ export default function SignupScreen() {
               .from('users').select('id').eq('id', authUser.id).maybeSingle();
             if (profileErr) { setError('Sign-in succeeded but we could not load your profile. Please try again.'); return; }
             if (profile !== null) {
+              await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
               router.replace('/(tabs)');
             } else {
               router.push('/(onboarding)/q1');

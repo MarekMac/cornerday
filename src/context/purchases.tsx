@@ -71,6 +71,12 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const customerInfoHandler = async (info: CustomerInfo) => {
+      const premium = checkPremium(info) || isAdminRef.current;
+      setIsPremium(premium);
+      await syncToSupabase(premium);
+    };
+
     const init = async () => {
       // Admin check is independent — RC failures must not block it
       try {
@@ -86,6 +92,8 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       // RevenueCat init (can fail without affecting admin premium)
       try {
         Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+        // Register listener only after configure() so the SDK singleton exists
+        Purchases.addCustomerInfoUpdateListener(customerInfoHandler);
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -96,16 +104,17 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        const [info, offeringsResult] = await Promise.all([
-          Purchases.getCustomerInfo(),
-          Purchases.getOfferings(),
-        ]);
-
+        const info = await Purchases.getCustomerInfo();
         const premium = checkPremium(info) || isAdminRef.current;
         setIsPremium(premium);
         await syncToSupabase(premium);
 
-        if (offeringsResult.current) setOfferings(offeringsResult.current);
+        try {
+          const offeringsResult = await Purchases.getOfferings();
+          if (offeringsResult.current) setOfferings(offeringsResult.current);
+        } catch (e) {
+          console.warn('[RevenueCat] getOfferings error:', e);
+        }
       } catch (e) {
         console.warn('[RevenueCat] init error:', e);
       } finally {
@@ -115,12 +124,6 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
 
     init();
 
-    const customerInfoHandler = async (info: CustomerInfo) => {
-      const premium = checkPremium(info) || isAdminRef.current;
-      setIsPremium(premium);
-      await syncToSupabase(premium);
-    };
-    Purchases.addCustomerInfoUpdateListener(customerInfoHandler);
     return () => { Purchases.removeCustomerInfoUpdateListener(customerInfoHandler); };
   }, []);
 

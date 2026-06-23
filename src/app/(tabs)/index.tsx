@@ -1074,7 +1074,7 @@ export default function HomeScreen() {
     fetchingRef.current = true;
     try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { fetchingRef.current = false; return; }
 
     const today = todayStr();
 
@@ -1661,9 +1661,11 @@ export default function HomeScreen() {
           const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
           if (insertErr) { Alert.alert('Could not save mood', insertErr.message); return; }
           if (!inserted?.id) { Alert.alert('Could not save mood', 'No row ID returned. Please try again.'); return; }
+          if (!isMountedRef.current) return;
           setData(prev => prev ? { ...prev, todayMoodId: inserted.id } : prev);
           showInterstitialIfReady(isPremium);
         }
+        if (!isMountedRef.current) return;
         const todayKey = todayStr();
         setData(prev => {
           if (!prev) return prev;
@@ -1681,7 +1683,7 @@ export default function HomeScreen() {
         setEditMoodValue(null);
       }
     } finally {
-      setMoodSubmitting(false);
+      if (isMountedRef.current) setMoodSubmitting(false);
     }
   };
 
@@ -1748,8 +1750,12 @@ export default function HomeScreen() {
           await AsyncStorage.setItem(SHIELD_UNDO_KEY, JSON.stringify(undoData));
           setShieldUndo({ prevQuit: undoData.prevQuit, prevStreakDays: undoData.prevStreakDays, expiresAt: undoData.expiresAt });
         }
-        // Delete badges from DB so they are re-awarded cleanly on the new streak
-        await supabase.from('badges').delete().eq('user_id', user.id);
+        // Delete badges so they re-award on the new streak.
+        // Skip deletion when shield is on — doUndoRelapse restores the old quit date,
+        // and 23505 upsert guards prevent duplicate badges from re-awarding cleanly.
+        if (!shieldEnabled) {
+          await supabase.from('badges').delete().eq('user_id', user.id);
+        }
         // Clear AsyncStorage badge/notification flags so everything resets cleanly after a relapse
         await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         // Reschedule notifications against the new quit timestamp

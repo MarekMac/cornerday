@@ -274,12 +274,18 @@ export default function UrgeScreen() {
   // Reset log form state after modal has finished closing
   useEffect(() => { if (!logExpanded) resetLogState(); }, [logExpanded]);
 
-  // Award a point when the timer completes
+  // Award a point when the timer completes — check AsyncStorage first to prevent
+  // double-fire when timerDone is already true on component remount
   useEffect(() => {
-    if (timerDone && !timerPointsEarned) {
+    if (!timerDone || timerPointsEarned) return;
+    const now = new Date();
+    const localDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    AsyncStorage.getItem(`urge_timer_${localDay}`).then(val => {
+      if (!isMounted.current) return;
+      if (val) { setTimerPointsEarned(true); return; }
       awardTimerPoint(timerTotal);
-    }
-  }, [timerDone, timerPointsEarned, timerTotal]);
+    });
+  }, [timerDone]);
 
   const fetchMotivation = useCallback(async () => {
     // Load cache immediately so the screen works offline
@@ -582,7 +588,7 @@ export default function UrgeScreen() {
           p_quit_date: today,
           p_quit_timestamp: newQuitTimestamp,
         });
-        if (rpcError) console.warn('[doStreakReset] rpc error:', rpcError.message);
+        if (rpcError) { console.warn('[doStreakReset] rpc error:', rpcError.message); return; }
         await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
 

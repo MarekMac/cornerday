@@ -266,7 +266,8 @@ export default function CommunityFeed() {
         q = q.order('created_at', { ascending: false });
       }
       q = q.range(0, PAGE_SIZE - 1);
-      if (tag === 'Mine' && currentUserIdRef.current) {
+      if (tag === 'Mine') {
+        if (!currentUserIdRef.current) { postsRef.current = []; setPosts([]); setHasMore(false); return; }
         q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
       } else if (tag !== 'All') q = q.eq('tag', tag);
 
@@ -385,7 +386,11 @@ export default function CommunityFeed() {
         const { error: insErr } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
         if (insErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); return; }
         const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid).eq('emoji', current);
-        if (delErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+        if (delErr) {
+          // Insert succeeded but delete failed — clean up the orphaned new row so DB stays consistent
+          await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid).eq('emoji', emoji);
+          setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts);
+        }
       } else {
         setUserReactions(prev => ({ ...prev, [postId]: emoji }));
         setAllEmojiCounts(prev => ({
