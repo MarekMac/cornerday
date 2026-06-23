@@ -90,21 +90,25 @@ export default function DebtDetailScreen() {
   const [savingTarget, setSavingTarget] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const [debtRes, paymentsRes, profileRes] = await Promise.all([
-      supabase.from('debts').select('*').eq('id', id).eq('user_id', user.id).maybeSingle(),
-      supabase.from('debt_payments').select('*').eq('debt_id', id).eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('users').select('currency').eq('id', user.id).maybeSingle(),
-    ]);
+      const [debtRes, paymentsRes, profileRes] = await Promise.all([
+        supabase.from('debts').select('*').eq('id', id).eq('user_id', user.id).maybeSingle(),
+        supabase.from('debt_payments').select('*').eq('debt_id', id).eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('users').select('currency').eq('id', user.id).maybeSingle(),
+      ]);
 
-    if (debtRes.data) {
-      setDebt(debtRes.data as Debt);
-      if (debtRes.data.target_date) setTargetDate(new Date(debtRes.data.target_date + 'T12:00:00'));
+      if (debtRes.data) {
+        setDebt(debtRes.data as Debt);
+        if (debtRes.data.target_date) setTargetDate(new Date(debtRes.data.target_date + 'T12:00:00'));
+      }
+      setPayments((paymentsRes.data ?? []) as Payment[]);
+      if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
+    } catch (e) {
+      console.warn('[tracker/id] fetchData error:', e);
     }
-    setPayments((paymentsRes.data ?? []) as Payment[]);
-    if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
   }, [id]);
 
   useEffect(() => { fetchData().finally(() => setLoading(false)); }, [fetchData]);
@@ -162,7 +166,9 @@ export default function DebtDetailScreen() {
               body: `You've fully paid off "${debt.name}". That's a huge step — well done.`,
               data: { screen: '/(tabs)/tracker' },
             },
-            trigger: null,
+            trigger: Platform.OS === 'android'
+              ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
+              : null,
           });
         }
         await supabase.from('losses').insert({
@@ -192,10 +198,15 @@ export default function DebtDetailScreen() {
   };
 
   const clearTargetDate = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error } = await supabase.from('debts').update({ target_date: null }).eq('id', id).eq('user_id', user.id);
-    if (!error) setTargetDate(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('debts').update({ target_date: null }).eq('id', id).eq('user_id', user.id);
+      if (error) { Alert.alert('Could not clear date', 'Please try again.'); return; }
+      setTargetDate(null);
+    } catch {
+      Alert.alert('Could not clear date', 'Please try again.');
+    }
   };
 
   const openTargetPicker = () => {

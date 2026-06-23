@@ -510,16 +510,17 @@ export default function UrgeScreen() {
   };
 
   const removeContact = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null }).eq('id', user.id);
-      if (error) {
-        Alert.alert('Could not remove', 'Please try again.');
-        return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('users').update({ trusted_contact_name: null, trusted_contact_phone: null }).eq('id', user.id);
+        if (error) { Alert.alert('Could not remove', 'Please try again.'); return; }
       }
+      await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
+      setTrustedContact(null);
+    } catch {
+      Alert.alert('Could not remove contact', 'Please try again.');
     }
-    await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
-    setTrustedContact(null);
   };
 
   const saveContact = async () => {

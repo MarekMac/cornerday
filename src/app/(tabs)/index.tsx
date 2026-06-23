@@ -1160,7 +1160,9 @@ export default function HomeScreen() {
                   body: `You've been clean for ${b.label}. That's a real achievement — keep going.`,
                   data: { screen: '/(tabs)/' },
                 },
-                trigger: null,
+                trigger: Platform.OS === 'android'
+                  ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
+                  : null,
               });
             }
           }
@@ -1310,7 +1312,9 @@ export default function HomeScreen() {
             body: "You've set a savings goal. Having a target makes recovery real — keep saving.",
             data: { screen: '/(tabs)/' },
           },
-          trigger: null,
+          trigger: Platform.OS === 'android'
+            ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
+            : null,
         });
       }
     }
@@ -1332,7 +1336,9 @@ export default function HomeScreen() {
             body: "You've reached your savings goal. That's a massive achievement — be proud.",
             data: { screen: '/(tabs)/' },
           },
-          trigger: null,
+          trigger: Platform.OS === 'android'
+            ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
+            : null,
         });
       }
     }
@@ -1362,7 +1368,9 @@ export default function HomeScreen() {
             body: "You've completed every step of the prevention checklist. Your recovery is protected.",
             data: { screen: '/(tabs)/' },
           },
-          trigger: null,
+          trigger: Platform.OS === 'android'
+            ? ({ type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, repeats: false, channelId: 'cornerday' } as any)
+            : null,
         });
       }
     }
@@ -1473,23 +1481,27 @@ export default function HomeScreen() {
   }, [fetchData]);
 
   const fetchPartnerMsg = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: link } = await supabase
-      .from('partner_links')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (!link) return;
-    const { data: msg } = await supabase
-      .from('partner_messages')
-      .select('id, message')
-      .eq('link_id', link.id)
-      .is('read_at', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    setPartnerMsg(msg ?? null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMountedRef.current) return;
+      const { data: link } = await supabase
+        .from('partner_links')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!link || !isMountedRef.current) return;
+      const { data: msg } = await supabase
+        .from('partner_messages')
+        .select('id, message')
+        .eq('link_id', link.id)
+        .is('read_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (isMountedRef.current) setPartnerMsg(msg ?? null);
+    } catch (e) {
+      console.warn('[fetchPartnerMsg]', e);
+    }
   }, []);
 
   const [focusTick, setFocusTick] = useState(0);

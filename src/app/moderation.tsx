@@ -266,7 +266,8 @@ export default function ModerationScreen() {
       const ms = BAN_DURATION_MS[banDuration];
       const expiresAt = ms ? new Date(Date.now() + ms).toISOString() : null;
       const patch = { is_banned: true, ban_reason: banReason.trim() || null, ban_expires_at: expiresAt, ban_appeal_note: banAppeal.trim() || null };
-      await supabase.from('users').update(patch).eq('id', banFormUser.id);
+      const { error: banErr } = await supabase.from('users').update(patch).eq('id', banFormUser.id);
+      if (banErr) { Alert.alert('Ban failed', banErr.message); return; }
       const updated = { ...banFormUser, ...patch };
       setUsers(prev => prev.map(u => u.id === banFormUser.id ? updated : u));
       if (detailUser?.id === banFormUser.id) setDetailUser(updated);

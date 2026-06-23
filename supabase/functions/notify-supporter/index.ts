@@ -94,16 +94,6 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get('Authorization') ?? '';
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  const rawBody = await req.text();
-  if (rawBody.length > 65536) {
-    return new Response(JSON.stringify({ error: 'payload_too_large' }), {
-      status: 413, headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
-  const body = JSON.parse(rawBody.length > 0 ? rawBody : '{}');
-  const type: string = body.type ?? '';
-  const milestoneLabel: string = body.milestone_label ?? '';
-
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
   const { data: { user }, error: authErr } = await sb.auth.getUser(bearerToken);
   if (authErr || !user) {
@@ -112,6 +102,17 @@ Deno.serve(async (req: Request) => {
     });
   }
   const userId = user.id;
+
+  const rawBody = await req.text();
+  if (rawBody.length > 65536) {
+    return new Response(JSON.stringify({ error: 'payload_too_large' }), {
+      status: 413, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
+  let body: Record<string, string> = {};
+  try { body = JSON.parse(rawBody.length > 0 ? rawBody : '{}'); } catch { /* ignore */ }
+  const type: string = body.type ?? '';
+  const milestoneLabel: string = body.milestone_label ?? '';
 
   if (!['urge', 'relapse', 'milestone'].includes(type)) {
     return new Response(JSON.stringify({ error: 'invalid_type' }), {
@@ -173,7 +174,7 @@ Deno.serve(async (req: Request) => {
   if (!res.ok) {
     const err = await res.text();
     console.error('Resend error:', err);
-    return new Response(JSON.stringify({ ok: false, error: err }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Failed to send notification' }), {
       status: 502, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }

@@ -220,7 +220,7 @@ export default function CommunityFeed() {
         postsRef.current = items;
         setPosts(items);
         setHasMore(items.length === PAGE_SIZE);
-        fetchReactions(items.map(p => p.id), true);
+        await fetchReactions(items.map(p => p.id), true);
         return;
       }
 
@@ -255,7 +255,7 @@ export default function CommunityFeed() {
         postsRef.current = items;
         setPosts(items);
         setHasMore(items.length === PAGE_SIZE);
-        fetchReactions(items.map(p => p.id), true);
+        await fetchReactions(items.map(p => p.id), true);
         return;
       }
 
@@ -290,8 +290,9 @@ export default function CommunityFeed() {
   }, []);
 
   const loadMore = async () => {
+    const tag = activeTagRef.current;
     if (loadingMore || !hasMore || activeFetch.current) return;
-    if (activeTag === 'Saved' || activeTag === 'Following') return;
+    if (tag === 'Saved' || tag === 'Following') return;
     activeFetch.current = true;
     setLoadingMore(true);
     setLoadMoreError(false);
@@ -305,9 +306,9 @@ export default function CommunityFeed() {
         q = q.order('created_at', { ascending: false });
       }
       q = q.range(offset, offset + PAGE_SIZE - 1);
-      if (activeTag === 'Mine' && currentUserIdRef.current) {
+      if (tag === 'Mine' && currentUserIdRef.current) {
         q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
-      } else if (activeTag !== 'All') q = q.eq('tag', activeTag);
+      } else if (tag !== 'All') q = q.eq('tag', tag);
       const { data, error } = await q;
       if (error) {
         console.warn('[community] loadMore error:', error.message);
@@ -319,7 +320,7 @@ export default function CommunityFeed() {
       postsRef.current = next;
       setPosts(next);
       setHasMore(items.length === PAGE_SIZE);
-      fetchReactions(items.map(p => p.id), false);
+      await fetchReactions(items.map(p => p.id), false);
     } finally {
       setLoadingMore(false);
       activeFetch.current = false;
@@ -761,6 +762,8 @@ export default function CommunityFeed() {
             onPress={() => {
               setNewPostsCount(0);
               flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+              sortByRef.current = 'new';
+              setSortBy('new');
               load('All', 'new', true);
               activeTagRef.current = 'All';
               setActiveTag('All');

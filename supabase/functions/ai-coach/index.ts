@@ -201,7 +201,7 @@ Deno.serve(async (req: Request) => {
     });
   } catch (err) {
     console.error('ai-coach error:', err);
-    return json({ error: String(err) }, 500);
+    return json({ error: 'Internal server error' }, 500);
   }
 });
 

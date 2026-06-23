@@ -81,16 +81,19 @@ Deno.serve(async (req) => {
     // This order prevents an orphaned users row if the auth deletion fails.
     const { error: dbDeleteError } = await adminClient.from('users').delete().eq('id', userId);
     if (dbDeleteError) {
-      return new Response(JSON.stringify({ error: dbDeleteError.message }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      console.error('delete-account: db delete error:', dbDeleteError.message);
+      return new Response(JSON.stringify({ error: 'Failed to delete account data' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
     if (deleteError) {
-      return new Response(JSON.stringify({ error: deleteError.message }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      console.error('delete-account: auth delete error:', deleteError.message);
+      return new Response(JSON.stringify({ error: 'Failed to delete auth user' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    console.error('delete-account: unexpected error:', e);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
   }
 });

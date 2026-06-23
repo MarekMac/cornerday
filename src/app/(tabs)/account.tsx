@@ -731,29 +731,33 @@ export default function AccountScreen() {
       Alert.alert('Invalid amount', 'Please enter a valid amount between 0 and 999,999,999.');
       return;
     }
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!goalInput) {
-      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
-      if (user) {
-        await supabase.from('users').update({ savings_goal_amount: null, savings_goal_label: null, savings_goal_icon: null }).eq('id', user.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!goalInput) {
+        await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+        if (user) {
+          await supabase.from('users').update({ savings_goal_amount: null, savings_goal_label: null, savings_goal_icon: null }).eq('id', user.id);
+        }
+        await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
+        setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
+      } else {
+        const forVal = goalForInput.trim();
+        const iconVal = goalIconInput || '🎯';
+        await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
+        await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
+        if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
+        else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
+        if (user) {
+          await supabase.from('users').update({ savings_goal_amount: val, savings_goal_label: forVal || null, savings_goal_icon: iconVal }).eq('id', user.id);
+        }
+        const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
+        await logGoalEvent(eventType, val, forVal || null);
+        setSavingsGoal(val); setSavingsGoalFor(forVal); setSavingsGoalIcon(iconVal);
       }
-      await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
-      setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
-    } else {
-      const forVal = goalForInput.trim();
-      const iconVal = goalIconInput || '🎯';
-      await AsyncStorage.setItem(SAVINGS_GOAL_KEY, String(val));
-      await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
-      if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
-      else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
-      if (user) {
-        await supabase.from('users').update({ savings_goal_amount: val, savings_goal_label: forVal || null, savings_goal_icon: iconVal }).eq('id', user.id);
-      }
-      const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
-      await logGoalEvent(eventType, val, forVal || null);
-      setSavingsGoal(val); setSavingsGoalFor(forVal); setSavingsGoalIcon(iconVal);
+      closeGoalModal();
+    } catch {
+      Alert.alert('Could not save goal', 'Please try again.');
     }
-    closeGoalModal();
   };
 
   const openContactModal = () => {
@@ -780,26 +784,30 @@ export default function AccountScreen() {
     const name = contactNameInput.trim();
     const phone = contactPhoneInput.trim();
     const email = contactEmailInput.trim().toLowerCase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error: dbErr } = await supabase.from('users').update({
-        trusted_contact_name: name || null,
-        trusted_contact_phone: phone || null,
-        trusted_contact_email: email || null,
-      }).eq('id', user.id);
-      if (dbErr) { Alert.alert('Could not save contact', 'Please try again.'); return; }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error: dbErr } = await supabase.from('users').update({
+          trusted_contact_name: name || null,
+          trusted_contact_phone: phone || null,
+          trusted_contact_email: email || null,
+        }).eq('id', user.id);
+        if (dbErr) { Alert.alert('Could not save contact', 'Please try again.'); return; }
+      }
+      if (!name && !phone) {
+        await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
+        setTrustedContactName('');
+        setTrustedContactPhone('');
+      } else {
+        await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone, email }));
+        setTrustedContactName(name);
+        setTrustedContactPhone(phone);
+      }
+      setTrustedContactEmail(email);
+      setShowContactModal(false);
+    } catch {
+      Alert.alert('Could not save contact', 'Please try again.');
     }
-    if (!name && !phone) {
-      await AsyncStorage.removeItem(TRUSTED_CONTACT_KEY);
-      setTrustedContactName('');
-      setTrustedContactPhone('');
-    } else {
-      await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify({ name, phone, email }));
-      setTrustedContactName(name);
-      setTrustedContactPhone(phone);
-    }
-    setTrustedContactEmail(email);
-    setShowContactModal(false);
   };
 
   const openFieldModal = (field: FieldKey) => {
@@ -973,8 +981,9 @@ export default function AccountScreen() {
       setGlobalAvatarUrl(null);
     } catch (err) {
       Alert.alert('Error', 'Could not remove photo. Please try again.');
+    } finally {
+      setUploadingAvatar(false);
     }
-    setUploadingAvatar(false);
   };
 
   const saveName = async () => {
@@ -1384,10 +1393,18 @@ export default function AccountScreen() {
   const saveCurrency = async (code: string) => {
     setShowCurrencyModal(false);
     if (code === profile?.currency) return;
-    setProfile(prev => prev ? { ...prev, currency: code } : prev);
+    const prev = profile?.currency;
+    setProfile(p => p ? { ...p, currency: code } : p);
     haptic();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('users').update({ currency: code }).eq('id', user.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('users').update({ currency: code }).eq('id', user.id);
+        if (error) { setProfile(p => p ? { ...p, currency: prev ?? code } : p); }
+      }
+    } catch {
+      setProfile(p => p ? { ...p, currency: prev ?? code } : p);
+    }
   };
 
   const handleBiometricToggle = async (value: boolean) => {

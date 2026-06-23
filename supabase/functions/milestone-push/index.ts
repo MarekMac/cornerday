@@ -61,7 +61,7 @@ function parseQuitMs(ts: string | null, date: string | null): number {
 
 Deno.serve(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
-  if (auth !== `Bearer ${WEBHOOK_SECRET}` && auth !== `Bearer ${SERVICE_ROLE_KEY}`) {
+  if (auth !== `Bearer ${WEBHOOK_SECRET}`) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 

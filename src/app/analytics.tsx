@@ -245,9 +245,9 @@ export default function AnalyticsScreen() {
 
   const fetchData = useCallback(async () => {
     setFetchError(false);
+    try {
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) return;
-    try {
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
@@ -514,25 +514,27 @@ export default function AnalyticsScreen() {
         {
           text: 'Reset', style: 'destructive',
           onPress: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user || !data) return;
-            setResettingUrges(true);
             try {
-              const { error: urgeDelErr } = await supabase.from('urge_journal').delete().eq('user_id', user.id);
-              if (urgeDelErr) {
-                Alert.alert('Could not reset urge logs', urgeDelErr.message);
-                return;
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user || !data) return;
+              setResettingUrges(true);
+              try {
+                const { error: urgeDelErr } = await supabase.from('urge_journal').delete().eq('user_id', user.id);
+                if (urgeDelErr) {
+                  Alert.alert('Could not reset urge logs', urgeDelErr.message);
+                  return;
+                }
+                setData(prev => prev ? {
+                  ...prev,
+                  urgeCount: 0, urgesOvercome: 0,
+                  urgesByDay: [0, 0, 0, 0, 0, 0, 0],
+                  urgesByTimeOfDay: [0, 0, 0, 0],
+                  topTriggers: [],
+                } : prev);
+              } finally {
+                setResettingUrges(false);
               }
-              setData(prev => prev ? {
-                ...prev,
-                urgeCount: 0, urgesOvercome: 0,
-                urgesByDay: [0, 0, 0, 0, 0, 0, 0],
-                urgesByTimeOfDay: [0, 0, 0, 0],
-                topTriggers: [],
-              } : prev);
-            } finally {
-              setResettingUrges(false);
-            }
+            } catch { /* network error — spinner already cleared by inner finally */ }
           },
         },
       ]
@@ -543,11 +545,10 @@ export default function AnalyticsScreen() {
     setSavingTarget(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error: updateErr } = await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
-        if (updateErr) { Alert.alert('Could not save date', updateErr.message); return; }
-        setSavingsTargetDate(date);
-      }
+      if (!user) { Alert.alert('Session expired', 'Please sign in again.'); return; }
+      const { error: updateErr } = await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+      if (updateErr) { Alert.alert('Could not save date', updateErr.message); return; }
+      setSavingsTargetDate(date);
       setShowTargetModal(false);
     } finally {
       setSavingTarget(false);

@@ -203,10 +203,10 @@ export default function PostDetail() {
         [old]: Math.max(0, (prev[old] ?? 1) - 1),
         [emoji]: (prev[emoji] ?? 0) + 1,
       }));
-      const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
-      if (delErr) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); return; }
       const { error } = await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
-      if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
+      if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); return; }
+      const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId).neq('emoji', emoji);
+      if (delErr) console.warn('[reactions] cleanup delete failed:', delErr.message);
     } else {
       setUserReaction(emoji);
       setReactionCounts(prev => ({ ...prev, [emoji]: (prev[emoji] ?? 0) + 1 }));
