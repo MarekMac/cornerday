@@ -592,6 +592,7 @@ export default function AccountScreen() {
           const contact = JSON.parse(rawContact);
           setTrustedContactName(prev => prev || (contact.name ?? ''));
           setTrustedContactPhone(prev => prev || (contact.phone ?? ''));
+          setTrustedContactEmail(prev => prev || (contact.email ?? ''));
         } catch { /* corrupted storage — ignore */ }
       }
       if (rawStreakHour) { const n = Number(rawStreakHour); if (!isNaN(n)) setNotifStreakHour(n); }

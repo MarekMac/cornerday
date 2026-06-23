@@ -50,13 +50,15 @@ Deno.serve(async (req) => {
       ]);
     } catch (_) { /* storage delete is best-effort */ }
 
+    // debt_payments must be deleted before debts (FK constraint — same order as journal clear)
+    await adminClient.from('debt_payments').delete().eq('user_id', userId);
+
     // Explicitly delete all user PII — don't rely solely on cascade
     await Promise.all([
       adminClient.from('urge_journal').delete().eq('user_id', userId),
       adminClient.from('mood_checkins').delete().eq('user_id', userId),
       adminClient.from('badges').delete().eq('user_id', userId),
       adminClient.from('losses').delete().eq('user_id', userId),
-      adminClient.from('debt_payments').delete().eq('user_id', userId),
       adminClient.from('debts').delete().eq('user_id', userId),
       adminClient.from('streaks').delete().eq('user_id', userId),
       adminClient.from('game_scores').delete().eq('user_id', userId),

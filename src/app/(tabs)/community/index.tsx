@@ -382,15 +382,11 @@ export default function CommunityFeed() {
             [emoji]: (prev[postId]?.[emoji] ?? 0) + 1,
           },
         }));
-        // Insert first — only delete the old reaction if the insert succeeds
+        // Delete old reaction first to avoid unique constraint violation on insert
+        const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
+        if (delErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); return; }
         const { error: insErr } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
-        if (insErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); return; }
-        const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid).eq('emoji', current);
-        if (delErr) {
-          // Insert succeeded but delete failed — clean up the orphaned new row so DB stays consistent
-          await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid).eq('emoji', emoji);
-          setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts);
-        }
+        if (insErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
       } else {
         setUserReactions(prev => ({ ...prev, [postId]: emoji }));
         setAllEmojiCounts(prev => ({

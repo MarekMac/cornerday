@@ -2066,7 +2066,7 @@ export default function HomeScreen() {
               );
             })}
             {(() => {
-              const earned = data.checklistCompleted;
+              const earned = data.checklistCompleted || data.earnedBadges.includes('checklist_complete');
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
                   accessibilityLabel={`Safe Zone — ${earned ? 'earned' : 'locked'}`}
