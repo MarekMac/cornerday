@@ -322,40 +322,44 @@ export default function JournalScreen() {
   const [filterOutcome, setFilterOutcome] = useState<FilterOutcome>('all');
 
   const fetchFeed = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const [urgeRes, debtsRes, paymentsRes, savingsRes, resetsRes, activityRes, profileRes] = await Promise.all([
-      supabase.from('urge_journal').select('*').eq('user_id', user.id).neq('trigger', 'Relapse'),
-      supabase.from('debts').select('id, name, total_amount, category, created_at').eq('user_id', user.id),
-      supabase.from('debt_payments').select('id, amount, note, created_at, debts(name)').eq('user_id', user.id),
-      supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving'),
-      supabase.from('losses').select('id, note, created_at').eq('user_id', user.id).eq('type', 'streak_reset'),
-      supabase.from('losses').select('id, type, amount, note, created_at').eq('user_id', user.id).in('type', ['debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
-      supabase.from('users').select('currency').eq('id', user.id).maybeSingle(),
-    ]);
+      const [urgeRes, debtsRes, paymentsRes, savingsRes, resetsRes, activityRes, profileRes] = await Promise.all([
+        supabase.from('urge_journal').select('*').eq('user_id', user.id).neq('trigger', 'Relapse'),
+        supabase.from('debts').select('id, name, total_amount, category, created_at').eq('user_id', user.id),
+        supabase.from('debt_payments').select('id, amount, note, created_at, debts(name)').eq('user_id', user.id),
+        supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving'),
+        supabase.from('losses').select('id, note, created_at').eq('user_id', user.id).eq('type', 'streak_reset'),
+        supabase.from('losses').select('id, type, amount, note, created_at').eq('user_id', user.id).in('type', ['debt_edited', 'debt_deleted', 'saving_edited', 'saving_deleted', 'milestone_earned', 'debt_paid_off', 'quit_date_changed', 'journey_started']),
+        supabase.from('users').select('currency').eq('id', user.id).maybeSingle(),
+      ]);
 
-    if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
+      if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
 
-    const entries: FeedEntry[] = [];
+      const entries: FeedEntry[] = [];
 
-    (urgeRes.data ?? []).forEach((e: any) => entries.push({ kind: 'urge', ...e }));
-    (debtsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'debt', ...e }));
-    (paymentsRes.data ?? []).forEach((e: any) => entries.push({
-      kind: 'payment',
-      id: e.id,
-      amount: e.amount,
-      note: e.note,
-      created_at: e.created_at,
-      debt_name: (e.debts as any)?.name ?? 'Debt',
-    }));
-    (savingsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'saving', ...e }));
-    (resetsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'streak_reset', ...e }));
-    (activityRes.data ?? []).forEach((e: any) => entries.push({ kind: e.type, id: e.id, amount: e.amount, note: e.note, created_at: e.created_at }));
+      (urgeRes.data ?? []).forEach((e: any) => entries.push({ kind: 'urge', ...e }));
+      (debtsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'debt', ...e }));
+      (paymentsRes.data ?? []).forEach((e: any) => entries.push({
+        kind: 'payment',
+        id: e.id,
+        amount: e.amount,
+        note: e.note,
+        created_at: e.created_at,
+        debt_name: (e.debts as any)?.name ?? 'Debt',
+      }));
+      (savingsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'saving', ...e }));
+      (resetsRes.data ?? []).forEach((e: any) => entries.push({ kind: 'streak_reset', ...e }));
+      (activityRes.data ?? []).forEach((e: any) => entries.push({ kind: e.type, id: e.id, amount: e.amount, note: e.note, created_at: e.created_at }));
 
-    entries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    if (!isMountedRef.current) return;
-    setFeed(entries);
+      entries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      if (!isMountedRef.current) return;
+      setFeed(entries);
+    } catch (e) {
+      console.warn('[journal] fetchFeed error:', e);
+    }
   }, []);
 
   useEffect(() => { fetchFeed().finally(() => setLoading(false)); }, [fetchFeed]);
@@ -396,6 +400,9 @@ export default function JournalScreen() {
         }
         await fetchFeed();
       }
+    } catch (e) {
+      console.warn('[journal] executeClearAll error:', e);
+      Alert.alert('Could not clear journal', 'Please try again.');
     } finally {
       setClearingAll(false);
       setClearAllVisible(false);

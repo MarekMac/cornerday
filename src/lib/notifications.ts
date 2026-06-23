@@ -446,17 +446,21 @@ export async function scheduleUrgePredictionNotification(
   await AsyncStorage.setItem(URGE_PREDICTION_SCHEDULE_KEY, JSON.stringify({ hour, minute }));
 
   const urgeMsg = URGE_PREDICTION_MESSAGES[Math.floor(Math.random() * URGE_PREDICTION_MESSAGES.length)];
-  const newId = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: urgeMsg.title,
-      body: urgeMsg.body,
-      data: { screen: '/(tabs)/urge' },
-    },
-    trigger: androidTrigger({
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
-    }) as any,
-  });
-  await AsyncStorage.setItem(URGE_PREDICTION_NOTIF_ID_KEY, newId);
+  try {
+    const newId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: urgeMsg.title,
+        body: urgeMsg.body,
+        data: { screen: '/(tabs)/urge' },
+      },
+      trigger: androidTrigger({
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute,
+      }) as any,
+    });
+    await AsyncStorage.setItem(URGE_PREDICTION_NOTIF_ID_KEY, newId);
+  } catch (e) {
+    console.warn('[notifications] scheduleUrgePredictionNotification error:', e);
+  }
 }

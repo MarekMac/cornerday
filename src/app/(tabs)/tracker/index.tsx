@@ -1583,12 +1583,16 @@ export default function TrackerIndex() {
                 {savingsGoal && (
                   <Pressable
                     onPress={async () => {
-                      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
-                      await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
-                      setSavingsGoal(null);
-                      setSavingsGoalFor('');
-                      setSavingsGoalIcon('🎯');
-                      closeGoalModal();
+                      try {
+                        await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+                        await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
+                        setSavingsGoal(null);
+                        setSavingsGoalFor('');
+                        setSavingsGoalIcon('🎯');
+                        closeGoalModal();
+                      } catch (e) {
+                        console.warn('[tracker] remove goal error:', e);
+                      }
                     }}
                     style={{ alignSelf: 'center', marginTop: 12 }}>
                     <Text style={{ color: c.error, fontSize: 13 }}>Remove goal</Text>
