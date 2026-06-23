@@ -326,7 +326,7 @@ export default function AnalyticsScreen() {
       const remaining = Math.max(0, totalAmount - totalPaid);
       const pct = totalAmount > 0 ? Math.min(1, totalPaid / totalAmount) : 0;
       const isPaidOff = remaining === 0 && totalPaid > 0;
-      const targetDate = d.target_date ? new Date(d.target_date) : null;
+      const targetDate = d.target_date ? new Date(d.target_date + 'T12:00:00') : null;
       const daysRemaining = targetDate ? Math.ceil((targetDate.getTime() - Date.now()) / 86400000) : null;
       const firstPaymentMs = debtPayments.length > 0
         ? Math.min(...debtPayments.map(p => new Date(p.created_at).getTime()))

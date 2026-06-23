@@ -472,7 +472,8 @@ function todayStr() {
 
 
 function localMidnight(): string {
-  return new Date(new Date().setUTCHours(0, 0, 0, 0)).toISOString();
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 0, 0, 0, 0).toISOString();
 }
 
 function formatStartDate(quitDate: string | null): string {

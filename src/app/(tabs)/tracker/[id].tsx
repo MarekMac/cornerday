@@ -116,7 +116,9 @@ export default function DebtDetailScreen() {
     if (!deletePayTarget) return;
     setDeleting(true);
     try {
-      const { error } = await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id).eq('user_id', user.id);
       if (error) { Alert.alert('Could not delete payment', error.message); return; }
       setDeletePayTarget(null);
       await fetchData();
@@ -178,7 +180,9 @@ export default function DebtDetailScreen() {
   const saveTargetDate = async (date: Date) => {
     setSavingTarget(true);
     try {
-      const { error } = await supabase.from('debts').update({ target_date: date.toISOString().split('T')[0] }).eq('id', id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('debts').update({ target_date: date.toISOString().split('T')[0] }).eq('id', id).eq('user_id', user.id);
       if (error) { Alert.alert('Could not save date', error.message); return; }
       setTargetDate(date);
       setShowTargetModal(false);
@@ -188,7 +192,9 @@ export default function DebtDetailScreen() {
   };
 
   const clearTargetDate = async () => {
-    const { error } = await supabase.from('debts').update({ target_date: null }).eq('id', id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.from('debts').update({ target_date: null }).eq('id', id).eq('user_id', user.id);
     if (!error) setTargetDate(null);
   };
 
