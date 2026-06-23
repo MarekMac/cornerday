@@ -14,9 +14,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
+import { CHECKLIST_KEY, CHECKLIST_BADGE_SENT_KEY } from '@/constants/storage-keys';
 
 const TRIGGERS = [
   { key: 'betting_ads', label: 'Betting ads' },
@@ -402,6 +404,7 @@ export default function JournalScreen() {
           Alert.alert('Could not clear journal', dbError.message);
           return;
         }
+        await AsyncStorage.multiRemove([CHECKLIST_KEY, CHECKLIST_BADGE_SENT_KEY]);
         await fetchFeed();
       }
     } catch (e) {

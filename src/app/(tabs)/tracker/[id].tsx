@@ -237,7 +237,7 @@ export default function DebtDetailScreen() {
   const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
   const remaining = Math.max(0, Number(debt.total_amount) - totalPaid);
   const pct = Number(debt.total_amount) > 0 ? Math.min(1, totalPaid / Number(debt.total_amount)) : 0;
-  const isPaidOff = remaining === 0 && totalPaid > 0;
+  const isPaidOff = Math.round(remaining * 100) === 0 && totalPaid > 0;
 
   let payoffEstimate: string | null = null;
   if (!isPaidOff && payments.length > 0) {

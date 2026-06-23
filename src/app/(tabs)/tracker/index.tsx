@@ -447,9 +447,10 @@ export default function TrackerIndex() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         if (editingSaving) {
-          await supabase.from('losses').update({
+          const { error: updateErr } = await supabase.from('losses').update({
             amount, note: savingNote.trim() || null,
           }).eq('id', editingSaving.id).eq('user_id', user.id);
+          if (updateErr) { Alert.alert('Could not update', updateErr.message); return; }
           await supabase.from('losses').insert({
             user_id: user.id, type: 'saving_edited', amount,
             category: 'Saving', note: savingNote.trim() || null,
@@ -806,8 +807,8 @@ export default function TrackerIndex() {
       return pctB - pctA;
     }
     if (debtSort === 'due') {
-      const dueA = a.target_date ? new Date(a.target_date).getTime() : Infinity;
-      const dueB = b.target_date ? new Date(b.target_date).getTime() : Infinity;
+      const dueA = a.target_date ? new Date(a.target_date + 'T12:00:00').getTime() : Infinity;
+      const dueB = b.target_date ? new Date(b.target_date + 'T12:00:00').getTime() : Infinity;
       return dueA - dueB;
     }
     return 0;

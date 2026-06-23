@@ -38,7 +38,7 @@ const PICKER_TILE_W = Math.floor((SCREEN_W - 88 - 10) / 2);
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY } from '@/constants/storage-keys';
+import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, STREAK_SHIELD_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { hapticMedium } from '@/lib/haptics';
@@ -285,7 +285,7 @@ export default function UrgeScreen() {
       if (val) { setTimerPointsEarned(true); return; }
       awardTimerPoint(timerTotal);
     });
-  }, [timerDone]);
+  }, [timerDone, timerTotal]);
 
   const fetchMotivation = useCallback(async () => {
     // Load cache immediately so the screen works offline
@@ -589,10 +589,12 @@ export default function UrgeScreen() {
           p_quit_timestamp: newQuitTimestamp,
         });
         if (rpcError) { console.warn('[doStreakReset] rpc error:', rpcError.message); return; }
-        await Promise.all([
+        const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true';
+        const resetOps: Promise<any>[] = [
           supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null }),
-          supabase.from('badges').delete().eq('user_id', user.id),
-        ]);
+        ];
+        if (!shieldEnabled) resetOps.push(supabase.from('badges').delete().eq('user_id', user.id));
+        await Promise.all(resetOps);
         await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
 

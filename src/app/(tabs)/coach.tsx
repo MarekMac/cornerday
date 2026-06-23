@@ -284,7 +284,7 @@ export default function CoachScreen() {
         setMessages(prev =>
           prev.map(m =>
             m.id === assistantId
-              ? { ...m, content: errMsg, pending: false }
+              ? { ...m, content: m.content.length > 0 ? m.content : errMsg, pending: false }
               : m,
           ),
         );

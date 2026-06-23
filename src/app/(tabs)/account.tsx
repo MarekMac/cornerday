@@ -322,6 +322,7 @@ export default function AccountScreen() {
   const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
   const [recoveryMantra, setRecoveryMantra] = useState('');
   const [checklistCount, setChecklistCount] = useState(0);
+  const [earnedBadgeTypes, setEarnedBadgeTypes] = useState<string[]>([]);
   const [showRecoveryPlanModal, setShowRecoveryPlanModal] = useState(false);
   const [planOptionsExpanded, setPlanOptionsExpanded] = useState(false);
   const [planDistractionsInput, setPlanDistractionsInput] = useState<string[]>([]);
@@ -334,7 +335,7 @@ export default function AccountScreen() {
       if (!user) return;
       const identities = user.identities ?? [];
       setIsPasswordUser(identities.some(id => id.provider === 'email'));
-      const [{ data, error: profileErr }, { data: streakData }, { data: savingsRows }] = await Promise.all([
+      const [{ data, error: profileErr }, { data: streakData }, { data: savingsRows }, { data: badgesData }] = await Promise.all([
         supabase
           .from('users')
           .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, debt_target_date, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon')
@@ -342,12 +343,12 @@ export default function AccountScreen() {
           .maybeSingle(),
         supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
         supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
+        supabase.from('badges').select('badge_type').eq('user_id', user.id),
       ]);
       if (profileErr) throw profileErr;
-      const quitTs = data?.quit_timestamp ?? data?.quit_date;
-      const streakDays = quitTs ? Math.max(0, Date.now() - parseQuitDate(quitTs).getTime()) / 86400000 : 0;
-      const MILESTONE_DAYS = [0, 1/24, 3/24, 6/24, 12/24, 1, 3, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365, 548, 730, 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650];
-      const badgeCount = MILESTONE_DAYS.filter(d => streakDays >= d).length;
+      const fetchedBadgeTypes = (badgesData ?? []).map((b: { badge_type: string }) => b.badge_type);
+      setEarnedBadgeTypes(fetchedBadgeTypes);
+      const badgeCount = fetchedBadgeTypes.length;
       setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
       const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
       let resolvedAvatar = data?.avatar_url ?? null;
@@ -1089,13 +1090,12 @@ export default function AccountScreen() {
         const [urgeRes, moodRes] = await Promise.all([
           supabase.from('urge_journal').delete().eq('user_id', user.id),
           supabase.from('mood_checkins').delete().eq('user_id', user.id),
-          AsyncStorage.removeItem(CHECKLIST_KEY),
-          AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
         ]);
         if (urgeRes.error || moodRes.error) {
           Alert.alert('Could not clear journal', (urgeRes.error ?? moodRes.error)!.message);
           return;
         }
+        await AsyncStorage.multiRemove([CHECKLIST_KEY, CHECKLIST_BADGE_SENT_KEY]);
       }
     } finally {
       setResetting(false);
@@ -1511,7 +1511,7 @@ export default function AccountScreen() {
       if (updateErr) { setNotifPrefs(notifPrefs); return; }
       const granted = await requestNotificationPermissions();
       if (granted) {
-        await scheduleAllNotifications(updated, quitTimestamp, [], { streakHour: notifStreakHour, checkinHour: notifCheckinHour });
+        await scheduleAllNotifications(updated, quitTimestamp, earnedBadgeTypes, { streakHour: notifStreakHour, checkinHour: notifCheckinHour });
         await scheduleOnboardingCheckin();
       }
       if (key === 'notif_milestone' && !value) {
@@ -1539,7 +1539,7 @@ export default function AccountScreen() {
         ? { streakHour: hour, checkinHour: notifCheckinHour }
         : { streakHour: notifStreakHour, checkinHour: hour };
       if (granted) {
-        await scheduleAllNotifications(notifPrefs, quitTimestamp, [], hours);
+        await scheduleAllNotifications(notifPrefs, quitTimestamp, earnedBadgeTypes, hours);
         await scheduleOnboardingCheckin();
       }
     }
