@@ -789,12 +789,26 @@ function ConfettiParticle({ index }: { index: number }) {
   );
 }
 
+function formatEarnedAgo(isoStr: string): string {
+  const earned = new Date(isoStr).getTime();
+  const diffMs = Date.now() - earned;
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(diffMs / 3600000);
+  const days = Math.floor(diffMs / 86400000);
+  const timeStr = new Date(isoStr).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (mins < 2) return `Just now · ${timeStr}`;
+  if (mins < 60) return `${mins} min ago · ${timeStr}`;
+  if (hours < 24) return `${hours}h ago · ${timeStr}`;
+  return `${days}d ago · ${timeStr}`;
+}
+
 function MilestoneCelebrationModal({
-  badge, celebration, message, onShare, onClose,
+  badge, celebration, message, earnedAt, onShare, onClose,
 }: {
   badge: { emoji: string; label: string };
   celebration: { icon: string; text: string };
   message: string;
+  earnedAt?: string;
   onShare: () => void;
   onClose: () => void;
 }) {
@@ -830,9 +844,14 @@ function MilestoneCelebrationModal({
           <Text style={{ fontSize: 28, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 20 }}>
             {badge.label}
           </Text>
-          <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.82)', textAlign: 'center', lineHeight: 24, marginBottom: 44 }}>
+          <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.82)', textAlign: 'center', lineHeight: 24, marginBottom: earnedAt ? 16 : 44 }}>
             {message}
           </Text>
+          {earnedAt && (
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 44 }}>
+              🕒 {formatEarnedAgo(earnedAt)}
+            </Text>
+          )}
           <Pressable
             onPress={onShare}
             style={({ pressed }) => ({ backgroundColor: '#fff', borderRadius: 14, paddingVertical: 15, width: '100%', alignItems: 'center', marginBottom: 12, opacity: pressed ? 0.85 : 1 })}
@@ -1004,7 +1023,7 @@ export default function HomeScreen() {
   const [customMilestone, setCustomMilestone] = useState<{ type: string; target: number; icon?: string } | null>(null);
   const [customMilestoneCelebVisible, setCustomMilestoneCelebVisible] = useState(false);
   const [calDayModal, setCalDayModal] = useState<{ iso: string; status: 'clean' | 'relapse' | 'inactive'; mood: number | null } | null>(null);
-  const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string } | null>(null);
+  const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string; earnedAt?: string } | null>(null);
   const shareCardRef = useRef<View>(null);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
@@ -1125,12 +1144,14 @@ export default function HomeScreen() {
         })));
         if (journalErr) console.warn('Milestone journal insert failed:', journalErr.message);
 
-        // Send immediate notification for each newly earned milestone
-        // (scheduleAllNotifications skips past-due milestones, so we fire in-app here)
-        if (profile?.notif_milestone) {
+        // Fire an immediate notification only if the milestone was just crossed (app was open).
+        // If earned more than 90s ago, the DATE-scheduled notification already delivered.
+        const NOW = Date.now();
+        const justCrossed = toLog.filter(b => NOW - (quitTs + b.days * 86400000) < 90_000);
+        if (justCrossed.length > 0 && profile?.notif_milestone) {
           const { status } = await Notifications.getPermissionsAsync();
           if (status === 'granted') {
-            for (const b of toLog) {
+            for (const b of justCrossed) {
               await Notifications.scheduleNotificationAsync({
                 content: {
                   title: `${b.emoji} ${b.label} milestone!`,
@@ -1147,12 +1168,14 @@ export default function HomeScreen() {
       newlyAwarded.forEach(b => earnedBadges.push(b.type));
       if (newlyAwarded.length > 0) {
         const b = newlyAwarded[newlyAwarded.length - 1];
+        const earnedAt = new Date(quitTs + b.days * 86400000).toISOString();
         pendingCelebration = {
           type: b.type,
           emoji: b.emoji,
           label: b.label,
           celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
           msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
+          earnedAt,
         };
       }
 
@@ -3059,6 +3082,7 @@ export default function HomeScreen() {
           badge={celebrationBadge}
           celebration={celebrationBadge.celebration}
           message={celebrationBadge.msg}
+          earnedAt={celebrationBadge.earnedAt}
           onShare={() => {
             const b = celebrationBadge;
             setCelebrationBadge(null);
