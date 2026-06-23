@@ -224,7 +224,8 @@ export default function CoachScreen() {
         return;
       }
 
-      reader = response.body!.getReader();
+      if (!response.body) throw new Error('No response body from ai-coach');
+      reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 

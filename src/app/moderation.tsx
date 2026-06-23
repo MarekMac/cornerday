@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
 import { useAppTheme } from '@/context/theme';
+import { useUser } from '@/context/user';
 import { AppColors } from '@/constants/theme';
 
 type AdminTab = 'reports' | 'users' | 'feedback';
@@ -90,7 +91,16 @@ export default function ModerationScreen() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
+  const { isAdmin } = useUser();
   const [tab, setTab] = useState<AdminTab>('reports');
+
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background }}>
+        <Text style={{ fontSize: 16, color: c.textSecondary }}>Unauthorized</Text>
+      </SafeAreaView>
+    );
+  }
 
   // ── Reports ──────────────────────────────────────────────────────────────────
   const [reports, setReports] = useState<Report[]>([]);

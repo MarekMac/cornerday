@@ -231,6 +231,20 @@ function InnerLayout() {
         setSeenWelcome(seen);
         setPendingRoute(seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
         setAuthChecked(true);
+      } else if (event === 'SIGNED_IN' && authCheckedRef.current && sess) {
+        // Handles deferred PKCE exchanges or magic links that resolve after init() has run
+        const onboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
+        if (onboarded === 'true') {
+          setPendingRoute('/(tabs)');
+        } else {
+          const { data: userRow } = await supabase.from('users').select('id').eq('id', sess.user.id).maybeSingle();
+          if (userRow) {
+            await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+            setPendingRoute('/(tabs)');
+          } else {
+            setPendingRoute('/(onboarding)/q1');
+          }
+        }
       }
     });
 

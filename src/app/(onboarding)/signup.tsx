@@ -90,47 +90,48 @@ export default function SignupScreen() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setError('');
+    try {
+      const redirectTo = makeRedirectUri({ scheme: 'cornerday' });
 
-    const redirectTo = makeRedirectUri({ scheme: 'cornerday' });
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-      },
-    });
+      if (error || !data.url) {
+        setError('Google sign-in failed. Please try again.');
+        return;
+      }
 
-    if (error || !data.url) {
-      setError('Google sign-in failed. Please try again.');
-      setGoogleLoading(false);
-      return;
-    }
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type === 'success') {
+        const url = result.url;
+        const params = new URLSearchParams(url.split('#')[1] ?? url.split('?')[1] ?? '');
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
 
-    if (result.type === 'success') {
-      const url = result.url;
-      const params = new URLSearchParams(url.split('#')[1] ?? url.split('?')[1] ?? '');
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
+        if (!accessToken || !refreshToken) {
+          setError('Google sign-in failed. Please try again.');
+          return;
+        }
 
-      if (accessToken) {
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
-          refresh_token: refreshToken ?? undefined,
+          refresh_token: refreshToken,
         });
 
         if (sessionError) {
           setError('Could not complete sign-in. Please try again.');
-          setGoogleLoading(false);
           return;
         }
 
         const { data: { user: authUser }, error: getUserErr } = await supabase.auth.getUser();
         if (getUserErr || !authUser) {
           setError('Sign-in succeeded but could not verify your account. Please try again.');
-          setGoogleLoading(false);
           return;
         }
         const { data: profile, error: profileErr } = await supabase
@@ -141,7 +142,6 @@ export default function SignupScreen() {
 
         if (profileErr) {
           setError('Sign-in succeeded but we could not load your profile. Please try again.');
-          setGoogleLoading(false);
           return;
         }
         if (profile !== null) {
@@ -149,10 +149,14 @@ export default function SignupScreen() {
         } else {
           router.push('/(onboarding)/q1');
         }
+      } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
+        setError('Google sign-in failed. Please try again.');
       }
+    } catch (e) {
+      setError('Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
     }
-
-    setGoogleLoading(false);
   };
 
   const handleSubmit = async () => {
