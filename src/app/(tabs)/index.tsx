@@ -1086,7 +1086,7 @@ export default function HomeScreen() {
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
       supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
-      supabase.from('urge_journal').select('created_at', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+      supabase.from('urge_journal').select('created_at', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('urge_journal').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('outcome', 'overcame'),
       supabase.from('mood_checkins').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),

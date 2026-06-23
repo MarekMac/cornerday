@@ -466,7 +466,7 @@ export default function AnalyticsScreen() {
       },
     };
 
-    if (profile?.savings_target_date) setSavingsTargetDate(new Date(profile.savings_target_date));
+    if (profile?.savings_target_date) setSavingsTargetDate(new Date(profile.savings_target_date + 'T12:00:00'));
 
     setData({
       currency, quitDate,

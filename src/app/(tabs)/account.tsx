@@ -1178,7 +1178,7 @@ export default function AccountScreen() {
               body: 'Your streak is reset. Milestone notifications are set — your 1-hour milestone is on its way.',
               data: { screen: '/(tabs)/' },
             },
-            trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, repeats: false } as any,
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, repeats: false, ...(Platform.OS === 'android' ? { channelId: 'cornerday' } : {}) } as any,
           });
         }
       }
@@ -1450,7 +1450,7 @@ export default function AccountScreen() {
                 body: `You hit your personal ${target}-day milestone. This is a huge achievement. Keep going! 🏆`,
                 data: { type: 'custom_milestone' },
               },
-              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: targetTime },
+              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: targetTime, ...(Platform.OS === 'android' ? { channelId: 'cornerday' } : {}) } as any,
             });
             await AsyncStorage.setItem(CUSTOM_MILESTONE_NOTIF_ID_KEY, id);
           }
