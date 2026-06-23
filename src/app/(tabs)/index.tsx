@@ -476,6 +476,14 @@ function localMidnight(): string {
   return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 0, 0, 0, 0).toISOString();
 }
 
+// The mood_checkins unique constraint uses UTC day, so use UTC midnight here to
+// avoid a mismatch in UTC-negative timezones: a late-night local entry is stored
+// on the *next* UTC day and localMidnight() would miss it on the following morning.
+function utcMidnight(): string {
+  const n = new Date();
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())).toISOString();
+}
+
 function formatStartDate(quitDate: string | null): string {
   if (!quitDate) return '';
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(quitDate);
@@ -1082,7 +1090,7 @@ export default function HomeScreen() {
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
-      supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).maybeSingle(),
+      supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', utcMidnight()).maybeSingle(),
       supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const t = new Date(); t.setDate(t.getDate() - 6); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
@@ -1659,10 +1667,29 @@ export default function HomeScreen() {
           if (updateErr) { Alert.alert('Could not save mood', updateErr.message); setEditingMood(false); setMoodNote(''); setEditMoodValue(null); return; }
         } else {
           const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
-          if (insertErr) { Alert.alert('Could not save mood', insertErr.message); return; }
-          if (!inserted?.id) { Alert.alert('Could not save mood', 'No row ID returned. Please try again.'); return; }
+          if (insertErr) {
+            if (insertErr.code === '23505') {
+              // Unique constraint hit — a row already exists for today's UTC day (timezone mismatch).
+              // Find it and update instead.
+              const { data: existing } = await supabase.from('mood_checkins').select('id').eq('user_id', user.id).gte('created_at', utcMidnight()).maybeSingle();
+              if (existing?.id) {
+                const { error: updateErr } = await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', existing.id).eq('user_id', user.id);
+                if (updateErr) { Alert.alert('Could not save mood', updateErr.message); return; }
+                if (!isMountedRef.current) return;
+                setData(prev => prev ? { ...prev, todayMoodId: existing.id } : prev);
+              } else {
+                Alert.alert('Could not save mood', insertErr.message);
+                return;
+              }
+            } else {
+              Alert.alert('Could not save mood', insertErr.message);
+              return;
+            }
+          } else if (!inserted?.id) { Alert.alert('Could not save mood', 'No row ID returned. Please try again.'); return; }
           if (!isMountedRef.current) return;
-          setData(prev => prev ? { ...prev, todayMoodId: inserted.id } : prev);
+          if (inserted?.id) {
+            setData(prev => prev ? { ...prev, todayMoodId: inserted.id } : prev);
+          }
           showInterstitialIfReady(isPremium);
         }
         if (!isMountedRef.current) return;
