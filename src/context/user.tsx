@@ -20,11 +20,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [initial, setInitial] = useState('?');
   const [isAdmin, setIsAdmin] = useState(false);
   const isMounted = useRef(true);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
 
     const load = async () => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !isMounted.current) return;
@@ -41,6 +44,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setIsAdmin(data?.is_admin ?? false);
       } catch (e) {
         console.warn('[CornerDay] UserContext load error:', e);
+      } finally {
+        loadingRef.current = false;
       }
     };
 

@@ -1647,7 +1647,7 @@ export default function HomeScreen() {
   };
 
   const handleMood = async (mood: number, note?: string) => {
-    if (!data) return;
+    if (!data || moodSubmitting) return;
     setMoodSubmitting(true);
     const isNewInsert = !data.todayMoodId;
     try {

@@ -1494,7 +1494,8 @@ export default function AccountScreen() {
     setNotifPrefs(updated);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('users').update({ [key]: value }).eq('id', user.id);
+      const { error: updateErr } = await supabase.from('users').update({ [key]: value }).eq('id', user.id);
+      if (updateErr) { setNotifPrefs(notifPrefs); return; }
       const granted = await requestNotificationPermissions();
       if (granted) {
         await scheduleAllNotifications(updated, quitTimestamp, [], { streakHour: notifStreakHour, checkinHour: notifCheckinHour });

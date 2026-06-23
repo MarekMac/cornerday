@@ -32,6 +32,8 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
         setThemePrefState(val);
       }
       setLoaded(true);
+    }).catch(() => {
+      setLoaded(true);
     });
   }, []);
 

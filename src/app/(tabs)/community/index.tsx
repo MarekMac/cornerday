@@ -558,7 +558,7 @@ export default function CommunityFeed() {
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            {!isAnon && item.user_id !== currentUserIdRef.current && (
+            {item.user_id !== currentUserIdRef.current && (
               <Pressable
                 onPress={(e) => { e.stopPropagation(); reportPost(item.id); }}
                 hitSlop={8}

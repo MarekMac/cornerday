@@ -186,9 +186,9 @@ export async function scheduleAllNotifications(
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') return;
 
-  await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
   if (!quitTimestamp) {
     try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {}
+    await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
     return;
   }
 
@@ -354,6 +354,8 @@ export async function scheduleAllNotifications(
   try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {
     // cancellation can fail if permissions were revoked — continue scheduling anyway
   }
+  // Clear the urge prediction ID after cancellation so section 7 gets a clean slate
+  await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
   await Promise.allSettled(scheduleJobs.map(job => job()));
 }
 

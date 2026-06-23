@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -27,6 +27,9 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (navTimerRef.current) clearTimeout(navTimerRef.current); }, []);
 
   const handleReset = async () => {
     setError('');
@@ -38,7 +41,7 @@ export default function ResetPasswordScreen() {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) { setError(updateError.message); return; }
       setDone(true);
-      setTimeout(() => router.replace('/(tabs)/'), 2500);
+      navTimerRef.current = setTimeout(() => router.replace('/(tabs)/'), 2500);
     } finally {
       setLoading(false);
     }

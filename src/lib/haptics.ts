@@ -4,10 +4,11 @@ import { HAPTICS_KEY } from '@/constants/storage-keys';
 
 let _enabled = true;
 
-export function initHaptics() {
-  AsyncStorage.getItem(HAPTICS_KEY).then(v => {
+export async function initHaptics() {
+  try {
+    const v = await AsyncStorage.getItem(HAPTICS_KEY);
     if (v !== null) _enabled = v !== 'false';
-  });
+  } catch (_) {}
 }
 
 export function setHapticsEnabled(v: boolean) {

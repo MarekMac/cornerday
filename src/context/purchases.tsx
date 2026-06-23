@@ -129,6 +129,12 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       if (Platform.OS === 'web') return;
 
       if (event === 'SIGNED_IN' && session?.user) {
+        // Skip re-login if RevenueCat already has this user (token refresh fires SIGNED_IN too)
+        try {
+          const existing = await Purchases.getCustomerInfo();
+          if (existing.originalAppUserId === session.user.id) return;
+        } catch (_) {}
+
         // Admin check first, independently
         isAdminRef.current = await fetchIsAdmin(session.user.id);
         if (isAdminRef.current) setIsPremium(true);
