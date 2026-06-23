@@ -119,7 +119,7 @@ export default function ReadyScreen() {
           currency: data.currency ?? 'USD',
           quit_date: today,
           quit_timestamp: now,
-        }).eq('id', user.id),
+        }).eq('id', user.id).select('id'),
 
         supabase.from('streaks').upsert({
           user_id: user.id,
@@ -130,7 +130,7 @@ export default function ReadyScreen() {
         }, { onConflict: 'user_id' }),
       ]);
 
-      if (updateResult.error || streakResult.error) {
+      if (updateResult.error || streakResult.error || !updateResult.data?.length) {
         setError('Something went wrong. Please try again.');
         return;
       }

@@ -1586,9 +1586,17 @@ export default function TrackerIndex() {
                       try {
                         await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
                         await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                          await supabase.from('users').update({
+                            savings_goal_amount: null, savings_goal_label: null,
+                            savings_goal_icon: null, savings_target_date: null,
+                          }).eq('id', user.id);
+                        }
                         setSavingsGoal(null);
                         setSavingsGoalFor('');
                         setSavingsGoalIcon('🎯');
+                        setSavingsTargetDate(null);
                         closeGoalModal();
                       } catch (e) {
                         console.warn('[tracker] remove goal error:', e);

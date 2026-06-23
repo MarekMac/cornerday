@@ -391,7 +391,7 @@ export default function AnalyticsScreen() {
       return { date: key, mood: moodByDate[key] ?? null };
     });
 
-    const dailySavingsRate = currentStreakDays > 0 ? totalSavings / currentStreakDays : 0;
+    const dailySavingsRate = savingsDaysSpan > 0 ? totalSavings / savingsDaysSpan : 0;
 
     const sortedRelapses = [...relapseRows].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()

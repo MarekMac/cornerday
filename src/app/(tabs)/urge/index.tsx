@@ -359,7 +359,6 @@ export default function UrgeScreen() {
   }, [fetchMotivation]));
 
   const awardTimerPoint = async (totalSecs: number) => {
-    setTimerPointsEarned(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !isMounted.current) return;
@@ -377,6 +376,7 @@ export default function UrgeScreen() {
       if (!error) {
         if (!isMounted.current) return;
         await AsyncStorage.setItem(key, '1');
+        setTimerPointsEarned(true);
       } else {
         console.warn('awardTimerPoint insert failed:', error.message);
       }

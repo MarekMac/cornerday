@@ -372,8 +372,8 @@ export default function AccountScreen() {
         milestonesEarned: badgeCount ?? 0,
       });
       setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
-      if (data?.debt_target_date) setDebtTargetDate(new Date(data.debt_target_date));
-      if (data?.savings_target_date) setSavingsTargetDate(new Date(data.savings_target_date));
+      if (data?.debt_target_date) setDebtTargetDate(new Date(data.debt_target_date + 'T12:00:00'));
+      if (data?.savings_target_date) setSavingsTargetDate(new Date(data.savings_target_date + 'T12:00:00'));
 
       // Savings goal — prefer Supabase value if present
       if (data?.savings_goal_amount != null) {
@@ -2313,10 +2313,22 @@ export default function AccountScreen() {
               {savingsGoal && (
                 <Pressable
                   onPress={async () => {
-                    await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
-                    await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
-                    setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
-                    closeGoalModal();
+                    try {
+                      await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+                      await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) {
+                        await supabase.from('users').update({
+                          savings_goal_amount: null, savings_goal_label: null,
+                          savings_goal_icon: null, savings_target_date: null,
+                        }).eq('id', user.id);
+                      }
+                      setSavingsGoal(null); setSavingsGoalFor(''); setSavingsGoalIcon('🎯');
+                      setSavingsTargetDate(null);
+                      closeGoalModal();
+                    } catch (e) {
+                      console.warn('[account] remove goal error:', e);
+                    }
                   }}
                   style={{ alignSelf: 'center', marginTop: 12 }}>
                   <Text style={{ color: c.error, fontSize: 13 }}>Remove goal</Text>

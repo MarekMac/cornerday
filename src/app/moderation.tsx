@@ -136,10 +136,11 @@ export default function ModerationScreen() {
   const dismiss = async (reportId: string) => {
     setActioning(reportId);
     try {
-      await supabase
+      const { error } = await supabase
         .from('community_reports')
         .update({ status: 'dismissed', reviewed_at: new Date().toISOString() })
         .eq('id', reportId);
+      if (error) { Alert.alert('Error', 'Could not dismiss report. Please try again.'); return; }
       setReports(prev => prev.filter(r => r.id !== reportId));
     } finally {
       setActioning(null);
@@ -159,11 +160,13 @@ export default function ModerationScreen() {
             setActioning(report.id);
             try {
               const table = report.target_type === 'post' ? 'community_posts' : 'community_comments';
-              await supabase.from(table).delete().eq('id', report.target_id);
-              await supabase
+              const { error: delErr } = await supabase.from(table).delete().eq('id', report.target_id);
+              if (delErr) { Alert.alert('Error', 'Could not delete content. Please try again.'); return; }
+              const { error: updErr } = await supabase
                 .from('community_reports')
                 .update({ status: 'actioned', reviewed_at: new Date().toISOString() })
                 .eq('target_id', report.target_id);
+              if (updErr) { Alert.alert('Error', 'Content deleted but could not update report status.'); }
               setReports(prev => prev.filter(r => r.target_id !== report.target_id));
             } finally {
               setActioning(null);
@@ -319,8 +322,14 @@ export default function ModerationScreen() {
     if (!deleteTarget || (!deletePosts && !deleteComments)) return;
     setDeleting(true);
     try {
-      if (deletePosts) await supabase.from('community_posts').delete().eq('user_id', deleteTarget.id);
-      if (deleteComments) await supabase.from('community_comments').delete().eq('user_id', deleteTarget.id);
+      if (deletePosts) {
+        const { error } = await supabase.from('community_posts').delete().eq('user_id', deleteTarget.id);
+        if (error) { Alert.alert('Error', 'Could not delete posts. Please try again.'); return; }
+      }
+      if (deleteComments) {
+        const { error } = await supabase.from('community_comments').delete().eq('user_id', deleteTarget.id);
+        if (error) { Alert.alert('Error', 'Could not delete comments. Please try again.'); return; }
+      }
       if (detailData) {
         setDetailData(prev => prev ? {
           ...prev,
