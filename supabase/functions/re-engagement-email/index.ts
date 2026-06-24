@@ -36,7 +36,6 @@ function buildHtml(firstName: string, whyLabel: string, streak: number): string 
   <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
     <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-    <div style="font-size:40px;margin-bottom:14px;">&#x1F49A;</div>
     <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">We've been thinking about you, ${firstName}.</div>
     <div style="font-size:14px;opacity:0.85;line-height:1.5;">No judgement. No pressure. Just checking in.</div>
   </td></tr>

@@ -20,14 +20,15 @@ interface MilestoneDef {
 }
 
 const MILESTONES: MilestoneDef[] = [
-  { days: 7,    badge: '1_week',   label: '1 week',   emoji: '⭐', heading: 'One full week.',    message: 'A week without gambling. That\'s not a small thing — most people can\'t make it past the first few days.' },
-  { days: 30,   badge: '1_month',  label: '1 month',  emoji: '🔥', heading: 'One month clean.',  message: 'A month. You\'ve officially built a new pattern. Your brain is literally rewiring itself right now.' },
-  { days: 60,   badge: '60_days',  label: '60 days',  emoji: '🏆', heading: '60 days.',          message: 'Two months. You\'re well past the hardest window. What started as willpower is becoming who you are.' },
-  { days: 90,   badge: '3_months', label: '3 months', emoji: '🎯', heading: 'Three months.',     message: 'Research says 90 days is when new habits truly take root. Yours already have. You did that.' },
-  { days: 182,  badge: '6_months', label: '6 months', emoji: '💎', heading: 'Half a year.',      message: 'Six months clean. Half a year of choosing yourself, every single day. That\'s extraordinary.' },
-  { days: 365,  badge: '1_year',   label: '1 year',   emoji: '👑', heading: 'One year.',         message: 'A full year. Think about where you were 365 days ago. Look where you are now. You did this.' },
-  { days: 730,  badge: '2_years',  label: '2 years',  emoji: '🌟', heading: 'Two years.',        message: 'Two years clean. You\'re living proof that it\'s possible. And you\'re just getting started.' },
-  { days: 1095, badge: '3_years',  label: '3 years',  emoji: '✨', heading: 'Three years.',      message: 'Three years. This is who you are now — and it\'s something to be genuinely proud of.' },
+  { days: 7,    badge: '1_week',   label: '1 week',   emoji: '', heading: 'One full week.',    message: 'A week without gambling. That\'s not a small thing — most people can\'t make it past the first few days.' },
+  { days: 14,   badge: '2_weeks',  label: '2 weeks',  emoji: '', heading: 'Two weeks.',        message: 'Two weeks clean. You\'ve made it through two full weekends, two full sets of triggers. That\'s momentum.' },
+  { days: 30,   badge: '1_month',  label: '1 month',  emoji: '', heading: 'One month clean.',  message: 'A month. You\'ve officially built a new pattern. Your brain is literally rewiring itself right now.' },
+  { days: 60,   badge: '60_days',  label: '60 days',  emoji: '', heading: '60 days.',          message: 'Two months. You\'re well past the hardest window. What started as willpower is becoming who you are.' },
+  { days: 90,   badge: '3_months', label: '3 months', emoji: '', heading: 'Three months.',     message: 'Research says 90 days is when new habits truly take root. Yours already have. You did that.' },
+  { days: 182,  badge: '6_months', label: '6 months', emoji: '', heading: 'Half a year.',      message: 'Six months clean. Half a year of choosing yourself, every single day. That\'s extraordinary.' },
+  { days: 365,  badge: '1_year',   label: '1 year',   emoji: '', heading: 'One year.',         message: 'A full year. Think about where you were 365 days ago. Look where you are now. You did this.' },
+  { days: 730,  badge: '2_years',  label: '2 years',  emoji: '', heading: 'Two years.',        message: 'Two years clean. You\'re living proof that it\'s possible. And you\'re just getting started.' },
+  { days: 1095, badge: '3_years',  label: '3 years',  emoji: '', heading: 'Three years.',      message: 'Three years. This is who you are now — and it\'s something to be genuinely proud of.' },
 ];
 
 function parseQuitMs(ts: string | null, date: string | null): number {
@@ -49,7 +50,7 @@ function buildHtml(firstName: string, m: MilestoneDef, totalDays: number): strin
   const nextBlock = next ? `
     <tr><td style="background:#f9fdfd;border-radius:12px;padding:16px;text-align:center;">
       <div style="font-size:12px;color:#5a8a8a;margin-bottom:4px;">Next milestone</div>
-      <div style="font-size:18px;font-weight:700;color:#0F6E6E;">${next.emoji} ${next.label}</div>
+      <div style="font-size:18px;font-weight:700;color:#0F6E6E;">${next.label}</div>
       <div style="font-size:13px;color:#888;margin-top:4px;">${next.days - totalDays} day${next.days - totalDays !== 1 ? 's' : ''} away</div>
     </td></tr>` : '';
 
@@ -64,7 +65,6 @@ function buildHtml(firstName: string, m: MilestoneDef, totalDays: number): strin
   <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
     <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-    <div style="font-size:56px;margin-bottom:14px;">${m.emoji}</div>
     <div style="font-size:28px;font-weight:900;line-height:1.15;margin-bottom:8px;">${m.heading}</div>
     <div style="font-size:20px;font-weight:600;color:rgba(255,255,255,0.85);">${totalDays} days clean</div>
   </td></tr>
@@ -78,7 +78,7 @@ function buildHtml(firstName: string, m: MilestoneDef, totalDays: number): strin
 
     <tr><td style="border-left:3px solid #0F6E6E;padding:12px 14px;background:#f9fdfd;border-radius:0 8px 8px 0;margin-bottom:20px;">
       <div style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Your milestone</div>
-      <div style="font-size:22px;font-weight:900;color:#0F6E6E;">${m.label} ${m.emoji}</div>
+      <div style="font-size:22px;font-weight:900;color:#0F6E6E;">${m.label}</div>
       <div style="font-size:13px;color:#888;margin-top:4px;">${totalDays} days without gambling</div>
     </td></tr>
 
@@ -136,14 +136,13 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: insertError.message }), { status: 500 });
     }
 
-    const quitMs    = parseQuitMs(user.quit_timestamp, user.quit_date);
-    const totalDays = Math.floor(Math.max(0, Date.now() - quitMs) / 86_400_000);
+    const totalDays = Number(body.streak);
     const html      = buildHtml(esc(user.display_name?.split(' ')?.[0] || 'there'), milestone, totalDays);
 
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `${milestone.emoji} You've reached ${milestone.label} clean — CornerDay`, html }),
+      body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `You've reached ${milestone.label} clean — CornerDay`, html }),
     });
     if (!emailRes.ok) return new Response(JSON.stringify({ error: await emailRes.text() }), { status: 500 });
     console.log(`Milestone ${milestone.label} webhook email sent to ${body.user_id}`);
@@ -206,7 +205,7 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify({
           from: FROM_EMAIL,
           to: [user.email],
-          subject: `${milestone.emoji} You've reached ${milestone.label} clean — CornerDay`,
+          subject: `You've reached ${milestone.label} clean — CornerDay`,
           html: buildHtml(esc(user.display_name?.split(' ')?.[0] || 'there'), milestone, totalDays),
         }),
       });

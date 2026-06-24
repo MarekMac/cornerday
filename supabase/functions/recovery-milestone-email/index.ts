@@ -46,7 +46,7 @@ function buildHtml(firstName: string, m: Milestone, totalPaid: number, totalLost
     <tr><td style="height:12px;"></td></tr>
     <tr><td style="background:#f9fdfd;border-radius:12px;padding:16px;text-align:center;">
       <div style="font-size:12px;color:#5a8a8a;margin-bottom:4px;">Next milestone</div>
-      <div style="font-size:18px;font-weight:700;color:#0F6E6E;">${nextM.emoji} ${nextM.pct}% paid back</div>
+      <div style="font-size:18px;font-weight:700;color:#0F6E6E;">${nextM.pct}% paid back</div>
       <div style="font-size:13px;color:#888;margin-top:4px;">${fmtCurrency(remaining, currency)} to go</div>
     </td></tr>` : '';
 
@@ -61,7 +61,6 @@ function buildHtml(firstName: string, m: Milestone, totalPaid: number, totalLost
   <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
     <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-    <div style="font-size:48px;margin-bottom:14px;">${m.emoji}</div>
     <div style="font-size:26px;font-weight:900;line-height:1.15;margin-bottom:8px;">${m.heading}</div>
     <div style="font-size:16px;opacity:0.85;font-weight:600;">${fmtCurrency(totalPaid, currency)} paid back</div>
   </td></tr>

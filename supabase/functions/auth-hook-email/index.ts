@@ -14,8 +14,8 @@ const confirmationHtml = (confirmUrl: string) => `<!DOCTYPE html>
   <tr><td align="center">
     <table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
       <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 36px 36px;text-align:center;color:#fff;">
+        <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
         <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-        <div style="font-size:40px;margin-bottom:14px;">&#x1F331;</div>
         <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">Confirm your email</div>
         <div style="font-size:14px;opacity:0.8;line-height:1.5;">One tap and you're on your way.</div>
       </td></tr>
@@ -48,8 +48,8 @@ const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
   <tr><td align="center">
     <table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
       <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 36px 36px;text-align:center;color:#fff;">
+        <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
         <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-        <div style="font-size:40px;margin-bottom:14px;">&#x1F511;</div>
         <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">Reset your password</div>
         <div style="font-size:14px;opacity:0.8;line-height:1.5;">Click the button below to choose a new password.</div>
       </td></tr>
