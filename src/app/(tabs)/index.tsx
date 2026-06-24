@@ -1439,14 +1439,11 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const initialLoadDone = useRef(false);
-
   useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
 
   useEffect(() => {
     fetchData().finally(() => {
       setLoading(false);
-      initialLoadDone.current = true;
     });
   }, [fetchData]);
 
@@ -1476,11 +1473,9 @@ export default function HomeScreen() {
 
   const [focusTick, setFocusTick] = useState(0);
   useFocusEffect(useCallback(() => {
-    if (initialLoadDone.current) {
-      fetchData();
-      fetchPartnerMsg();
-      setFocusTick(t => t + 1);
-    }
+    fetchData();
+    fetchPartnerMsg();
+    setFocusTick(t => t + 1);
   }, [fetchData, fetchPartnerMsg]));
 
   useEffect(() => {
