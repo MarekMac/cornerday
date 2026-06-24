@@ -1959,8 +1959,9 @@ export default function TrackerIndex() {
 
       {/* Weekly spending modal */}
       <Modal visible={showSpendingModal} transparent animationType="fade" onRequestClose={() => setShowSpendingModal(false)}>
-        <Pressable style={s.modalOverlay} onPress={() => setShowSpendingModal(false)}>
-          <Pressable style={s.spendingSheet} onPress={() => {}}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={() => setShowSpendingModal(false)}>
+            <Pressable style={s.spendingSheet} onPress={() => {}}>
             <Text style={s.spendingTitle}>Weekly spending</Text>
             <View style={s.spendingChips}>
               {CHIP_AMOUNTS.map(chip => {
@@ -2006,8 +2007,9 @@ export default function TrackerIndex() {
                   : <Text style={s.spendingBtnSaveTxt}>Save</Text>}
               </Pressable>
             </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

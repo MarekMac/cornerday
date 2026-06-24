@@ -2468,7 +2468,8 @@ export default function AccountScreen() {
 
       {/* Weekly spending modal */}
       <Modal visible={showSpendingModal} transparent animationType="fade">
-        <Pressable style={s.confirmOverlay} onPress={() => setShowSpendingModal(false)}>
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Pressable style={[s.confirmOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={() => setShowSpendingModal(false)}>
           <Pressable style={s.editCenterSheet} onPress={() => {}}>
             <Text style={s.editFieldTitle}>Weekly spending</Text>
 
@@ -2520,6 +2521,7 @@ export default function AccountScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Edit profile field modal */}
