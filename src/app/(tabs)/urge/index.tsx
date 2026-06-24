@@ -1,4 +1,5 @@
 ﻿import * as Contacts from 'expo-contacts/legacy';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,7 +26,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { setImagePickerActive } from '@/lib/image-picker-active';
-import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
 import { type GameKey, GAMES, renderGame } from '@/lib/games';
 import { GAME_SCORE_FMT, useGameBests } from '@/lib/useGameBests';
@@ -38,7 +38,7 @@ const PICKER_TILE_W = Math.floor((SCREEN_W - 88 - 10) / 2);
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, STREAK_SHIELD_KEY } from '@/constants/storage-keys';
+import { TRUSTED_CONTACT_KEY, MOTIVATION_PHOTO_KEY, MOTIVATION_CACHE_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, STREAK_SHIELD_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { hapticMedium } from '@/lib/haptics';
@@ -597,7 +597,7 @@ export default function UrgeScreen() {
         await Promise.all(resetOps);
         // When shield is on, badges are preserved — keep MILESTONE_NOTIFS_KEY so the scheduler
         // knows which milestones are already earned and doesn't re-fire their notifications.
-        const keysToRemove = [CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
+        const keysToRemove = [CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
         if (!shieldEnabled) keysToRemove.unshift(MILESTONE_NOTIFS_KEY);
         await AsyncStorage.multiRemove(keysToRemove);
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
@@ -1289,7 +1289,7 @@ export default function UrgeScreen() {
                   )}
                 </View>
               </View>
-              <Pressable style={s.gameCloseBtn} onPress={() => { showInterstitialIfReady(isPremium, 0.33); setActiveGame(null); }}>
+              <Pressable style={s.gameCloseBtn} onPress={() => { setActiveGame(null); }}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
               </Pressable>
             </View>
@@ -1312,7 +1312,7 @@ export default function UrgeScreen() {
                 <Text style={{ fontSize: 20 }}>{EXERCISES.find(e => e.key === activeExercise)?.emoji}</Text>
                 <Text style={s.gameOverlayTitle}>{EXERCISES.find(e => e.key === activeExercise)?.title}</Text>
               </View>
-              <Pressable style={s.gameCloseBtn} onPress={() => { showInterstitialIfReady(isPremium, 0.33); setActiveExercise(null); }}>
+              <Pressable style={s.gameCloseBtn} onPress={() => { setActiveExercise(null); }}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
               </Pressable>
             </View>

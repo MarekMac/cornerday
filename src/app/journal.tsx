@@ -1,4 +1,5 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -18,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
-import { CHECKLIST_KEY, CHECKLIST_BADGE_SENT_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY } from '@/constants/storage-keys';
 
 const TRIGGERS = [
   { key: 'betting_ads', label: 'Betting ads' },
@@ -405,7 +406,7 @@ export default function JournalScreen() {
           Alert.alert('Could not clear journal', dbError.message);
           return;
         }
-        await AsyncStorage.multiRemove([CHECKLIST_KEY, CHECKLIST_BADGE_SENT_KEY]);
+        await AsyncStorage.removeItem(CHECKLIST_KEY);
         await fetchFeed();
       }
     } catch (e) {

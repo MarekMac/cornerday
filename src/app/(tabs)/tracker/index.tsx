@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { maybeRequestReview } from '@/lib/review';
 import { parseQuitDate } from '@/lib/parseQuitDate';
 import { haptic, hapticMedium } from '@/lib/haptics';

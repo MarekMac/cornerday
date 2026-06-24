@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -12,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CHECKLIST_KEY } from '@/constants/storage-keys';
 import { SECTIONS, CHECKLIST_TOTAL } from '@/constants/checklist-data';
+import { supabase } from '@/lib/supabase';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
@@ -26,11 +28,38 @@ export default function ChecklistScreen() {
 
   useEffect(() => {
     let active = true;
-    AsyncStorage.getItem(CHECKLIST_KEY).then(raw => {
+    const load = async () => {
+      const raw = await AsyncStorage.getItem(CHECKLIST_KEY);
       if (!active) return;
-      if (raw) { try { setChecked(JSON.parse(raw)); } catch { /* corrupted, start fresh */ } }
-      setLoaded(true);
-    });
+
+      if (raw) {
+        try { setChecked(JSON.parse(raw)); } catch { /* corrupted, start fresh */ }
+        setLoaded(true);
+        return;
+      }
+
+      // AsyncStorage empty — check if badge was earned in Supabase (data may have been lost)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: badge } = await supabase
+            .from('badges')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('badge_type', 'checklist_complete')
+            .maybeSingle();
+          if (badge && active) {
+            const all: Record<string, boolean> = {};
+            SECTIONS.forEach(s => s.items.forEach(item => { all[item.id] = true; }));
+            setChecked(all);
+            await AsyncStorage.setItem(CHECKLIST_KEY, JSON.stringify(all));
+          }
+        }
+      } catch { /* ignore — show empty checklist */ }
+
+      if (active) setLoaded(true);
+    };
+    load();
     return () => { active = false; };
   }, []);
 

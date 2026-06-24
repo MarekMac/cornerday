@@ -146,13 +146,12 @@ const CHANNEL_ID = 'cornerday';
 
 export function configureNotificationHandler() {
   Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-      const data = notification.request.content.data as Record<string, unknown> | undefined;
-      const suppress = data?.type === 'milestone' && AppState.currentState === 'active';
+    handleNotification: async () => {
+      const inForeground = AppState.currentState === 'active';
       return {
-        shouldShowBanner: !suppress,
-        shouldShowList: !suppress,
-        shouldPlaySound: !suppress,
+        shouldShowBanner: !inForeground,
+        shouldShowList: !inForeground,
+        shouldPlaySound: !inForeground,
         shouldSetBadge: false,
       };
     },

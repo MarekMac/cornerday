@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +35,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, MOTIVATION_PHOTO_KEY, COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, MOTIVATION_PHOTO_KEY, COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { setImagePickerActive } from '@/lib/image-picker-active';
 import { supabase } from '@/lib/supabase';
@@ -387,7 +388,7 @@ export default function AccountScreen() {
       // Trusted contact and recovery plan in a separate query so schema-cache misses never break the profile fetch
       const { data: contactData } = await supabase
         .from('users')
-        .select('trusted_contact_name, trusted_contact_phone, trusted_contact_email, recovery_distractions, recovery_mantra, distraction_choices')
+        .select('trusted_contact_name, trusted_contact_phone, trusted_contact_email, recovery_distractions, recovery_mantra, distraction_choices, custom_milestone_type, custom_milestone_target, custom_milestone_icon')
         .eq('id', user.id)
         .maybeSingle();
       // U-07: prefer Supabase for trusted contact — only set if Supabase returned a value
@@ -403,6 +404,11 @@ export default function AccountScreen() {
         setRecoveryDistractions(contactData.recovery_distractions.split(',').filter(Boolean));
       }
       setRecoveryMantra(contactData?.recovery_mantra ?? '');
+      const validMilestoneTypes = ['days', 'savings', 'urges', 'payments'] as const;
+      if (contactData?.custom_milestone_type && validMilestoneTypes.includes(contactData.custom_milestone_type as any) && Number(contactData.custom_milestone_target) > 0) {
+        const m = { type: contactData.custom_milestone_type as MilestoneType, target: Number(contactData.custom_milestone_target), icon: contactData.custom_milestone_icon ?? '📅' };
+        setCustomMilestone(prev => prev ?? m);
+      }
       setNotifPrefs({
         notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
         notif_daily_streak: data?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
@@ -632,11 +638,15 @@ export default function AccountScreen() {
   }, [isPremiumFromRC]);
 
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem(CHECKLIST_KEY).then(raw => {
+    AsyncStorage.getItem(CHECKLIST_KEY).then(async raw => {
       try {
         const cl: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-        setChecklistCount(Object.values(cl).filter(Boolean).length);
-      } catch { /* corrupted — leave unchanged */ }
+        const count = Object.values(cl).filter(Boolean).length;
+        if (count > 0) { setChecklistCount(count); return; }
+      } catch { /* corrupted */ }
+      if (earnedBadgeTypesRef.current.includes('checklist_complete')) {
+        setChecklistCount(CHECKLIST_TOTAL);
+      }
     });
   }, []));
 
@@ -754,7 +764,8 @@ export default function AccountScreen() {
         if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
         else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
         if (user) {
-          await supabase.from('users').update({ savings_goal_amount: val, savings_goal_label: forVal || null, savings_goal_icon: iconVal }).eq('id', user.id);
+          const { error: goalErr } = await supabase.from('users').update({ savings_goal_amount: val, savings_goal_label: forVal || null, savings_goal_icon: iconVal }).eq('id', user.id);
+          if (goalErr) throw new Error(goalErr.message);
         }
         const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
         await logGoalEvent(eventType, val, forVal || null);
@@ -1063,7 +1074,7 @@ export default function AccountScreen() {
           p_quit_timestamp: iso,
         });
         if (error) { Alert.alert('Could not save date', error.message); return; }
-        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
+        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         await supabase.from('losses').insert({
           user_id: user.id, type: 'quit_date_changed', amount: 0,
           category: 'Account', note: iso,
@@ -1095,7 +1106,7 @@ export default function AccountScreen() {
           Alert.alert('Could not clear journal', (urgeRes.error ?? moodRes.error)!.message);
           return;
         }
-        await AsyncStorage.multiRemove([CHECKLIST_KEY, CHECKLIST_BADGE_SENT_KEY]);
+        await AsyncStorage.removeItem(CHECKLIST_KEY);
       }
     } catch (e: any) {
       Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
@@ -1111,9 +1122,6 @@ export default function AccountScreen() {
       if (user) await supabase.from('badges').delete().eq('user_id', user.id);
       await Promise.all([
         AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
-        AsyncStorage.removeItem(CHECKLIST_BADGE_SENT_KEY),
-        AsyncStorage.removeItem(GOAL_SET_BADGE_SENT_KEY),
-        AsyncStorage.removeItem(GOAL_REACHED_BADGE_SENT_KEY),
         AsyncStorage.removeItem(CHECKLIST_KEY),
         AsyncStorage.removeItem(CUSTOM_MILESTONE_KEY),
         AsyncStorage.removeItem(CUSTOM_MILESTONE_NOTIF_ID_KEY),
@@ -1179,8 +1187,7 @@ export default function AccountScreen() {
         });
         if (rpcError) { Alert.alert('Reset failed', rpcError.message); return; }
         await AsyncStorage.multiRemove([
-          MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY,
-          GOAL_REACHED_BADGE_SENT_KEY, CHECKLIST_KEY,
+          MILESTONE_NOTIFS_KEY, CHECKLIST_KEY,
           CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
           URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY,
           SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
@@ -1239,7 +1246,7 @@ export default function AccountScreen() {
       }
       await AsyncStorage.multiRemove([
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
-        MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY,
+        MILESTONE_NOTIFS_KEY,
         TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, MOTIVATION_PHOTO_KEY,
         COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY,
         STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY,
@@ -1265,7 +1272,7 @@ export default function AccountScreen() {
     try {
       await AsyncStorage.multiRemove([
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
-        MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY,
+        MILESTONE_NOTIFS_KEY,
         TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY,
         COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY,
         STORE_REVIEW_ASKED_KEY,
@@ -1486,6 +1493,8 @@ export default function AccountScreen() {
     const milestone: CustomMilestone = { type: customMilestoneType, target, icon: customMilestoneIcon };
     await AsyncStorage.setItem(CUSTOM_MILESTONE_KEY, JSON.stringify(milestone));
     setCustomMilestone(milestone);
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (u) supabase.from('users').update({ custom_milestone_type: customMilestoneType, custom_milestone_target: target, custom_milestone_icon: customMilestoneIcon }).eq('id', u.id).then(() => {}).catch(() => {});
     // Schedule push notification only for days type (others are event-driven)
     if (customMilestoneType === 'days' && quitTimestamp) {
       const targetTime = new Date(new Date(quitTimestamp).getTime() + target * 86400000);
@@ -1520,6 +1529,8 @@ export default function AccountScreen() {
     if (existingId) await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {});
     await AsyncStorage.multiRemove([CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY]);
     setCustomMilestone(null);
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (u) supabase.from('users').update({ custom_milestone_type: null, custom_milestone_target: null, custom_milestone_icon: null }).eq('id', u.id).then(() => {}).catch(() => {});
     setShowCustomMilestoneModal(false);
   };
 

@@ -38,7 +38,7 @@ import { notifySupporter } from '@/lib/notifySupporter';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
-import { CHECKLIST_KEY, CHECKLIST_TOTAL, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, PROFILE_NUDGE_SHOWN_KEY, MOTIVATION_PHOTO_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY } from '@/constants/storage-keys';
+import { CHECKLIST_KEY, CHECKLIST_TOTAL, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, MILESTONE_NOTIFS_KEY, PROFILE_NUDGE_SHOWN_KEY, MOTIVATION_PHOTO_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY } from '@/constants/storage-keys';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
@@ -1092,7 +1092,7 @@ export default function HomeScreen() {
     const today = todayStr();
 
     const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, urgesOvercomeCountRes, moodCountRes, paymentCountRes, checkinDatesRes, calRelapseRes, lossCountRes, communityPostCountRes] = await Promise.all([
-      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium').eq('id', user.id).maybeSingle(),
+      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium, savings_goal_amount, savings_goal_label, savings_goal_icon, custom_milestone_type, custom_milestone_target, custom_milestone_icon, shield_undo_prev_quit, shield_undo_prev_streak_days, shield_undo_expires_at, shield_undo_relapse_row_id').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', utcMidnight()).maybeSingle(),
@@ -1278,14 +1278,18 @@ export default function HomeScreen() {
     }
 
     // Savings goal badges
-    const [savingsGoalRaw, savingsGoalForRaw, savingsGoalIconRaw, checklistRaw] = await Promise.all([
+    const [savingsGoalRaw, savingsGoalForFallback, savingsGoalIconFallback, checklistRaw] = await Promise.all([
       AsyncStorage.getItem(SAVINGS_GOAL_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
       AsyncStorage.getItem(CHECKLIST_KEY),
     ]);
+    // Savings goal: Supabase is authoritative, AsyncStorage is fallback for legacy data
+    const _sbGoal = profile?.savings_goal_amount != null ? Number(profile.savings_goal_amount) : null;
     const _rawGoal = savingsGoalRaw ? Number(savingsGoalRaw) : null;
-    const savingsGoalAmount = _rawGoal !== null && !isNaN(_rawGoal) ? _rawGoal : null;
+    const savingsGoalAmount = _sbGoal ?? (_rawGoal !== null && !isNaN(_rawGoal) ? _rawGoal : null);
+    const savingsGoalForRaw = profile?.savings_goal_label ?? savingsGoalForFallback;
+    const savingsGoalIconRaw = profile?.savings_goal_icon ?? savingsGoalIconFallback;
     const totalManualSavings = lossRows.reduce((s, r) => s + Number(r.amount), 0);
 
     if (savingsGoalAmount && !earnedBadges.includes('goal_set')) {
@@ -1327,6 +1331,22 @@ export default function HomeScreen() {
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
       };
+    }
+
+    // Custom milestone: restore from Supabase if AsyncStorage was wiped
+    const validMilestoneTypes = ['days', 'savings', 'urges', 'payments'] as const;
+    if (profile?.custom_milestone_type && validMilestoneTypes.includes(profile.custom_milestone_type as any) && Number(profile.custom_milestone_target) > 0) {
+      const m = { type: profile.custom_milestone_type as 'days' | 'savings' | 'urges' | 'payments', target: Number(profile.custom_milestone_target), icon: profile.custom_milestone_icon ?? '📅' };
+      setCustomMilestone(prev => prev ?? m);
+    }
+    // Shield undo: restore from Supabase if AsyncStorage was wiped
+    const sbUndoExpires = Number(profile?.shield_undo_expires_at ?? 0);
+    if (profile?.shield_undo_prev_quit && sbUndoExpires > Date.now()) {
+      const undoData = { prevQuit: profile.shield_undo_prev_quit, prevStreakDays: Number(profile.shield_undo_prev_streak_days ?? 0), expiresAt: sbUndoExpires, relapseRowId: profile.shield_undo_relapse_row_id ?? null };
+      setShieldUndo(prev => prev ?? undoData);
+    } else if (sbUndoExpires > 0 && sbUndoExpires <= Date.now()) {
+      // Expired entry still on server — clean it up
+      supabase.from('users').update({ shield_undo_prev_quit: null, shield_undo_prev_streak_days: null, shield_undo_expires_at: null, shield_undo_relapse_row_id: null }).eq('id', user.id).then(() => {}).catch(() => {});
     }
 
     const notifPrefs = {
@@ -1757,8 +1777,12 @@ export default function HomeScreen() {
         }
         // Save shield undo state if shield is enabled
         if (shieldEnabled && data?.quitDate) {
-          const undoData = { prevQuit: data.quitDate, prevStreakDays: days, expiresAt: Date.now() + 24 * 60 * 60 * 1000, relapseRowId };
-          await AsyncStorage.setItem(SHIELD_UNDO_KEY, JSON.stringify(undoData));
+          const undoExpiresAt = Date.now() + 24 * 60 * 60 * 1000;
+          const undoData = { prevQuit: data.quitDate, prevStreakDays: days, expiresAt: undoExpiresAt, relapseRowId };
+          await Promise.all([
+            AsyncStorage.setItem(SHIELD_UNDO_KEY, JSON.stringify(undoData)),
+            supabase.from('users').update({ shield_undo_prev_quit: data.quitDate, shield_undo_prev_streak_days: days, shield_undo_expires_at: undoExpiresAt, shield_undo_relapse_row_id: relapseRowId }).eq('id', user.id),
+          ]);
           setShieldUndo({ prevQuit: undoData.prevQuit, prevStreakDays: undoData.prevStreakDays, expiresAt: undoData.expiresAt });
         }
         // Delete badges so they re-award on the new streak.
@@ -1769,7 +1793,7 @@ export default function HomeScreen() {
         }
         // When shield is on, badges survive — keep MILESTONE_NOTIFS_KEY so the scheduler
         // doesn't re-fire notifications for milestones the user still owns.
-        const relapseKeysToRemove = [CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
+        const relapseKeysToRemove = [CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
         if (!shieldEnabled) relapseKeysToRemove.unshift(MILESTONE_NOTIFS_KEY);
         await AsyncStorage.multiRemove(relapseKeysToRemove);
         // Reschedule notifications against the new quit timestamp, passing surviving badges
@@ -1832,10 +1856,13 @@ export default function HomeScreen() {
       if (storedRelapseRowId) {
         await supabase.from('losses').delete().eq('id', storedRelapseRowId).eq('user_id', user.id);
       }
-      await AsyncStorage.removeItem(SHIELD_UNDO_KEY);
+      await Promise.all([
+        AsyncStorage.removeItem(SHIELD_UNDO_KEY),
+        supabase.from('users').update({ shield_undo_prev_quit: null, shield_undo_prev_streak_days: null, shield_undo_expires_at: null, shield_undo_relapse_row_id: null }).eq('id', user.id),
+      ]);
       setShieldUndo(null);
       // Restore badge/notification flags so milestones can re-fire
-      await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY]);
+      await AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY);
       // Reschedule notifications against the restored quit timestamp
       const { data: prefsRow } = await supabase.from('users').select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community').eq('id', user.id).maybeSingle();
       const prefs = {
@@ -2148,15 +2175,15 @@ export default function HomeScreen() {
               const firstUnearnedPayment = debtFullyPaid ? -1 : firstUnearned(PAYMENT_BADGE_TYPES);
               const firstUnearnedCheckin = firstUnearned(CHECKIN_BADGE_TYPES);
               const firstUnearnedUrge    = firstUnearned(URGE_BADGE_TYPES);
-              const progressiveFilter = (group: string[], firstIdx: number, badge: { type: string }) => {
+              const progressiveFilter = (group: string[], firstIdx: number, badge: { type: string }, showAhead = 2) => {
                 if (data.earnedBadges.includes(badge.type)) return true;
                 const idx = group.indexOf(badge.type);
-                return firstIdx >= 0 && idx >= firstIdx && idx < firstIdx + 2;
+                return firstIdx >= 0 && idx >= firstIdx && idx < firstIdx + showAhead;
               };
               return ACTIVITY_BADGE_DEFS.filter(badge => {
-                if (PAYMENT_BADGE_TYPES.includes(badge.type)) return progressiveFilter(PAYMENT_BADGE_TYPES, firstUnearnedPayment, badge);
+                if (PAYMENT_BADGE_TYPES.includes(badge.type)) return progressiveFilter(PAYMENT_BADGE_TYPES, firstUnearnedPayment, badge, 1);
                 if (CHECKIN_BADGE_TYPES.includes(badge.type)) return progressiveFilter(CHECKIN_BADGE_TYPES, firstUnearnedCheckin, badge);
-                if (URGE_BADGE_TYPES.includes(badge.type))    return progressiveFilter(URGE_BADGE_TYPES, firstUnearnedUrge, badge);
+                if (URGE_BADGE_TYPES.includes(badge.type))    return progressiveFilter(URGE_BADGE_TYPES, firstUnearnedUrge, badge, 1);
                 return true;
               });
             })().map(badge => {
@@ -2352,7 +2379,7 @@ export default function HomeScreen() {
         {/* Your why */}
         {motivations.length > 0 && (
           <LinearGradient
-            colors={['#0a3d3d', '#0F6E6E', '#1a9a9a']}
+            colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={s.whyAnchorCard}>
