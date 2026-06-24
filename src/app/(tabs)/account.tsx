@@ -322,7 +322,7 @@ export default function AccountScreen() {
   const [recoveryDistractions, setRecoveryDistractions] = useState<string[]>([]);
   const [recoveryMantra, setRecoveryMantra] = useState('');
   const [checklistCount, setChecklistCount] = useState(0);
-  const [earnedBadgeTypes, setEarnedBadgeTypes] = useState<string[]>([]);
+  const earnedBadgeTypesRef = useRef<string[]>([]);
   const [showRecoveryPlanModal, setShowRecoveryPlanModal] = useState(false);
   const [planOptionsExpanded, setPlanOptionsExpanded] = useState(false);
   const [planDistractionsInput, setPlanDistractionsInput] = useState<string[]>([]);
@@ -347,7 +347,7 @@ export default function AccountScreen() {
       ]);
       if (profileErr) throw profileErr;
       const fetchedBadgeTypes = (badgesData ?? []).map((b: { badge_type: string }) => b.badge_type);
-      setEarnedBadgeTypes(fetchedBadgeTypes);
+      earnedBadgeTypesRef.current = fetchedBadgeTypes;
       const badgeCount = fetchedBadgeTypes.length;
       setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
       const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
@@ -942,14 +942,14 @@ export default function AccountScreen() {
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
+      const { error: dbError } = await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
+      if (dbError) throw dbError;
+
       const oldUrl = profile?.avatarUrl;
       if (oldUrl) {
         const oldPath = oldUrl.split('/avatars/')[1]?.split('?')[0];
-        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+        if (oldPath) supabase.storage.from('avatars').remove([oldPath]).catch(() => {});
       }
-
-      const { error: dbError } = await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
-      if (dbError) throw dbError;
       setProfile(prev => prev ? { ...prev, avatarUrl: publicUrl } : prev);
       setGlobalAvatarUrl(publicUrl);
     } catch (err: any) {
@@ -1097,6 +1097,8 @@ export default function AccountScreen() {
         }
         await AsyncStorage.multiRemove([CHECKLIST_KEY, CHECKLIST_BADGE_SENT_KEY]);
       }
+    } catch (e: any) {
+      Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setResetting(false);
     }
@@ -1125,6 +1127,8 @@ export default function AccountScreen() {
         await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
         await scheduleOnboardingCheckin();
       }
+    } catch (e: any) {
+      Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setResetting(false);
     }
@@ -1143,6 +1147,8 @@ export default function AccountScreen() {
         const { error: lossesErr } = await supabase.from('losses').delete().eq('user_id', user.id);
         if (lossesErr) { Alert.alert('Could not reset tracker', lossesErr.message); return; }
       }
+    } catch (e: any) {
+      Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setResetting(false);
     }
@@ -1229,7 +1235,7 @@ export default function AccountScreen() {
       }
       if (profile?.avatarUrl) {
         const oldPath = profile.avatarUrl.split('/avatars/')[1]?.split('?')[0];
-        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]).catch(() => {});
       }
       await AsyncStorage.multiRemove([
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
@@ -1280,12 +1286,13 @@ export default function AccountScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [profileRes, lossesRes, moodRes, streakRes, badgesRes] = await Promise.all([
+      const [profileRes, lossesRes, moodRes, streakRes, badgesRes, urgeRes] = await Promise.all([
         supabase.from('users').select('display_name, quit_timestamp, motivation, goal, trigger, support_type, weekly_bet, currency').eq('id', user.id).maybeSingle(),
         supabase.from('losses').select('type, amount, category, note, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
         supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
         supabase.from('streaks').select('current_streak, longest_streak, streak_start_date').eq('user_id', user.id).maybeSingle(),
         supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
+        supabase.from('urge_journal').select('trigger, outcome, note, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
       ]);
 
       const fmt = (iso: string) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1300,6 +1307,7 @@ export default function AccountScreen() {
       const losses = (lossesRes.data ?? []) as any[];
       const moods = (moodRes.data ?? []) as any[];
       const earned = (badgesRes.data ?? []) as any[];
+      const urgeEntries = (urgeRes.data ?? []) as any[];
       const sym = CURRENCIES.find(c => c.code === (p?.currency ?? 'USD'))?.symbol ?? '$';
       const totalLost = losses.filter(l => l.type === 'loss').reduce((s: number, l: any) => s + Number(l.amount ?? 0), 0);
       const totalPaid = losses.filter(l => l.type === 'payment').reduce((s: number, l: any) => s + Number(l.amount ?? 0), 0);
@@ -1355,6 +1363,20 @@ export default function AccountScreen() {
         for (const m of moods.slice(-20)) {
           const note = m.note ? `  — ${m.note}` : '';
           lines.push(`  ${fmt(m.created_at)}  ${moodWord(m.mood)} (${m.mood}/5)${note}`);
+        }
+        lines.push('');
+      }
+
+      if (urgeEntries.length > 0) {
+        lines.push(sep, 'URGE JOURNAL', sep);
+        const overcame = urgeEntries.filter((e: any) => e.outcome === 'overcame').length;
+        lines.push(`Total entries:   ${urgeEntries.length}`);
+        lines.push(`Overcame urge:   ${overcame}  (${Math.round((overcame / urgeEntries.length) * 100)}%)`);
+        lines.push('', 'Entries (oldest first):');
+        for (const e of urgeEntries) {
+          const outcome = e.outcome === 'overcame' ? '✓ Overcame' : '✗ Slipped';
+          const note = e.note ? `  — ${e.note}` : '';
+          lines.push(`  ${fmt(e.created_at)}  ${outcome}  Trigger: ${e.trigger ?? '—'}${note}`);
         }
         lines.push('');
       }
@@ -1511,7 +1533,7 @@ export default function AccountScreen() {
       if (updateErr) { setNotifPrefs(notifPrefs); return; }
       const granted = await requestNotificationPermissions();
       if (granted) {
-        await scheduleAllNotifications(updated, quitTimestamp, earnedBadgeTypes, { streakHour: notifStreakHour, checkinHour: notifCheckinHour });
+        await scheduleAllNotifications(updated, quitTimestamp, earnedBadgeTypesRef.current, { streakHour: notifStreakHour, checkinHour: notifCheckinHour });
         await scheduleOnboardingCheckin();
       }
       if (key === 'notif_milestone' && !value) {
@@ -1539,7 +1561,7 @@ export default function AccountScreen() {
         ? { streakHour: hour, checkinHour: notifCheckinHour }
         : { streakHour: notifStreakHour, checkinHour: hour };
       if (granted) {
-        await scheduleAllNotifications(notifPrefs, quitTimestamp, earnedBadgeTypes, hours);
+        await scheduleAllNotifications(notifPrefs, quitTimestamp, earnedBadgeTypesRef.current, hours);
         await scheduleOnboardingCheckin();
       }
     }

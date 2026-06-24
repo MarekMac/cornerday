@@ -63,7 +63,8 @@ type FeedEntry =
   | { kind: 'quit_date_changed';id: string; note: string | null; created_at: string }
   | { kind: 'journey_started'; id: string; note: string | null; created_at: string };
 
-function triggerLabel(key: string) {
+function triggerLabel(key: string | null | undefined) {
+  if (!key) return 'Unknown trigger';
   return TRIGGERS.find(t => t.key === key)?.label ?? key;
 }
 

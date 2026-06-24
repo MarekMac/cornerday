@@ -326,7 +326,7 @@ export default function AnalyticsScreen() {
       const totalAmount = Number(d.total_amount);
       const remaining = Math.max(0, totalAmount - totalPaid);
       const pct = totalAmount > 0 ? Math.min(1, totalPaid / totalAmount) : 0;
-      const isPaidOff = remaining === 0 && totalPaid > 0;
+      const isPaidOff = Math.round(remaining * 100) === 0 && totalPaid > 0;
       const targetDate = d.target_date ? new Date(d.target_date + 'T12:00:00') : null;
       const daysRemaining = targetDate ? Math.ceil((targetDate.getTime() - Date.now()) / 86400000) : null;
       const firstPaymentMs = debtPayments.length > 0
@@ -950,7 +950,7 @@ export default function AnalyticsScreen() {
           ) : (
             <Text style={s.urgeDayInsight}>✨ No urges logged yet — keep it up!</Text>
           )}
-          {data.urgeCount > 0 && (
+          {data.urgeCount > 0 && maxTodCount > 0 && (
             <View style={s.urgeTodWrap}>
               {data.urgesByTimeOfDay.map((count, i) => {
                 const barW = count > 0 ? Math.max(4, (count / maxTodCount) * 100) : 4;

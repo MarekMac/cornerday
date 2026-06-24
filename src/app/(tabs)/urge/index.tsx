@@ -162,8 +162,8 @@ const SLIP_VARIANTS = [
   { emoji: '🌅', title: 'A new start.',           body: 'Every moment is a chance to begin again. You don\'t have to wait until tomorrow.' },
   { emoji: '🧭', title: 'Still on the path.',     body: 'A slip is a detour, not a dead end. The path back is right here.' },
   { emoji: '💪', title: 'You\'re still fighting.', body: 'The fact that you\'re facing this — not hiding from it — shows how serious you are about change.' },
-  { emoji: '🌊', title: 'Ride the wave.',         body: 'This feeling will pass. Shame fades. What lasts is what you choose to do right now.' },
-  { emoji: '🕊️', title: 'Forgive yourself.',     body: 'Guilt won\'t help — but a reset will. You\'ve got this. One breath, one step.' },
+  { emoji: '🌊', title: 'Ride the wave.',         body: 'This feeling will pass. What lasts is what you choose to do right now.' },
+  { emoji: '🕊️', title: 'Forgive yourself.',     body: 'A reset is what helps. You\'ve got this. One breath, one step.' },
 ] as const;
 
 const DISTRACTIONS = [
@@ -595,8 +595,18 @@ export default function UrgeScreen() {
         ];
         if (!shieldEnabled) resetOps.push(supabase.from('badges').delete().eq('user_id', user.id));
         await Promise.all(resetOps);
-        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
+        // When shield is on, badges are preserved — keep MILESTONE_NOTIFS_KEY so the scheduler
+        // knows which milestones are already earned and doesn't re-fire their notifications.
+        const keysToRemove = [CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
+        if (!shieldEnabled) keysToRemove.unshift(MILESTONE_NOTIFS_KEY);
+        await AsyncStorage.multiRemove(keysToRemove);
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
+
+        let badgeTypesForNotif: string[] = [];
+        if (shieldEnabled) {
+          const { data: survivingBadges } = await supabase.from('badges').select('badge_type').eq('user_id', user.id);
+          badgeTypesForNotif = (survivingBadges ?? []).map(b => b.badge_type);
+        }
 
         const { data: prefsRow } = await supabase
           .from('users')
@@ -610,7 +620,7 @@ export default function UrgeScreen() {
           notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
           notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
         };
-        await scheduleAllNotifications(prefs, newQuitTimestamp);
+        await scheduleAllNotifications(prefs, newQuitTimestamp, badgeTypesForNotif);
         await scheduleOnboardingCheckin();
         success = true;
       }

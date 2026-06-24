@@ -388,6 +388,17 @@ const REENGAGEMENT_SCHEDULE: { seconds: number; title: string; body: string }[] 
 ];
 
 export async function scheduleOnboardingCheckin(): Promise<void> {
+  // Skip if already scheduled — calling this on every launch would reset the countdown,
+  // meaning users who open the app daily would never receive re-engagement notifications.
+  // Keys are cleared on relapse/reset so a fresh schedule fires correctly after a restart.
+  const existingIdsRaw = await AsyncStorage.getItem(AI_CHECKIN_NOTIF_IDS_KEY);
+  if (existingIdsRaw) {
+    try {
+      const ids: string[] = JSON.parse(existingIdsRaw);
+      if (ids.length > 0) return;
+    } catch {}
+  }
+
   // Cancel any previously scheduled re-engagement notifications
   const prevId = await AsyncStorage.getItem(AI_CHECKIN_NOTIF_ID_KEY);
   if (prevId) await Notifications.cancelScheduledNotificationAsync(prevId).catch(() => {});

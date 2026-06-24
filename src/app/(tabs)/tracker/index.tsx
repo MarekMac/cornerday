@@ -311,7 +311,7 @@ export default function TrackerIndex() {
   const openAddDebt = () => {
     setEditingDebt(null);
     setDebtName(''); setDebtAmount(''); setDebtCategory('other');
-    debtTargetDateBeforeEdit.current = null;
+    debtTargetDateBeforeEdit.current = debtTargetDate;
     setDebtTargetDate(null);
     setDebtModalVisible(true);
   };
@@ -1030,7 +1030,7 @@ export default function TrackerIndex() {
                   const remaining = Math.max(0, Number(debt.total_amount) - paid);
                   const pct = Number(debt.total_amount) > 0
                     ? Math.min(1, paid / Number(debt.total_amount)) : 0;
-                  const isPaidOff = remaining === 0 && paid > 0;
+                  const isPaidOff = Math.round(remaining * 100) === 0 && paid > 0;
                   const overdueTd = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
                   const isOverdue = !isPaidOff && overdueTd !== null && Math.ceil((overdueTd.getTime() - Date.now()) / 86400000) <= 0;
 

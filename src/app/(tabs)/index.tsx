@@ -1724,9 +1724,14 @@ export default function HomeScreen() {
         if (!shieldEnabled) {
           await supabase.from('badges').delete().eq('user_id', user.id);
         }
-        // Clear AsyncStorage badge/notification flags so everything resets cleanly after a relapse
-        await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
-        // Reschedule notifications against the new quit timestamp
+        // When shield is on, badges survive — keep MILESTONE_NOTIFS_KEY so the scheduler
+        // doesn't re-fire notifications for milestones the user still owns.
+        const relapseKeysToRemove = [CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
+        if (!shieldEnabled) relapseKeysToRemove.unshift(MILESTONE_NOTIFS_KEY);
+        await AsyncStorage.multiRemove(relapseKeysToRemove);
+        // Reschedule notifications against the new quit timestamp, passing surviving badges
+        // so already-earned milestones are excluded from the new notification schedule.
+        const badgeTypesForNotif = shieldEnabled ? (data?.earnedBadges ?? []) : [];
         const { data: prefsRow } = await supabase
           .from('users')
           .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
@@ -1741,7 +1746,7 @@ export default function HomeScreen() {
           notif_urge_prediction: prefsRow?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
           notif_community: prefsRow?.notif_community ?? DEFAULT_NOTIF_PREFS.notif_community,
         };
-        await scheduleAllNotifications(prefs, newQuitTimestamp);
+        await scheduleAllNotifications(prefs, newQuitTimestamp, badgeTypesForNotif);
         await scheduleOnboardingCheckin();
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
         if (!isMountedRef.current) return;
@@ -1923,10 +1928,10 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [s.partnerMsgBanner, pressed && { opacity: 0.85 }]}
             onPress={async () => {
+              setPartnerMsg(null);
               try {
                 const { data: { user: msgUser } } = await supabase.auth.getUser();
-                const { error } = await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id).eq('user_id', msgUser?.id ?? '');
-                if (!error) setPartnerMsg(null);
+                await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id).eq('user_id', msgUser?.id ?? '');
               } catch (_e) {}
             }}>
             <Text style={s.partnerMsgEmoji}>💙</Text>

@@ -75,6 +75,12 @@ function SkeletonCard() {
 
 const POST_SELECT = 'id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))';
 
+function maskAnonPosts(items: Post[], currentUserId: string | null): Post[] {
+  return items.map(p =>
+    p.is_anonymous && p.user_id !== currentUserId ? { ...p, user_id: '' } : p
+  );
+}
+
 export default function CommunityFeed() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
@@ -216,7 +222,7 @@ export default function CommunityFeed() {
         q = q.range(0, PAGE_SIZE - 1);
         const { data, error } = await q;
         if (error) console.warn('[community] following load error:', error.message);
-        const items = (data as Post[]) ?? [];
+        const items = maskAnonPosts((data as Post[]) ?? [], currentUserIdRef.current);
         postsRef.current = items;
         setPosts(items);
         setHasMore(items.length === PAGE_SIZE);
@@ -251,7 +257,7 @@ export default function CommunityFeed() {
         q = q.range(0, PAGE_SIZE - 1);
         const { data, error } = await q;
         if (error) console.warn('[community] saved load error:', error.message);
-        const items = (data as Post[]) ?? [];
+        const items = maskAnonPosts((data as Post[]) ?? [], currentUserIdRef.current);
         postsRef.current = items;
         setPosts(items);
         setHasMore(items.length === PAGE_SIZE);
@@ -276,7 +282,7 @@ export default function CommunityFeed() {
         console.warn('[community] feed load error:', error.message);
         setLoadError(true);
       }
-      const items = (data as Post[]) ?? [];
+      const items = maskAnonPosts((data as Post[]) ?? [], currentUserIdRef.current);
       postsRef.current = items;
       setPosts(items);
       setHasMore(items.length === PAGE_SIZE);
@@ -316,7 +322,7 @@ export default function CommunityFeed() {
         setLoadMoreError(true);
         return;
       }
-      const items = (data as Post[]) ?? [];
+      const items = maskAnonPosts((data as Post[]) ?? [], currentUserIdRef.current);
       const next = [...postsRef.current, ...items];
       postsRef.current = next;
       setPosts(next);
