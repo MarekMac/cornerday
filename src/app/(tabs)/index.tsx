@@ -749,7 +749,7 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
       )}
       {totalPaid > 0 && (
         <>
-          <View style={s.savedSep} />
+          {!!weeklyBet && <View style={s.savedSep} />}
           <View style={s.savedRow}>
             <Text style={s.savedEmoji}>💰</Text>
             <View style={s.savedBody}>
@@ -760,15 +760,14 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
           </View>
         </>
       )}
-      {!weeklyBet && (
-        <Pressable
-          style={({ pressed }) => [s.savedSetupRow, pressed && { opacity: 0.7 }]}
-          onPress={() => router.push('/(tabs)/tracker' as any)}>
-          <Text style={s.savedSetupTxt}>Set up your savings tracker →</Text>
-        </Pressable>
-      )}
     </View>
   );
+}
+
+function SavedCardWrapper(props: Parameters<typeof SavedCard>[0]) {
+  const { weeklyBet, totalPaid } = props;
+  if (!weeklyBet && totalPaid === 0) return null;
+  return <SavedCard {...props} />;
 }
 
 // ─── Milestone celebration ─────────────────────────────────────────────────────
@@ -2011,7 +2010,7 @@ export default function HomeScreen() {
         )}
 
         {/* Stats */}
-        <SavedCard quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalPaid={data.totalPaid} nowMs={nowMs} />
+        <SavedCardWrapper quitDate={data.quitDate} weeklyBet={data.weeklyBet} currency={data.currency} totalPaid={data.totalPaid} nowMs={nowMs} />
 
         {/* Badges */}
         <View style={s.card} onLayout={e => setBadgesCardY(e.nativeEvent.layout.y)}>
