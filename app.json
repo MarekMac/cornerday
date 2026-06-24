@@ -40,8 +40,15 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "updates": {
+      "url": "https://u.expo.dev/85956181-34e1-4957-a48b-faefd588895f"
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "plugins": [
       "expo-router",
+      "expo-updates",
       [
         "expo-notifications",
         {

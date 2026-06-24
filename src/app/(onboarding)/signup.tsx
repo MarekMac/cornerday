@@ -390,6 +390,10 @@ export default function SignupScreen() {
             <Text style={styles.privacyLink} onPress={() => router.push('/privacy-policy')}>
               Privacy Policy
             </Text>
+            {' '}and{' '}
+            <Text style={styles.privacyLink} onPress={() => router.push('/terms')}>
+              Terms of Use
+            </Text>
             . Your data is private and never sold.
           </Text>
         </ScrollView>
