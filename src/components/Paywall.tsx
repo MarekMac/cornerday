@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import Logo from '@/components/Logo';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -100,6 +101,9 @@ export function Paywall() {
       <View style={[s.root, { paddingBottom: insets.bottom }]}>
         <View style={[s.header, { backgroundColor: c.primary }]}>
           <View style={[s.headerRow, { paddingTop: insets.top + 16 }]}>
+            <View style={s.headerLogoCol}>
+              <Logo size={36} variant="dark" />
+            </View>
             <View style={s.headerTextCol}>
               <Text style={s.headerTitle}>Go Premium</Text>
               <Text style={s.headerSub}>Unlock your full recovery toolkit</Text>
@@ -238,6 +242,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingBottom: 4, gap: 12,
   },
+  headerLogoCol: { marginRight: 14, justifyContent: 'center' },
   headerTextCol: { flex: 1 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: c.white, letterSpacing: -0.3 },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 3 },

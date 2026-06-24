@@ -44,6 +44,7 @@ import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import Logo from '@/components/Logo';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -2900,11 +2901,7 @@ export default function HomeScreen() {
               >
                 <View style={s.shareCardTop}>
                   <Text style={[s.shareCardBrand, { color: cc.brand }]}>CornerDay</Text>
-                  {shareCardBadge && (
-                    <Text style={s.shareCardBadgeEmoji}>
-                      {shareCardLocked ? '🔒' : shareCardBadge.emoji}
-                    </Text>
-                  )}
+                  <Logo size={28} variant={colorScheme === 'dark' ? 'dark' : 'light'} />
                 </View>
 
                 {shareCardLocked ? (

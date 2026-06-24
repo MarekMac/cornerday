@@ -8,7 +8,7 @@ interface LogoProps {
 
 export default function Logo({ size = 80, variant = 'light' }: LogoProps) {
   const p = variant === 'dark' ? '#ffffff' : '#0F6E6E';
-  const a = variant === 'dark' ? 'rgba(255,255,255,0.85)' : '#1A9A9A';
+  const a = variant === 'dark' ? '#a8d8d0' : '#1A9A9A';
 
   // Icon paths use A3.svg coordinates; viewBox crops to icon bounds (x=296–468, y=0–175)
   return (

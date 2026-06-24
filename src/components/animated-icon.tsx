@@ -1,8 +1,9 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import CornerDayLogo from '@/components/CornerDayLogo';
+import Logo from '@/components/Logo';
 
 const { width: SW, height: SH } = Dimensions.get('screen');
 
@@ -32,9 +33,11 @@ export function AnimatedSplashOverlay() {
         if (finished) scheduleOnRN(setVisible, false);
       })}
       style={styles.overlay}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0F6E6E' }]} />
+      <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={StyleSheet.absoluteFill} />
       <Animated.View entering={logoKeyframe.duration(SPLASH_DURATION * 0.55)} style={styles.content}>
-        <CornerDayLogo width={240} variant="dark" />
+        <Logo size={120} variant="dark" />
+        <Text style={styles.appName}>CornerDay</Text>
+        <Text style={styles.tagline}>The day you turn it around{'\n'}starts today.</Text>
       </Animated.View>
     </Animated.View>
   );
@@ -53,5 +56,19 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
+    gap: 16,
+  },
+  appName: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 1,
+    marginTop: 8,
+  },
+  tagline: {
+    fontSize: 17,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    lineHeight: 26,
   },
 });

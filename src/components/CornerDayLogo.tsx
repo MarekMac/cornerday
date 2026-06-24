@@ -11,7 +11,7 @@ const VH = 387.64;
 export default function CornerDayLogo({ width = 280, variant = 'light' }: Props) {
   const height = Math.round((VH / VW) * width);
   const p = variant === 'dark' ? '#ffffff' : '#0F6E6E';
-  const a = variant === 'dark' ? 'rgba(255,255,255,0.85)' : '#1A9A9A';
+  const a = variant === 'dark' ? '#a8d8d0' : '#1A9A9A';
 
   return (
     <Svg width={width} height={height} viewBox={`0 0 ${VW} ${VH}`}>

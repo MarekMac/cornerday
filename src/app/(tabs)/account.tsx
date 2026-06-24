@@ -1266,7 +1266,7 @@ export default function AccountScreen() {
       await AsyncStorage.multiRemove([
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
         MILESTONE_NOTIFS_KEY, CHECKLIST_BADGE_SENT_KEY, GOAL_SET_BADGE_SENT_KEY, GOAL_REACHED_BADGE_SENT_KEY,
-        TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, MOTIVATION_PHOTO_KEY,
+        TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY,
         COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY,
         STORE_REVIEW_ASKED_KEY,
         STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
@@ -1274,7 +1274,6 @@ export default function AccountScreen() {
         URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
         CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
       ]);
-      try { await FileSystem.deleteAsync(FileSystem.documentDirectory + 'motivation_photo.jpg', { idempotent: true }); } catch (_e) {}
       try { await supabase.auth.signOut(); } catch (_e) {}
     } finally {
       setSigningOut(false);
