@@ -241,6 +241,7 @@ function buildFreeHtml(p: {
 <table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
 
   <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:36px 28px 32px;text-align:center;color:#fff;">
+    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:8px;">CornerDay</div>
     <div style="font-size:14px;opacity:0.8;margin-bottom:22px;">Hi ${firstName} — here's your week</div>
     <div style="font-size:88px;font-weight:900;line-height:1;color:#fff;">${time.bigNumber}</div>
@@ -527,6 +528,7 @@ function buildPremiumHtml(p: {
 <table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
 
   <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:36px 28px 32px;text-align:center;color:#fff;">
+    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:8px;">CornerDay Premium</div>
     <div style="font-size:14px;opacity:0.8;margin-bottom:22px;">Hi ${firstName} — your full weekly report</div>
     <div style="font-size:88px;font-weight:900;line-height:1;color:#fff;">${time.bigNumber}</div>

@@ -35,6 +35,7 @@ function emailShell(body: string): string {
 <tr><td align="center">
 <table width="100%" style="max-width:480px;" cellpadding="0" cellspacing="0">
   <tr><td style="background:linear-gradient(135deg,#0F6E6E,#1a9a9a);border-radius:16px 16px 0 0;padding:28px;text-align:center;">
+    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:6px;">CornerDay</div>
     <div style="font-size:12px;color:rgba(255,255,255,0.7);">Someone in your corner</div>
   </td></tr>
