@@ -116,7 +116,7 @@ export default function NewPost() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.root}>
-        <View style={[s.header, { backgroundColor: c.primary }]}>
+        <View style={[s.header, { backgroundColor: c.headerBg }]}>
           <SafeAreaView edges={['top']}>
             <View style={s.headerRow}>
               <Pressable onPress={handleBack} style={s.backBtn}>

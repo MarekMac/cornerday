@@ -1904,7 +1904,7 @@ export default function HomeScreen() {
   return (
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* ── Header ── */}
-      <View style={[s.header, { backgroundColor: c.primary }]}>
+      <View style={[s.header, { backgroundColor: c.headerBg }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <View style={s.headerTop}>

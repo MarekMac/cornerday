@@ -530,7 +530,7 @@ export default function PostDetail() {
 
   return (
     <View style={s.root}>
-      <View style={[s.header, { backgroundColor: c.primary }]}>
+      <View style={[s.header, { backgroundColor: c.headerBg }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Pressable onPress={() => { showInterstitialIfReady(isPremium, 0.2); router.back(); }} style={s.backBtn} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">

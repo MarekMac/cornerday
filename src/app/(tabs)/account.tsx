@@ -1619,7 +1619,7 @@ export default function AccountScreen() {
 
   return (
     <View style={s.root}>
-      <View style={[s.header, { backgroundColor: c.primary }]}>
+      <View style={[s.header, { backgroundColor: c.headerBg }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Text style={s.headerTitle}>Account</Text>

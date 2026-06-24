@@ -52,7 +52,7 @@ export default function ChecklistScreen() {
 
   return (
     <View style={s.root}>
-      <View style={[s.header, { backgroundColor: c.primary }]}>
+      <View style={[s.header, { backgroundColor: c.headerBg }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerContent}>
             <Pressable onPress={() => router.back()} hitSlop={12} style={s.backBtn}>

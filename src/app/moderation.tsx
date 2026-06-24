@@ -410,7 +410,7 @@ export default function ModerationScreen() {
 
   return (
     <View style={s.root}>
-      <View style={[s.header, { backgroundColor: c.primary }]}>
+      <View style={[s.header, { backgroundColor: c.headerBg }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Pressable onPress={() => router.back()} hitSlop={10} style={s.backBtn}>

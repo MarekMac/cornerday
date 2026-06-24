@@ -583,7 +583,7 @@ export default function AnalyticsScreen() {
   };
 
   const renderHeader = () => (
-    <View style={[s.header, { backgroundColor: c.primary }]}>
+    <View style={[s.header, { backgroundColor: c.headerBg }]}>
       <SafeAreaView edges={['top']}>
         <View style={s.headerRow}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>

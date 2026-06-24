@@ -596,7 +596,7 @@ export default function CommunityFeed() {
 
   return (
     <View style={s.root}>
-      <View style={[s.header, { backgroundColor: c.primary }]}>
+      <View style={[s.header, { backgroundColor: c.headerBg }]}>
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <Text style={s.headerTitle}>Community</Text>
