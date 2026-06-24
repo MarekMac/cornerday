@@ -799,6 +799,7 @@ export default function HomeScreen() {
   const badgeScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
   const fetchingRef = useRef(false);
+  const pendingFetchRef = useRef(false);
   const isMountedRef = useRef(true);
   const moodScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrolledBadgeCountRef = useRef(0);
@@ -898,14 +899,14 @@ export default function HomeScreen() {
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
   useEffect(() => {
     if (!data?.quitDate) return;
-    const ms = Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime());
+    const quitDate = parseQuitDate(data.quitDate);
+    if (isNaN(quitDate.getTime())) return;
+    const ms = Math.max(0, Date.now() - quitDate.getTime());
     const { next } = getMilestone(ms);
     if (prevNextMilestone.current !== null && prevNextMilestone.current !== next) {
       if (!fetchingRef.current) {
-        fetchData();
-        prevNextMilestone.current = next;
+        fetchData().then(() => { prevNextMilestone.current = next; });
       }
-      // if blocked, leave prevNextMilestone unchanged so next tick retries
     } else {
       prevNextMilestone.current = next;
     }
@@ -942,8 +943,9 @@ export default function HomeScreen() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    if (fetchingRef.current) return;
+    if (fetchingRef.current) { pendingFetchRef.current = true; return; }
     fetchingRef.current = true;
+    pendingFetchRef.current = false;
     try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { fetchingRef.current = false; return; }
@@ -1299,6 +1301,10 @@ export default function HomeScreen() {
       setLoadError(true);
     } finally {
       fetchingRef.current = false;
+      if (pendingFetchRef.current && isMountedRef.current) {
+        pendingFetchRef.current = false;
+        fetchData();
+      }
     }
   }, []);
 
@@ -1394,7 +1400,7 @@ export default function HomeScreen() {
       b => b.days > 0 && streakMs >= b.days * 86400000 && !data.earnedBadges.includes(b.type)
     );
     if (hasUnearned && Date.now() - lastBadgeFetchMs.current > 30_000) {
-      if (!fetchingRef.current) lastBadgeFetchMs.current = Date.now();
+      lastBadgeFetchMs.current = Date.now();
       fetchData();
     }
   }, [streakMs, data, fetchData]);
