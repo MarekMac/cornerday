@@ -17,6 +17,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Logo from '@/components/Logo';
 import { usePurchases } from '@/context/purchases';
 import { useUser } from '@/context/user';
 import { useAppTheme } from '@/context/theme';
@@ -335,7 +336,7 @@ export default function CoachScreen() {
         <View style={[s.msgRow, isUser ? s.msgRowUser : s.msgRowAssistant]}>
           {!isUser && (
             <View style={s.avatarCircle}>
-              <Text style={s.avatarEmoji}>🤖</Text>
+              <Logo size={20} variant="dark" />
             </View>
           )}
           <View style={[s.bubble, isUser ? s.bubbleUser : s.bubbleAssistant]}>
@@ -387,7 +388,7 @@ export default function CoachScreen() {
         {header}
         <ScrollView contentContainerStyle={s.paywallScroll} style={s.paywallBg}>
           <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.paywallIcon}>
-            <Text style={s.paywallIconEmoji}>🤖</Text>
+            <Logo size={36} variant="dark" />
           </LinearGradient>
           <Text style={s.paywallTitle}>AI Corner</Text>
           <Text style={s.paywallSub}>
@@ -521,7 +522,6 @@ const makeStyles = (c: AppColors) =>
       shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
     },
-    paywallIconEmoji: { fontSize: 30 },
     paywallTitle: { fontSize: 24, fontWeight: '800', color: c.textPrimary, marginBottom: 6, textAlign: 'center' },
     paywallSub: { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21, marginBottom: 20 },
     featureList: { alignSelf: 'stretch', marginBottom: 24 },
@@ -549,12 +549,11 @@ const makeStyles = (c: AppColors) =>
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: c.bgTeal,
+      backgroundColor: c.primary,
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
     },
-    avatarEmoji: { fontSize: 16 },
 
     bubble: {
       maxWidth: '78%',
