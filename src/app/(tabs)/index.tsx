@@ -45,6 +45,10 @@ import { SkeletonBox } from '@/components/skeleton';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import Logo from '@/components/Logo';
+import { File, Paths } from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { setImagePickerActive } from '@/lib/image-picker-active';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1527,6 +1531,44 @@ export default function HomeScreen() {
     }
   }, [fetchData, randomQuote]);
 
+  const pickMotivationPhoto = async () => {
+    setImagePickerActive(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission needed', 'Allow photo access in your device settings to add a photo.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+        exif: false,
+      });
+      if (result.canceled) return;
+      try {
+        const src = result.assets[0].uri;
+        const resized = await ImageManipulator.manipulateAsync(
+          src,
+          [{ resize: { width: 1080, height: 1080 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        const destFile = new File(Paths.document, 'motivation_photo.jpg');
+        if (destFile.exists) destFile.delete();
+        await new File(resized.uri).copy(destFile);
+        const photoUri = destFile.uri + '?t=' + Date.now();
+        await AsyncStorage.setItem(MOTIVATION_PHOTO_KEY, photoUri);
+        setMotivationPhoto(photoUri);
+      } catch (err) {
+        console.error('[MotivationPhoto] save error:', err);
+        Alert.alert('Could not save photo', 'Please try again.');
+      }
+    } finally {
+      setTimeout(() => setImagePickerActive(false), 500);
+    }
+  };
+
   const openShareCard = (
     badge: { emoji: string; label: string } | null,
     hideTime = false,
@@ -2327,7 +2369,7 @@ export default function HomeScreen() {
                   ))}
                 </ScrollView>
               </View>
-              <Pressable onPress={() => router.push('/(tabs)/urge' as any)}>
+              <Pressable onPress={motivationPhoto ? () => router.push('/(tabs)/urge' as any) : pickMotivationPhoto}>
                 {motivationPhoto ? (
                   <Image source={{ uri: motivationPhoto }} style={s.whyAnchorPhoto} />
                 ) : (

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
 import { AppColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme';
-import CornerDayLogo from '@/components/CornerDayLogo';
+import Logo from '@/components/Logo';
 
 export default function WelcomeScreen() {
   const { colors: c } = useAppTheme();
@@ -19,10 +20,12 @@ export default function WelcomeScreen() {
   }, []);
 
   return (
-    <View style={s.gradient}>
+    <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={s.gradient}>
       <SafeAreaView style={s.safe}>
         <View style={s.hero}>
-          <CornerDayLogo width={260} variant="dark" />
+          <Logo size={120} variant="dark" />
+          <Text style={s.appName}>CornerDay</Text>
+          <Text style={s.tagline}>The day you turn it around{'\n'}starts today.</Text>
         </View>
 
         <View style={s.actions}>
@@ -39,14 +42,13 @@ export default function WelcomeScreen() {
           </Pressable>
         </View>
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const makeStyles = (c: AppColors) => StyleSheet.create({
   gradient: {
     flex: 1,
-    backgroundColor: c.primary,
   },
   safe: {
     flex: 1,
@@ -56,15 +58,31 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 16,
+  },
+  appName: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 1,
+    marginTop: 8,
+  },
+  tagline: {
+    fontSize: 17,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    lineHeight: 26,
   },
   actions: {
-    paddingBottom: 32,
+    paddingBottom: 52,
     gap: 12,
+    alignItems: 'center',
   },
   primaryBtn: {
     backgroundColor: c.white,
     borderRadius: 14,
     paddingVertical: 16,
+    paddingHorizontal: 80,
     alignItems: 'center',
   },
   primaryBtnText: {
