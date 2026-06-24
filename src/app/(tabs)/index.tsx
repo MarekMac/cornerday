@@ -157,6 +157,7 @@ const ACTIVITY_BADGE_DEFS = [
   { type: 'urge_overcame_75',emoji: '🦅', label: '75 Urges',       earned: 'Overcame 75 urges.',                          pending: 'Overcome 75 urges.' },
   { type: 'urge_overcame_100',emoji:'🏆', label: '100 Urges',      earned: 'Overcame 100 urges.',                         pending: 'Overcome 100 urges.' },
   { type: 'loss_first_log',  emoji: '🪞', label: 'Honest Start',   earned: 'Logged your first loss — that took courage.', pending: 'Log a loss in the Tracker tab.' },
+  { type: 'first_debt',     emoji: '📋', label: 'First Debt',     earned: 'Added your first debt to track — honesty is the first step.', pending: 'Add a debt in the Tracker tab.' },
   { type: 'first_payment',   emoji: '💰', label: 'First Payment',  earned: 'First debt payment logged.',                  pending: 'Log a payment in the Tracker tab.' },
   { type: 'payments_5',      emoji: '📈', label: '5 Payments',     earned: '5 debt payments logged.',                     pending: 'Log 5 payments in the Tracker tab.' },
   { type: 'payments_10',     emoji: '💸', label: '10 Payments',    earned: '10 debt payments logged.',                    pending: 'Log 10 payments in the Tracker tab.' },
@@ -172,6 +173,7 @@ const URGE_BADGE_TYPES    = ['first_journal', 'urge_overcame_1', 'urge_overcame_
 const ACTIVITY_BADGE_THRESHOLDS: Record<string, number> = {
   first_checkin: 1, checkins_7: 7, checkins_14: 14, checkins_30: 30, checkins_50: 50, checkins_75: 75, checkins_100: 100, checkins_200: 200, checkins_365: 365,
   first_journal: 1, urge_overcame_1: 1, urge_overcame_5: 5, urge_overcame_10: 10, urge_overcame_25: 25, urge_overcame_50: 50, urge_overcame_75: 75, urge_overcame_100: 100,
+  first_debt: 1,
   first_payment: 1, payments_5: 5, payments_10: 10, payments_25: 25, payments_50: 50, payments_100: 100,
 };
 
@@ -1245,6 +1247,7 @@ export default function HomeScreen() {
       urge_overcame_75:      urgesOvercome >= 75,
       urge_overcame_100:     urgesOvercome >= 100,
       loss_first_log:       lossCount >= 1,
+      first_debt:           debtRows.length >= 1,
       first_payment:        paymentCount >= 1,
       payments_5:           paymentCount >= 5,
       payments_10:          paymentCount >= 10,
@@ -1703,6 +1706,7 @@ export default function HomeScreen() {
         setEditingMood(false);
         setMoodNote('');
         setEditMoodValue(null);
+        if (isNewInsert) fetchData();
       }
     } finally {
       if (isMountedRef.current) setMoodSubmitting(false);
@@ -2166,7 +2170,7 @@ export default function HomeScreen() {
               const debtFullyPaid = data.debtItems.length > 0 && data.debtItems.every(d => d.paidAmount >= d.totalAmount);
               const firstUnearned = (group: string[]) => group.findIndex(t => !data.earnedBadges.includes(t));
               // Gateway badges — hidden until earned; chains exclude them for progressive display
-              const GATEWAY_BADGES = new Set(['loss_first_log', 'first_payment', 'first_journal', 'community_first_post']);
+              const GATEWAY_BADGES = new Set(['loss_first_log', 'first_debt', 'first_payment', 'first_journal', 'community_first_post']);
               const PAYMENT_CHAIN = PAYMENT_BADGE_TYPES.filter(t => t !== 'first_payment');
               const URGE_CHAIN    = URGE_BADGE_TYPES.filter(t => t !== 'first_journal');
               const firstUnearnedPaymentChain = debtFullyPaid ? -1 : firstUnearned(PAYMENT_CHAIN);
