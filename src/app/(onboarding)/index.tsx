@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
 import { AppColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme';
-import Logo from '@/components/Logo';
+import CornerDayLogo from '@/components/CornerDayLogo';
 
 export default function WelcomeScreen() {
   const { colors: c } = useAppTheme();
@@ -22,9 +22,7 @@ export default function WelcomeScreen() {
     <View style={s.gradient}>
       <SafeAreaView style={s.safe}>
         <View style={s.hero}>
-          <Logo size={100} />
-          <Text style={s.appName}>CornerDay</Text>
-          <Text style={s.tagline}>Turn the corner.{'\n'}Build a better tomorrow.</Text>
+          <CornerDayLogo width={260} variant="dark" />
         </View>
 
         <View style={s.actions}>
@@ -58,21 +56,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-  },
-  appName: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: c.white,
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  tagline: {
-    fontSize: 17,
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-    lineHeight: 26,
-    marginTop: 4,
   },
   actions: {
     paddingBottom: 32,
