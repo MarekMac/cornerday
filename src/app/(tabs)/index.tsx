@@ -737,16 +737,16 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
   const moneySaved = (ms / 86400000) * weeklyToDaily(weeklyBet);
   return (
     <View style={s.savedCard}>
-      <View style={s.savedRow}>
-        <Text style={s.savedEmoji}>💸</Text>
-        <View style={s.savedBody}>
-          <Text style={s.savedLabel}>Not spent since day one</Text>
-          <Text style={s.savedSub}>
-            {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Set weekly spending in Tracker'}
-          </Text>
+      {!!weeklyBet && (
+        <View style={s.savedRow}>
+          <Text style={s.savedEmoji}>💸</Text>
+          <View style={s.savedBody}>
+            <Text style={s.savedLabel}>Not spent since day one</Text>
+            <Text style={s.savedSub}>{`Theoretical · ${fmt(Number(weeklyBet), currency)}/week`}</Text>
+          </View>
+          <Text style={[s.savedAmt, { color: c.textMuted }]}>{fmtLive(moneySaved, currency)}</Text>
         </View>
-        <Text style={[s.savedAmt, { color: c.textMuted }]}>{fmtLive(moneySaved, currency)}</Text>
-      </View>
+      )}
       {totalPaid > 0 && (
         <>
           <View style={s.savedSep} />
@@ -761,14 +761,11 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
         </>
       )}
       {!weeklyBet && (
-        <>
-          <View style={s.savedSep} />
-          <Pressable
-            style={({ pressed }) => [s.savedSetupRow, pressed && { opacity: 0.7 }]}
-            onPress={() => router.push('/(tabs)/tracker' as any)}>
-            <Text style={s.savedSetupTxt}>Set up your savings tracker →</Text>
-          </Pressable>
-        </>
+        <Pressable
+          style={({ pressed }) => [s.savedSetupRow, pressed && { opacity: 0.7 }]}
+          onPress={() => router.push('/(tabs)/tracker' as any)}>
+          <Text style={s.savedSetupTxt}>Set up your savings tracker →</Text>
+        </Pressable>
       )}
     </View>
   );
