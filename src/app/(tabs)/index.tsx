@@ -983,7 +983,7 @@ export default function HomeScreen() {
       AsyncStorage.getItem(SHIELD_UNDO_KEY),
       AsyncStorage.getItem(CUSTOM_MILESTONE_KEY),
     ]).then(([rawPhoto, rawShield, rawUndo, rawMilestone]) => {
-      setMotivationPhoto(rawPhoto ? rawPhoto + '?t=' + Date.now() : null);
+      setMotivationPhoto(rawPhoto ? rawPhoto.split('?t=')[0] + '?t=' + Date.now() : null);
       setShieldEnabled(rawShield === 'true');
       if (rawUndo) {
         try {
@@ -2369,7 +2369,7 @@ export default function HomeScreen() {
                   ))}
                 </ScrollView>
               </View>
-              <Pressable onPress={motivationPhoto ? () => router.push('/(tabs)/urge' as any) : pickMotivationPhoto}>
+              <Pressable onPress={pickMotivationPhoto}>
                 {motivationPhoto ? (
                   <Image source={{ uri: motivationPhoto }} style={s.whyAnchorPhoto} />
                 ) : (
