@@ -2177,9 +2177,15 @@ export default function HomeScreen() {
               };
               return ACTIVITY_BADGE_DEFS.filter(badge => {
                 if (GATEWAY_BADGES.has(badge.type)) return data.earnedBadges.includes(badge.type);
-                if (PAYMENT_BADGE_TYPES.includes(badge.type)) return progressiveFilter(PAYMENT_CHAIN, firstUnearnedPaymentChain, badge, 1);
-                if (CHECKIN_BADGE_TYPES.includes(badge.type)) return progressiveFilter(CHECKIN_BADGE_TYPES, firstUnearnedCheckin, badge);
-                if (URGE_BADGE_TYPES.includes(badge.type))    return progressiveFilter(URGE_CHAIN, firstUnearnedUrge, badge, 1);
+                if (PAYMENT_BADGE_TYPES.includes(badge.type)) {
+                  if (!data.earnedBadges.includes('first_payment')) return false;
+                  return progressiveFilter(PAYMENT_CHAIN, firstUnearnedPaymentChain, badge, 1);
+                }
+                if (CHECKIN_BADGE_TYPES.includes(badge.type)) return progressiveFilter(CHECKIN_BADGE_TYPES, firstUnearnedCheckin, badge, 1);
+                if (URGE_BADGE_TYPES.includes(badge.type)) {
+                  if (!data.earnedBadges.includes('first_journal')) return false;
+                  return progressiveFilter(URGE_CHAIN, firstUnearnedUrge, badge, 1);
+                }
                 return true;
               });
             })().map(badge => {
