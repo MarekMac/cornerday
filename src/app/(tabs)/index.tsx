@@ -2378,11 +2378,7 @@ export default function HomeScreen() {
 
         {/* Your why */}
         {motivations.length > 0 && (
-          <LinearGradient
-            colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.whyAnchorCard}>
+          <View style={[s.whyAnchorCard, { backgroundColor: c.headerBg }]}>
             <View style={s.whyAnchorHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={s.whyAnchorLabel}>Your why</Text>
@@ -2407,7 +2403,7 @@ export default function HomeScreen() {
                 )}
               </Pressable>
             </View>
-          </LinearGradient>
+          </View>
         )}
 
         {/* Urge prediction card — only visible 1h before and after peak */}
