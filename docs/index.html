@@ -1,27 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- CornerDay landing page -->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CornerDay — The day you turn it around starts today</title>
-  <meta name="description" content="CornerDay helps you stop sports betting, track money lost and repaid, and stay accountable — without shame.">
+  <meta name="description" content="CornerDay helps you stop gambling, track money lost and repaid, and stay accountable — without shame.">
   <meta property="og:title" content="CornerDay">
   <meta property="og:description" content="The day you turn it around starts today.">
+  <meta property="og:image" content="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://cornerday.app">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CornerDay">
+  <meta name="twitter:description" content="The day you turn it around starts today.">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --teal-dark: #0F6E6E;
-      --teal-mid:  #1a9a9a;
-      --teal-light:#a8d8d0;
-      --accent:    #e6f7f7;
-      --warm:      #f5ece4;
-      --text:      #1a2e2e;
-      --muted:     #5a7a7a;
-      --card:      #ffffff;
+      --teal-dark:  #0F6E6E;
+      --teal-mid:   #1a9a9a;
+      --teal-light: #a8d8d0;
+      --accent:     #e6f7f7;
+      --warm:       #f5ece4;
+      --text:       #1a2e2e;
+      --muted:      #5a7a7a;
     }
 
     body {
@@ -31,39 +33,93 @@
       line-height: 1.6;
     }
 
-    /* ── Hero ── */
-    .hero {
-      background: linear-gradient(135deg, #0F6E6E 0%, #1a9a9a 55%, #a8d8d0 100%);
-      padding: 64px 24px 80px;
-      text-align: center;
-      color: #fff;
+    /* ── Nav ── */
+    nav {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
     }
 
-    .logo-mark {
-      width: 72px;
-      height: 72px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.18);
-      display: inline-flex;
+    .nav-brand {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 36px;
-      margin-bottom: 20px;
-      backdrop-filter: blur(8px);
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+    }
+
+    .nav-brand span {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.2px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color .15s;
+    }
+    .nav-links a:hover { color: #fff; }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(150deg, #0a4f4f 0%, #0F6E6E 45%, #1a9a9a 100%);
+      padding: 120px 24px 96px;
+      text-align: center;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -2px; left: 0; right: 0;
+      height: 60px;
+      background: #fff;
+      clip-path: ellipse(55% 100% at 50% 100%);
+    }
+
+    .hero-logo {
+      width: 88px;
+      height: 88px;
+      border-radius: 22px;
+      margin: 0 auto 24px;
+      display: block;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     }
 
     .hero h1 {
-      font-size: clamp(28px, 6vw, 42px);
-      font-weight: 800;
+      font-size: clamp(32px, 6vw, 52px);
+      font-weight: 900;
       letter-spacing: -0.5px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     .hero .tagline {
-      font-size: clamp(15px, 3vw, 18px);
+      font-size: clamp(16px, 2.5vw, 20px);
       color: rgba(255,255,255,0.82);
-      max-width: 480px;
-      margin: 0 auto 32px;
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.5;
     }
 
     .badge-row {
@@ -71,43 +127,31 @@
       gap: 12px;
       justify-content: center;
       flex-wrap: wrap;
+      padding-bottom: 40px;
     }
 
     .store-badge {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      background: rgba(255,255,255,0.15);
-      border: 1.5px solid rgba(255,255,255,0.35);
-      border-radius: 12px;
-      padding: 10px 20px;
+      background: rgba(255,255,255,0.14);
+      border: 1.5px solid rgba(255,255,255,0.32);
+      border-radius: 14px;
+      padding: 11px 22px;
       color: #fff;
       text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background .2s;
+      transition: background .2s, border-color .2s;
     }
-    .store-badge:hover { background: rgba(255,255,255,0.25); }
-    .store-badge .icon { font-size: 22px; }
-    .store-badge .sub { font-size: 10px; font-weight: 400; opacity: .75; display: block; }
-    .store-badge .label { font-size: 15px; font-weight: 700; display: block; }
+    .store-badge:hover { background: rgba(255,255,255,0.24); border-color: rgba(255,255,255,0.5); }
 
-    .coming-soon {
-      display: inline-block;
-      background: rgba(255,255,255,0.15);
-      border: 1.5px solid rgba(255,255,255,0.3);
-      border-radius: 99px;
-      padding: 8px 20px;
-      font-size: 13px;
-      font-weight: 600;
-      color: rgba(255,255,255,0.85);
-      letter-spacing: 0.3px;
-    }
+    .store-badge svg { width: 22px; height: 22px; fill: #fff; flex-shrink: 0; }
+    .store-badge .sub   { font-size: 10px; font-weight: 400; opacity: .72; display: block; }
+    .store-badge .label { font-size: 15px; font-weight: 700; display: block; line-height: 1.2; }
 
-    /* ── Features ── */
+    /* ── Section shell ── */
     .section {
-      padding: 64px 24px;
-      max-width: 960px;
+      padding: 80px 24px;
+      max-width: 1000px;
       margin: 0 auto;
     }
 
@@ -115,37 +159,48 @@
       font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1.2px;
+      letter-spacing: 1.4px;
       color: var(--teal-dark);
       text-align: center;
       margin-bottom: 8px;
     }
 
     .section-title {
-      font-size: clamp(22px, 4vw, 30px);
+      font-size: clamp(22px, 4vw, 32px);
       font-weight: 800;
       text-align: center;
       color: var(--text);
-      margin-bottom: 48px;
+      margin-bottom: 52px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
+    /* ── Features ── */
     .features {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
     }
 
     .feature-card {
       background: var(--accent);
-      border-radius: 18px;
-      padding: 24px;
+      border-radius: 20px;
+      padding: 28px 24px;
     }
 
-    .feature-emoji {
-      font-size: 32px;
-      margin-bottom: 14px;
-      display: block;
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--teal-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
     }
+
+    .feature-icon svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
     .feature-title {
       font-size: 16px;
@@ -157,36 +212,61 @@
     .feature-desc {
       font-size: 14px;
       color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .premium-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--teal-dark);
+      border-radius: 6px;
+      padding: 2px 7px;
+      vertical-align: middle;
+      margin-left: 6px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    /* ── Promise strip ── */
+    .promise-strip {
+      background: var(--warm);
+      padding: 56px 24px;
+      text-align: center;
+    }
+
+    .promise-strip blockquote {
+      font-size: clamp(18px, 3.5vw, 26px);
+      font-weight: 700;
+      color: var(--teal-dark);
       line-height: 1.5;
+      font-style: italic;
+      max-width: 640px;
+      margin: 0 auto 14px;
+    }
+
+    .promise-strip p {
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 480px;
+      margin: 0 auto;
     }
 
     /* ── How it works ── */
     .how-section {
-      background: var(--warm);
-      padding: 64px 24px;
-    }
-
-    .how-inner {
+      padding: 80px 24px;
       max-width: 760px;
       margin: 0 auto;
     }
 
-    .steps {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      margin-top: 0;
-    }
+    .steps { display: flex; flex-direction: column; gap: 28px; }
 
-    .step {
-      display: flex;
-      gap: 18px;
-      align-items: flex-start;
-    }
+    .step { display: flex; gap: 20px; align-items: flex-start; }
 
     .step-num {
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: linear-gradient(135deg, var(--teal-dark), var(--teal-mid));
       color: #fff;
@@ -199,58 +279,95 @@
       margin-top: 2px;
     }
 
-    .step-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-    .step-desc  { font-size: 14px; color: var(--muted); line-height: 1.5; }
+    .step-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .step-desc  { font-size: 15px; color: var(--muted); line-height: 1.6; }
 
-    /* ── Promise ── */
-    .promise-section {
-      padding: 64px 24px;
-      text-align: center;
-      max-width: 640px;
-      margin: 0 auto;
+    /* ── Values ── */
+    .values {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 8px;
     }
 
-    .promise-section blockquote {
-      font-size: clamp(18px, 3.5vw, 24px);
+    .value-card {
+      border: 1.5px solid var(--teal-light);
+      border-radius: 16px;
+      padding: 22px 20px;
+    }
+
+    .value-card strong {
+      display: block;
+      font-size: 15px;
       font-weight: 700;
       color: var(--teal-dark);
-      line-height: 1.5;
-      font-style: italic;
-      margin-bottom: 16px;
+      margin-bottom: 6px;
     }
 
-    .promise-section p {
-      font-size: 15px;
+    .value-card p {
+      font-size: 14px;
       color: var(--muted);
+      line-height: 1.5;
     }
 
     /* ── CTA ── */
     .cta-section {
-      background: linear-gradient(135deg, #0F6E6E 0%, #1a9a9a 100%);
-      padding: 64px 24px;
+      background: linear-gradient(150deg, #0a4f4f 0%, #0F6E6E 55%, #1a9a9a 100%);
+      padding: 80px 24px;
       text-align: center;
       color: #fff;
     }
 
     .cta-section h2 {
-      font-size: clamp(22px, 4vw, 30px);
-      font-weight: 800;
+      font-size: clamp(24px, 4vw, 34px);
+      font-weight: 900;
       margin-bottom: 12px;
     }
 
     .cta-section p {
-      font-size: 16px;
-      color: rgba(255,255,255,0.8);
-      margin-bottom: 32px;
+      font-size: 17px;
+      color: rgba(255,255,255,0.78);
+      margin-bottom: 36px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-badges {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
     }
 
     /* ── Footer ── */
     footer {
-      background: #0a2828;
-      color: rgba(255,255,255,0.5);
-      padding: 32px 24px;
+      background: #081e1e;
+      color: rgba(255,255,255,0.45);
+      padding: 40px 24px;
       text-align: center;
       font-size: 13px;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .footer-brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      opacity: 0.9;
+    }
+
+    .footer-brand span {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
     }
 
     footer a {
@@ -260,101 +377,147 @@
     }
     footer a:hover { text-decoration: underline; }
 
-    .footer-logo {
-      font-size: 16px;
-      font-weight: 800;
-      color: #fff;
-      margin-bottom: 10px;
-    }
-
-    .footer-links {
-      margin-bottom: 16px;
-    }
+    .footer-links { margin-bottom: 16px; }
 
     .divider {
       width: 40px;
       height: 3px;
       background: linear-gradient(90deg, var(--teal-dark), var(--teal-mid));
       border-radius: 2px;
-      margin: 0 auto 32px;
+      margin: 0 auto 48px;
+    }
+
+    @media (max-width: 600px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      .hero { padding: 100px 20px 80px; }
     }
   </style>
 </head>
 <body>
 
+  <!-- Nav -->
+  <nav>
+    <a href="/" class="nav-brand">
+      <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" alt="CornerDay">
+      <span>CornerDay</span>
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#values">Our promise</a>
+      <a href="/privacy">Privacy</a>
+    </div>
+  </nav>
+
   <!-- Hero -->
   <section class="hero">
-    <div class="logo-mark">🏁</div>
+    <img
+      src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png"
+      alt="CornerDay"
+      class="hero-logo"
+    >
     <h1>CornerDay</h1>
     <p class="tagline">The day you turn it around starts today.</p>
     <div class="badge-row">
-      <span class="coming-soon">📱 Coming soon to iOS &amp; Android</span>
+      <a href="https://apps.apple.com/app/cornerday/id0000000000" class="store-badge">
+        <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        <div>
+          <span class="sub">Download on the</span>
+          <span class="label">App Store</span>
+        </div>
+      </a>
+      <a href="https://play.google.com/store/apps/details?id=app.cornerday" class="store-badge">
+        <svg viewBox="0 0 24 24"><path d="M3.18 23.76c.3.17.64.24.99.2l12.6-7.28-2.79-2.79-10.8 9.87zm16.7-10.34L17.14 12l2.74-1.42L6.27.44a1.3 1.3 0 0 0-1.1-.17l10.8 9.87 3.91-3.91zM1.5 1.44A1.3 1.3 0 0 0 1 2.5v19c0 .4.19.76.5.98l.1.07 10.64-10.64v-.25L1.5 1.44zm14.58 13.78-3.32-3.32.01-.23 3.31-3.31 3.76 2.18c1.07.62 1.07 1.63 0 2.24l-3.76 2.44z"/></svg>
+        <div>
+          <span class="sub">Get it on</span>
+          <span class="label">Google Play</span>
+        </div>
+      </a>
     </div>
   </section>
 
   <!-- Features -->
-  <section class="section">
+  <section class="section" id="features">
     <p class="section-label">What it does</p>
-    <h2 class="section-title">Everything you need to stop, and stay stopped.</h2>
+    <h2 class="section-title">Everything you need to stop — and stay stopped.</h2>
     <div class="features">
+
       <div class="feature-card">
-        <span class="feature-emoji">🔥</span>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
         <div class="feature-title">Streak tracker</div>
-        <div class="feature-desc">Count every hour, day, and week clean. Watch milestones build. Your streak is always front and centre.</div>
+        <div class="feature-desc">Count every day clean. Watch milestones build — 1 week, 2 weeks, 1 month and beyond. Your streak stays front and centre.</div>
       </div>
+
       <div class="feature-card">
-        <span class="feature-emoji">💸</span>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
         <div class="feature-title">Loss &amp; recovery tracker</div>
-        <div class="feature-desc">Log what you lost and what you've paid back. Watch the gap close over time — honestly.</div>
+        <div class="feature-desc">Log what you lost and what you've paid back. Watch the gap close over time — honestly, without shame.</div>
       </div>
+
       <div class="feature-card">
-        <span class="feature-emoji">🧠</span>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        </div>
         <div class="feature-title">Urge support</div>
-        <div class="feature-desc">When the urge hits, open CornerDay. Breathing exercises, distractions, crisis line — all in one tap.</div>
+        <div class="feature-desc">When the urge hits, open CornerDay. Breathing exercises, distractions, and a direct line to the crisis helpline — one tap away.</div>
       </div>
+
       <div class="feature-card">
-        <span class="feature-emoji">❤️</span>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
         <div class="feature-title">Someone in your corner</div>
-        <div class="feature-desc">Share your progress with a trusted person. They see your streak and can send encouragement — no account needed on their end.</div>
+        <div class="feature-desc">Share your progress with a trusted person. They get notified when you're struggling and can send encouragement instantly.</div>
       </div>
+
       <div class="feature-card">
-        <span class="feature-emoji">🤖</span>
-        <div class="feature-title">AI Coach</div>
-        <div class="feature-desc">Chat with an AI trained on your recovery context. Available 24/7, always judgement-free. Premium feature.</div>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="feature-title">AI Coach <span class="premium-tag">Premium</span></div>
+        <div class="feature-desc">Private, 24/7 support from an AI coach trained on evidence-based recovery strategies. Always judgement-free.</div>
       </div>
+
       <div class="feature-card">
-        <span class="feature-emoji">📊</span>
-        <div class="feature-title">Analytics</div>
-        <div class="feature-desc">Mood trends, urge patterns, savings trajectory. Understand your recovery with data, not guesswork.</div>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div class="feature-title">Weekly reports <span class="premium-tag">Premium</span></div>
+        <div class="feature-desc">Mood trends, urge patterns, debt projections. Understand your recovery with data — every Sunday in your inbox.</div>
       </div>
+
     </div>
   </section>
 
   <!-- How it works -->
-  <div class="how-section">
-    <div class="how-inner">
+  <div style="background:var(--accent)">
+    <div class="how-section" id="how">
       <p class="section-label" style="text-align:center">How it works</p>
-      <h2 class="section-title" style="text-align:center;margin-bottom:40px">Three steps to get started</h2>
+      <h2 class="section-title" style="margin-bottom:44px">Three steps to get started</h2>
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div>
             <div class="step-title">Tell us your why</div>
-            <div class="step-desc">Family, finances, mental health — your reason for quitting becomes your anchor, shown to you every day.</div>
+            <div class="step-desc">Family, finances, mental health — your reason for quitting becomes your anchor, shown to you every single day.</div>
           </div>
         </div>
         <div class="step">
           <div class="step-num">2</div>
           <div>
             <div class="step-title">Set your quit date</div>
-            <div class="step-desc">That's day one. Your streak starts counting from the moment you decide.</div>
+            <div class="step-desc">That's day one. Your streak starts counting from the moment you decide. Every day you add is yours.</div>
           </div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <div>
             <div class="step-title">Check in daily</div>
-            <div class="step-desc">Log your mood, log your repayments, use urge support when you need it. The app meets you where you are.</div>
+            <div class="step-desc">Log your mood, record repayments, use urge support when you need it. The app meets you where you are — without judgement.</div>
           </div>
         </div>
       </div>
@@ -362,27 +525,68 @@
   </div>
 
   <!-- Promise -->
-  <section class="promise-section">
-    <div class="divider"></div>
+  <section class="promise-strip">
     <blockquote>"No shame. No lectures. Just honest tracking and the tools to keep going."</blockquote>
     <p>CornerDay is built for people who've decided they're done — and need something in their pocket when it gets hard.</p>
+  </section>
+
+  <!-- Values -->
+  <section class="section" id="values" style="padding-top:64px;padding-bottom:80px">
+    <p class="section-label">Our promise</p>
+    <h2 class="section-title">Built differently.</h2>
+    <div class="values">
+      <div class="value-card">
+        <strong>Private by default</strong>
+        <p>Your loss amounts and recovery data are visible only to you. No one else can see them.</p>
+      </div>
+      <div class="value-card">
+        <strong>No shame, ever</strong>
+        <p>Relapses are treated as restarts, not failures. Language in the app is always encouraging.</p>
+      </div>
+      <div class="value-card">
+        <strong>No ads on crisis screens</strong>
+        <p>Ads are never shown on the urge screen, relapse screen, or crisis resources. Full stop.</p>
+      </div>
+      <div class="value-card">
+        <strong>Always there</strong>
+        <p>Urge support, breathing tools, and the crisis helpline are available the moment you need them — free, forever.</p>
+      </div>
+    </div>
   </section>
 
   <!-- CTA -->
   <section class="cta-section">
     <h2>Ready to start your streak?</h2>
-    <p>CornerDay is coming soon to iOS and Android.</p>
-    <span class="coming-soon" style="border-color:rgba(255,255,255,0.4)">📱 Coming soon</span>
+    <p>Download CornerDay free on iOS and Android. The day you turn it around starts today.</p>
+    <div class="cta-badges">
+      <a href="https://apps.apple.com/app/cornerday/id0000000000" class="store-badge">
+        <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        <div>
+          <span class="sub">Download on the</span>
+          <span class="label">App Store</span>
+        </div>
+      </a>
+      <a href="https://play.google.com/store/apps/details?id=app.cornerday" class="store-badge">
+        <svg viewBox="0 0 24 24"><path d="M3.18 23.76c.3.17.64.24.99.2l12.6-7.28-2.79-2.79-10.8 9.87zm16.7-10.34L17.14 12l2.74-1.42L6.27.44a1.3 1.3 0 0 0-1.1-.17l10.8 9.87 3.91-3.91zM1.5 1.44A1.3 1.3 0 0 0 1 2.5v19c0 .4.19.76.5.98l.1.07 10.64-10.64v-.25L1.5 1.44zm14.58 13.78-3.32-3.32.01-.23 3.31-3.31 3.76 2.18c1.07.62 1.07 1.63 0 2.24l-3.76 2.44z"/></svg>
+        <div>
+          <span class="sub">Get it on</span>
+          <span class="label">Google Play</span>
+        </div>
+      </a>
+    </div>
   </section>
 
   <!-- Footer -->
   <footer>
-    <div class="footer-logo">CornerDay</div>
+    <div class="footer-brand">
+      <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" alt="CornerDay">
+      <span>CornerDay</span>
+    </div>
     <div class="footer-links">
       <a href="/privacy">Privacy Policy</a>
       <a href="/partner">Supporter Portal</a>
     </div>
-    <div>© 2026 CornerDay. Built for recovery, not for profit.</div>
+    <div>© 2026 CornerDay. Built for recovery.</div>
   </footer>
 
 </body>
