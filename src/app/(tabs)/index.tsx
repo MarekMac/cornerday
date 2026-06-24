@@ -901,9 +901,14 @@ export default function HomeScreen() {
     const ms = Math.max(0, Date.now() - parseQuitDate(data.quitDate).getTime());
     const { next } = getMilestone(ms);
     if (prevNextMilestone.current !== null && prevNextMilestone.current !== next) {
-      fetchData();
+      if (!fetchingRef.current) {
+        fetchData();
+        prevNextMilestone.current = next;
+      }
+      // if blocked, leave prevNextMilestone unchanged so next tick retries
+    } else {
+      prevNextMilestone.current = next;
     }
-    prevNextMilestone.current = next;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, fetchData]);
 
@@ -1389,7 +1394,7 @@ export default function HomeScreen() {
       b => b.days > 0 && streakMs >= b.days * 86400000 && !data.earnedBadges.includes(b.type)
     );
     if (hasUnearned && Date.now() - lastBadgeFetchMs.current > 30_000) {
-      lastBadgeFetchMs.current = Date.now();
+      if (!fetchingRef.current) lastBadgeFetchMs.current = Date.now();
       fetchData();
     }
   }, [streakMs, data, fetchData]);
