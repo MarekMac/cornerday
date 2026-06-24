@@ -36,6 +36,7 @@ import { supabase } from '@/lib/supabase';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
+import { requestHomeRefresh } from '@/lib/homeBus';
 
 type MainTab = 'debts' | 'saving' | 'session';
 
@@ -379,11 +380,13 @@ export default function TrackerIndex() {
             user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
           });
         } else {
+          const isFirstDebt = debts.length === 0;
           const { error: insertErr } = await supabase.from('debts').insert({
             user_id: user.id, name: debtName.trim(),
             total_amount: amount, category: debtCategory, target_date: targetDateStr,
           });
           if (insertErr) { Alert.alert('Could not save', insertErr.message); return; }
+          if (isFirstDebt) requestHomeRefresh();
         }
         hapticMedium();
         closeDebtModal();
@@ -565,12 +568,14 @@ export default function TrackerIndex() {
             category: sessionCategory, note: sessionNote.trim() || null,
           });
         } else {
+          const isFirstSession = sessions.length === 0;
           await supabase.from('losses').insert({
             user_id: user.id, type: 'session', amount,
             category: sessionCategory, note: sessionNote.trim() || null,
             created_at: sessionDateIso,
           });
           showInterstitialIfReady(isPremium, 0.1);
+          if (isFirstSession) requestHomeRefresh();
         }
         hapticMedium();
         closeSessionModal();
@@ -800,6 +805,7 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        const isFirstPayment = payments.length === 0;
         const { error: payError } = await supabase.from('debt_payments').insert({
           user_id: user.id, debt_id: quickPayDebt.id,
           amount: val, note: quickPayNote.trim() || null,
@@ -808,6 +814,7 @@ export default function TrackerIndex() {
           Alert.alert('Could not save payment', payError.message);
           return;
         }
+        if (isFirstPayment) requestHomeRefresh();
         showInterstitialIfReady(isPremium);
         if (isPayingOff) {
           const { status: notifStatus } = await Notifications.getPermissionsAsync();
