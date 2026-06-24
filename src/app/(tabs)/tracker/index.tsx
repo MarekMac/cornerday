@@ -37,6 +37,8 @@ import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
 import { requestHomeRefresh } from '@/lib/homeBus';
+import { triggerCelebration } from '@/lib/celebrationBus';
+import { BADGE_CELEBRATIONS, BADGE_EARNED_MSGS } from '@/constants/badgeConstants';
 
 type MainTab = 'debts' | 'saving' | 'session';
 
@@ -53,6 +55,9 @@ const CHIP_AMOUNTS = [
   { value: '500',  label: (s: string) => `${s}500` },
   { value: '1000', label: (s: string) => `${s}1000+` },
 ];
+
+const randCelebration = () => BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)];
+const randMsg = () => BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)];
 
 interface Debt {
   id: string;
@@ -386,7 +391,13 @@ export default function TrackerIndex() {
             total_amount: amount, category: debtCategory, target_date: targetDateStr,
           });
           if (insertErr) { Alert.alert('Could not save', insertErr.message); return; }
-          if (isFirstDebt) requestHomeRefresh();
+          if (isFirstDebt) {
+            const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
+            if (!badgeErr) {
+              triggerCelebration({ type: 'loss_first_log', emoji: '🪞', label: 'Honest Start', celebration: randCelebration(), msg: randMsg() });
+            }
+            requestHomeRefresh();
+          }
         }
         hapticMedium();
         closeDebtModal();
@@ -575,7 +586,13 @@ export default function TrackerIndex() {
             created_at: sessionDateIso,
           });
           showInterstitialIfReady(isPremium, 0.1);
-          if (isFirstSession) requestHomeRefresh();
+          if (isFirstSession) {
+            const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
+            if (!badgeErr) {
+              triggerCelebration({ type: 'loss_first_log', emoji: '🪞', label: 'Honest Start', celebration: randCelebration(), msg: randMsg() });
+            }
+            requestHomeRefresh();
+          }
         }
         hapticMedium();
         closeSessionModal();
@@ -814,7 +831,13 @@ export default function TrackerIndex() {
           Alert.alert('Could not save payment', payError.message);
           return;
         }
-        if (isFirstPayment) requestHomeRefresh();
+        if (isFirstPayment) {
+          const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'first_payment' });
+          if (!badgeErr) {
+            triggerCelebration({ type: 'first_payment', emoji: '💰', label: 'First Payment', celebration: randCelebration(), msg: randMsg() });
+          }
+          requestHomeRefresh();
+        }
         showInterstitialIfReady(isPremium);
         if (isPayingOff) {
           const { status: notifStatus } = await Notifications.getPermissionsAsync();

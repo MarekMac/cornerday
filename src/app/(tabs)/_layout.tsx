@@ -3,11 +3,13 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Tabs, router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
-import { useEffect, useRef } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { TimerProvider, useTimer } from '@/lib/TimerContext';
+import { MilestoneCelebrationModal } from '@/components/MilestoneCelebrationModal';
+import { registerCelebrationHandler, CelebrationPayload } from '@/lib/celebrationBus';
 import {
   configureNotificationHandler,
   DEFAULT_NOTIF_PREFS,
@@ -166,6 +168,12 @@ const tbs = StyleSheet.create({
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function TabsLayout() {
+  const [celebPayload, setCelebPayload] = useState<CelebrationPayload | null>(null);
+
+  useEffect(() => {
+    registerCelebrationHandler(setCelebPayload);
+  }, []);
+
   useEffect(() => {
     configureNotificationHandler();
     const init = async () => {
@@ -243,6 +251,20 @@ export default function TabsLayout() {
 
   return (
     <TimerProvider>
+      {celebPayload && (
+        <MilestoneCelebrationModal
+          badge={celebPayload}
+          celebration={celebPayload.celebration}
+          message={celebPayload.msg}
+          earnedAt={celebPayload.earnedAt}
+          onShare={async () => {
+            const p = celebPayload;
+            setCelebPayload(null);
+            await Share.share({ message: `${p.emoji} ${p.label} — I hit a milestone on CornerDay! #CornerDay` });
+          }}
+          onClose={() => setCelebPayload(null)}
+        />
+      )}
       <Tabs
         tabBar={props => <CustomTabBar {...props} />}
         screenOptions={{
