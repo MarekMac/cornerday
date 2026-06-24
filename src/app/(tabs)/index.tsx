@@ -1102,7 +1102,7 @@ export default function HomeScreen() {
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
       supabase.from('losses').select('created_at').eq('user_id', user.id).eq('type', 'streak_reset').gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
-      supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'loss'),
+      supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'session'),
       supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
 
@@ -2163,18 +2163,23 @@ export default function HomeScreen() {
             {(() => {
               const debtFullyPaid = data.debtItems.length > 0 && data.debtItems.every(d => d.paidAmount >= d.totalAmount);
               const firstUnearned = (group: string[]) => group.findIndex(t => !data.earnedBadges.includes(t));
-              const firstUnearnedPayment = debtFullyPaid ? -1 : firstUnearned(PAYMENT_BADGE_TYPES);
+              // Gateway badges — hidden until earned; chains exclude them for progressive display
+              const GATEWAY_BADGES = new Set(['loss_first_log', 'first_payment', 'first_journal', 'community_first_post']);
+              const PAYMENT_CHAIN = PAYMENT_BADGE_TYPES.filter(t => t !== 'first_payment');
+              const URGE_CHAIN    = URGE_BADGE_TYPES.filter(t => t !== 'first_journal');
+              const firstUnearnedPaymentChain = debtFullyPaid ? -1 : firstUnearned(PAYMENT_CHAIN);
               const firstUnearnedCheckin = firstUnearned(CHECKIN_BADGE_TYPES);
-              const firstUnearnedUrge    = firstUnearned(URGE_BADGE_TYPES);
+              const firstUnearnedUrge    = firstUnearned(URGE_CHAIN);
               const progressiveFilter = (group: string[], firstIdx: number, badge: { type: string }, showAhead = 2) => {
                 if (data.earnedBadges.includes(badge.type)) return true;
                 const idx = group.indexOf(badge.type);
                 return firstIdx >= 0 && idx >= firstIdx && idx < firstIdx + showAhead;
               };
               return ACTIVITY_BADGE_DEFS.filter(badge => {
-                if (PAYMENT_BADGE_TYPES.includes(badge.type)) return progressiveFilter(PAYMENT_BADGE_TYPES, firstUnearnedPayment, badge, 1);
+                if (GATEWAY_BADGES.has(badge.type)) return data.earnedBadges.includes(badge.type);
+                if (PAYMENT_BADGE_TYPES.includes(badge.type)) return progressiveFilter(PAYMENT_CHAIN, firstUnearnedPaymentChain, badge, 1);
                 if (CHECKIN_BADGE_TYPES.includes(badge.type)) return progressiveFilter(CHECKIN_BADGE_TYPES, firstUnearnedCheckin, badge);
-                if (URGE_BADGE_TYPES.includes(badge.type))    return progressiveFilter(URGE_BADGE_TYPES, firstUnearnedUrge, badge, 1);
+                if (URGE_BADGE_TYPES.includes(badge.type))    return progressiveFilter(URGE_CHAIN, firstUnearnedUrge, badge, 1);
                 return true;
               });
             })().map(badge => {
