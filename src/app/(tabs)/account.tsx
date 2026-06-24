@@ -268,7 +268,6 @@ export default function AccountScreen() {
   const [goalInput, setGoalInput] = useState('');
   const [goalForInput, setGoalForInput] = useState('');
   const [goalIconInput, setGoalIconInput] = useState('🎯');
-  const [spendingCurrency, setSpendingCurrency] = useState('USD');
   const [spendingChip, setSpendingChip] = useState('');
   const [spendingCustom, setSpendingCustom] = useState('');
   const [savingSpending, setSavingSpending] = useState(false);
@@ -866,7 +865,6 @@ export default function AccountScreen() {
   };
 
   const openSpendingModal = () => {
-    setSpendingCurrency(profile?.currency ?? 'USD');
     const wb = profile?.weeklyBet ?? '';
     const isChip = CHIP_AMOUNTS.some(c => c.value === wb);
     setSpendingChip(isChip ? wb : '');
@@ -888,9 +886,9 @@ export default function AccountScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { error } = await supabase.from('users').update({ weekly_bet: value, currency: spendingCurrency }).eq('id', user.id);
+        const { error } = await supabase.from('users').update({ weekly_bet: value }).eq('id', user.id);
         if (error) { Alert.alert('Could not save', error.message); return; }
-        setProfile(prev => prev ? { ...prev, weeklyBet: value, currency: spendingCurrency } : prev);
+        setProfile(prev => prev ? { ...prev, weeklyBet: value } : prev);
       }
       setShowSpendingModal(false);
     } finally {
@@ -2474,22 +2472,9 @@ export default function AccountScreen() {
           <Pressable style={s.editCenterSheet} onPress={() => {}}>
             <Text style={s.editFieldTitle}>Weekly spending</Text>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingRight: 8 }}>
-              {CURRENCIES.map(c => (
-                <Pressable
-                  key={c.code}
-                  style={[s.currencyChip, spendingCurrency === c.code && s.currencyChipSelected]}
-                  onPress={() => setSpendingCurrency(c.code)}>
-                  <Text style={[s.currencyChipTxt, spendingCurrency === c.code && s.currencyChipTxtSelected]}>
-                    {c.code}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
             <View style={s.spendingChips}>
               {CHIP_AMOUNTS.map(chip => {
-                const sym = CURRENCIES.find(c => c.code === spendingCurrency)?.symbol ?? '';
+                const sym = CURRENCIES.find(cur => cur.code === (profile?.currency ?? 'USD'))?.symbol ?? '';
                 const isSelected = spendingChip === chip.value;
                 return (
                   <Pressable
@@ -2506,7 +2491,7 @@ export default function AccountScreen() {
 
             <Text style={s.spendingCustomLabel}>Or enter your exact amount:</Text>
             <View style={s.spendingInputRow}>
-              <Text style={s.spendingSymbol}>{CURRENCIES.find(c => c.code === spendingCurrency)?.symbol ?? ''}</Text>
+              <Text style={s.spendingSymbol}>{CURRENCIES.find(cur => cur.code === (profile?.currency ?? 'USD'))?.symbol ?? ''}</Text>
               <TextInput
                 style={s.spendingInput}
                 value={spendingCustom}

@@ -43,14 +43,7 @@ type MainTab = 'debts' | 'saving' | 'session';
 const SESSION_COLOR = '#7b5ea7';
 const SESSION_CHIP_BG = 'rgba(123, 94, 167, 0.12)';
 
-const CURRENCIES = [
-  { code: 'USD', symbol: '$' },
-  { code: 'EUR', symbol: '€' },
-  { code: 'GBP', symbol: '£' },
-  { code: 'PLN', symbol: 'zł' },
-  { code: 'AUD', symbol: 'A$' },
-  { code: 'CAD', symbol: 'C$' },
-];
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
 const CHIP_AMOUNTS = [
   { value: '20',   label: (s: string) => `${s}20` },
   { value: '50',   label: (s: string) => `${s}50` },
@@ -158,7 +151,6 @@ export default function TrackerIndex() {
   const [weeklyBet, setWeeklyBet] = useState<string | null>(null);
   const [quitTs, setQuitTs] = useState<string | null>(null);
   const [showSpendingModal, setShowSpendingModal] = useState(false);
-  const [spendingCurrency, setSpendingCurrency] = useState('USD');
   const [spendingChip, setSpendingChip] = useState('');
   const [spendingCustom, setSpendingCustom] = useState('');
   const [savingSpending, setSavingSpending] = useState(false);
@@ -622,27 +614,29 @@ export default function TrackerIndex() {
 
   // Weekly spending modal
   const openSpendingModal = () => {
-    setSpendingCurrency(currency);
     const isChip = CHIP_AMOUNTS.some(ch => ch.value === weeklyBet);
     setSpendingChip(isChip ? (weeklyBet ?? '') : '');
-    setSpendingCustom(isChip || !weeklyBet ? '' : weeklyBet);
+    setSpendingCustom(isChip || !weeklyBet ? '' : (weeklyBet ?? ''));
     setShowSpendingModal(true);
   };
 
   const saveWeeklyBet = async () => {
-    const value = spendingChip || spendingCustom.trim();
-    if (!value || isNaN(Number(value)) || Number(value) <= 0) {
-      Alert.alert('Invalid amount', 'Enter a weekly spending amount greater than 0.');
-      return;
+    const raw = spendingCustom.trim();
+    if (raw) {
+      const parsed = parseFloat(raw);
+      if (isNaN(parsed) || parsed <= 0 || parsed > 999_999_999) {
+        Alert.alert('Invalid amount', 'Please enter a valid amount between 0 and 999,999,999.');
+        return;
+      }
     }
+    const value = raw || spendingChip || null;
     setSavingSpending(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { error } = await supabase.from('users').update({ weekly_bet: value, currency: spendingCurrency }).eq('id', user.id);
+        const { error } = await supabase.from('users').update({ weekly_bet: value }).eq('id', user.id);
         if (error) { Alert.alert('Could not save', error.message); return; }
         setWeeklyBet(value);
-        setCurrency(spendingCurrency);
       }
       setShowSpendingModal(false);
     } finally {
@@ -1966,41 +1960,29 @@ export default function TrackerIndex() {
       {/* Weekly spending modal */}
       <Modal visible={showSpendingModal} transparent animationType="fade" onRequestClose={() => setShowSpendingModal(false)}>
         <Pressable style={s.modalOverlay} onPress={() => setShowSpendingModal(false)}>
-          <Pressable style={s.sheet} onPress={() => {}}>
-            <Text style={s.sheetTitle}>Weekly spending</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingRight: 8 }}>
-              {CURRENCIES.map(cur => (
-                <Pressable
-                  key={cur.code}
-                  style={[s.currencyChip, spendingCurrency === cur.code && s.currencyChipSelected]}
-                  onPress={() => setSpendingCurrency(cur.code)}>
-                  <Text style={[s.currencyChipTxt, spendingCurrency === cur.code && s.currencyChipTxtSelected]}>
-                    {cur.code}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <View style={s.spendingChipsRow}>
+          <Pressable style={s.spendingSheet} onPress={() => {}}>
+            <Text style={s.spendingTitle}>Weekly spending</Text>
+            <View style={s.spendingChips}>
               {CHIP_AMOUNTS.map(chip => {
-                const sym = CURRENCIES.find(cur => cur.code === spendingCurrency)?.symbol ?? '';
+                const sym = CURRENCY_SYMBOLS[currency] ?? '';
                 const isSelected = spendingChip === chip.value;
                 return (
                   <Pressable
                     key={chip.value}
-                    style={[s.spendingAmtChip, isSelected && s.spendingAmtChipSelected]}
+                    style={[s.spendingChip, isSelected && s.spendingChipSelected]}
                     onPress={() => { setSpendingChip(prev => prev === chip.value ? '' : chip.value); setSpendingCustom(''); }}>
-                    <Text style={[s.spendingAmtChipTxt, isSelected && s.spendingAmtChipTxtSelected]}>
+                    <Text style={[s.spendingChipTxt, isSelected && s.spendingChipTxtSelected]}>
                       {chip.label(sym)}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
-            <Text style={[s.fieldLbl, { marginTop: 14 }]}>Or enter exact amount:</Text>
+            <Text style={s.spendingCustomLabel}>Or enter your exact amount:</Text>
             <View style={s.spendingInputRow}>
-              <Text style={s.spendingSymbol}>{CURRENCIES.find(cur => cur.code === spendingCurrency)?.symbol ?? ''}</Text>
+              <Text style={s.spendingSymbol}>{CURRENCY_SYMBOLS[currency] ?? ''}</Text>
               <TextInput
-                style={s.spendingAmtInput}
+                style={s.spendingInput}
                 value={spendingCustom}
                 onChangeText={t => { setSpendingCustom(t); if (t.trim()) setSpendingChip(''); }}
                 placeholder="0"
@@ -2009,17 +1991,19 @@ export default function TrackerIndex() {
               />
               <Text style={s.spendingPerWk}>/week</Text>
             </View>
-            <View style={s.sheetActions}>
-              <Pressable style={s.cancelBtn} onPress={() => setShowSpendingModal(false)}>
-                <Text style={s.cancelBtnTxt}>Cancel</Text>
+            <View style={s.spendingActions}>
+              <Pressable
+                style={({ pressed }) => [s.spendingBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                onPress={() => setShowSpendingModal(false)}>
+                <Text style={s.spendingBtnCancel}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[s.addBtn, { flex: 2 }, savingSpending && { opacity: 0.6 }]}
+                style={({ pressed }) => [s.spendingBtn, s.spendingBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
                 onPress={saveWeeklyBet}
                 disabled={savingSpending}>
                 {savingSpending
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={s.addBtnTxt}>Save</Text>}
+                  ? <ActivityIndicator color={c.white} size="small" />
+                  : <Text style={s.spendingBtnSaveTxt}>Save</Text>}
               </Pressable>
             </View>
           </Pressable>
@@ -2219,20 +2203,24 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
   cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
-  // Weekly spending modal
-  currencyChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: c.borderSubtle },
-  currencyChipSelected: { backgroundColor: c.primary, borderColor: c.primary },
-  currencyChipTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
-  currencyChipTxtSelected: { color: '#fff' },
-  spendingChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  spendingAmtChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: c.borderSubtle },
-  spendingAmtChipSelected: { backgroundColor: c.primary, borderColor: c.primary },
-  spendingAmtChipTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
-  spendingAmtChipTxtSelected: { color: '#fff' },
-  spendingInputRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: c.borderSubtle, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginTop: 8 },
-  spendingSymbol: { fontSize: 16, fontWeight: '600', color: c.textBody },
-  spendingAmtInput: { flex: 1, fontSize: 16, color: c.textPrimary },
-  spendingPerWk: { fontSize: 13, color: c.textFaint },
+  // Weekly spending modal — mirrors account tab spending modal exactly
+  spendingSheet: { backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%', maxWidth: 420 },
+  spendingTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 16 },
+  spendingChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  spendingChip: { width: '30.5%', paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, borderColor: c.borderTeal, backgroundColor: c.bgInputMid, alignItems: 'center' },
+  spendingChipSelected: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  spendingChipTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
+  spendingChipTxtSelected: { color: c.primary },
+  spendingCustomLabel: { fontSize: 13, color: c.textBody, marginBottom: 10 },
+  spendingInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: c.bgInput },
+  spendingSymbol: { fontSize: 16, color: c.textBody, marginRight: 6 },
+  spendingInput: { flex: 1, fontSize: 15, color: c.textPrimary },
+  spendingPerWk: { fontSize: 13, color: c.textMuted, marginLeft: 6 },
+  spendingActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  spendingBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: c.bgElement },
+  spendingBtnCancel: { fontSize: 15, color: c.textBody, fontWeight: '600' },
+  spendingBtnSave: { backgroundColor: c.primary },
+  spendingBtnSaveTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
   saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.primary },
   saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   btnDisabled: { opacity: 0.6 },
