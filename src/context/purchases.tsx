@@ -71,9 +71,12 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let cancelled = false;
+
     const customerInfoHandler = async (info: CustomerInfo) => {
+      if (cancelled) return;
       const premium = checkPremium(info) || isAdminRef.current;
-      setIsPremium(premium);
+      if (!cancelled) setIsPremium(premium);
       await syncToSupabase(premium);
     };
 
@@ -83,11 +86,13 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           isAdminRef.current = await fetchIsAdmin(user.id);
-          if (isAdminRef.current) setIsPremium(true);
+          if (!cancelled && isAdminRef.current) setIsPremium(true);
         }
       } catch (e) {
         console.warn('[Admin check] init error:', e);
       }
+
+      if (cancelled) return;
 
       // RevenueCat init (can fail without affecting admin premium)
       try {
@@ -104,30 +109,37 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        if (cancelled) return;
+
         const info = await Purchases.getCustomerInfo();
         const premium = checkPremium(info) || isAdminRef.current;
-        setIsPremium(premium);
+        if (!cancelled) setIsPremium(premium);
         await syncToSupabase(premium);
 
         try {
           const offeringsResult = await Purchases.getOfferings();
-          if (offeringsResult.current) setOfferings(offeringsResult.current);
+          if (!cancelled && offeringsResult.current) setOfferings(offeringsResult.current);
         } catch (e) {
           console.warn('[RevenueCat] getOfferings error:', e);
         }
       } catch (e) {
         console.warn('[RevenueCat] init error:', e);
       } finally {
-        setIsLoadingPurchases(false);
+        if (!cancelled) setIsLoadingPurchases(false);
       }
     };
 
     init();
 
-    return () => { Purchases.removeCustomerInfoUpdateListener(customerInfoHandler); };
+    return () => {
+      cancelled = true;
+      Purchases.removeCustomerInfoUpdateListener(customerInfoHandler);
+    };
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (Platform.OS === 'web') return;
 
@@ -140,13 +152,13 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
 
         // Admin check first, independently
         isAdminRef.current = await fetchIsAdmin(session.user.id);
-        if (isAdminRef.current) setIsPremium(true);
+        if (!cancelled && isAdminRef.current) setIsPremium(true);
 
         try {
           await Purchases.logIn(session.user.id);
           const info = await Purchases.getCustomerInfo();
           const premium = checkPremium(info) || isAdminRef.current;
-          setIsPremium(premium);
+          if (!cancelled) setIsPremium(premium);
           await syncToSupabase(premium);
         } catch (e) {
           console.warn('[RevenueCat] auth change error:', e);
@@ -154,10 +166,14 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         try { await Purchases.logOut(); } catch (e) { console.warn('[RevenueCat] logOut error:', e); }
         isAdminRef.current = false;
-        setIsPremium(false);
+        if (!cancelled) setIsPremium(false);
       }
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const purchasePackage = async (pkg: PurchasesPackage): Promise<boolean> => {
