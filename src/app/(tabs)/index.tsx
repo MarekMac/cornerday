@@ -1099,7 +1099,7 @@ export default function HomeScreen() {
       supabase.from('urge_journal').select('created_at', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('urge_journal').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('outcome', 'overcame'),
       supabase.from('mood_checkins').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-      supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'payment'),
+      supabase.from('debt_payments').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('mood_checkins').select('mood, created_at').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString()).order('created_at', { ascending: false }),
       supabase.from('losses').select('created_at').eq('user_id', user.id).eq('type', 'streak_reset').gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
       supabase.from('losses').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'session'),
@@ -2130,6 +2130,7 @@ export default function HomeScreen() {
             })()}
             {(() => {
               const earned = data.earnedBadges.includes('goal_set');
+              if (!data.savingsGoal && !earned) return null;
               return (
                 <Pressable style={({ pressed }) => [s.badgeItem, pressed && { opacity: 0.75 }]}
                   accessibilityLabel={`Goal Setter — ${earned ? 'earned' : 'locked'}`}
@@ -2145,6 +2146,7 @@ export default function HomeScreen() {
             })()}
             {(() => {
               const earned = data.earnedBadges.includes('goal_reached');
+              if (!data.savingsGoal && !earned) return null;
               const progress = data.savingsGoal && data.savingsGoal > 0
                 ? Math.min(1, data.totalPaid / data.savingsGoal) : 0;
               return (
