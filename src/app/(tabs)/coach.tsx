@@ -27,12 +27,13 @@ import { CHECKLIST_KEY } from '@/constants/storage-keys';
 
 const FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1`;
 const COACH_HISTORY_KEY = 'coach_chat_history';
+const MIN_TURNS_TO_SUMMARIZE = 2; // minimum user turns before we bother summarising
 
 const FEATURES = [
   { icon: '💬', text: 'Chat any time, day or night' },
   { icon: '🧠', text: 'Evidence-based coping strategies' },
   { icon: '📈', text: 'Personalised to your recovery journey' },
-  { icon: '🔒', text: 'Never saved, never shared — only you can read this' },
+  { icon: '🔒', text: 'Raw messages stay on your device — only a brief summary is saved to personalise future sessions' },
 ];
 
 const STARTERS = [
@@ -319,6 +320,23 @@ export default function CoachScreen() {
     [...STARTERS].sort(() => Math.random() - 0.5).slice(0, 5),
   );
 
+  const triggerSummary = useCallback((currentMessages: ChatMessage[]) => {
+    const userTurns = currentMessages.filter(m => m.role === 'user' && m.id !== 'greeting').length;
+    if (userTurns < MIN_TURNS_TO_SUMMARIZE) return;
+    const apiMessages = currentMessages
+      .filter(m => m.id !== 'greeting' && !m.pending && m.content.trim())
+      .map(({ role, content }) => ({ role, content }));
+    if (apiMessages.length === 0) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      fetch(`${FUNCTIONS_URL}/summarize-coach-session`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages }),
+      }).catch(() => {}); // fire-and-forget — non-critical
+    });
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       setRandomStarters([...STARTERS].sort(() => Math.random() - 0.5).slice(0, 5));
@@ -326,7 +344,11 @@ export default function CoachScreen() {
         if (prev.length === 1 && prev[0].id === 'greeting') return [randomGreeting(isCheckin)];
         return prev;
       });
-    }, [isCheckin]),
+      return () => {
+        // Summarise on blur so the next session has context
+        setMessages(current => { triggerSummary(current); return current; });
+      };
+    }, [isCheckin, triggerSummary]),
   );
 
   const renderMessage = useCallback(
@@ -456,7 +478,7 @@ export default function CoachScreen() {
           </ScrollView>
         )}
         {showStarters && (
-          <Text style={s.chatPrivacyNote}>🔒 Not saved · Not shared · Private to you</Text>
+          <Text style={s.chatPrivacyNote}>🔒 Messages stay on your device · Session summary saved privately</Text>
         )}
         <View style={s.inputBar}>
           <TextInput

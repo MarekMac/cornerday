@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { avatarColor, REACTION_EMOJIS, streakBadge, TAG_COLORS, timeAgo } from '@/constants/community';
 import { supabase } from '@/lib/supabase';
+import { friendlyError } from '@/lib/networkError';
 import { showInterstitialIfReady } from '@/lib/ads';
 import { usePurchases } from '@/context/purchases';
 import { useAppTheme } from '@/context/theme';
@@ -269,7 +270,7 @@ export default function PostDetail() {
         .maybeSingle();
 
       if (error) {
-        Alert.alert('Could not post comment', error.message);
+        Alert.alert('Could not post comment', friendlyError(error));
       } else if (data) {
         if (!isMountedRef.current) return;
         setCommentText('');
@@ -355,7 +356,7 @@ export default function PostDetail() {
     }
     setEditSaving(false);
     if (error) {
-      Alert.alert('Could not save', error.message);
+      Alert.alert('Could not save', friendlyError(error));
     } else {
       setEditTarget(null);
     }
@@ -367,12 +368,12 @@ export default function PostDetail() {
     try {
       if (deleteTarget.kind === 'post') {
         const { error } = await supabase.from('community_posts').delete().eq('id', deleteTarget.id).eq('user_id', currentUserId!);
-        if (error) { Alert.alert('Could not delete', error.message); return; }
+        if (error) { Alert.alert('Could not delete', friendlyError(error)); return; }
         setDeleteTarget(null);
         router.back();
       } else {
         const { error } = await supabase.from('community_comments').delete().eq('id', deleteTarget.id).eq('user_id', currentUserId!);
-        if (error) { Alert.alert('Could not delete', error.message); return; }
+        if (error) { Alert.alert('Could not delete', friendlyError(error)); return; }
         setComments(prev => prev.filter(c => c.id !== deleteTarget.id));
         setDeleteTarget(null);
       }
@@ -389,7 +390,7 @@ export default function PostDetail() {
       reporter_id: currentUserId, reason,
     });
     setReporting(false);
-    if (error) { Alert.alert('Could not submit report', error.message); return; }
+    if (error) { Alert.alert('Could not submit report', friendlyError(error)); return; }
     setReportTarget(null);
     Alert.alert('Reported', 'Thank you — we will review this shortly.');
   };

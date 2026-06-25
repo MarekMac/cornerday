@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
+import { friendlyError } from '@/lib/networkError';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 
@@ -127,7 +128,7 @@ export default function DebtDetailScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { error } = await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id).eq('user_id', user.id);
-      if (error) { Alert.alert('Could not delete payment', error.message); return; }
+      if (error) { Alert.alert('Could not delete payment', friendlyError(error)); return; }
       if (isMounted.current) setDeletePayTarget(null);
       await fetchData();
     } finally {
@@ -160,7 +161,7 @@ export default function DebtDetailScreen() {
         user_id: user.id, debt_id: debt.id,
         amount: val, note: note.trim() || null,
       });
-      if (insertError) { Alert.alert('Could not save payment', insertError.message); return; }
+      if (insertError) { Alert.alert('Could not save payment', friendlyError(insertError)); return; }
       if (isPayingOff) {
         const { status: notifStatus } = await Notifications.getPermissionsAsync();
         if (notifStatus === 'granted') {
@@ -193,7 +194,7 @@ export default function DebtDetailScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { error } = await supabase.from('debts').update({ target_date: date.toISOString().split('T')[0] }).eq('id', id).eq('user_id', user.id);
-      if (error) { Alert.alert('Could not save date', error.message); return; }
+      if (error) { Alert.alert('Could not save date', friendlyError(error)); return; }
       setTargetDate(date);
       setShowTargetModal(false);
     } finally {

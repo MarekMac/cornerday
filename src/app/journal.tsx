@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
+import { friendlyError } from '@/lib/networkError';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { CHECKLIST_KEY } from '@/constants/storage-keys';
@@ -393,9 +394,9 @@ export default function JournalScreen() {
       if (user) {
         // debt_payments must be deleted before debts to avoid FK constraint conflicts
         const { error: debtPaymentsErr } = await supabase.from('debt_payments').delete().eq('user_id', user.id);
-        if (debtPaymentsErr) { Alert.alert('Could not clear journal', debtPaymentsErr.message); return; }
+        if (debtPaymentsErr) { Alert.alert('Could not clear journal', friendlyError(debtPaymentsErr)); return; }
         const { error: debtsErr } = await supabase.from('debts').delete().eq('user_id', user.id);
-        if (debtsErr) { Alert.alert('Could not clear journal', debtsErr.message); return; }
+        if (debtsErr) { Alert.alert('Could not clear journal', friendlyError(debtsErr)); return; }
         const [urgeRes, moodRes, lossRes] = await Promise.all([
           supabase.from('urge_journal').delete().eq('user_id', user.id),
           supabase.from('mood_checkins').delete().eq('user_id', user.id),
@@ -403,7 +404,7 @@ export default function JournalScreen() {
         ]);
         const dbError = [urgeRes, moodRes, lossRes].find(r => r.error)?.error;
         if (dbError) {
-          Alert.alert('Could not clear journal', dbError.message);
+          Alert.alert('Could not clear journal', friendlyError(dbError));
           return;
         }
         await AsyncStorage.removeItem(CHECKLIST_KEY);

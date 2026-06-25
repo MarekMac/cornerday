@@ -33,6 +33,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import { friendlyError } from '@/lib/networkError';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
 import { SkeletonBox } from '@/components/skeleton';
@@ -383,7 +384,7 @@ export default function TrackerIndex() {
             name: debtName.trim(), total_amount: amount, category: debtCategory,
             target_date: targetDateStr,
           }).eq('id', editingDebt.id).eq('user_id', user.id);
-          if (updateErr) { Alert.alert('Could not save', updateErr.message); return; }
+          if (updateErr) { Alert.alert('Could not save', friendlyError(updateErr)); return; }
           await supabase.from('losses').insert({
             user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
           });
@@ -393,7 +394,7 @@ export default function TrackerIndex() {
             user_id: user.id, name: debtName.trim(),
             total_amount: amount, category: debtCategory, target_date: targetDateStr,
           });
-          if (insertErr) { Alert.alert('Could not save', insertErr.message); return; }
+          if (insertErr) { Alert.alert('Could not save', friendlyError(insertErr)); return; }
           if (isFirstDebt) {
             const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
             if (!badgeErr) {
@@ -424,12 +425,12 @@ export default function TrackerIndex() {
         // Delete payments first — FK constraint on debt_payments.debt_id → debts.id is RESTRICT.
         const { error: paymentsDelErr } = await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id).eq('user_id', user.id);
         if (paymentsDelErr) {
-          Alert.alert('Could not delete debt', paymentsDelErr.message);
+          Alert.alert('Could not delete debt', friendlyError(paymentsDelErr));
           return;
         }
         const { error: debtDelErr } = await supabase.from('debts').delete().eq('id', deleteDebtTarget.id).eq('user_id', user.id);
         if (debtDelErr) {
-          Alert.alert('Could not delete debt', debtDelErr.message);
+          Alert.alert('Could not delete debt', friendlyError(debtDelErr));
           return;
         }
         await supabase.from('losses').insert({
@@ -482,16 +483,17 @@ export default function TrackerIndex() {
           const { error: updateErr } = await supabase.from('losses').update({
             amount, note: savingNote.trim() || null,
           }).eq('id', editingSaving.id).eq('user_id', user.id);
-          if (updateErr) { Alert.alert('Could not update', updateErr.message); return; }
+          if (updateErr) { Alert.alert('Could not update', friendlyError(updateErr)); return; }
           await supabase.from('losses').insert({
             user_id: user.id, type: 'saving_edited', amount,
             category: 'Saving', note: savingNote.trim() || null,
           });
         } else {
-          await supabase.from('losses').insert({
+          const { error: insertErr } = await supabase.from('losses').insert({
             user_id: user.id, type: 'saving', amount,
             category: 'Saving', note: savingNote.trim() || null,
           });
+          if (insertErr) { Alert.alert('Could not save', friendlyError(insertErr)); return; }
         }
         hapticMedium();
         closeSavingModal();
@@ -514,7 +516,7 @@ export default function TrackerIndex() {
       if (user) {
         const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSavingTarget.id).eq('user_id', user.id);
         if (delErr) {
-          Alert.alert('Could not delete saving', delErr.message);
+          Alert.alert('Could not delete saving', friendlyError(delErr));
         } else {
           await supabase.from('losses').insert({
             user_id: user.id, type: 'saving_deleted', amount: deleteSavingTarget.amount,
@@ -576,18 +578,19 @@ export default function TrackerIndex() {
             amount, category: sessionCategory, note: sessionNote.trim() || null,
             created_at: sessionDateIso,
           }).eq('id', editingSession.id).eq('user_id', user.id);
-          if (updateErr) { Alert.alert('Could not save session', updateErr.message); return; }
+          if (updateErr) { Alert.alert('Could not save session', friendlyError(updateErr)); return; }
           await supabase.from('losses').insert({
             user_id: user.id, type: 'session_edited', amount,
             category: sessionCategory, note: sessionNote.trim() || null,
           });
         } else {
           const isFirstSession = sessions.length === 0;
-          await supabase.from('losses').insert({
+          const { error: insertErr } = await supabase.from('losses').insert({
             user_id: user.id, type: 'session', amount,
             category: sessionCategory, note: sessionNote.trim() || null,
             created_at: sessionDateIso,
           });
+          if (insertErr) { Alert.alert('Could not save session', friendlyError(insertErr)); return; }
           showInterstitialIfReady(isPremium, 0.1);
           if (isFirstSession) {
             const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
@@ -616,7 +619,7 @@ export default function TrackerIndex() {
       if (user) {
         const { error: delErr } = await supabase.from('losses').delete().eq('id', deleteSessionTarget.id).eq('user_id', user.id);
         if (delErr) {
-          Alert.alert('Could not delete session', delErr.message);
+          Alert.alert('Could not delete session', friendlyError(delErr));
         } else {
           haptic();
           await fetchAll();
@@ -660,7 +663,7 @@ export default function TrackerIndex() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { error } = await supabase.from('users').update({ weekly_bet: value }).eq('id', user.id);
-        if (error) { Alert.alert('Could not save', error.message); return; }
+        if (error) { Alert.alert('Could not save', friendlyError(error)); return; }
         setWeeklyBet(value);
       }
       setShowSpendingModal(false);
@@ -732,7 +735,7 @@ export default function TrackerIndex() {
           savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
         }).eq('id', user.id);
         if (dateErr) {
-          Alert.alert('Could not save target date', dateErr.message);
+          Alert.alert('Could not save target date', friendlyError(dateErr));
           return;
         }
         setSavingsTargetDate(goalTargetDateInput);
@@ -750,7 +753,7 @@ export default function TrackerIndex() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { error } = await supabase.from('users').update({ debt_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
-        if (error) { Alert.alert('Could not save target date', error.message); return; }
+        if (error) { Alert.alert('Could not save target date', friendlyError(error)); return; }
         setDebtTargetDate(date);
       }
       setShowDebtTargetModal(false);
@@ -831,7 +834,7 @@ export default function TrackerIndex() {
           amount: val, note: quickPayNote.trim() || null,
         });
         if (payError) {
-          Alert.alert('Could not save payment', payError.message);
+          Alert.alert('Could not save payment', friendlyError(payError));
           return;
         }
         if (isFirstPayment) {

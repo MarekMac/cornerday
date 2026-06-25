@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
     // Always fetch full profile — context is injected into system prompt on every request
     const { data: profile } = await admin
       .from('users')
-      .select('is_premium, is_admin, display_name, motivation, trigger, goal, support_type, quit_date, quit_timestamp')
+      .select('is_premium, is_admin, display_name, motivation, trigger, goal, support_type, quit_date, quit_timestamp, coach_context')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -179,6 +179,9 @@ Deno.serve(async (req: Request) => {
       contextLines.push(`Recent mood (last ${moods.length} check-ins): ${avgMood}/5`);
     }
     contextLines.push(`Prevention checklist: ${checklistSummary}`);
+    if (profile.coach_context) {
+      contextLines.push(`[Previous session summary — use to provide continuity, don't quote verbatim]\n${profile.coach_context}\n[End previous session summary]`);
+    }
     contextLines.push(`[End context]`);
 
     const contextBlock = contextLines.join('\n');

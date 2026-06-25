@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { avatarColor, COMMUNITY_TAGS, streakBadge, TAG_COLORS, timeAgo } from '@/constants/community';
 import { COMMUNITY_GUIDELINES_SEEN_KEY } from '@/constants/storage-keys';
 import { supabase } from '@/lib/supabase';
+import { friendlyError } from '@/lib/networkError';
 import { useUser } from '@/context/user';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -470,7 +471,7 @@ export default function CommunityFeed() {
         target_type: 'post', target_id: postId, reporter_id: uid, reason,
       });
       setReportPostId(null);
-      if (error) { Alert.alert('Could not submit report', error.message); return; }
+      if (error) { Alert.alert('Could not submit report', friendlyError(error)); return; }
       Alert.alert('Reported', 'Thank you — we will review this shortly.');
     } finally {
       setReportingInFeed(false);
