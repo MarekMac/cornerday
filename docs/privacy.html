@@ -23,6 +23,10 @@
     ul { padding-left: 20px; margin-bottom: 12px; }
     li { font-size: 15px; color: #3a5a5a; margin-bottom: 6px; }
     a  { color: #0F6E6E; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px; }
+    th { background: #e6f7f7; color: #0F6E6E; text-align: left; padding: 8px 12px; font-weight: 600; }
+    td { padding: 7px 12px; border-bottom: 1px solid #e0eeee; color: #3a5a5a; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
     .card { background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 2px 16px rgba(15,110,110,.07); }
     footer { margin-top: 40px; text-align: center; font-size: 13px; color: #7a9a9a; }
   </style>
@@ -32,50 +36,96 @@
     <a class="back" href="/">← CornerDay</a>
     <div class="card">
       <h1>Privacy Policy</h1>
-      <p class="date">Last updated: June 2026</p>
+      <p class="date">Effective date: 25 June 2026 &nbsp;·&nbsp; Last updated: 25 June 2026</p>
 
       <p>CornerDay ("we", "our", or "us") is committed to protecting your privacy. This policy explains what information we collect, how we use it, and your rights.</p>
 
       <h2>1. Information we collect</h2>
-      <p>When you use CornerDay, we collect:</p>
+      <p><strong>Account data</strong></p>
       <ul>
-        <li><strong>Account information</strong> — your email address and display name when you sign up.</li>
-        <li><strong>Recovery data</strong> — streak dates, mood check-ins, loss and repayment entries, urge journal logs, and badge progress. This data is private to your account.</li>
-        <li><strong>Usage data</strong> — anonymous analytics (app opens, feature usage) to help us improve the app. No personally identifiable information is included.</li>
-        <li><strong>Supporter link data</strong> — if you share your progress with a trusted person, we store a temporary token and the data you choose to share (streak, mood, milestones).</li>
+        <li>Email address and display name when you sign up</li>
+        <li>Profile avatar (optional photo you upload)</li>
+      </ul>
+      <p><strong>Recovery profile</strong></p>
+      <ul>
+        <li>Your motivation for quitting, main trigger, and goal (chosen from a list or written by you)</li>
+        <li>The date and time you stopped gambling</li>
+        <li>Self-reported weekly gambling spend (optional, can be skipped) and currency</li>
+        <li>Type of support person in your corner (no name or contact details stored)</li>
+      </ul>
+      <p><strong>Activity data</strong></p>
+      <ul>
+        <li>Streak dates and check-in history</li>
+        <li>Loss and repayment entries (amounts, categories, dates, optional notes) — visible only to you</li>
+        <li>Daily mood check-ins (a number 1–5 and date)</li>
+        <li>Urge journal entries (trigger type, outcome, optional note, date)</li>
+        <li>Badges earned</li>
+      </ul>
+      <p><strong>Community data (optional)</strong></p>
+      <ul>
+        <li>Posts you publish to the community feed (can be anonymous)</li>
+        <li>Reactions, comments, and bookmarks</li>
+      </ul>
+      <p><strong>Technical data</strong></p>
+      <ul>
+        <li>Push notification token (to deliver notifications to your device)</li>
+        <li>Anonymised crash reports — no recovery data included</li>
       </ul>
 
-      <h2>2. How we use your information</h2>
+      <h2>2. What we do NOT collect</h2>
       <ul>
-        <li>To provide the CornerDay service and sync your data across devices.</li>
-        <li>To send transactional emails (welcome, weekly digest, milestone alerts) — only to your registered email.</li>
-        <li>To process subscription payments via RevenueCat. We do not store payment card details.</li>
-        <li>To operate the AI Coach feature (Premium only). Chat messages are sent to Anthropic's API and are not stored by CornerDay after your session ends.</li>
+        <li>Your precise location</li>
+        <li>Your contacts list (accessed only if you choose to add a trusted contact; stored in your account, never shared)</li>
+        <li>Browsing history or data from other apps</li>
+        <li>Biometric data — biometric authentication happens on your device only and is never sent to our servers</li>
       </ul>
 
-      <h2>3. Data sharing</h2>
-      <p>We do not sell your data. We share data only with the following service providers, solely to operate the app:</p>
+      <h2>3. How we use your information</h2>
       <ul>
-        <li><strong>Supabase</strong> — database and authentication (EU or US region).</li>
-        <li><strong>Anthropic</strong> — AI Coach messages (Premium only, session only).</li>
-        <li><strong>RevenueCat</strong> — subscription management.</li>
-        <li><strong>Resend</strong> — transactional email delivery.</li>
-        <li><strong>Google AdMob</strong> — ads shown to free users only. Never shown on urge, relapse, or crisis screens.</li>
+        <li>To provide the CornerDay service and sync your data across devices</li>
+        <li>To send transactional emails (welcome, weekly digest, milestone alerts) to your registered email only</li>
+        <li>To process subscription payments via RevenueCat — we do not store payment card details</li>
+        <li>To operate the AI Coach feature (Premium only) — chat messages are sent to Anthropic's API and are not stored by CornerDay after your session ends</li>
+        <li>To fix bugs using anonymised crash reports</li>
       </ul>
 
-      <h2>4. Data retention</h2>
-      <p>Your data is kept for as long as your account is active. You can delete your account at any time from the Account screen in the app. Deletion permanently removes all your recovery data within 30 days.</p>
+      <h2>4. Who we share data with</h2>
+      <p>We do not sell your data. We share data only with the following service providers to operate the app:</p>
+      <table>
+        <thead><tr><th>Service</th><th>Purpose</th><th>Privacy policy</th></tr></thead>
+        <tbody>
+          <tr><td>Supabase</td><td>Database and authentication</td><td><a href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a></td></tr>
+          <tr><td>RevenueCat</td><td>Subscription management</td><td><a href="https://www.revenuecat.com/privacy" target="_blank" rel="noopener">revenuecat.com/privacy</a></td></tr>
+          <tr><td>Sentry</td><td>Anonymised crash reporting</td><td><a href="https://sentry.io/privacy/" target="_blank" rel="noopener">sentry.io/privacy</a></td></tr>
+          <tr><td>Google AdMob</td><td>Ads for free users only — never on urge, relapse, or crisis screens</td><td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a></td></tr>
+          <tr><td>Google Firebase (FCM)</td><td>Push notifications</td><td><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">firebase.google.com/support/privacy</a></td></tr>
+          <tr><td>Anthropic</td><td>AI Coach responses (Premium only, session only — no financial data is sent)</td><td><a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">anthropic.com/privacy</a></td></tr>
+          <tr><td>Resend</td><td>Transactional email delivery</td><td><a href="https://resend.com/privacy" target="_blank" rel="noopener">resend.com/privacy</a></td></tr>
+        </tbody>
+      </table>
+      <p>All services are US-based. If you are in the EU or UK, data is transferred under standard contractual clauses.</p>
 
-      <h2>5. Your rights</h2>
-      <p>You have the right to access, correct, or delete your personal data. You can export your data from the Account screen. To request data deletion or a copy of your data, contact us at the address below.</p>
+      <h2>5. Data retention</h2>
+      <p>Your data is kept for as long as your account is active. When you delete your account, all your recovery data is permanently removed immediately. Crash reports in Sentry are retained for 90 days. Subscription records in RevenueCat may be retained as required by law.</p>
 
-      <h2>6. Children</h2>
-      <p>CornerDay is not intended for users under 18. We do not knowingly collect data from minors.</p>
+      <h2>6. Your rights</h2>
+      <p>You can, at any time:</p>
+      <ul>
+        <li><strong>Export</strong> all your data: Account → Settings → Export my data</li>
+        <li><strong>Delete</strong> your account and all data: Account → Settings → Delete account</li>
+        <li><strong>Opt out</strong> of email notifications: Account → Settings → Notifications</li>
+        <li><strong>Turn off</strong> push notifications in your device settings</li>
+      </ul>
+      <p>For EU/UK residents: you have the right to access, rectify, port, and erase your data, and to lodge a complaint with your local data protection authority.</p>
+      <p>For requests the app doesn't cover, email <a href="mailto:support@cornerday.app">support@cornerday.app</a>.</p>
 
-      <h2>7. Changes to this policy</h2>
-      <p>We may update this policy from time to time. We will notify you of significant changes via the app or email.</p>
+      <h2>7. Children</h2>
+      <p>CornerDay is not intended for users under 13. We do not knowingly collect data from children under 13. If you believe a child has created an account, contact us and we will delete it.</p>
 
-      <h2>8. Contact</h2>
+      <h2>8. Changes to this policy</h2>
+      <p>We may update this policy from time to time. We will notify you of significant changes via the app or email. The "last updated" date at the top reflects the most recent revision.</p>
+
+      <h2>9. Contact</h2>
       <p>Questions about this policy? Email us at <a href="mailto:support@cornerday.app">support@cornerday.app</a>.</p>
     </div>
     <footer>© 2026 CornerDay</footer>
