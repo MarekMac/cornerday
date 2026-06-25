@@ -114,7 +114,11 @@ function InnerLayout() {
         params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1));
       });
       if (params.access_token && params.refresh_token) {
-        await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+        const { error } = await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+        if (error) {
+          setPendingRoute('/(onboarding)/signup?mode=signin');
+          return true;
+        }
         setPendingRoute('/(onboarding)/reset-password');
         return true;
       }
@@ -131,7 +135,11 @@ function InnerLayout() {
         params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1));
       });
       if (params.access_token && params.refresh_token) {
-        await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+        const { error } = await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+        if (error) {
+          setPendingRoute('/(onboarding)/signup?mode=signin');
+          return true;
+        }
         // Email confirmation is a signup action — only skip onboarding if this
         // device already has the ONBOARDED_KEY flag (i.e. returning user who
         // re-confirmed). Otherwise always send to q1.

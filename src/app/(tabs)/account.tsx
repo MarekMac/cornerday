@@ -2203,21 +2203,20 @@ export default function AccountScreen() {
             <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
           </Pressable>
           <View style={s.menuDivider} />
-          <Pressable
-            style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
-            onPress={() => {
-              const url = Platform.OS === 'ios'
-                ? 'https://apps.apple.com/app/id6748937702'
-                : 'market://details?id=com.cornerday.app';
-              Linking.openURL(url);
-            }}>
-            <View style={s.menuIconWrap}>
-              <Ionicons name="star-outline" size={17} color={c.primary} />
-            </View>
-            <Text style={s.menuRowLabel}>Rate CornerDay</Text>
-            <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
-          </Pressable>
-          <View style={s.menuDivider} />
+          {Platform.OS === 'android' && (
+            <>
+              <Pressable
+                style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
+                onPress={() => Linking.openURL('market://details?id=com.cornerday.app')}>
+                <View style={s.menuIconWrap}>
+                  <Ionicons name="star-outline" size={17} color={c.primary} />
+                </View>
+                <Text style={s.menuRowLabel}>Rate CornerDay</Text>
+                <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+              </Pressable>
+              <View style={s.menuDivider} />
+            </>
+          )}
           <Pressable
             style={({ pressed }) => [s.menuRow, pressed && { opacity: 0.7 }]}
             onPress={() => router.push('/terms')}>

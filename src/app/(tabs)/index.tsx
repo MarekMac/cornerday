@@ -790,6 +790,7 @@ export default function HomeScreen() {
   const [relapseConfirmVisible, setRelapseConfirmVisible] = useState(false);
   const [tick, setTick] = useState(0);
   const prevNextMilestone = useRef<number | null>(null);
+  const celebrationQueue = useRef<NonNullable<typeof celebrationBadge>[]>([]);
   const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [selectedBadge, setSelectedBadge] = useState<typeof BADGE_DEFS[0] | null>(null);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
@@ -1025,16 +1026,16 @@ export default function HomeScreen() {
 
       newlyAwarded.forEach(b => earnedBadges.push(b.type));
       if (newlyAwarded.length > 0) {
-        const b = newlyAwarded[newlyAwarded.length - 1];
-        const earnedAt = new Date(quitTs + b.days * 86400000).toISOString();
-        pendingCelebration = {
+        const allCelebrations = newlyAwarded.map(b => ({
           type: b.type,
           emoji: b.emoji,
           label: b.label,
           celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
           msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-          earnedAt,
-        };
+          earnedAt: new Date(quitTs + b.days * 86400000).toISOString(),
+        }));
+        pendingCelebration = allCelebrations[0];
+        celebrationQueue.current = allCelebrations.slice(1);
       }
 
       // Notify supporter for the highest milestone earned this run (last = most significant)
@@ -3027,6 +3028,8 @@ export default function HomeScreen() {
             setCelebrationBadge(null);
             if (badgeType === '1_week') maybeRequestReview('7_day');
             else if (badgeType === '1_month') maybeRequestReview('1_month');
+            const next = celebrationQueue.current.shift();
+            if (next) setTimeout(() => setCelebrationBadge(next), 400);
           }}
         />
       )}
