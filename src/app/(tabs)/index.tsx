@@ -546,10 +546,10 @@ function LiveCounter({ quitDate }: { quitDate: string | null }) {
   const s = useMemo(() => makeStyles(c), [c]);
   const [, setTick] = useState(0);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, []));
 
   if (!quitDate) return null;
 
@@ -585,10 +585,10 @@ function LiveCounter({ quitDate }: { quitDate: string | null }) {
 
 function SubDayCountdown({ quitDate, nextDays, style }: { quitDate: string; nextDays: number; style: any }) {
   const [, setTick] = useState(0);
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, []));
   const targetMs = parseQuitDate(quitDate).getTime() + nextDays * 86400000;
   const remaining = Math.max(0, targetMs - Date.now());
   if (remaining <= 0) return <Text style={style}>{`🎉 ${milestoneLabel(nextDays)} — milestone reached!`}</Text>;
@@ -1356,13 +1356,13 @@ export default function HomeScreen() {
     fetchPartnerMsg();
   }, [fetchPartnerMsg]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => {
       clearInterval(id);
       if (moodScrollTimerRef.current) clearTimeout(moodScrollTimerRef.current);
     };
-  }, []);
+  }, []));
 
   useEffect(() => {
     if (!data) return;

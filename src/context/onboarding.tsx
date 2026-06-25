@@ -17,7 +17,7 @@ interface OnboardingContextType {
   data: Partial<OnboardingData>;
   isLoaded: boolean;
   setField: (field: keyof OnboardingData, value: string | null) => void;
-  saveStep: (step: string) => void;
+  saveStep: (step: string) => Promise<void>;
   clearProgress: () => void;
 }
 
@@ -39,19 +39,23 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoaded) return;
-    AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(data)).catch(() => {});
+    AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(data)).catch(e => console.warn('[onboarding] storage write failed:', e));
   }, [data, isLoaded]);
 
   const setField = useCallback((field: keyof OnboardingData, value: string | null) => {
     setData(prev => ({ ...prev, [field]: value ?? undefined }));
   }, []);
 
-  const saveStep = useCallback((step: string) => {
-    AsyncStorage.setItem(ONBOARDING_STEP_KEY, step);
+  const saveStep = useCallback(async (step: string) => {
+    try {
+      await AsyncStorage.setItem(ONBOARDING_STEP_KEY, step);
+    } catch (e) {
+      console.warn('[onboarding] failed to save step:', e);
+    }
   }, []);
 
   const clearProgress = useCallback(() => {
-    AsyncStorage.multiRemove([ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY]);
+    AsyncStorage.multiRemove([ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY]).catch(e => console.warn('[onboarding] storage write failed:', e));
     setData({});
   }, []);
 

@@ -93,22 +93,22 @@ export default function Q3Screen() {
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const rawCustom = custom.trim();
     if (rawCustom && !Number.isFinite(parseFloat(rawCustom))) return;
     const value = rawCustom ? rawCustom : selected || null;
     setField('weeklyBet', value);
     setField('currency', currency);
     setField('quitDate', userChangedDate ? quitDate.toISOString() : null);
-    saveStep('ready');
+    await saveStep('ready');
     router.push('/(onboarding)/ready');
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     setField('weeklyBet', null);
     setField('currency', currency);
     setField('quitDate', null);
-    saveStep('ready');
+    await saveStep('ready');
     router.push('/(onboarding)/ready');
   };
 

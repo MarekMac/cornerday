@@ -28,14 +28,15 @@ import { AppColors } from '@/constants/theme';
 
 interface Post {
   id: string;
-  user_id: string;
+  user_id: string | null;
   content: string;
   tag: string | null;
   reactions_count: number;
   comments_count: number;
   created_at: string;
   is_anonymous: boolean;
-  users: { display_name: string | null; streaks: Array<{ current_streak: number }> } | null;
+  author_name: string | null;
+  author_streak: number | null;
 }
 
 interface Comment {
@@ -130,8 +131,8 @@ export default function PostDetail() {
 
       const [postRes, commentsRes, reactionsRes, commentReactionsRes] = await Promise.all([
         supabase
-          .from('community_posts')
-          .select('id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))')
+          .from('community_posts_public')
+          .select('id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, author_name, author_streak')
           .eq('id', id)
           .maybeSingle(),
         supabase
@@ -156,7 +157,7 @@ export default function PostDetail() {
       setPost(loadedPost);
       setComments((commentsRes.data as Comment[]) ?? []);
 
-      if (uid && loadedPost && loadedPost.user_id !== uid && !loadedPost.is_anonymous) {
+      if (uid && loadedPost && loadedPost.user_id && loadedPost.user_id !== uid && !loadedPost.is_anonymous) {
         supabase.from('community_follows').select('id')
           .eq('follower_id', uid).eq('following_id', loadedPost.user_id)
           .maybeSingle().then(({ data }) => { if (isMountedRef.current) setIsFollowing(!!data); }).catch(e => console.warn('[Follow check]', e));
@@ -301,7 +302,7 @@ export default function PostDetail() {
 
   const showPostMenu = () => {
     if (!post) return;
-    if (post.user_id === currentUserId) {
+    if (post.user_id && post.user_id === currentUserId) {
       setMenuTarget({ kind: 'post' });
     } else {
       setReportTarget({ kind: 'post', id: post.id });
@@ -394,7 +395,7 @@ export default function PostDetail() {
   };
 
   const toggleFollow = async () => {
-    if (!currentUserId || !post) return;
+    if (!currentUserId || !post || !post.user_id) return;
     const prev = isFollowing;
     setIsFollowing(f => !f);
     let error;
@@ -441,9 +442,9 @@ export default function PostDetail() {
   }
 
   const isAnon = post.is_anonymous ?? false;
-  const postAuthor = isAnon ? 'Anonymous' : (post.users?.display_name || 'Anonymous');
-  const postColor = isAnon ? '#aaa' : avatarColor(post.user_id);
-  const postStreak = isAnon ? 0 : (post.users?.streaks?.[0]?.current_streak ?? 0);
+  const postAuthor = isAnon ? 'Anonymous' : (post.author_name || 'Anonymous');
+  const postColor = isAnon ? '#aaa' : avatarColor(post.user_id ?? '');
+  const postStreak = isAnon ? 0 : (post.author_streak ?? 0);
   const postStreakBadge = streakBadge(postStreak);
   const isPostOwner = post.user_id === currentUserId;
 

@@ -90,7 +90,6 @@ Deno.serve(async (req: Request) => {
   }
 
   const { email_action_type, token_hash, token, redirect_to } = email_data;
-  console.log('auth-hook-email full payload:', JSON.stringify(email_data));
 
   // Only handle signup confirmation and password recovery
   if (email_action_type !== 'recovery' && email_action_type !== 'signup') {

@@ -329,6 +329,9 @@ export default function AccountScreen() {
   const [planMantraInput, setPlanMantraInput] = useState('');
   const [savingPlan, setSavingPlan] = useState(false);
 
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
+
   const fetchProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -349,6 +352,7 @@ export default function AccountScreen() {
       const fetchedBadgeTypes = (badgesData ?? []).map((b: { badge_type: string }) => b.badge_type);
       earnedBadgeTypesRef.current = fetchedBadgeTypes;
       const badgeCount = fetchedBadgeTypes.length;
+      if (!isMounted.current) return;
       setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
       const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
       let resolvedAvatar = data?.avatar_url ?? null;
@@ -390,6 +394,7 @@ export default function AccountScreen() {
         .select('trusted_contact_name, trusted_contact_phone, trusted_contact_email, recovery_distractions, recovery_mantra, distraction_choices, custom_milestone_type, custom_milestone_target, custom_milestone_icon')
         .eq('id', user.id)
         .maybeSingle();
+      if (!isMounted.current) return;
       // U-07: prefer Supabase for trusted contact — only set if Supabase returned a value
       if (contactData?.trusted_contact_name || contactData?.trusted_contact_phone) {
         setTrustedContactName(contactData.trusted_contact_name ?? '');
@@ -420,9 +425,9 @@ export default function AccountScreen() {
       setGlobalAvatarUrl(resolvedAvatar);
     } catch (e) {
       console.warn('[CornerDay] fetchProfile error:', e);
-      setLoadError(true);
+      if (isMounted.current) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, []);
 
@@ -434,7 +439,7 @@ export default function AccountScreen() {
       .select('id, token, expires_at, share_mood, share_milestones, share_recovery, notify_urge, notify_relapse, notify_milestone')
       .eq('user_id', user.id)
       .maybeSingle();
-    if (data) {
+    if (data && isMounted.current) {
       setPartnerToken(data.token);
       setPartnerLinkId(data.id);
       setPartnerExpiresAt(data.expires_at ?? null);
@@ -628,6 +633,7 @@ export default function AccountScreen() {
   useEffect(() => {
     if (!isPremiumFromRC) { setRenewalDate(null); return; }
     Purchases.getCustomerInfo().then(info => {
+      if (!isMounted.current) return;
       const entitlement = info.entitlements.active[ENTITLEMENT_ID];
       if (entitlement?.expirationDate) {
         const d = new Date(entitlement.expirationDate);
@@ -1252,6 +1258,7 @@ export default function AccountScreen() {
         CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
         URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
         CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
+        'coach_chat_history',
       ]);
       try { await FileSystem.deleteAsync(FileSystem.documentDirectory + 'motivation_photo.jpg', { idempotent: true }); } catch (_e) {}
       try { await supabase.auth.signOut(); } catch (_e) {}
@@ -1271,13 +1278,14 @@ export default function AccountScreen() {
       await AsyncStorage.multiRemove([
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
         MILESTONE_NOTIFS_KEY,
-        TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY,
+        MOTIVATION_CACHE_KEY,
         COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY,
         STORE_REVIEW_ASKED_KEY,
         STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
         CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
         URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
         CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
+        'coach_chat_history',
       ]);
       try { await supabase.auth.signOut(); } catch (_e) {}
     } finally {

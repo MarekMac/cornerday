@@ -706,7 +706,7 @@ export default function UrgeScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.timerRewardTitle}>+1 point earned</Text>
                   <Text style={s.timerRewardSub}>
-                    {timerPointsEarned ? 'Logged to your journal automatically' : 'Already earned one today — keep going!'}
+                    {timerPointsEarned ? 'Already earned one today — keep going!' : 'Logged to your journal automatically'}
                   </Text>
                 </View>
               </View>

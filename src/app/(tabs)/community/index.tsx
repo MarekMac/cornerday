@@ -32,14 +32,15 @@ type SortBy = 'new' | 'popular';
 
 interface Post {
   id: string;
-  user_id: string;
+  user_id: string | null;
   content: string;
   tag: string | null;
   reactions_count: number;
   comments_count: number;
   created_at: string;
   is_anonymous: boolean;
-  users: { display_name: string | null; streaks: Array<{ current_streak: number }> } | null;
+  author_name: string | null;
+  author_streak: number | null;
 }
 
 function SkeletonCard() {
@@ -73,17 +74,19 @@ function SkeletonCard() {
   );
 }
 
-const POST_SELECT = 'id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, users(display_name, streaks(current_streak))';
+const POST_SELECT = 'id, user_id, content, tag, reactions_count, comments_count, created_at, is_anonymous, author_name, author_streak';
 
 function maskAnonPosts(items: Post[], currentUserId: string | null): Post[] {
   return items.map(p =>
-    p.is_anonymous && p.user_id !== currentUserId ? { ...p, user_id: '' } : p
+    p.is_anonymous && p.user_id && p.user_id !== currentUserId ? { ...p, user_id: null } : p
   );
 }
 
 export default function CommunityFeed() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -125,21 +128,22 @@ export default function CommunityFeed() {
 
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
+      if (!isMounted.current) return;
       currentUserIdRef.current = user.id;
       const { data } = await supabase.from('users').select('display_name, is_banned, ban_reason, ban_expires_at, ban_appeal_note').eq('id', user.id).maybeSingle();
-      setDisplayName(data?.display_name ?? '');
-      if (data) setBanInfo({ is_banned: data.is_banned ?? false, ban_reason: data.ban_reason, ban_expires_at: data.ban_expires_at, ban_appeal_note: data.ban_appeal_note });
+      if (isMounted.current) setDisplayName(data?.display_name ?? '');
+      if (data && isMounted.current) setBanInfo({ is_banned: data.is_banned ?? false, ban_reason: data.ban_reason, ban_expires_at: data.ban_expires_at, ban_appeal_note: data.ban_appeal_note });
 
       const [bookmarkRes, followRes] = await Promise.all([
         supabase.from('community_bookmarks').select('post_id').eq('user_id', user.id),
         supabase.from('community_follows').select('following_id').eq('follower_id', user.id),
       ]);
-      if (bookmarkRes.data) {
+      if (bookmarkRes.data && isMounted.current) {
         const bm: Record<string, boolean> = {};
         for (const row of bookmarkRes.data as { post_id: string }[]) bm[row.post_id] = true;
         setUserBookmarks(bm);
       }
-      if (followRes.data) {
+      if (followRes.data && isMounted.current) {
         const fm: Record<string, boolean> = {};
         for (const row of followRes.data as { following_id: string }[]) fm[row.following_id] = true;
         setFollowedUsers(fm);
@@ -216,7 +220,7 @@ export default function CommunityFeed() {
           .from('community_follows').select('following_id').eq('follower_id', uid);
         const ids = (followRows ?? []).map((r: { following_id: string }) => r.following_id);
         if (ids.length === 0) { postsRef.current = []; setPosts([]); setHasMore(false); return; }
-        let q: any = supabase.from('community_posts').select(POST_SELECT).in('user_id', ids);
+        let q: any = supabase.from('community_posts_public').select(POST_SELECT).in('user_id', ids);
         if (sort === 'popular') q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
         else q = q.order('created_at', { ascending: false });
         q = q.range(0, PAGE_SIZE - 1);
@@ -248,7 +252,7 @@ export default function CommunityFeed() {
           setHasMore(false);
           return;
         }
-        let q: any = supabase.from('community_posts').select(POST_SELECT).in('id', ids);
+        let q: any = supabase.from('community_posts_public').select(POST_SELECT).in('id', ids);
         if (sort === 'popular') {
           q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
         } else {
@@ -265,7 +269,7 @@ export default function CommunityFeed() {
         return;
       }
 
-      let q: any = supabase.from('community_posts').select(POST_SELECT);
+      let q: any = supabase.from('community_posts_public').select(POST_SELECT);
       if (sort === 'popular') {
         q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
       } else {
@@ -306,7 +310,7 @@ export default function CommunityFeed() {
     try {
       const offset = postsRef.current.length;
       const sort = sortByRef.current;
-      let q: any = supabase.from('community_posts').select(POST_SELECT);
+      let q: any = supabase.from('community_posts_public').select(POST_SELECT);
       if (sort === 'popular') {
         q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
       } else {
@@ -476,18 +480,19 @@ export default function CommunityFeed() {
   const handleAuthorPress = (item: Post) => {
     if (item.is_anonymous) return;
     if (item.user_id === currentUserIdRef.current) return;
+    if (!item.user_id) return;
     setProfileUser({
       userId: item.user_id,
-      displayName: item.users?.display_name || 'User',
-      streak: item.users?.streaks?.[0]?.current_streak ?? 0,
+      displayName: item.author_name || 'User',
+      streak: item.author_streak ?? 0,
     });
   };
 
   const renderPost = ({ item }: { item: Post }) => {
     const isAnon = item.is_anonymous ?? false;
-    const color = isAnon ? '#aaa' : avatarColor(item.user_id);
-    const name = isAnon ? 'Anonymous' : (item.users?.display_name || 'Anonymous');
-    const currentStreak = isAnon ? 0 : (item.users?.streaks?.[0]?.current_streak ?? 0);
+    const color = isAnon ? '#aaa' : avatarColor(item.user_id ?? '');
+    const name = isAnon ? 'Anonymous' : (item.author_name || 'Anonymous');
+    const currentStreak = isAnon ? 0 : (item.author_streak ?? 0);
     const badge = streakBadge(currentStreak);
     const emojiCounts = allEmojiCounts[item.id] ?? {};
     const emojiEntries = Object.entries(emojiCounts).filter(([, c]) => c > 0);
@@ -510,7 +515,7 @@ export default function CommunityFeed() {
             <View style={s.cardMeta}>
               <View style={s.authorRow}>
                 <Text style={s.authorName}>{name}</Text>
-                {!isAnon && followedUsers[item.user_id] && (
+                {!isAnon && item.user_id && followedUsers[item.user_id] && (
                   <Text style={s.followingTag}>following</Text>
                 )}
                 {badge ? (

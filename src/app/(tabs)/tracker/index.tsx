@@ -314,8 +314,11 @@ export default function TrackerIndex() {
     }
   }, [fetchAll]);
 
-  const paidByDebt: Record<string, number> = {};
-  payments.forEach(p => { paidByDebt[p.debt_id] = (paidByDebt[p.debt_id] ?? 0) + Number(p.amount); });
+  const paidByDebt = useMemo(() => {
+    const result: Record<string, number> = {};
+    payments.forEach(p => { result[p.debt_id] = (result[p.debt_id] ?? 0) + Number(p.amount); });
+    return result;
+  }, [payments]);
 
   const totalDebt = debts.reduce((s, d) => s + Number(d.total_amount), 0);
   const totalPaid = Object.values(paidByDebt).reduce((s, v) => s + v, 0);

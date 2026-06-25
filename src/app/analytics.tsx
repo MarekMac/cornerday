@@ -4,7 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -227,6 +227,9 @@ export default function AnalyticsScreen() {
   const { isPremium, isLoadingPurchases, showPaywall } = usePurchases();
   const { isAdmin } = useUser();
   const hasAccess = isPremium || isAdmin;
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
+
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingsTargetDate, setSavingsTargetDate] = useState<Date | null>(null);
@@ -472,6 +475,7 @@ export default function AnalyticsScreen() {
       },
     };
 
+    if (!isMounted.current) return;
     if (profile?.savings_target_date) setSavingsTargetDate(new Date(profile.savings_target_date + 'T12:00:00'));
 
     setData({
@@ -494,7 +498,7 @@ export default function AnalyticsScreen() {
     });
     } catch (e) {
       console.warn('[analytics] fetchData error:', e);
-      setFetchError(true);
+      if (isMounted.current) setFetchError(true);
     }
   }, []);
 
@@ -533,7 +537,7 @@ export default function AnalyticsScreen() {
                   Alert.alert('Could not reset urge logs', urgeDelErr.message);
                   return;
                 }
-                setData(prev => prev ? {
+                if (isMounted.current) setData(prev => prev ? {
                   ...prev,
                   urgeCount: 0, urgesOvercome: 0,
                   urgesByDay: [0, 0, 0, 0, 0, 0, 0],
@@ -541,7 +545,7 @@ export default function AnalyticsScreen() {
                   topTriggers: [],
                 } : prev);
               } finally {
-                setResettingUrges(false);
+                if (isMounted.current) setResettingUrges(false);
               }
             } catch { /* network error — spinner already cleared by inner finally */ }
           },
@@ -557,10 +561,9 @@ export default function AnalyticsScreen() {
       if (!user) { Alert.alert('Session expired', 'Please sign in again.'); return; }
       const { error: updateErr } = await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
       if (updateErr) { Alert.alert('Could not save date', updateErr.message); return; }
-      setSavingsTargetDate(date);
-      setShowTargetModal(false);
+      if (isMounted.current) { setSavingsTargetDate(date); setShowTargetModal(false); }
     } finally {
-      setSavingTarget(false);
+      if (isMounted.current) setSavingTarget(false);
     }
   };
 

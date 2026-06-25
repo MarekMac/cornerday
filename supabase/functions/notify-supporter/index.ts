@@ -93,16 +93,19 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS });
 
   const authHeader = req.headers.get('Authorization') ?? '';
-  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-
-  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-  const { data: { user }, error: authErr } = await sb.auth.getUser(bearerToken);
+  const authSb = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const { data: { user }, error: authErr } = await authSb.auth.getUser();
   if (authErr || !user) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
       status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
   const userId = user.id;
+  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
   const rawBody = await req.text();
   if (rawBody.length > 65536) {

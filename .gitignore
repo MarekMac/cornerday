@@ -38,6 +38,7 @@ yarn-error.*
 # Firebase credentials (contains secret keys — never commit)
 google-services.json
 GoogleService-Info.plist
+*-firebase-adminsdk-*.json
 
 # Claude Code local settings (may contain PATs/tokens)
 .claude/

@@ -33,7 +33,7 @@ A mobile app (iOS + Android) that helps people stop sports betting, track money 
 2. Sign up screen — Google login button + email/password fields, privacy note
 3. Q1 — What motivates you to quit? (family, finances, mental health, saving for something, better self, write own reason)
 4. Q2 — What is your biggest trigger? (betting ads, live sport, friends/social pressure, stress, boredom, financial pressure)
-5. Q3 — How much did you lose in total? (range chips + custom input, skippable)
+5. Q3 — "Let's set up your journey": when did you stop betting? (date + time picker) + how much did you bet per week? (currency selector + chip amounts + custom input, skippable). Saves `quit_date`, `weekly_bet`, `currency`.
 6. Q4 — What is your main goal? (pay back losses, save for something, mental health, family, one day at a time)
 7. Q5 — Do you have someone in your corner? (partner, family, friend, therapist, keep private)
 8. Ready screen — gradient background, checklist of what is set up, "Go to my dashboard" button
@@ -86,7 +86,9 @@ A mobile app (iOS + Android) that helps people stop sports betting, track money 
 - goal (text) — from onboarding Q4
 - support_type (text) — from onboarding Q5
 - is_premium (boolean, default false)
-- quit_date (date) — the day they started
+- quit_date (timestamptz) — exact datetime they stopped betting (from Q3)
+- weekly_bet (numeric, nullable) — self-reported weekly betting spend from Q3
+- currency (text, nullable) — currency code for weekly_bet (e.g. 'USD', 'PLN')
 
 ### streaks
 - id (uuid)
@@ -134,12 +136,35 @@ A mobile app (iOS + Android) that helps people stop sports betting, track money 
 - The "Your why" always visible on home and urge screens
 
 ## Build Phases
-- Phase 1 (MVP): Auth, onboarding, home screen, loss tracker, urge support, streak tracking
-- Phase 2: Premium features, AI coach, someone in your corner, push notifications, detailed analytics
+- Phase 1 (MVP): Auth, onboarding, home screen, loss tracker, urge support, streak tracking ✅ COMPLETE
+- Phase 2: Premium features, AI coach, someone in your corner, push notifications, detailed analytics ✅ MOSTLY COMPLETE
 - Phase 3: Wider release, potential expansion to other addiction types
 
-## Current Status
-- Project created with create-expo-app (SDK 56)
-- VS Code open, Expo Go connected and running on Android device
-- Supabase account to be set up
-- Ready to start building Phase 1
+## Current Status (as of 2026-06-24)
+Phase 1 and Phase 2 are feature-complete and running on a development build (not Expo Go). The app is in pre-launch polish and bug-fix mode, targeting an Android release first.
+
+### What is built and working
+- Auth: email/password + Google OAuth, forgot password, confirm email, sign out, delete account
+- Onboarding: full Q1–Q5 + Ready screen; data saved to Supabase
+- Home: streak card (circular + sub-day precision), 25+ milestone badges with celebration queue, mood check-in + 7-day strip, saved money card, partner message banner, relapse card, daily quotes
+- Loss Tracker: debt summary, log loss / log payment, history, debt detail with payoff pacing
+- Urge Support: urge button, breathing exercises (4-4-4), 12 mini-games, safe zone checklist, crisis helpline, trusted contact quick-dial, recovery plan card, urge journal
+- Community: paginated feed, reactions, bookmarks, anonymous posts, comments, push notifications on new comments
+- AI Coach: streaming chat, personalised system prompt from user profile, premium-gated (claude-opus-4-8)
+- Account: avatar, display name, recovery profile, trusted contact, someone in your corner (premium), supporter email notifications, biometric lock, haptics, dark/light/auto theme, notification preferences, data export, granular reset, feedback modal
+- Analytics: streak overview, mood charts, savings trajectory, debt recovery chart — premium-gated
+- Push notifications: 5 types, pre-scheduled at milestone times, FCM wired for Android
+- Dark mode: Auto / Light / Dark with 33 semantic tokens, consistent across all screens
+- RevenueCat: Android live; iOS deferred until Android release
+- Moderation screen for admin users
+- 10+ Supabase Edge Functions deployed (ai-coach, partner-view, email digests, push events, delete-account)
+
+### Dev environment
+- Development build required (not Expo Go) — datetimepicker + biometric + FCM need native modules
+- `npx expo run:android` to rebuild; `npx expo start --clear` for daily dev
+- JAVA_HOME and ANDROID_HOME set, Gradle pinned to 8.13
+
+### Pre-launch blockers (user action required)
+- EAS project ID finalisation
+- iOS RevenueCat key (deferred until Android ships)
+- Sentry DSN for crash reporting

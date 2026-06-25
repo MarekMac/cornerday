@@ -5,7 +5,7 @@ import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -73,6 +73,8 @@ export default function DebtDetailScreen() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
 
   const [debt, setDebt] = useState<Debt | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -101,6 +103,7 @@ export default function DebtDetailScreen() {
         supabase.from('users').select('currency').eq('id', user.id).maybeSingle(),
       ]);
 
+      if (!isMounted.current) return;
       if (debtRes.data) {
         setDebt(debtRes.data as Debt);
         if (debtRes.data.target_date) setTargetDate(new Date(debtRes.data.target_date + 'T12:00:00'));
@@ -112,7 +115,7 @@ export default function DebtDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => { fetchData().finally(() => setLoading(false)); }, [fetchData]);
+  useEffect(() => { fetchData().finally(() => { if (isMounted.current) setLoading(false); }); }, [fetchData]);
 
   const deletePayment = (paymentId: string, amount: number) =>
     setDeletePayTarget({ id: paymentId, amount });
@@ -125,10 +128,10 @@ export default function DebtDetailScreen() {
       if (!user) return;
       const { error } = await supabase.from('debt_payments').delete().eq('id', deletePayTarget.id).eq('user_id', user.id);
       if (error) { Alert.alert('Could not delete payment', error.message); return; }
-      setDeletePayTarget(null);
+      if (isMounted.current) setDeletePayTarget(null);
       await fetchData();
     } finally {
-      setDeleting(false);
+      if (isMounted.current) setDeleting(false);
     }
   };
 
@@ -177,10 +180,10 @@ export default function DebtDetailScreen() {
           category: 'Debt', note: debt.name,
         });
       }
-      setAmount(''); setNote('');
+      if (isMounted.current) { setAmount(''); setNote(''); }
       await fetchData();
     } finally {
-      setSubmitting(false);
+      if (isMounted.current) setSubmitting(false);
     }
   };
 
