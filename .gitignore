@@ -36,7 +36,7 @@ yarn-error.*
 .env*.local
 
 # Firebase credentials (contains secret keys — never commit)
-google-services.json
+# google-services.json is a client config (ships in the APK anyway) — committed intentionally
 GoogleService-Info.plist
 *-firebase-adminsdk-*.json
 
@@ -50,7 +50,7 @@ example
 
 # generated native folders
 /ios
-/android
+# /android is intentionally tracked — bare workflow requires the full native project in git
 
 # Supabase CLI local cache (auto-generated, contains DB URLs)
 supabase/.temp/

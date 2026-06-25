@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "237731854214",
+    "project_id": "cornerday-fb4d3",
+    "storage_bucket": "cornerday-fb4d3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:237731854214:android:dd6a4c28ce21f3f06d9e07",
+        "android_client_info": {
+          "package_name": "com.cornerday.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrLMZj40ijdQKR2w22OoDKumclvwhJMvc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
