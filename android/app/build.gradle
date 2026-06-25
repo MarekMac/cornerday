@@ -106,10 +106,16 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('../../cornerday.keystore')
-            storePassword 'Mallard@1314!'
-            keyAlias 'cornerday'
-            keyPassword 'Mallard@1314!'
+            // EAS Build injects these env vars when using managed credentials.
+            // Falls back to local keystore for direct local builds.
+            def keystorePath = System.getenv('KEYSTORE_PATH') ?: '../../cornerday.keystore'
+            def keystorePassword = System.getenv('KEYSTORE_PASSWORD') ?: 'Mallard@1314!'
+            def keyAliasName = System.getenv('KEY_ALIAS') ?: 'cornerday'
+            def keyPasswordVal = System.getenv('KEY_PASSWORD') ?: 'Mallard@1314!'
+            storeFile file(keystorePath)
+            storePassword keystorePassword
+            keyAlias keyAliasName
+            keyPassword keyPasswordVal
         }
     }
     buildTypes {
