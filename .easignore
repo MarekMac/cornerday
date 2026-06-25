@@ -1,0 +1,20 @@
+# Reduce EAS Build archive size by excluding files not needed for the build
+
+# Android build output and caches
+android/build/
+android/app/build/
+android/.gradle/
+android/app/.cxx/
+
+# iOS build output
+ios/build/
+ios/Pods/
+
+# Node development tooling
+.vscode/
+.github/
+docs/
+store-assets/
+
+# Local config
+android/local.properties
