@@ -116,7 +116,6 @@ Deno.serve(async (req: Request) => {
   let body: Record<string, string> = {};
   try { body = JSON.parse(rawBody.length > 0 ? rawBody : '{}'); } catch { /* ignore */ }
   const type: string = body.type ?? '';
-  const milestoneLabel: string = body.milestone_label ?? '';
 
   if (!['urge', 'relapse', 'milestone'].includes(type)) {
     return new Response(JSON.stringify({ error: 'invalid_type' }), {
@@ -165,8 +164,13 @@ Deno.serve(async (req: Request) => {
     subject = `${name} has restarted their streak`;
     html = buildRelapseEmail(name, token);
   } else {
-    subject = `🎉 ${name} just hit ${milestoneLabel}!`;
-    html = buildMilestoneEmail(name, milestoneLabel || 'a new milestone', token);
+    const ALLOWED_LABELS: Record<string, string> = {
+      '1_day': '1 Day', '1_week': '1 Week', '1_month': '1 Month',
+      '60_days': '60 Days', '6_months': '6 Months', '1_year': '1 Year',
+    };
+    const safeLabel = ALLOWED_LABELS[body.milestone_label ?? ''] ?? 'a new milestone';
+    subject = `🎉 ${name} just hit ${safeLabel}!`;
+    html = buildMilestoneEmail(name, safeLabel, token);
   }
 
   const res = await fetch('https://api.resend.com/emails', {

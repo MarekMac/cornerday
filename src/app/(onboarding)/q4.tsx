@@ -43,15 +43,15 @@ export default function Q4Screen() {
     );
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setField('goal', selected.join(','));
-    saveStep('q5');
+    await saveStep('q5');
     router.push('/(onboarding)/q5');
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     setField('goal', '');
-    saveStep('q5');
+    await saveStep('q5');
     router.push('/(onboarding)/q5');
   };
 

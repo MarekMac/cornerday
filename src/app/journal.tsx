@@ -316,7 +316,7 @@ export default function JournalScreen() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
   const isMountedRef = useRef(true);
-  useEffect(() => () => { isMountedRef.current = false; }, []);
+  useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
@@ -413,8 +413,10 @@ export default function JournalScreen() {
       console.warn('[journal] executeClearAll error:', e);
       Alert.alert('Could not clear journal', 'Please try again.');
     } finally {
-      setClearingAll(false);
-      setClearAllVisible(false);
+      if (isMountedRef.current) {
+        setClearingAll(false);
+        setClearAllVisible(false);
+      }
     }
   };
 

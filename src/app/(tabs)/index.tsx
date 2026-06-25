@@ -1309,7 +1309,7 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
+  useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
 
   useEffect(() => {
     registerHomeRefresh(fetchData);
@@ -1686,8 +1686,7 @@ export default function HomeScreen() {
         setData(prev => prev ? {
           ...prev,
           quitDate: newQuitTimestamp,
-          earnedBadges: [],
-          badgeTimestamps: {},
+          ...(shieldEnabled ? {} : { earnedBadges: [], badgeTimestamps: {} }),
         } : prev);
       }
     } finally {

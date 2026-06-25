@@ -22,15 +22,15 @@ export default function Q2Screen() {
     if (isLoaded && data.trigger) setSelected(data.trigger);
   }, [isLoaded, data.trigger]);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setField('trigger', selected);
-    saveStep('q3');
+    await saveStep('q3');
     router.push('/(onboarding)/q3');
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     setField('trigger', '');
-    saveStep('q3');
+    await saveStep('q3');
     router.push('/(onboarding)/q3');
   };
 

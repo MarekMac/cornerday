@@ -75,7 +75,16 @@ const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
 </table>
 </body></html>`;
 
+const HOOK_SECRET = Deno.env.get('HOOK_SECRET');
+
 Deno.serve(async (req: Request) => {
+  if (HOOK_SECRET) {
+    const auth = req.headers.get('Authorization') ?? '';
+    if (!auth.startsWith('Bearer ') || auth.slice(7) !== HOOK_SECRET) {
+      return err('Unauthorized', 401);
+    }
+  }
+
   let data: { user: { email: string }; email_data: { email_action_type: string; token?: string; token_hash?: string; redirect_to: string } };
 
   try {

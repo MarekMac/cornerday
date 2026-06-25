@@ -21,15 +21,15 @@ export default function Q5Screen() {
     if (isLoaded && data.supportType) setSelected(data.supportType);
   }, [isLoaded, data.supportType]);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setField('supportType', selected);
-    saveStep('ready');
+    await saveStep('ready');
     router.push('/(onboarding)/ready');
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     setField('supportType', '');
-    saveStep('ready');
+    await saveStep('ready');
     router.push('/(onboarding)/ready');
   };
 

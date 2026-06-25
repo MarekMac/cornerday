@@ -38,15 +38,15 @@ export default function Q1Screen() {
     );
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setField('motivation', selected.join(','));
-    saveStep('q2');
+    await saveStep('q2');
     router.push('/(onboarding)/q2');
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     setField('motivation', '');
-    saveStep('q2');
+    await saveStep('q2');
     router.push('/(onboarding)/q2');
   };
 

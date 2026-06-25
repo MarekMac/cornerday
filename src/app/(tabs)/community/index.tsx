@@ -341,7 +341,7 @@ export default function CommunityFeed() {
   useFocusEffect(useCallback(() => {
     let cancelled = false;
     setNewPostsCount(0);
-    load(activeTag, sortByRef.current, true);
+    load(activeTagRef.current, sortByRef.current, true);
     const uid = currentUserIdRef.current;
     if (uid) {
       supabase.from('community_follows').select('following_id').eq('follower_id', uid)
@@ -353,7 +353,7 @@ export default function CommunityFeed() {
         }).catch(() => {});
     }
     return () => { cancelled = true; };
-  }, [activeTag, load]));
+  }, [load]));
 
   const changeTag = (tag: FilterTag) => {
     activeTagRef.current = tag;
