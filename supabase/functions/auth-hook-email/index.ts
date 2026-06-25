@@ -112,13 +112,9 @@ Deno.serve(async (req: Request) => {
     return err('Missing token', 400);
   }
 
-  const appDeepLink = email_action_type === 'signup'
-    ? 'cornerday://confirm-email'
-    : 'cornerday://reset-password';
-
-  // Use Supabase's native verify endpoint — it verifies the token and redirects
-  // to the deep link with access_token + refresh_token in the URL fragment.
-  const redirectUrl = `${SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(verifyToken)}&type=${email_action_type}&redirect_to=${encodeURIComponent(appDeepLink)}`;
+  // Route through our edge function so the deep link carries only the one-time
+  // token_hash — not reusable access_token + refresh_token session credentials.
+  const redirectUrl = `${SUPABASE_URL}/functions/v1/auth-reset-redirect?token_hash=${encodeURIComponent(verifyToken)}&type=${encodeURIComponent(email_action_type)}`;
 
   const isSignup = email_action_type === 'signup';
   const res = await fetch('https://api.resend.com/emails', {

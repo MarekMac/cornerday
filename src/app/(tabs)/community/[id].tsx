@@ -46,7 +46,7 @@ interface Comment {
   created_at: string;
   helpful_count: number;
   is_anonymous?: boolean;
-  users: { display_name: string } | null;
+  author_name: string | null;
 }
 
 type MenuTarget = { kind: 'post' } | { kind: 'comment'; id: string };
@@ -97,8 +97,8 @@ export default function PostDetail() {
         { event: 'INSERT', schema: 'public', table: 'community_comments', filter: `post_id=eq.${id}` },
         async (payload) => {
           const { data } = await supabase
-            .from('community_comments')
-            .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
+            .from('community_comments_public')
+            .select('id, user_id, content, created_at, helpful_count, is_anonymous, author_name')
             .eq('id', payload.new.id)
             .maybeSingle();
           if (data && isMountedRef.current) {
@@ -136,8 +136,8 @@ export default function PostDetail() {
           .eq('id', id)
           .maybeSingle(),
         supabase
-          .from('community_comments')
-          .select('id, user_id, content, created_at, helpful_count, is_anonymous, users(display_name)')
+          .from('community_comments_public')
+          .select('id, user_id, content, created_at, helpful_count, is_anonymous, author_name')
           .eq('post_id', id)
           .order('created_at', { ascending: true }),
         supabase
@@ -275,7 +275,7 @@ export default function PostDetail() {
         setCommentText('');
         const newComment: Comment = {
           ...(data as any),
-          users: isCommentAnonymous ? null : { display_name: userData?.display_name ?? user?.email ?? 'Anonymous' },
+          author_name: isCommentAnonymous ? null : (userData?.display_name ?? user?.email ?? 'Anonymous'),
         };
         setComments(prev => {
           if (prev.some(c => c.id === (data as any).id)) return prev;
@@ -559,7 +559,7 @@ export default function PostDetail() {
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const cIsAnon = item.is_anonymous ?? false;
-            const cName = cIsAnon ? 'Anonymous' : (item.users?.display_name || 'Anonymous');
+            const cName = cIsAnon ? 'Anonymous' : (item.author_name ?? 'Anonymous');
             const cColor = cIsAnon ? '#aaa' : avatarColor(item.user_id);
             const isOwner = item.user_id === currentUserId;
             const iHelpedThis = myHelpfulReactions.has(item.id);

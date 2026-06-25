@@ -190,6 +190,19 @@ Deno.serve(async (req: Request) => {
     const message = String(parsedBody.message ?? '').trim().slice(0, 200);
 
     if (message) {
+      // Rate limit: max 20 messages per token per hour
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count: recentCount } = await sb
+        .from('partner_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('link_id', link.id)
+        .gte('created_at', oneHourAgo);
+      if ((recentCount ?? 0) >= 20) {
+        return new Response(JSON.stringify({ error: 'rate_limited' }), {
+          status: 429, headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+
       const { error: insertErr } = await sb.from('partner_messages').insert({ link_id: link.id, message });
       if (insertErr) {
         return new Response(JSON.stringify({ error: 'Failed to save message' }), {

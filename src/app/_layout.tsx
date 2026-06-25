@@ -103,23 +103,34 @@ function InnerLayout() {
   }, []);
 
   useEffect(() => {
+    const parseDeepLinkParams = (url: string): Record<string, string> => {
+      const params: Record<string, string> = {};
+      const parse = (str: string) => str.split('&').forEach(pair => {
+        const idx = pair.indexOf('=');
+        if (idx === -1) return;
+        try { params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1)); } catch { /* ignore */ }
+      });
+      // Parse query string (?k=v) first, then fragment (#k=v) — fragment wins on collision
+      const [base, fragment] = url.split('#');
+      const queryStr = (base.split('?')[1] ?? '');
+      parse(queryStr);
+      if (fragment) parse(fragment);
+      return params;
+    };
+
     // Returns true if the URL was a password-reset deep link and was handled
     const handleResetUrl = async (url: string): Promise<boolean> => {
       if (!url.includes('reset-password')) return false;
-      const paramStr = url.split('#')[1] ?? url.split('?')[1] ?? '';
-      const params: Record<string, string> = {};
-      paramStr.split('&').forEach(pair => {
-        const idx = pair.indexOf('=');
-        if (idx === -1) return;
-        params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1));
-      });
+      const params = parseDeepLinkParams(url);
+      if (params.token_hash) {
+        // New path: edge function relays one-time token_hash; verify client-side
+        const { error } = await supabase.auth.verifyOtp({ token_hash: params.token_hash, type: 'recovery' });
+        setPendingRoute(error ? '/(onboarding)/signup?mode=signin' : '/(onboarding)/reset-password');
+        return true;
+      }
       if (params.access_token && params.refresh_token) {
         const { error } = await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
-        if (error) {
-          setPendingRoute('/(onboarding)/signup?mode=signin');
-          return true;
-        }
-        setPendingRoute('/(onboarding)/reset-password');
+        setPendingRoute(error ? '/(onboarding)/signup?mode=signin' : '/(onboarding)/reset-password');
         return true;
       }
       return false;
@@ -127,28 +138,22 @@ function InnerLayout() {
 
     const handleConfirmEmailUrl = async (url: string): Promise<boolean> => {
       if (!url.includes('confirm-email')) return false;
-      const paramStr = url.split('#')[1] ?? url.split('?')[1] ?? '';
-      const params: Record<string, string> = {};
-      paramStr.split('&').forEach(pair => {
-        const idx = pair.indexOf('=');
-        if (idx === -1) return;
-        params[decodeURIComponent(pair.slice(0, idx))] = decodeURIComponent(pair.slice(idx + 1));
-      });
+      const params = parseDeepLinkParams(url);
+      const handleSuccess = async () => {
+        // Only skip onboarding if this device already has the flag (returning user who re-confirmed)
+        const localOnboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
+        setPendingRoute(localOnboarded === 'true' ? '/(tabs)' : '/(onboarding)/q1');
+      };
+      if (params.token_hash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: params.token_hash, type: 'signup' });
+        if (error) { setPendingRoute('/(onboarding)/signup?mode=signin'); return true; }
+        await handleSuccess();
+        return true;
+      }
       if (params.access_token && params.refresh_token) {
         const { error } = await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
-        if (error) {
-          setPendingRoute('/(onboarding)/signup?mode=signin');
-          return true;
-        }
-        // Email confirmation is a signup action — only skip onboarding if this
-        // device already has the ONBOARDED_KEY flag (i.e. returning user who
-        // re-confirmed). Otherwise always send to q1.
-        const localOnboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
-        if (localOnboarded === 'true') {
-          setPendingRoute('/(tabs)');
-        } else {
-          setPendingRoute('/(onboarding)/q1');
-        }
+        if (error) { setPendingRoute('/(onboarding)/signup?mode=signin'); return true; }
+        await handleSuccess();
         return true;
       }
       return false;
