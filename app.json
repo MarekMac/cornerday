@@ -26,7 +26,6 @@
       },
       "googleServicesFile": "./google-services.json",
       "package": "com.cornerday.app",
-      "versionCode": 1,
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
         "USE_EXACT_ALARM",
@@ -43,9 +42,7 @@
     "updates": {
       "url": "https://u.expo.dev/85956181-34e1-4957-a48b-faefd588895f"
     },
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "plugins": [
       "expo-router",
       "expo-updates",
