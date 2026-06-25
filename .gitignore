@@ -51,3 +51,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Supabase CLI local cache (auto-generated, contains DB URLs)
+supabase/.temp/
