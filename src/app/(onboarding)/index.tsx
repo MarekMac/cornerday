@@ -1,18 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
-import { AppColors } from '@/constants/theme';
-import { useAppTheme } from '@/context/theme';
 import Logo from '@/components/Logo';
+import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
 
 export default function WelcomeScreen() {
-  const { colors: c } = useAppTheme();
-  const s = useMemo(() => makeStyles(c), [c]);
   const router = useRouter();
 
   useEffect(() => {
@@ -20,25 +16,28 @@ export default function WelcomeScreen() {
   }, []);
 
   return (
-    <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={s.gradient}>
-      <SafeAreaView style={s.safe}>
-        <View style={s.hero}>
-          <Logo size={120} variant="dark" />
-          <Text style={s.appName}>CornerDay</Text>
-          <Text style={s.tagline}>The day you turn it around{'\n'}starts today.</Text>
+    <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={styles.gradient}>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.hero}>
+          <View style={styles.logoBox}>
+            <Logo size={72} variant="white" />
+          </View>
+
+          <Text style={styles.appName}>CornerDay</Text>
+          <Text style={styles.tagline}>The day you turn it around{'\n'}starts today.</Text>
         </View>
 
-        <View style={s.actions}>
+        <View style={styles.actions}>
           <Pressable
-            style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
+            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
             onPress={() => router.push('/(onboarding)/signup')}>
-            <Text style={s.primaryBtnText}>Get started</Text>
+            <Text style={styles.primaryBtnText}>Get started</Text>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
+            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
             onPress={() => router.push({ pathname: '/(onboarding)/signup', params: { mode: 'signin' } })}>
-            <Text style={s.secondaryBtnText}>I already have an account</Text>
+            <Text style={styles.secondaryBtnText}>I already have an account</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -46,7 +45,7 @@ export default function WelcomeScreen() {
   );
 }
 
-const makeStyles = (c: AppColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
@@ -58,40 +57,55 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: 20,
+  },
+  logoBox: {
+    width: 100,
+    height: 100,
+    borderRadius: 22,
+    backgroundColor: '#0F6E6E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 18,
   },
   appName: {
-    fontSize: 42,
-    fontWeight: '800',
+    fontSize: 48,
+    fontWeight: '900',
     color: '#ffffff',
-    letterSpacing: 1,
-    marginTop: 8,
+    letterSpacing: -0.5,
   },
   tagline: {
-    fontSize: 17,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.82)',
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: 28,
   },
   actions: {
     paddingBottom: 52,
-    gap: 12,
-    alignItems: 'center',
+    gap: 14,
+    alignItems: 'stretch',
   },
   primaryBtn: {
-    backgroundColor: c.white,
+    backgroundColor: '#ffffff',
     borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 80,
+    paddingVertical: 17,
     alignItems: 'center',
   },
   primaryBtnText: {
     fontSize: 16,
     fontWeight: '700',
-    color: c.primary,
+    color: '#0F6E6E',
   },
   secondaryBtn: {
-    paddingVertical: 14,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.32)',
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
   },
   secondaryBtnText: {

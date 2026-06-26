@@ -2,13 +2,13 @@ import Svg, { Path } from 'react-native-svg';
 
 interface LogoProps {
   size?: number;
-  /** 'light' = teal fills (for white/light bg); 'dark' = white fills (for teal bg) */
-  variant?: 'light' | 'dark';
+  /** 'light' = teal fills (for white/light bg); 'dark' = white+teal fills (for teal bg); 'white' = all white (for use on gradient bg) */
+  variant?: 'light' | 'dark' | 'white';
 }
 
 export default function Logo({ size = 80, variant = 'light' }: LogoProps) {
-  const p = variant === 'dark' ? '#ffffff' : '#0F6E6E';
-  const a = variant === 'dark' ? '#a8d8d0' : '#1A9A9A';
+  const p = variant === 'light' ? '#0F6E6E' : '#ffffff';
+  const a = variant === 'dark' ? '#a8d8d0' : variant === 'light' ? '#1A9A9A' : '#ffffff';
 
   // Icon paths use A3.svg coordinates; viewBox crops to icon bounds (x=296–468, y=0–175)
   return (
