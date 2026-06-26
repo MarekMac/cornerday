@@ -164,9 +164,16 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
           console.warn('[RevenueCat] auth change error:', e);
         }
       } else if (event === 'SIGNED_OUT') {
-        try { await Purchases.logOut(); } catch (e) { console.warn('[RevenueCat] logOut error:', e); }
-        isAdminRef.current = false;
-        if (!cancelled) setIsPremium(false);
+        try {
+          const info = await Purchases.getCustomerInfo();
+          if (!info.originalAppUserId.startsWith('$RCAnonymousID:')) {
+            // Identified user — real sign-out: reset everything
+            await Purchases.logOut();
+            isAdminRef.current = false;
+            if (!cancelled) setIsPremium(false);
+          }
+          // Anonymous user means this is a token-refresh SIGNED_OUT; SIGNED_IN follows — don't reset
+        } catch (e) { console.warn('[RevenueCat] logOut error:', e); }
       }
     });
 
