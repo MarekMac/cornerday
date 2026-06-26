@@ -1238,6 +1238,7 @@ export default function AccountScreen() {
       setSavingsGoalFor('');
       setSavingsGoalIcon('🎯');
       setProfile(prev => prev ? { ...prev, weeklyBet: null } : prev);
+      router.replace('/(tabs)' as any);
     } finally {
       setResetting(false);
     }

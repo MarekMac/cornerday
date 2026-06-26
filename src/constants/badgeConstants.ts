@@ -34,4 +34,4 @@ export const BADGE_EARNED_MSGS = [
   "Strength isn't the absence of struggle — it's showing up anyway. You did.",
 ];
 
-export const CONFETTI_EMOJIS = ['⭐', '✨', '🌟', '💫', '🎉', '🎊', '💛', '💚'];
+export const CONFETTI_EMOJIS = ['✨', '⭐', '💫', '🌟', '💎', '✦', '✨', '⭐'];
