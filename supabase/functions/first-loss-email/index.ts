@@ -41,7 +41,7 @@ function buildHtml(firstName: string, amountFmt: string): string {
 
     <tr><td style="background:#e6f7f7;border-radius:14px;padding:18px;">
     <table width="100%" cellpadding="0" cellspacing="0">
-      <tr><td style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1.2px;padding-bottom:14px;">How CornerDay helps your financial recovery</td></tr>
+      <tr><td colspan="2" style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1.2px;padding-bottom:14px;">How CornerDay helps your financial recovery</td></tr>
       <tr>
         <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4CA;</td>
         <td style="vertical-align:top;padding-bottom:14px;padding-left:4px;">
