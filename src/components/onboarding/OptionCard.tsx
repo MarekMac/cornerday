@@ -1,17 +1,18 @@
-import { useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { AppColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme';
 
 interface Props {
-  emoji: string;
+  emoji: string | ReactNode;
   label: string;
   selected: boolean;
   onPress: () => void;
+  compact?: boolean;
 }
 
-export function OptionCard({ emoji, label, selected, onPress }: Props) {
+export function OptionCard({ emoji, label, selected, onPress, compact }: Props) {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
 
@@ -20,10 +21,11 @@ export function OptionCard({ emoji, label, selected, onPress }: Props) {
       onPress={onPress}
       style={({ pressed }) => [
         s.card,
+        compact && s.cardCompact,
         selected && s.selected,
         pressed && s.pressed,
       ]}>
-      <Text style={s.emoji}>{emoji}</Text>
+      {typeof emoji === 'string' ? <Text style={s.emoji}>{emoji}</Text> : emoji}
       <Text style={[s.label, selected && s.labelSelected]}>{label}</Text>
     </Pressable>
   );
@@ -41,6 +43,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderColor: c.bgTealMid,
     backgroundColor: c.bgElement,
     marginBottom: 10,
+  },
+  cardCompact: {
+    paddingVertical: 14,
+    marginBottom: 0,
+    backgroundColor: 'transparent',
   },
   selected: {
     borderColor: c.primary,

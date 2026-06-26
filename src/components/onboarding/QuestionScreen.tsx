@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,7 +12,7 @@ import { ProgressBar } from './ProgressBar';
 export interface Option {
   value: string;
   label: string;
-  emoji: string;
+  emoji: string | ReactNode;
 }
 
 interface Props {
@@ -75,11 +75,6 @@ export function QuestionScreen({
       </ScrollView>
 
       <View style={s.footer}>
-        {skippable && (
-          <Pressable style={s.skipBtn} onPress={onSkip}>
-            <Text style={s.skipText}>Skip for now</Text>
-          </Pressable>
-        )}
         <Pressable
           style={({ pressed }) => [
             s.continueBtn,
@@ -90,6 +85,11 @@ export function QuestionScreen({
           disabled={!selected}>
           <Text style={s.continueBtnText}>Continue</Text>
         </Pressable>
+        {skippable && (
+          <Pressable style={s.skipBtn} onPress={onSkip}>
+            <Text style={s.skipText}>Skip for now</Text>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -139,8 +139,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     paddingBottom: 32,
     paddingTop: 12,
     gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: c.borderSubtle,
   },
   continueBtn: {
     backgroundColor: c.primary,

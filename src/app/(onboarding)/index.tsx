@@ -57,8 +57,8 @@ export default function WelcomeScreen() {
     <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={styles.gradient}>
       <SafeAreaView style={styles.safe}>
         <View style={styles.hero}>
-          <View style={styles.logoBox}>
-            <Logo size={84} variant="white" />
+          <View style={styles.logoShadow}>
+            <Logo size={96} variant="white" />
           </View>
 
           <Text
@@ -102,18 +102,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 20,
   },
-  logoBox: {
-    width: 114,
-    height: 114,
-    borderRadius: 26,
-    backgroundColor: '#0F6E6E',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoShadow: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 18,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
   },
   appName: {
     fontSize: 54,
