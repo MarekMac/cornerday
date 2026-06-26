@@ -6,15 +6,50 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Logo from '@/components/Logo';
-import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY } from '@/constants/storage-keys';
+import { supabase } from '@/lib/supabase';
+import { authFlags } from '@/lib/auth-flags';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const [btnWidth, setBtnWidth] = useState<number | undefined>(undefined);
+  // Stays false until we confirm there is no active session.
+  // If there IS a session (e.g. brief flash during Google OAuth), we redirect
+  // immediately and the user never sees the welcome content.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     AsyncStorage.setItem(SEEN_WELCOME_KEY, 'true');
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        setReady(true);
+        return;
+      }
+      // If Google OAuth is still in flight, signup.tsx owns the navigation — don't double-navigate.
+      if (authFlags.googleOAuthInProgress) {
+        return; // stay as blank gradient; signup.tsx will replace this screen
+      }
+      // Session exists from some other cause — redirect to the correct destination.
+      const onboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
+      if (onboarded === 'true') {
+        router.replace('/(tabs)' as any);
+        return;
+      }
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('id, quit_date')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      const dest = userRow?.quit_date ? '/(tabs)' : '/(onboarding)/q1';
+      router.replace(dest as any);
+    });
   }, []);
+
+  // Render a plain gradient while checking — visually matches the loading screen
+  // so any flash is invisible to the user.
+  if (!ready) {
+    return <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={styles.gradient} />;
+  }
 
   return (
     <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={styles.gradient}>

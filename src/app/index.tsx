@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import Logo from '@/components/Logo';
 
@@ -10,7 +10,6 @@ export default function LoadingScreen() {
         <View style={styles.logoBox}>
           <Logo size={72} variant="white" />
         </View>
-        <Text style={styles.name}>CornerDay</Text>
       </View>
     </LinearGradient>
   );
@@ -18,7 +17,7 @@ export default function LoadingScreen() {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   logoBox: {
     width: 100,
     height: 100,
@@ -31,11 +30,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 24,
     elevation: 18,
-  },
-  name: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -0.5,
   },
 });

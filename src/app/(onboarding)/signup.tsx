@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -17,6 +18,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import Logo from '@/components/Logo';
+import { authFlags } from '@/lib/auth-flags';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -91,6 +94,7 @@ export default function SignupScreen() {
   };
 
   const handleGoogleSignIn = async () => {
+    authFlags.googleOAuthInProgress = true;
     setGoogleLoading(true);
     setError('');
     try {
@@ -139,7 +143,7 @@ export default function SignupScreen() {
         }
         const { data: profile, error: profileErr } = await supabase
           .from('users')
-          .select('id')
+          .select('id, quit_date')
           .eq('id', authUser.id)
           .maybeSingle();
 
@@ -147,20 +151,24 @@ export default function SignupScreen() {
           setError('Sign-in succeeded but we could not load your profile. Please try again.');
           return;
         }
-        if (profile !== null) {
+        if (profile?.quit_date) {
           await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           router.replace('/(tabs)');
+          return; // keep overlay up until component unmounts
         } else {
-          router.push('/(onboarding)/q1');
+          router.replace('/(onboarding)/q1');
+          return; // keep overlay up until component unmounts
         }
       } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
         setError('Google sign-in failed. Please try again.');
       }
     } catch (e) {
       setError('Google sign-in failed. Please try again.');
-    } finally {
-      setGoogleLoading(false);
     }
+    // Only reached on error or cancel — clear flag so normal sign-out routing resumes.
+    // On success we return early above; q1 clears the flag on mount.
+    authFlags.googleOAuthInProgress = false;
+    setGoogleLoading(false);
   };
 
   const handleSubmit = async () => {
@@ -185,9 +193,9 @@ export default function SignupScreen() {
         const { data: { user: authUser }, error: getUserErr } = await supabase.auth.getUser();
         if (getUserErr || !authUser) { setError('Sign-in succeeded but could not verify your account. Please try again.'); return; }
         const { data: profile, error: profileErr } = await supabase
-          .from('users').select('id').eq('id', authUser.id).maybeSingle();
+          .from('users').select('id, quit_date').eq('id', authUser.id).maybeSingle();
         if (profileErr) { setError('Sign-in succeeded but we could not load your profile. Please try again.'); return; }
-        if (profile !== null) {
+        if (profile?.quit_date) {
           await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           router.replace('/(tabs)');
         } else {
@@ -210,9 +218,9 @@ export default function SignupScreen() {
             const { data: { user: authUser }, error: getUserErr2 } = await supabase.auth.getUser();
             if (getUserErr2 || !authUser) { setError('Sign-in succeeded but could not verify your account. Please try again.'); return; }
             const { data: profile, error: profileErr } = await supabase
-              .from('users').select('id').eq('id', authUser.id).maybeSingle();
+              .from('users').select('id, quit_date').eq('id', authUser.id).maybeSingle();
             if (profileErr) { setError('Sign-in succeeded but we could not load your profile. Please try again.'); return; }
-            if (profile !== null) {
+            if (profile?.quit_date) {
               await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
               router.replace('/(tabs)');
             } else {
@@ -398,9 +406,37 @@ export default function SignupScreen() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {googleLoading && (
+        <View style={StyleSheet.absoluteFill}>
+          <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={StyleSheet.absoluteFill} />
+          <View style={loadingStyles.center}>
+            <View style={loadingStyles.logoBox}>
+              <Logo size={60} variant="white" />
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
+
+const loadingStyles = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  logoBox: {
+    width: 88,
+    height: 88,
+    borderRadius: 20,
+    backgroundColor: '#0F6E6E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 18,
+  },
+});
 
 const makeStyles = (c: AppColors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: c.bgCard },

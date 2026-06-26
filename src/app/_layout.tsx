@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
 import { initHaptics } from '@/lib/haptics';
 import { getImagePickerActive } from '@/lib/image-picker-active';
+import { authFlags } from '@/lib/auth-flags';
 
 // Suppress the dev-only "GO_BACK not handled" overlay — this warning is
 // emitted by React Navigation when Android restores navigation state on
@@ -48,6 +49,12 @@ function InnerLayout() {
   const [seenWelcome, setSeenWelcome] = useState<boolean>(false);
   const [locked, setLocked] = useState(false);
   const backgroundedAtRef = useRef<number | null>(null);
+  // Prevents SIGNED_OUT from routing to welcome/signin while a deep link (email
+  // confirmation or password reset) is mid-flight and will set its own route.
+  const handlingDeepLinkRef = useRef(false);
+  // OAuth and token refreshes fire SIGNED_OUT immediately before SIGNED_IN.
+  // Debounce the SIGNED_OUT navigation so a following SIGNED_IN can cancel it.
+  const signedOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const authenticate = useCallback(async () => {
     try {
@@ -121,41 +128,48 @@ function InnerLayout() {
     // Returns true if the URL was a password-reset deep link and was handled
     const handleResetUrl = async (url: string): Promise<boolean> => {
       if (!url.includes('reset-password')) return false;
+      handlingDeepLinkRef.current = true;
       const params = parseDeepLinkParams(url);
       if (params.token_hash) {
         // New path: edge function relays one-time token_hash; verify client-side
         const { error } = await supabase.auth.verifyOtp({ token_hash: params.token_hash, type: 'recovery' });
         setPendingRoute(error ? '/(onboarding)/signup?mode=signin' : '/(onboarding)/reset-password');
+        handlingDeepLinkRef.current = false;
         return true;
       }
       if (params.access_token && params.refresh_token) {
         const { error } = await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
         setPendingRoute(error ? '/(onboarding)/signup?mode=signin' : '/(onboarding)/reset-password');
+        handlingDeepLinkRef.current = false;
         return true;
       }
+      handlingDeepLinkRef.current = false;
       return false;
     };
 
     const handleConfirmEmailUrl = async (url: string): Promise<boolean> => {
       if (!url.includes('confirm-email')) return false;
+      handlingDeepLinkRef.current = true;
       const params = parseDeepLinkParams(url);
       const handleSuccess = async () => {
-        // Only skip onboarding if this device already has the flag (returning user who re-confirmed)
         const localOnboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
         setPendingRoute(localOnboarded === 'true' ? '/(tabs)' : '/(onboarding)/q1');
       };
       if (params.token_hash) {
         const { error } = await supabase.auth.verifyOtp({ token_hash: params.token_hash, type: 'signup' });
-        if (error) { setPendingRoute('/(onboarding)/signup?mode=signin'); return true; }
+        if (error) { setPendingRoute('/(onboarding)/signup?mode=signin'); handlingDeepLinkRef.current = false; return true; }
         await handleSuccess();
+        handlingDeepLinkRef.current = false;
         return true;
       }
       if (params.access_token && params.refresh_token) {
         const { error } = await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
-        if (error) { setPendingRoute('/(onboarding)/signup?mode=signin'); return true; }
+        if (error) { setPendingRoute('/(onboarding)/signup?mode=signin'); handlingDeepLinkRef.current = false; return true; }
         await handleSuccess();
+        handlingDeepLinkRef.current = false;
         return true;
       }
+      handlingDeepLinkRef.current = false;
       return false;
     };
 
@@ -200,16 +214,21 @@ function InnerLayout() {
         }
         setPendingRoute('/(tabs)');
       } else {
-        // AsyncStorage flag missing (e.g. dev reload cleared storage) — check Supabase
+        // AsyncStorage flag missing — check Supabase. A stub row is auto-created by the
+        // handle_new_user trigger on auth.users INSERT, so we check quit_date (set only
+        // at the end of the ready screen) to know if onboarding is actually complete.
         const { data: userData } = await supabase
           .from('users')
-          .select('id')
+          .select('id, quit_date')
           .eq('id', sess.user.id)
           .maybeSingle();
-        if (userData !== null) {
-          // Row exists — user completed signup flow (questions may have been skipped)
+        if (userData?.quit_date) {
+          // Onboarding complete
           await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           setPendingRoute('/(tabs)');
+        } else if (userData) {
+          // Stub row exists but onboarding not done (e.g. new OAuth user)
+          setPendingRoute('/(onboarding)/q1');
         } else {
           // Ghost session: auth JWT still cached but user row was deleted
           await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
@@ -238,30 +257,54 @@ function InnerLayout() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, sess) => {
       setSession(sess);
-      if (event === 'SIGNED_OUT') {
-        await AsyncStorage.removeItem(ONBOARDED_KEY);
-        const seen = (await AsyncStorage.getItem(SEEN_WELCOME_KEY)) === 'true';
-        setSeenWelcome(seen);
-        setPendingRoute(seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)');
-        setAuthChecked(true);
-      } else if (event === 'SIGNED_IN' && authCheckedRef.current && sess) {
-        // Handles deferred PKCE exchanges or magic links that resolve after init() has run
-        const onboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
-        if (onboarded === 'true') {
-          setPendingRoute('/(tabs)');
-        } else {
-          const { data: userRow } = await supabase.from('users').select('id').eq('id', sess.user.id).maybeSingle();
-          if (userRow) {
-            await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+      if (event === 'SIGNED_OUT' && !handlingDeepLinkRef.current && !authFlags.googleOAuthInProgress) {
+        // Timer is set SYNCHRONOUSLY (no await before this line) so SIGNED_IN can always
+        // cancel it. All async work (AsyncStorage reads, session check) is deferred inside
+        // the callback so it only runs if the timer actually fires.
+        if (signedOutTimerRef.current) clearTimeout(signedOutTimerRef.current);
+        signedOutTimerRef.current = setTimeout(async () => {
+          signedOutTimerRef.current = null;
+          // If a session now exists, SIGNED_IN already ran — this was an OAuth pair, bail out.
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) return;
+          // Real sign-out: clean up and navigate to the right screen.
+          await AsyncStorage.removeItem(ONBOARDED_KEY);
+          const seen = (await AsyncStorage.getItem(SEEN_WELCOME_KEY)) === 'true';
+          setSeenWelcome(seen);
+          const signedOutRoute = seen ? '/(onboarding)/signup?mode=signin' : '/(onboarding)';
+          setPendingRoute(signedOutRoute);
+          setAuthChecked(true);
+        }, 300);
+      } else if (event === 'SIGNED_IN') {
+        // Cancel any pending SIGNED_OUT navigation — OAuth always pairs SIGNED_OUT with SIGNED_IN
+        if (signedOutTimerRef.current) {
+          clearTimeout(signedOutTimerRef.current);
+          signedOutTimerRef.current = null;
+        }
+        if (authCheckedRef.current && sess) {
+          // Handles deferred PKCE exchanges or magic links that resolve after init() has run.
+          // For normal OAuth/signup flows, signup.tsx handles routing — only navigate here
+          // for confirmed returning users to avoid double-navigation races.
+          const onboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
+          if (onboarded === 'true') {
             setPendingRoute('/(tabs)');
           } else {
-            setPendingRoute('/(onboarding)/q1');
+            const { data: userRow } = await supabase.from('users').select('id, quit_date').eq('id', sess.user.id).maybeSingle();
+            if (userRow?.quit_date) {
+              await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+              setPendingRoute('/(tabs)');
+            }
+            // New users (no quit_date): signup.tsx handles routing to q1 — don't navigate here
           }
         }
       }
     });
 
-    return () => { subscription.unsubscribe(); urlSub.remove(); };
+    return () => {
+      subscription.unsubscribe();
+      urlSub.remove();
+      if (signedOutTimerRef.current) clearTimeout(signedOutTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {

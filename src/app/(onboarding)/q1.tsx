@@ -9,6 +9,7 @@ import { ProgressBar } from '@/components/onboarding/ProgressBar';
 import { AppColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme';
 import { useOnboarding } from '@/context/onboarding';
+import { authFlags } from '@/lib/auth-flags';
 
 const OPTIONS = [
   { value: 'family',        label: 'My family',            emoji: '👨‍👩‍👧' },
@@ -25,6 +26,10 @@ export default function Q1Screen() {
   const router = useRouter();
   const { data, isLoaded, setField, saveStep } = useOnboarding();
   const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    authFlags.googleOAuthInProgress = false;
+  }, []);
 
   useEffect(() => {
     if (isLoaded && data.motivation) {
