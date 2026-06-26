@@ -3025,7 +3025,18 @@ export default function HomeScreen() {
           onShare={() => {
             const b = celebrationBadge;
             setCelebrationBadge(null);
-            openShareCard({ emoji: b.emoji, label: b.label });
+            const badgeDef = BADGE_DEFS.find(d => d.type === b.type);
+            const isTimeBadge = badgeDef !== undefined && badgeDef.days > 0;
+            openShareCard(
+              { emoji: b.emoji, label: b.label },
+              !isTimeBadge,              // hideTime: shows achievement card for non-streak badges
+              [],
+              false,
+              0,
+              '',
+              isTimeBadge ? b.label : null,            // milestoneLabel: "1 Week", "1 Month" etc.
+              isTimeBadge ? (b.earnedAt ?? null) : null, // earnedOn
+            );
           }}
           onClose={async () => {
             showInterstitialIfReady(isPremium, 0.33);
