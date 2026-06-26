@@ -902,7 +902,14 @@ export default function HomeScreen() {
   const [calDayModal, setCalDayModal] = useState<{ iso: string; status: 'clean' | 'relapse' | 'inactive'; mood: number | null } | null>(null);
   const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string; earnedAt?: string } | null>(null);
   const shareCardRef = useRef<View>(null);
-  const autoShareRef = useRef(false);
+  const celebrationCardRef = useRef<View>(null);
+  const [celebrationTagline, setCelebrationTagline] = useState(() => SHARE_TAGLINES[0]);
+
+  useEffect(() => {
+    if (celebrationBadge) {
+      setCelebrationTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
+    }
+  }, [celebrationBadge]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
   useEffect(() => {
@@ -1510,7 +1517,7 @@ export default function HomeScreen() {
     );
   };
 
-  const captureAndShare = async (closeAfterShare = false) => {
+  const captureAndShare = async () => {
     if (!shareCardRef.current || capturingShare) return;
     setCapturingShare(true);
     try {
@@ -1520,17 +1527,19 @@ export default function HomeScreen() {
       await Share.share({ message: `${formatStreakFull(streakMs)} free from gambling! 💪\n\nThe day you turn it around starts today. #CornerDay` });
     } finally {
       setCapturingShare(false);
-      if (closeAfterShare) setShowShareCard(false);
     }
   };
 
-  // Auto-capture when share card is opened from the celebration modal (bypasses the second tap)
-  useEffect(() => {
-    if (!showShareCard || !autoShareRef.current) return;
-    autoShareRef.current = false;
-    const t = setTimeout(() => captureAndShare(true), 200);
-    return () => clearTimeout(t);
-  }, [showShareCard]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleCelebrationShare = async () => {
+    if (!celebrationCardRef.current) return;
+    try {
+      const uri = await captureRef(celebrationCardRef, { format: 'png', quality: 1, result: 'tmpfile' });
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your milestone' });
+    } catch {
+      const label = celebrationBadge?.label ?? 'Milestone';
+      await Share.share({ message: `${label} reached! 🎉\n\nThe day you turn it around starts today. #CornerDay` });
+    }
+  };
 
   const postToCommunity = () => {
     if (!selectedBadge) return;
@@ -3026,29 +3035,16 @@ export default function HomeScreen() {
       </Modal>
 
       {/* ── Milestone celebration ── */}
-      {celebrationBadge && (
+      {celebrationBadge && (() => {
+        const badgeDef = BADGE_DEFS.find(d => d.type === celebrationBadge.type);
+        const isTimeBadge = badgeDef !== undefined && badgeDef.days > 0;
+        return (
         <MilestoneCelebrationModal
           badge={celebrationBadge}
-          celebration={celebrationBadge.celebration}
-          message={celebrationBadge.msg}
-          earnedAt={celebrationBadge.earnedAt}
-          onShare={() => {
-            const b = celebrationBadge;
-            setCelebrationBadge(null);
-            const badgeDef = BADGE_DEFS.find(d => d.type === b.type);
-            const isTimeBadge = badgeDef !== undefined && badgeDef.days > 0;
-            autoShareRef.current = true;
-            openShareCard(
-              { emoji: b.emoji, label: b.label },
-              !isTimeBadge,              // hideTime: shows achievement card for non-streak badges
-              [],
-              false,
-              0,
-              '',
-              isTimeBadge ? b.label : null,            // milestoneLabel: "1 Week", "1 Month" etc.
-              isTimeBadge ? (b.earnedAt ?? null) : null, // earnedOn
-            );
-          }}
+          tagline={celebrationTagline}
+          isTimeBadge={isTimeBadge}
+          cardRef={celebrationCardRef}
+          onShare={handleCelebrationShare}
           onClose={async () => {
             showInterstitialIfReady(isPremium, 0.33);
             const badgeType = celebrationBadge?.type;
@@ -3059,7 +3055,8 @@ export default function HomeScreen() {
             if (next) setTimeout(() => setCelebrationBadge(next), 400);
           }}
         />
-      )}
+        );
+      })()}
 
     </KeyboardAvoidingView>
   );

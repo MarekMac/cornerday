@@ -1,10 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle, useSharedValue,
   withDelay, withRepeat, withSpring, withTiming,
 } from 'react-native-reanimated';
+import Logo from '@/components/Logo';
 import { useAppTheme } from '@/context/theme';
 import { CONFETTI_EMOJIS } from '@/constants/badgeConstants';
 
@@ -29,32 +30,19 @@ function ConfettiParticle({ index }: { index: number }) {
   });
 
   return (
-    <Animated.Text style={[{ position: 'absolute', fontSize: 14, left: startX, top: 0, opacity: 0.55 }, style]}>
+    <Animated.Text style={[{ position: 'absolute', fontSize: 14, left: startX, top: 0, opacity: 0.7 }, style]}>
       {CONFETTI_EMOJIS[index % CONFETTI_EMOJIS.length]}
     </Animated.Text>
   );
 }
 
-export function formatEarnedAgo(isoStr: string): string {
-  const earned = new Date(isoStr).getTime();
-  const diffMs = Date.now() - earned;
-  const mins = Math.floor(diffMs / 60000);
-  const hours = Math.floor(diffMs / 3600000);
-  const days = Math.floor(diffMs / 86400000);
-  const timeStr = new Date(isoStr).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  if (mins < 2) return `Just now · ${timeStr}`;
-  if (mins < 60) return `${mins} min ago · ${timeStr}`;
-  if (hours < 24) return `${hours}h ago · ${timeStr}`;
-  return `${days}d ago · ${timeStr}`;
-}
-
 export function MilestoneCelebrationModal({
-  badge, celebration, message, earnedAt, onShare, onClose,
+  badge, tagline, isTimeBadge, cardRef, onShare, onClose,
 }: {
   badge: { emoji: string; label: string };
-  celebration: { icon: string; text: string };
-  message: string;
-  earnedAt?: string;
+  tagline: string;
+  isTimeBadge: boolean;
+  cardRef?: React.RefObject<any>;
   onShare: () => void;
   onClose: () => void;
 }) {
@@ -65,69 +53,78 @@ export function MilestoneCelebrationModal({
   useEffect(() => {
     scale.value = withDelay(250, withSpring(1, { damping: 10, stiffness: 180 }));
     rotate.value = withDelay(250, withSpring(0, { damping: 14, stiffness: 160 }));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const badgeStyle = useAnimatedStyle(() => ({
+  const centerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }],
   }));
 
+  const parts = badge.label.split(' ');
+  const num = parts[0];
+  const unit = parts.slice(1).join(' ').toUpperCase();
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={styles.overlay}>
+      <View style={styles.overlay}>
+        {/* Confetti lives outside the card so the captured share image is clean */}
         <View style={styles.confettiLayer} pointerEvents="none">
-          {Array.from({ length: 12 }).map((_, i) => <ConfettiParticle key={i} index={i} />)}
+          {Array.from({ length: 14 }).map((_, i) => <ConfettiParticle key={i} index={i} />)}
         </View>
 
-        <View style={styles.card}>
+        <View ref={cardRef} collapsable={false} style={styles.card}>
           <LinearGradient
-            colors={['#f0fafa', '#e0f5f5', '#cceeee']}
+            colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cardInner}
           >
-            {/* Badge circle — matches home screen badgeCircle/badgeEarned */}
-            <Animated.View style={[styles.badgeCircle, { backgroundColor: c.bgTeal }, badgeStyle]}>
-              <Text style={styles.badgeEmoji}>{badge.emoji}</Text>
+            <View style={styles.cardTop}>
+              <Text style={styles.brand}>CornerDay</Text>
+              <Logo size={24} variant="light" />
+            </View>
+
+            <Animated.View style={[styles.center, centerStyle]}>
+              {isTimeBadge ? (
+                <>
+                  <Text style={styles.num}>{num}</Text>
+                  <Text style={styles.unit}>{unit}</Text>
+                  <Text style={styles.sub}>milestone reached</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.achievementEmoji}>{badge.emoji}</Text>
+                  <Text style={styles.achievementLabel}>{badge.label.toUpperCase()}</Text>
+                  <Text style={styles.sub}>milestone earned</Text>
+                </>
+              )}
             </Animated.View>
 
-            <Text style={[styles.celebrationText, { color: c.textMuted }]}>
-              {celebration.icon} {celebration.text}
-            </Text>
+            <View style={styles.divider} />
 
-            <Text style={[styles.badgeLabel, { color: c.primary }]}>
-              {badge.label}
-            </Text>
-
-            <View style={[styles.divider, { backgroundColor: `rgba(15,110,110,0.15)` }]} />
-
-            <Text style={[styles.message, { color: `rgba(10,104,104,0.75)` }]}>
-              {message}
-            </Text>
-
-            {earnedAt && (
-              <Text style={[styles.earnedAt, { color: `rgba(10,104,104,0.5)` }]}>
-                🕒 {formatEarnedAgo(earnedAt)}
-              </Text>
-            )}
-
-            <Pressable
-              onPress={onShare}
-              style={({ pressed }) => [styles.shareBtn, { backgroundColor: c.primary, opacity: pressed ? 0.85 : 1 }]}
-            >
-              <Text style={styles.shareBtnText}>Share milestone</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={onClose}
-              style={({ pressed }) => [styles.dismissBtn, { opacity: pressed ? 0.6 : 1 }]}
-              accessibilityLabel="Dismiss"
-              accessibilityRole="button"
-            >
-              <Text style={[styles.dismissText, { color: `rgba(10,104,104,0.55)` }]}>Maybe later</Text>
-            </Pressable>
+            <View style={styles.cardBottom}>
+              <Text style={styles.tagline}>"{tagline}"</Text>
+              <Text style={styles.hashtag}>#CornerDay</Text>
+            </View>
           </LinearGradient>
         </View>
-      </LinearGradient>
+
+        <View style={styles.actions}>
+          <Pressable
+            onPress={onShare}
+            style={({ pressed }) => [styles.shareBtn, { backgroundColor: c.primary, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Text style={styles.shareBtnText}>Share milestone</Text>
+          </Pressable>
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.dismissBtn, { opacity: pressed ? 0.6 : 1 }]}
+            accessibilityLabel="Dismiss"
+            accessibilityRole="button"
+          >
+            <Text style={styles.dismissText}>Maybe later</Text>
+          </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -135,6 +132,7 @@ export function MilestoneCelebrationModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.82)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -148,66 +146,94 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   card: {
-    width: '100%',
-    maxWidth: 360,
+    width: 320,
     borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.45,
     shadowRadius: 24,
-    elevation: 12,
+    elevation: 16,
   },
   cardInner: {
     padding: 28,
+  },
+  cardTop: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 0,
+    justifyContent: 'space-between',
+    marginBottom: 28,
   },
-  badgeCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+  brand: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1,
+  },
+  center: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    gap: 4,
   },
-  badgeEmoji: {
-    fontSize: 40,
-  },
-  celebrationText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  badgeLabel: {
-    fontSize: 24,
+  num: {
+    fontSize: 80,
     fontWeight: '900',
+    color: '#fff',
+    lineHeight: 84,
+  },
+  unit: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 3,
+  },
+  sub: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
+  },
+  achievementEmoji: {
+    fontSize: 72,
+    lineHeight: 80,
+  },
+  achievementLabel: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 1,
     textAlign: 'center',
-    marginBottom: 16,
+    marginTop: 8,
   },
   divider: {
     height: 1,
-    width: '100%',
-    marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginVertical: 24,
   },
-  message: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 10,
+  cardBottom: {
+    alignItems: 'center',
+    gap: 6,
   },
-  earnedAt: {
+  tagline: {
     fontSize: 12,
+    color: 'rgba(255,255,255,0.55)',
+    fontStyle: 'italic',
     textAlign: 'center',
-    marginBottom: 20,
+  },
+  hashtag: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '600',
+  },
+  actions: {
+    width: 320,
+    marginTop: 20,
+    gap: 10,
   },
   shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 14,
     paddingVertical: 15,
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 10,
   },
   shareBtnText: {
     fontSize: 16,
@@ -215,10 +241,12 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   dismissBtn: {
+    alignItems: 'center',
     padding: 6,
   },
   dismissText: {
     fontSize: 14,
     fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
   },
 });
