@@ -29,19 +29,15 @@ export default function WelcomeScreen() {
       if (authFlags.googleOAuthInProgress) {
         return; // stay as blank gradient; signup.tsx will replace this screen
       }
-      // Session exists from some other cause — redirect to the correct destination.
+      // Fully onboarded — send straight to tabs.
       const onboarded = await AsyncStorage.getItem(ONBOARDED_KEY);
       if (onboarded === 'true') {
         router.replace('/(tabs)' as any);
         return;
       }
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('id, quit_date')
-        .eq('id', session.user.id)
-        .maybeSingle();
-      const dest = userRow?.quit_date ? '/(tabs)' : '/(onboarding)/q1';
-      router.replace(dest as any);
+      // Mid-onboarding (e.g. user pressed back from q1): show the welcome screen
+      // so they can continue. Do NOT redirect to q1 — that would create a back-loop.
+      setReady(true);
     });
   }, []);
 
