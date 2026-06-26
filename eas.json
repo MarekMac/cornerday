@@ -14,10 +14,16 @@
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "credentialsSource": "local"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "C:/Users/mmaci/Downloads/project-8769e173-2107-472b-b13-ca7c06c18eef.json",
+        "track": "internal"
+      }
+    }
   }
 }

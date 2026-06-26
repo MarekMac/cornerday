@@ -88,7 +88,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.CornerDay'
+    namespace 'com.cornerday.app'
     defaultConfig {
         applicationId 'com.cornerday.app'
         minSdkVersion rootProject.ext.minSdkVersion
