@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OptionCard } from '@/components/onboarding/OptionCard';
@@ -30,6 +30,14 @@ export default function Q1Screen() {
   useEffect(() => {
     authFlags.googleOAuthInProgress = false;
   }, []);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.replace('/(onboarding)');
+      return true;
+    });
+    return () => sub.remove();
+  }, [router]);
 
   useEffect(() => {
     if (isLoaded && data.motivation) {
