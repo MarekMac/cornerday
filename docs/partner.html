@@ -707,7 +707,18 @@
     }
 
     (async () => {
-      if (!token) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">Invalid link.</div>'; return; }
+      if (!token) {
+        card.innerHTML =
+          '<div class="streak-box" style="margin-bottom:24px">' +
+            '<div style="font-size:40px;margin-bottom:12px">💙</div>' +
+            '<div class="streak-unit">Supporter Portal</div>' +
+            '<div class="streak-sub">Personal access only</div>' +
+          '</div>' +
+          '<h2>This page is shared from the app</h2>' +
+          '<p>The Supporter Portal is a private page generated for someone supporting a person on their recovery journey. It can only be accessed via a personal link shared directly from the CornerDay app.</p>' +
+          '<p style="margin-bottom:0">If someone has shared their progress with you, use the link they sent — it looks like <strong>cornerday.app/partner?t=…</strong></p>';
+        return;
+      }
       try {
         const r = await fetch(API + '?t=' + encodeURIComponent(token), { headers: AUTH });
         if (r.status === 404) { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">This link is invalid or has been revoked.</div>'; return; }
