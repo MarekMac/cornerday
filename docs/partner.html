@@ -115,6 +115,14 @@
       margin-bottom: 20px;
     }
 
+    .streak-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .streak-num {
       font-size: 68px;
       font-weight: 900;
@@ -127,13 +135,12 @@
       font-size: 20px;
       font-weight: 700;
       color: rgba(255,255,255,0.88);
-      margin-top: 4px;
     }
 
     .streak-detail {
-      font-size: 13px;
-      color: rgba(255,255,255,0.5);
-      margin-top: 4px;
+      font-size: 16px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
     }
 
     .streak-sub {
@@ -798,9 +805,11 @@
         card.innerHTML =
           '<div class="private-banner">🔒 This link was shared with you personally. Please don\'t forward it — anyone with the URL can view this page.</div>' +
           '<div class="streak-box">' +
-            '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
-            '<div class="streak-unit">' + esc(fmt.unit) + '</div>' +
-            (fmt.detail ? '<div class="streak-detail">' + esc(fmt.detail) + '</div>' : '') +
+            '<div class="streak-row">' +
+              '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
+              '<div class="streak-unit">' + esc(fmt.unit) + '</div>' +
+              (fmt.detail ? '<div class="streak-detail">' + esc(fmt.detail) + '</div>' : '') +
+            '</div>' +
             '<div class="streak-sub">clean &#x1F389;</div>' +
           '</div>' +
           '<h2>' + esc(name) + ' is on a ' + esc(streakLabel) + ' streak</h2>' +
