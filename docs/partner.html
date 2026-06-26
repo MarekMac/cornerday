@@ -5,81 +5,508 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CornerDay — Someone in Your Corner</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f9f9;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px}
-    .card{background:#fff;border-radius:22px;padding:28px 24px;max-width:420px;width:100%;box-shadow:0 2px 24px rgba(15,110,110,.09)}
-    .logo{font-size:12px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:24px;text-align:center;opacity:.7}
-    .streak-box{background:#e6f7f7;border-radius:16px;padding:22px 16px;text-align:center;margin-bottom:20px}
-    .streak-num{font-size:56px;font-weight:800;color:#0F6E6E;line-height:1}
-    .streak-unit{font-size:18px;font-weight:700;color:#0F6E6E;margin-top:2px}
-    .streak-sub{font-size:14px;color:#5a9090;margin-top:6px;font-weight:500}
-    .streak-detail{font-size:12px;color:#7ab0b0;margin-top:4px}
-    .section{background:#f9fdfd;border-radius:14px;padding:16px;margin-bottom:12px}
-    .section-label{font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
-    .mood-row{display:flex;align-items:center;gap:10px}
-    .mood-emoji{font-size:28px;line-height:1}
-    .mood-text{font-size:15px;font-weight:700;color:#1a2e2e}
-    .mood-sub{font-size:12px;color:#5a7a7a;margin-top:2px}
-    .stat-row{display:flex;gap:10px;margin-bottom:4px}
-    .stat-box{flex:1;background:#fff;border-radius:10px;padding:12px 10px;text-align:center;border:1px solid #e0eded}
-    .stat-val{font-size:22px;font-weight:800;color:#0F6E6E;line-height:1}
-    .stat-lbl{font-size:11px;color:#5a7a7a;margin-top:3px;font-weight:600}
-    .milestone-sub{font-size:13px;color:#5a7a7a;margin-top:6px}
-    .urge-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #e0eded}
-    .urge-val{font-size:20px;font-weight:800;color:#0F6E6E}
-    .urge-lbl{font-size:13px;color:#5a7a7a}
-    .progress-bar-track{background:#ddd;border-radius:4px;height:8px;overflow:hidden;margin:10px 0 6px}
-    .progress-bar-fill{background:linear-gradient(90deg,#0F6E6E,#1a9a9a);height:100%;border-radius:4px;transition:width .4s}
-    .progress-label{font-size:13px;color:#5a7a7a}
-    .recovery-row{display:flex;gap:10px;margin-bottom:10px}
-    .recovery-box{flex:1;background:#fff;border-radius:10px;padding:12px 10px;text-align:center;border:1px solid #e0eded}
-    .recovery-val{font-size:18px;font-weight:800;color:#1a2e2e;line-height:1}
-    .recovery-val.green{color:#0F6E6E}
-    .recovery-lbl{font-size:11px;color:#5a7a7a;margin-top:3px;font-weight:600}
-    .clean-start{display:flex;align-items:center;gap:10px}
-    .clean-start-emoji{font-size:28px}
-    .clean-start-text{font-size:14px;font-weight:600;color:#1a2e2e}
-    .clean-start-sub{font-size:12px;color:#5a7a7a;margin-top:2px}
-    .savings-highlight{background:#e6f7f7;border-radius:10px;padding:12px 14px;margin-top:8px;display:flex;align-items:center;gap:10px}
-    .savings-emoji{font-size:22px}
-    .savings-text{font-size:14px;font-weight:700;color:#0F6E6E}
-    .savings-sub{font-size:12px;color:#5a9090;margin-top:1px}
-    h2{font-size:17px;font-weight:700;color:#1a2e2e;margin-bottom:6px}
-    p{font-size:14px;color:#5a7a7a;line-height:1.6;margin-bottom:20px}
-    .divider{height:1px;background:#e0eded;margin:20px 0}
-    label{font-size:13px;font-weight:600;color:#1a2e2e;display:block;margin-bottom:8px}
-    textarea{width:100%;border:1.5px solid #c8e4e4;border-radius:12px;padding:12px 14px;font-size:15px;font-family:inherit;resize:none;outline:none;color:#1a2e2e;background:#fff;transition:border-color .2s}
-    textarea:focus{border-color:#0F6E6E}
-    button{width:100%;background:#0F6E6E;color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;margin-top:12px;cursor:pointer;font-family:inherit;transition:opacity .15s}
-    button:hover{opacity:.85}
-    button:disabled{opacity:.5;cursor:default}
-    .sent{background:#e6f7f7;border-radius:14px;padding:20px;text-align:center}
-    .sent-title{font-size:17px;font-weight:700;color:#0F6E6E;margin-bottom:4px}
-    .sent-sub{font-size:13px;color:#5a9090}
-    .error{background:#fff0f0;border-radius:14px;padding:16px;text-align:center;color:#c0392b;font-size:14px}
-    .notify-section{background:#f9fdfd;border-radius:14px;padding:18px;margin-top:16px;border:1px solid #e0eded}
-    .notify-title{font-size:14px;font-weight:700;color:#1a2e2e;margin-bottom:4px}
-    .notify-sub{font-size:13px;color:#5a7a7a;line-height:1.5;margin-bottom:14px}
-    .notify-input{width:100%;border:1.5px solid #c8e4e4;border-radius:10px;padding:11px 13px;font-size:15px;font-family:inherit;outline:none;color:#1a2e2e;background:#fff;box-sizing:border-box;transition:border-color .2s}
-    .notify-input:focus{border-color:#0F6E6E}
-    .notify-btn{width:100%;background:#0F6E6E;color:#fff;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;margin-top:10px;cursor:pointer;font-family:inherit;transition:opacity .15s}
-    .notify-btn:hover{opacity:.85}
-    .notify-btn:disabled{opacity:.5;cursor:default}
-    .notify-subscribed{display:flex;align-items:center;gap:8px;font-size:13px;color:#0F6E6E;font-weight:600}
-    .notify-update{font-size:12px;color:#5a9090;margin-top:6px;cursor:pointer;text-decoration:underline;display:inline-block}
-    .notify-err{font-size:12px;color:#c0392b;margin-top:6px}
-    footer{font-size:12px;color:#a8c0c0;text-align:center;margin-top:20px}
-    .private-banner{background:#fff8e6;border:1px solid #f0d080;border-radius:10px;padding:10px 14px;font-size:12px;color:#7a6020;margin-bottom:16px;line-height:1.5}
-    .spinner{width:32px;height:32px;border:3px solid #e6f7f7;border-top-color:#0F6E6E;border-radius:50%;animation:spin .8s linear infinite;margin:20px auto;display:block}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal-dark:  #0F6E6E;
+      --teal-mid:   #1a9a9a;
+      --teal-light: #a8d8d0;
+      --accent:     #e6f7f7;
+      --text:       #1a2e2e;
+      --muted:      #5a7a7a;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5fbfb;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      background: linear-gradient(150deg, #0a4f4f 0%, #0F6E6E 55%, #1a9a9a 100%);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .header-brand img {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+    }
+
+    .header-brand-name {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.2px;
+    }
+
+    .header-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.75);
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.26);
+      border-radius: 20px;
+      padding: 3px 11px;
+      margin-left: 2px;
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 32px 16px 52px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 28px 24px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 4px 32px rgba(15,110,110,0.10);
+    }
+
+    /* ── Logo label (shows in error states) ── */
+    .logo {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--teal-dark);
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      margin-bottom: 20px;
+      text-align: center;
+      opacity: 0.55;
+    }
+
+    /* ── Streak box ── */
+    .streak-box {
+      background: linear-gradient(150deg, #0a4f4f 0%, #0F6E6E 55%, #1a9a9a 100%);
+      border-radius: 20px;
+      padding: 28px 16px 24px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .streak-num {
+      font-size: 68px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+
+    .streak-unit {
+      font-size: 20px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.88);
+      margin-top: 4px;
+    }
+
+    .streak-detail {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 4px;
+    }
+
+    .streak-sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.62);
+      margin-top: 10px;
+      font-weight: 500;
+    }
+
+    /* ── Card typography ── */
+    h2 {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+
+    p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 20px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--accent);
+      margin: 24px 0;
+    }
+
+    /* ── Data sections ── */
+    .section {
+      background: var(--accent);
+      border-radius: 16px;
+      padding: 18px 16px;
+      margin-bottom: 12px;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      color: var(--teal-dark);
+      margin-bottom: 12px;
+    }
+
+    /* ── Mood ── */
+    .mood-row { display: flex; align-items: center; gap: 12px; }
+    .mood-emoji { font-size: 32px; line-height: 1; }
+    .mood-text { font-size: 15px; font-weight: 700; color: var(--text); }
+    .mood-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    /* ── Stats ── */
+    .stat-row { display: flex; gap: 8px; margin-bottom: 4px; }
+
+    .stat-box {
+      flex: 1;
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--teal-dark);
+      line-height: 1;
+    }
+
+    .stat-lbl {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .milestone-sub { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+    .urge-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(15,110,110,0.12);
+    }
+
+    .urge-val { font-size: 22px; font-weight: 800; color: var(--teal-dark); }
+    .urge-lbl { font-size: 13px; color: var(--muted); }
+
+    /* ── Recovery ── */
+    .progress-bar-track {
+      background: rgba(15,110,110,0.12);
+      border-radius: 6px;
+      height: 8px;
+      overflow: hidden;
+      margin: 12px 0 6px;
+    }
+
+    .progress-bar-fill {
+      background: linear-gradient(90deg, var(--teal-dark), var(--teal-mid));
+      height: 100%;
+      border-radius: 6px;
+      transition: width .4s;
+    }
+
+    .progress-label { font-size: 12px; color: var(--muted); }
+
+    .recovery-row { display: flex; gap: 8px; margin-bottom: 10px; }
+
+    .recovery-box {
+      flex: 1;
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+
+    .recovery-val { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1; }
+    .recovery-val.green { color: var(--teal-dark); }
+    .recovery-lbl {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .clean-start { display: flex; align-items: center; gap: 12px; }
+    .clean-start-emoji { font-size: 28px; }
+    .clean-start-text { font-size: 15px; font-weight: 700; color: var(--text); }
+    .clean-start-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    .savings-highlight {
+      background: #fff;
+      border-radius: 12px;
+      padding: 13px 14px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1.5px solid rgba(15,110,110,0.14);
+    }
+
+    .savings-emoji { font-size: 22px; }
+    .savings-text { font-size: 14px; font-weight: 700; color: var(--teal-dark); }
+    .savings-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Message form ── */
+    label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      border: 1.5px solid var(--teal-light);
+      border-radius: 14px;
+      padding: 13px 15px;
+      font-size: 15px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      color: var(--text);
+      background: #fff;
+      transition: border-color .2s;
+      line-height: 1.5;
+    }
+
+    textarea:focus { border-color: var(--teal-dark); }
+
+    button {
+      width: 100%;
+      background: linear-gradient(135deg, var(--teal-dark), var(--teal-mid));
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .15s;
+      letter-spacing: 0.2px;
+    }
+
+    button:hover { opacity: .88; }
+    button:disabled { opacity: .42; cursor: default; }
+
+    /* ── Sent / Error ── */
+    .sent {
+      background: var(--accent);
+      border-radius: 16px;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    .sent-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--teal-dark);
+      margin-bottom: 6px;
+    }
+
+    .sent-sub { font-size: 14px; color: var(--muted); }
+
+    .error {
+      background: #fff0f0;
+      border: 1px solid #f5c6c6;
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      color: #c0392b;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    /* ── Notify section ── */
+    .notify-section {
+      background: var(--accent);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 12px;
+    }
+
+    .notify-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+
+    .notify-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+
+    .notify-input {
+      width: 100%;
+      border: 1.5px solid var(--teal-light);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      color: var(--text);
+      background: #fff;
+      box-sizing: border-box;
+      transition: border-color .2s;
+    }
+
+    .notify-input:focus { border-color: var(--teal-dark); }
+
+    .notify-btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--teal-dark), var(--teal-mid));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-top: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .15s;
+    }
+
+    .notify-btn:hover { opacity: .88; }
+    .notify-btn:disabled { opacity: .42; cursor: default; }
+
+    .notify-subscribed {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--teal-dark);
+      font-weight: 700;
+    }
+
+    .notify-update {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      cursor: pointer;
+      text-decoration: underline;
+      display: inline-block;
+    }
+
+    .notify-err { font-size: 12px; color: #c0392b; margin-top: 6px; }
+
+    /* ── Private banner ── */
+    .private-banner {
+      background: rgba(15,110,110,0.06);
+      border: 1px solid rgba(15,110,110,0.14);
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.55;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--accent);
+      border-top-color: var(--teal-dark);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 28px auto;
+      display: block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Footer ── */
+    footer {
+      background: #081e1e;
+      color: rgba(255,255,255,0.4);
+      padding: 28px 24px;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .footer-brand img {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      opacity: 0.85;
+    }
+
+    .footer-brand span {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    footer a { color: var(--teal-light); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <div class="card" id="card">
-    <div class="logo">CornerDay</div>
-    <div class="spinner"></div>
-  </div>
-  <footer>CornerDay &middot; "The day you turn it around starts today"</footer>
+
+  <header class="page-header">
+    <a href="https://cornerday.app" class="header-brand">
+      <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" alt="CornerDay">
+      <span class="header-brand-name">CornerDay</span>
+    </a>
+    <span class="header-badge">Supporter View</span>
+  </header>
+
+  <main>
+    <div class="card" id="card">
+      <div class="spinner"></div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-brand">
+      <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" alt="CornerDay">
+      <span>CornerDay</span>
+    </div>
+    <div>© 2026 CornerDay &middot; <a href="https://cornerday.app/privacy">Privacy Policy</a></div>
+  </footer>
+
   <script>
     const API = 'https://cdgsiotlocurwnqxebrh.supabase.co/functions/v1/partner-view';
     const ANON = 'SUPABASE_ANON_KEY_PLACEHOLDER';
@@ -175,7 +602,6 @@
       let html = `<div class="section"><div class="section-label">Financial Recovery</div>`;
 
       if (totalLost > 0) {
-        // Has tracked debt — show amounts + progress bar
         const owed = Math.max(0, totalLost - totalPaid);
         html += `<div class="recovery-row">
           <div class="recovery-box">
@@ -196,7 +622,6 @@
           <div class="progress-label">${recoveryPct}% of debt paid back</div>`;
         }
       } else {
-        // No tracked debt
         html += `<div class="clean-start">
           <div class="clean-start-emoji">🎉</div>
           <div>
@@ -206,7 +631,6 @@
         </div>`;
       }
 
-      // Estimated money saved (shown whenever weekly_bet is set)
       if (moneySaved > 0) {
         html += `<div class="savings-highlight">
           <div class="savings-emoji">💰</div>
@@ -318,7 +742,6 @@
           : '';
 
         card.innerHTML =
-          '<div class="logo">CornerDay</div>' +
           '<div class="private-banner">🔒 This link was shared with you personally. Please don\'t forward it — anyone with the URL can view this page.</div>' +
           '<div class="streak-box">' +
             '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
