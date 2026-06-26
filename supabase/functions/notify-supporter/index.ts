@@ -29,13 +29,13 @@ function ctaButton(url: string, label: string): string {
 
 function emailShell(body: string): string {
   return `<!DOCTYPE html><html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><style>@media (prefers-color-scheme:dark){img.cdl{display:none!important}img.cdd{display:inline!important}}</style></head>
 <body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
 <tr><td align="center">
 <table width="100%" style="max-width:480px;" cellpadding="0" cellspacing="0">
   <tr><td style="background:linear-gradient(135deg,#0F6E6E,#1a9a9a);border-radius:16px 16px 0 0;padding:28px;text-align:center;">
-    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
+    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" class="cdl" style="display:block;margin:0 auto 10px;border-radius:12px;"/><img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon-dark.png" width="52" height="52" alt="CornerDay" class="cdd" style="display:none;margin:0 auto 10px;border-radius:12px;"/>
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:6px;">CornerDay</div>
     <div style="font-size:12px;color:rgba(255,255,255,0.7);">Someone in your corner</div>
   </td></tr>
