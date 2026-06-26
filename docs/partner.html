@@ -84,6 +84,23 @@
       box-shadow: 0 4px 32px rgba(15,110,110,0.10);
     }
 
+    /* ── Desktop 2-column layout ── */
+    @media (min-width: 760px) {
+      main { padding: 40px 24px 64px; }
+
+      .card {
+        max-width: 860px;
+        padding: 36px 40px;
+      }
+
+      .card-layout {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 40px;
+        align-items: start;
+      }
+    }
+
     /* ── Logo label (shows in error states) ── */
     .logo {
       font-size: 10px;
@@ -754,20 +771,25 @@
 
         card.innerHTML =
           '<div class="private-banner">🔒 This link was shared with you personally. Please don\'t forward it — anyone with the URL can view this page.</div>' +
-          '<div class="streak-box">' +
-            '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
-            '<div class="streak-unit">' + esc(fmt.unit) + '</div>' +
-            (fmt.detail ? '<div class="streak-detail">' + esc(fmt.detail) + '</div>' : '') +
-            '<div class="streak-sub">clean &#x1F389;</div>' +
-          '</div>' +
-          '<h2>' + esc(name) + ' is on a ' + esc(streakLabel) + ' streak</h2>' +
-          '<p>They\'re working hard on their recovery. Send them a short message of support &mdash; it\'ll appear in the app next time they open it.</p>' +
-          extraSections +
-          notifyHtml +
-          '<div class="divider"></div>' +
-          '<div id="form-area"><label>Send encouragement</label>' +
-          '<textarea id="msg" rows="3" maxlength="200" placeholder="Write something kind… (max 200 characters)"></textarea>' +
-          '<button id="btn" onclick="send()">Send &#x1F499;</button></div>';
+          '<div class="card-layout">' +
+            '<div class="card-left">' +
+              '<div class="streak-box">' +
+                '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
+                '<div class="streak-unit">' + esc(fmt.unit) + '</div>' +
+                (fmt.detail ? '<div class="streak-detail">' + esc(fmt.detail) + '</div>' : '') +
+                '<div class="streak-sub">clean &#x1F389;</div>' +
+              '</div>' +
+              '<h2>' + esc(name) + ' is on a ' + esc(streakLabel) + ' streak</h2>' +
+              '<p>' + esc(name) + ' is working hard on their recovery. Send them a short message of support &mdash; it\'ll appear in the app next time they open it.</p>' +
+              extraSections +
+            '</div>' +
+            '<div class="card-right">' +
+              '<div id="form-area"><label>Send encouragement</label>' +
+              '<textarea id="msg" rows="5" maxlength="200" placeholder="Write something kind… (max 200 characters)"></textarea>' +
+              '<button id="btn" onclick="send()">Send &#x1F499;</button></div>' +
+              notifyHtml +
+            '</div>' +
+          '</div>';
       } catch { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">Could not load. Please try again.</div>'; }
     })();
   </script>

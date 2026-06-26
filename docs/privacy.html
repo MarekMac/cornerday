@@ -6,34 +6,204 @@
   <title>Privacy Policy — CornerDay</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal-dark:  #0F6E6E;
+      --teal-mid:   #1a9a9a;
+      --teal-light: #a8d8d0;
+      --accent:     #e6f7f7;
+      --text:       #1a2e2e;
+      --muted:      #5a7a7a;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: #1a2e2e;
-      background: #f0f9f9;
-      padding: 40px 20px 80px;
+      color: var(--text);
+      background: #f5fbfb;
       line-height: 1.7;
     }
-    .wrap { max-width: 720px; margin: 0 auto; }
-    .back { display: inline-block; color: #0F6E6E; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 32px; }
-    .back:hover { text-decoration: underline; }
-    h1 { font-size: 28px; font-weight: 800; color: #0F6E6E; margin-bottom: 6px; }
-    .date { font-size: 13px; color: #5a7a7a; margin-bottom: 36px; }
-    h2 { font-size: 17px; font-weight: 700; color: #1a2e2e; margin: 32px 0 10px; }
-    p  { font-size: 15px; color: #3a5a5a; margin-bottom: 12px; }
-    ul { padding-left: 20px; margin-bottom: 12px; }
-    li { font-size: 15px; color: #3a5a5a; margin-bottom: 6px; }
-    a  { color: #0F6E6E; }
-    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px; }
-    th { background: #e6f7f7; color: #0F6E6E; text-align: left; padding: 8px 12px; font-weight: 600; }
-    td { padding: 7px 12px; border-bottom: 1px solid #e0eeee; color: #3a5a5a; vertical-align: top; }
+
+    /* ── Nav ── */
+    nav {
+      background: linear-gradient(150deg, #0a4f4f 0%, #0F6E6E 55%, #1a9a9a 100%);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-brand img {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+    }
+
+    .nav-brand span {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.2px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color .15s;
+    }
+
+    .nav-links a:hover { color: #fff; }
+    .nav-links a.active { color: #fff; font-weight: 700; }
+
+    /* ── Content ── */
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px 48px;
+      box-shadow: 0 4px 32px rgba(15,110,110,0.08);
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--teal-dark);
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+
+    .date {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--accent);
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 36px 0 10px;
+    }
+
+    p { font-size: 15px; color: #3a5a5a; margin-bottom: 12px; }
+
+    ul { padding-left: 22px; margin-bottom: 14px; }
+    li { font-size: 15px; color: #3a5a5a; margin-bottom: 6px; line-height: 1.65; }
+
+    a { color: var(--teal-dark); }
+    a:hover { text-decoration: underline; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--accent);
+      color: var(--teal-dark);
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    th:first-child { border-radius: 8px 0 0 0; }
+    th:last-child  { border-radius: 0 8px 0 0; }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--accent);
+      color: #3a5a5a;
+      vertical-align: top;
+    }
+
     tr:last-child td { border-bottom: none; }
-    .card { background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 2px 16px rgba(15,110,110,.07); }
-    footer { margin-top: 40px; text-align: center; font-size: 13px; color: #7a9a9a; }
+    tr:hover td { background: #fafefe; }
+
+    /* ── Footer ── */
+    footer {
+      background: #081e1e;
+      color: rgba(255,255,255,0.4);
+      padding: 28px 24px;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .footer-brand img {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      opacity: 0.85;
+    }
+
+    .footer-brand span {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .footer-links { margin-bottom: 10px; }
+    .footer-links a { color: var(--teal-light); text-decoration: none; margin: 0 10px; }
+    .footer-links a:hover { text-decoration: underline; }
+
+    @media (max-width: 700px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      .wrap { padding: 28px 16px 60px; }
+      .card { padding: 24px 20px; }
+      h1 { font-size: 24px; }
+      table { display: block; overflow-x: auto; }
+    }
   </style>
 </head>
 <body>
+
+  <nav>
+    <a href="/" class="nav-brand">
+      <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" alt="CornerDay">
+      <span>CornerDay</span>
+    </a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/partner">Supporter Portal</a>
+      <a href="/privacy" class="active">Privacy</a>
+    </div>
+  </nav>
+
   <div class="wrap">
-    <a class="back" href="/">← CornerDay</a>
     <div class="card">
       <h1>Privacy Policy</h1>
       <p class="date">Effective date: 25 June 2026 &nbsp;·&nbsp; Last updated: 25 June 2026</p>
@@ -128,7 +298,19 @@
       <h2>9. Contact</h2>
       <p>Questions about this policy? Email us at <a href="mailto:support@cornerday.app">support@cornerday.app</a>.</p>
     </div>
-    <footer>© 2026 CornerDay</footer>
   </div>
+
+  <footer>
+    <div class="footer-brand">
+      <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" alt="CornerDay">
+      <span>CornerDay</span>
+    </div>
+    <div class="footer-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/partner">Supporter Portal</a>
+    </div>
+    <div>© 2026 CornerDay. Built for recovery.</div>
+  </footer>
+
 </body>
 </html>
