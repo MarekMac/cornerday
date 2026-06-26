@@ -902,6 +902,7 @@ export default function HomeScreen() {
   const [calDayModal, setCalDayModal] = useState<{ iso: string; status: 'clean' | 'relapse' | 'inactive'; mood: number | null } | null>(null);
   const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string; earnedAt?: string } | null>(null);
   const shareCardRef = useRef<View>(null);
+  const autoShareRef = useRef(false);
 
   // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
   useEffect(() => {
@@ -1509,7 +1510,7 @@ export default function HomeScreen() {
     );
   };
 
-  const captureAndShare = async () => {
+  const captureAndShare = async (closeAfterShare = false) => {
     if (!shareCardRef.current || capturingShare) return;
     setCapturingShare(true);
     try {
@@ -1519,8 +1520,17 @@ export default function HomeScreen() {
       await Share.share({ message: `${formatStreakFull(streakMs)} free from gambling! 💪\n\nThe day you turn it around starts today. #CornerDay` });
     } finally {
       setCapturingShare(false);
+      if (closeAfterShare) setShowShareCard(false);
     }
   };
+
+  // Auto-capture when share card is opened from the celebration modal (bypasses the second tap)
+  useEffect(() => {
+    if (!showShareCard || !autoShareRef.current) return;
+    autoShareRef.current = false;
+    const t = setTimeout(() => captureAndShare(true), 200);
+    return () => clearTimeout(t);
+  }, [showShareCard]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const postToCommunity = () => {
     if (!selectedBadge) return;
@@ -3027,6 +3037,7 @@ export default function HomeScreen() {
             setCelebrationBadge(null);
             const badgeDef = BADGE_DEFS.find(d => d.type === b.type);
             const isTimeBadge = badgeDef !== undefined && badgeDef.days > 0;
+            autoShareRef.current = true;
             openShareCard(
               { emoji: b.emoji, label: b.label },
               !isTimeBadge,              // hideTime: shows achievement card for non-streak badges
