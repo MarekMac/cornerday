@@ -172,8 +172,22 @@ function topTrigger(entries: { trigger: string }[]): string | null {
   return top ? triggerLabel(top[0]) : null;
 }
 
+const ICON = 'https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png';
 const STAT = 'background:#e6f7f7;border-radius:12px;padding:16px;text-align:center;vertical-align:top;';
 const GAP  = 'width:4%;';
+const FOOTER = (optOut = '') => `
+  <tr><td style="background:#081e1e;border-radius:0 0 20px 20px;padding:22px 28px;text-align:center;">
+    <div>
+      <img src="${ICON}" width="24" height="24" alt="CornerDay" style="border-radius:6px;opacity:0.85;vertical-align:middle;margin-right:7px;"/>
+      <span style="font-size:14px;font-weight:800;color:#fff;vertical-align:middle;">CornerDay</span>
+    </div>
+    <div style="margin-top:10px;">
+      <a href="https://cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">cornerday.app</a>
+      <a href="https://cornerday.app/privacy" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Privacy</a>
+    </div>
+    ${optOut ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:10px;line-height:1.6;">${optOut}</div>` : ''}
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:${optOut ? '8' : '10'}px;">© 2026 CornerDay. Built for recovery.</div>
+  </td></tr>`;
 
 function statCell(big: string, label: string, sub: string): string {
   return `<td width="48%" style="${STAT}">
@@ -235,28 +249,28 @@ function buildFreeHtml(p: {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your week in recovery</title></head>
-<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+<body style="margin:0;padding:0;background:#f5fbfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5fbfb;padding:32px 16px;">
 <tr><td align="center">
-<table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
+<table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
 
-  <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:36px 28px 32px;text-align:center;color:#fff;">
-    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
-    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:8px;">CornerDay</div>
-    <div style="font-size:14px;opacity:0.8;margin-bottom:22px;">Hi ${firstName} — here's your week</div>
+  <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:20px 20px 0 0;padding:40px 36px 36px;text-align:center;color:#fff;">
+    <img src="${ICON}" width="56" height="56" alt="CornerDay" style="display:block;margin:0 auto 12px;border-radius:13px;"/>
+    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.6;margin-bottom:10px;">CornerDay</div>
+    <div style="font-size:14px;opacity:0.8;margin-bottom:20px;">Hi ${firstName} — here's your week</div>
     <div style="font-size:88px;font-weight:900;line-height:1;color:#fff;">${time.bigNumber}</div>
     <div style="font-size:20px;font-weight:600;margin-top:8px;color:rgba(255,255,255,0.9);">${time.unit} ${time.detail}</div>
-    <div style="font-size:13px;margin-top:12px;color:rgba(255,255,255,0.7);font-style:italic;">${time.message}</div>
+    <div style="font-size:13px;margin-top:12px;color:rgba(255,255,255,0.65);font-style:italic;">${time.message}</div>
   </td></tr>
 
-  <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:24px 28px;">
+  <tr><td style="background:#fff;padding:28px 36px;">
   <table width="100%" cellpadding="0" cellspacing="0">
 
     <tr>
       <td width="48%" style="${STAT}">
         <div style="font-size:32px;margin-bottom:4px;">${mood.emoji}</div>
         <div style="font-size:13px;font-weight:700;color:#0F6E6E;">${mood.text}</div>
-        <div style="font-size:12px;color:#5a8a8a;margin-top:3px;">Mood this week</div>
+        <div style="font-size:12px;color:#5a7a7a;margin-top:3px;">Mood this week</div>
       </td>
       <td style="${GAP}"></td>
       ${statCell(String(moodCheckins), `check-in${moodCheckins !== 1 ? 's' : ''}`, 'This week')}
@@ -267,22 +281,22 @@ function buildFreeHtml(p: {
 
     <tr><td colspan="3" style="height:20px;"></td></tr>
 
-    <tr><td colspan="3" style="border-left:3px solid #0F6E6E;padding:12px 14px;background:#f9fdfd;border-radius:0 8px 8px 0;">
+    <tr><td colspan="3" style="border-left:3px solid #0F6E6E;padding:12px 16px;background:#e6f7f7;border-radius:0 10px 10px 0;">
       <div style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Your why</div>
-      <div style="font-size:15px;color:#1a1a1a;font-weight:600;">${whyLabel}</div>
+      <div style="font-size:15px;color:#1a2e2e;font-weight:700;">${whyLabel}</div>
     </td></tr>
 
-    <tr><td colspan="3" style="height:24px;"></td></tr>
+    <tr><td colspan="3" style="height:22px;"></td></tr>
 
-    <tr><td colspan="3" style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
-      Premium members see mood trends, urge patterns and debt projections in their digest.<br><br>
-      You're getting this because weekly summaries are on.<br>
-      To turn them off: <strong>Settings &#x2192; Notifications</strong>
+    <tr><td colspan="3" style="font-size:13px;color:#5a7a7a;text-align:center;border-top:1px solid #e6f7f7;padding-top:16px;line-height:1.6;">
+      Premium members see mood trends, urge patterns and debt projections in their digest.
     </td></tr>
 
   </table>
   </td></tr>
-  <tr><td style="height:24px;"></td></tr>
+
+  ${FOOTER('You\'re getting this because weekly summaries are on. To turn them off: Settings &#x2192; Notifications')}
+  <tr><td style="height:32px;"></td></tr>
 </table>
 </td></tr>
 </table>
@@ -399,7 +413,7 @@ function buildPremiumHtml(p: {
   const lastMoodAvgFmt  = lastWeekMoodAvg !== null ? lastWeekMoodAvg.toFixed(1) : '—';
   const compareBlock = `
     <tr><td colspan="3" style="height:10px;"></td></tr>
-    <tr><td colspan="3" style="background:#f9fdfd;border-radius:12px;padding:14px 16px;">
+    <tr><td colspan="3" style="background:#e6f7f7;border-radius:12px;padding:14px 16px;">
       <div style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">This week vs last week</div>
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr style="font-size:11px;color:#aaa;">
@@ -432,7 +446,7 @@ function buildPremiumHtml(p: {
   // 30-day check-in consistency
   const consistencyBlock = `
     <tr><td colspan="3" style="height:10px;"></td></tr>
-    <tr><td colspan="3" style="background:#f9fdfd;border-radius:12px;padding:14px 16px;">
+    <tr><td colspan="3" style="background:#e6f7f7;border-radius:12px;padding:14px 16px;">
       <table width="100%" cellpadding="0" cellspacing="0"><tr>
         <td style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;">Check-in habit (30 days)</td>
         <td align="right" style="font-size:18px;font-weight:900;color:${consistencyColor};">${consistencyPct}%</td>
@@ -522,21 +536,21 @@ function buildPremiumHtml(p: {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your weekly report</title></head>
-<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+<body style="margin:0;padding:0;background:#f5fbfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5fbfb;padding:32px 16px;">
 <tr><td align="center">
-<table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
+<table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
 
-  <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:36px 28px 32px;text-align:center;color:#fff;">
-    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
-    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:8px;">CornerDay Premium</div>
-    <div style="font-size:14px;opacity:0.8;margin-bottom:22px;">Hi ${firstName} — your full weekly report</div>
+  <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:20px 20px 0 0;padding:40px 36px 36px;text-align:center;color:#fff;">
+    <img src="${ICON}" width="56" height="56" alt="CornerDay" style="display:block;margin:0 auto 12px;border-radius:13px;"/>
+    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.6;margin-bottom:10px;">CornerDay Premium</div>
+    <div style="font-size:14px;opacity:0.8;margin-bottom:20px;">Hi ${firstName} — your full weekly report</div>
     <div style="font-size:88px;font-weight:900;line-height:1;color:#fff;">${time.bigNumber}</div>
     <div style="font-size:20px;font-weight:600;margin-top:8px;color:rgba(255,255,255,0.9);">${time.unit} ${time.detail}</div>
-    <div style="font-size:13px;margin-top:12px;color:rgba(255,255,255,0.7);font-style:italic;">${time.message}</div>
+    <div style="font-size:13px;margin-top:12px;color:rgba(255,255,255,0.65);font-style:italic;">${time.message}</div>
   </td></tr>
 
-  <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:24px 28px;">
+  <tr><td style="background:#fff;padding:28px 36px;">
   <table width="100%" cellpadding="0" cellspacing="0">
 
     <!-- Streak row -->
@@ -593,21 +607,22 @@ function buildPremiumHtml(p: {
 
     <tr><td colspan="3" style="height:20px;"></td></tr>
 
-    <tr><td colspan="3" style="border-left:3px solid #0F6E6E;padding:12px 14px;background:#f9fdfd;border-radius:0 8px 8px 0;">
+    <tr><td colspan="3" style="border-left:3px solid #0F6E6E;padding:12px 16px;background:#e6f7f7;border-radius:0 10px 10px 0;">
       <div style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Your why</div>
-      <div style="font-size:15px;color:#1a1a1a;font-weight:600;">${whyLabel}</div>
+      <div style="font-size:15px;color:#1a2e2e;font-weight:700;">${whyLabel}</div>
     </td></tr>
 
-    <tr><td colspan="3" style="height:24px;"></td></tr>
+    <tr><td colspan="3" style="height:22px;"></td></tr>
 
-    <tr><td colspan="3" style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
-      You're getting this because weekly summaries are on.<br>
-      To turn them off: <strong>Settings &#x2192; Notifications</strong>
+    <tr><td colspan="3" style="font-size:13px;color:#5a7a7a;text-align:center;border-top:1px solid #e6f7f7;padding-top:16px;line-height:1.6;">
+      Your full premium report — delivered every week.
     </td></tr>
 
   </table>
   </td></tr>
-  <tr><td style="height:24px;"></td></tr>
+
+  ${FOOTER('You\'re getting this because weekly summaries are on. To turn them off: Settings &#x2192; Notifications')}
+  <tr><td style="height:32px;"></td></tr>
 </table>
 </td></tr>
 </table>

@@ -9,6 +9,7 @@ const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@corn
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
 
+const ICON = 'https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png';
 
 function fmtCurrency(amount: number, currency: string): string {
   const syms: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
@@ -19,72 +20,85 @@ function buildHtml(firstName: string, amountFmt: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>You logged your first loss</title></head>
-<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+<body style="margin:0;padding:0;background:#f5fbfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5fbfb;padding:32px 16px;">
 <tr><td align="center">
-<table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
+<table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
 
-  <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
-    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
-    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-    <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:10px;">That took courage, ${firstName}.</div>
+  <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:20px 20px 0 0;padding:44px 36px 40px;text-align:center;color:#fff;">
+    <img src="${ICON}" width="56" height="56" alt="CornerDay" style="display:block;margin:0 auto 12px;border-radius:13px;"/>
+    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.6;margin-bottom:14px;">CornerDay</div>
+    <div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:10px;">That took courage, ${firstName}.</div>
     <div style="font-size:15px;opacity:0.85;line-height:1.5;">Logging ${amountFmt} is one of the hardest things to do.</div>
   </td></tr>
 
-  <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:28px 28px 24px;">
+  <tr><td style="background:#fff;padding:32px 36px 28px;">
   <table width="100%" cellpadding="0" cellspacing="0">
 
-    <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
+    <tr><td style="font-size:15px;color:#3a5a5a;line-height:1.75;padding-bottom:22px;">
       Most people never face the real number. You just did. That honesty is exactly what recovery is built on — not willpower alone, but the truth.
     </td></tr>
 
-    <tr><td style="background:#f9fdfd;border-radius:12px;padding:18px;">
+    <tr><td style="background:#e6f7f7;border-radius:14px;padding:18px;">
     <table width="100%" cellpadding="0" cellspacing="0">
-      <tr><td style="font-size:13px;color:#0F6E6E;font-weight:700;padding-bottom:10px;">How CornerDay helps your financial recovery</td></tr>
+      <tr><td style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1.2px;padding-bottom:14px;">How CornerDay helps your financial recovery</td></tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:12px;">&#x1F4CA;</td>
-        <td style="vertical-align:top;padding-bottom:12px;">
-          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">See the full picture</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Log every loss and every payment in one place. CornerDay shows you exactly how much you owe and how much you've paid back — no guessing, no avoiding.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4CA;</td>
+        <td style="vertical-align:top;padding-bottom:14px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">See the full picture</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">Log every loss and every payment in one place. CornerDay shows you exactly how much you owe and how much you've paid back — no guessing, no avoiding.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:12px;">&#x1F4C8;</td>
-        <td style="vertical-align:top;padding-bottom:12px;">
-          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">Watch the number shrink</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Every payment you log moves your recovery progress bar. Seeing that bar inch forward is one of the most motivating things in the app.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4C8;</td>
+        <td style="vertical-align:top;padding-bottom:14px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Watch the number shrink</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">Every payment you log moves your recovery progress bar. Seeing that bar inch forward is one of the most motivating things in the app.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:12px;">&#x1F4B8;</td>
-        <td style="vertical-align:top;padding-bottom:12px;">
-          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">Track money not gambled</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Every week you stay clean, CornerDay shows you how much you didn't spend. Over time, that number tells a powerful story.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4B8;</td>
+        <td style="vertical-align:top;padding-bottom:14px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Track money not gambled</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">Every week you stay clean, CornerDay shows you how much you didn't spend. Over time, that number tells a powerful story.</div>
         </td>
       </tr>
       <tr>
         <td style="font-size:22px;width:36px;vertical-align:top;">&#x2705;</td>
-        <td style="vertical-align:top;">
-          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">Turn shame into a plan</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">A number on a screen is something you can work with. Shame kept in your head just grows. You've already done the hardest part.</div>
+        <td style="vertical-align:top;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Turn shame into a plan</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">A number on a screen is something you can work with. Shame kept in your head just grows. You've already done the hardest part.</div>
         </td>
       </tr>
     </table>
     </td></tr>
 
-    <tr><td style="height:16px;"></td></tr>
+    <tr><td style="height:18px;"></td></tr>
 
-    <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
+    <tr><td style="font-size:15px;color:#3a5a5a;line-height:1.75;padding-bottom:20px;">
       Log payments whenever you make them — even small ones count. Every entry moves the bar.
     </td></tr>
 
-    <tr><td style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
+    <tr><td style="font-size:13px;color:#5a7a7a;text-align:center;border-top:1px solid #e6f7f7;padding-top:16px;line-height:1.6;">
       Loss Tracker is the second tab in CornerDay.
     </td></tr>
 
   </table>
   </td></tr>
-  <tr><td style="height:24px;"></td></tr>
+
+  <tr><td style="background:#081e1e;border-radius:0 0 20px 20px;padding:22px 28px;text-align:center;">
+    <div>
+      <img src="${ICON}" width="24" height="24" alt="CornerDay" style="border-radius:6px;opacity:0.85;vertical-align:middle;margin-right:7px;"/>
+      <span style="font-size:14px;font-weight:800;color:#fff;vertical-align:middle;">CornerDay</span>
+    </div>
+    <div style="margin-top:10px;">
+      <a href="https://cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">cornerday.app</a>
+      <a href="https://cornerday.app/privacy" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Privacy</a>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;">© 2026 CornerDay. Built for recovery.</div>
+  </td></tr>
+
+  <tr><td style="height:32px;"></td></tr>
 </table>
 </td></tr>
 </table>

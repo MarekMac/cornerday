@@ -7,69 +7,80 @@ const ok  = () => new Response('{}', { status: 200, headers: JSON_HEADERS });
 const err = (msg: string, status = 500) =>
   new Response(JSON.stringify({ error: msg }), { status, headers: JSON_HEADERS });
 
+const ICON = 'https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png';
+
+const footer = `
+  <tr><td style="background:#081e1e;border-radius:0 0 20px 20px;padding:22px 28px;text-align:center;">
+    <div>
+      <img src="${ICON}" width="24" height="24" alt="CornerDay" style="border-radius:6px;opacity:0.85;vertical-align:middle;margin-right:7px;"/>
+      <span style="font-size:14px;font-weight:800;color:#fff;vertical-align:middle;">CornerDay</span>
+    </div>
+    <div style="margin-top:10px;">
+      <a href="https://cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">cornerday.app</a>
+      <a href="https://cornerday.app/privacy" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Privacy</a>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;">© 2026 CornerDay. Built for recovery.</div>
+  </td></tr>`;
+
 const confirmationHtml = (confirmUrl: string) => `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirm your CornerDay email</title></head>
+<body style="margin:0;padding:0;background:#f5fbfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5fbfb;padding:32px 16px;">
   <tr><td align="center">
     <table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
-      <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 36px 36px;text-align:center;color:#fff;">
-        <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
-        <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-        <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">Confirm your email</div>
-        <div style="font-size:14px;opacity:0.8;line-height:1.5;">One tap and you're on your way.</div>
+      <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:20px 20px 0 0;padding:44px 36px 40px;text-align:center;color:#fff;">
+        <img src="${ICON}" width="56" height="56" alt="CornerDay" style="display:block;margin:0 auto 12px;border-radius:13px;"/>
+        <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.6;margin-bottom:14px;">CornerDay</div>
+        <div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:10px;">Confirm your email</div>
+        <div style="font-size:15px;opacity:0.85;line-height:1.5;">One tap and you're on your way.</div>
       </td></tr>
-      <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:32px 36px 28px;">
+      <tr><td style="background:#fff;padding:32px 36px 28px;">
         <table width="100%" cellpadding="0" cellspacing="0">
-          <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
+          <tr><td style="font-size:15px;color:#3a5a5a;line-height:1.75;padding-bottom:24px;">
             Thanks for signing up. Tap the button below to confirm your email address and start your recovery journey.
           </td></tr>
-          <tr><td style="text-align:center;padding-bottom:20px;">
-            <a href="${confirmUrl}" style="display:inline-block;background:linear-gradient(135deg,#0F6E6E,#1a9a9a);color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:10px;">Confirm email address</a>
+          <tr><td style="text-align:center;padding-bottom:24px;">
+            <a href="${confirmUrl}" style="display:inline-block;background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:15px 40px;border-radius:12px;">Confirm email address</a>
           </td></tr>
-          <tr><td style="font-size:13px;color:#999;text-align:center;padding-bottom:16px;line-height:1.6;">
+          <tr><td style="font-size:13px;color:#5a7a7a;text-align:center;line-height:1.6;border-top:1px solid #e6f7f7;padding-top:16px;">
             If you didn't create a CornerDay account, you can safely ignore this email.
-          </td></tr>
-          <tr><td style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
-            CornerDay &mdash; The day you turn it around starts today.
           </td></tr>
         </table>
       </td></tr>
-      <tr><td style="height:24px;"></td></tr>
+      ${footer}
+      <tr><td style="height:32px;"></td></tr>
     </table>
   </td></tr>
 </table>
 </body></html>`;
 
 const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset your CornerDay password</title></head>
+<body style="margin:0;padding:0;background:#f5fbfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5fbfb;padding:32px 16px;">
   <tr><td align="center">
     <table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
-      <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 36px 36px;text-align:center;color:#fff;">
-        <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
-        <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-        <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">Reset your password</div>
-        <div style="font-size:14px;opacity:0.8;line-height:1.5;">Click the button below to choose a new password.</div>
+      <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:20px 20px 0 0;padding:44px 36px 40px;text-align:center;color:#fff;">
+        <img src="${ICON}" width="56" height="56" alt="CornerDay" style="display:block;margin:0 auto 12px;border-radius:13px;"/>
+        <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.6;margin-bottom:14px;">CornerDay</div>
+        <div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:10px;">Reset your password</div>
+        <div style="font-size:15px;opacity:0.85;line-height:1.5;">Click the button below to choose a new password.</div>
       </td></tr>
-      <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:32px 36px 28px;">
+      <tr><td style="background:#fff;padding:32px 36px 28px;">
         <table width="100%" cellpadding="0" cellspacing="0">
-          <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
+          <tr><td style="font-size:15px;color:#3a5a5a;line-height:1.75;padding-bottom:24px;">
             You requested a password reset for your CornerDay account. This link expires in 1 hour.
           </td></tr>
-          <tr><td style="text-align:center;padding-bottom:20px;">
-            <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#0F6E6E,#1a9a9a);color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:10px;">Reset password</a>
+          <tr><td style="text-align:center;padding-bottom:24px;">
+            <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:15px 40px;border-radius:12px;">Reset password</a>
           </td></tr>
-          <tr><td style="font-size:13px;color:#999;text-align:center;padding-bottom:16px;line-height:1.6;">
+          <tr><td style="font-size:13px;color:#5a7a7a;text-align:center;line-height:1.6;border-top:1px solid #e6f7f7;padding-top:16px;">
             If you did not request this, you can safely ignore this email. Your account is secure.
-          </td></tr>
-          <tr><td style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
-            CornerDay &mdash; The day you turn it around starts today.
           </td></tr>
         </table>
       </td></tr>
-      <tr><td style="height:24px;"></td></tr>
+      ${footer}
+      <tr><td style="height:32px;"></td></tr>
     </table>
   </td></tr>
 </table>
@@ -100,20 +111,16 @@ Deno.serve(async (req: Request) => {
 
   const { email_action_type, token_hash, token, redirect_to } = email_data;
 
-  // Only handle signup confirmation and password recovery
   if (email_action_type !== 'recovery' && email_action_type !== 'signup') {
     return ok();
   }
 
-  // Use token_hash if present, fall back to token
   const verifyToken = token_hash || token;
   if (!verifyToken) {
     console.error('No token or token_hash in email_data');
     return err('Missing token', 400);
   }
 
-  // Route through our edge function so the deep link carries only the one-time
-  // token_hash — not reusable access_token + refresh_token session credentials.
   const redirectUrl = `${SUPABASE_URL}/functions/v1/auth-reset-redirect?token_hash=${encodeURIComponent(verifyToken)}&type=${encodeURIComponent(email_action_type)}`;
 
   const isSignup = email_action_type === 'signup';

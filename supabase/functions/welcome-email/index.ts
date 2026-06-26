@@ -9,7 +9,6 @@ const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@corn
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
 
-
 function motivationLabel(key: string | null): string {
   const map: Record<string, string> = {
     family: 'My family', finances: 'Financial freedom',
@@ -19,94 +18,108 @@ function motivationLabel(key: string | null): string {
   return key ? (map[key] ?? key) : 'your recovery';
 }
 
+const ICON = 'https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png';
+
 function buildHtml(firstName: string, whyLabel: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Welcome to CornerDay</title></head>
-<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+<body style="margin:0;padding:0;background:#f5fbfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5fbfb;padding:32px 16px;">
 <tr><td align="center">
-<table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
+<table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
 
-  <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
-    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
-    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-    <div style="font-size:26px;font-weight:800;line-height:1.2;margin-bottom:10px;">Welcome, ${firstName}.</div>
+  <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:20px 20px 0 0;padding:44px 36px 40px;text-align:center;color:#fff;">
+    <img src="${ICON}" width="56" height="56" alt="CornerDay" style="display:block;margin:0 auto 12px;border-radius:13px;"/>
+    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.6;margin-bottom:14px;">CornerDay</div>
+    <div style="font-size:28px;font-weight:900;line-height:1.2;margin-bottom:10px;">Welcome, ${firstName}.</div>
     <div style="font-size:15px;opacity:0.85;line-height:1.5;">The day you turn it around starts today.</div>
   </td></tr>
 
-  <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:28px 28px 24px;">
+  <tr><td style="background:#fff;padding:32px 36px 28px;">
   <table width="100%" cellpadding="0" cellspacing="0">
 
-    <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
+    <tr><td style="font-size:15px;color:#3a5a5a;line-height:1.75;padding-bottom:22px;">
       You've taken a real step today. Most people never do. CornerDay is here to keep you going — every hour, every day.
     </td></tr>
 
-    <tr><td style="border-left:3px solid #0F6E6E;padding:12px 14px;background:#f9fdfd;border-radius:0 8px 8px 0;">
+    <tr><td style="border-left:3px solid #0F6E6E;padding:12px 16px;background:#e6f7f7;border-radius:0 10px 10px 0;margin-bottom:20px;">
       <div style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Your why</div>
-      <div style="font-size:15px;color:#1a1a1a;font-weight:600;">${whyLabel}</div>
+      <div style="font-size:15px;color:#1a2e2e;font-weight:700;">${whyLabel}</div>
     </td></tr>
 
-    <tr><td style="height:20px;"></td></tr>
-    <tr><td style="font-size:12px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;padding-bottom:12px;">What's inside the app</td></tr>
+    <tr><td style="height:22px;"></td></tr>
+    <tr><td style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1.2px;padding-bottom:12px;">What's inside the app</td></tr>
 
-    <tr><td style="background:#f9fdfd;border-radius:12px;padding:16px;">
+    <tr><td style="background:#e6f7f7;border-radius:14px;padding:18px;">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4C5;</td>
-        <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Streak tracker</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Every day clean counts. Watch your streak grow, earn badges at 1 week, 1 month, 6 months and beyond.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:16px;">&#x1F4C5;</td>
+        <td style="vertical-align:top;padding-bottom:16px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Streak tracker</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">Every day clean counts. Watch your streak grow, earn badges at 1 week, 1 month, 6 months and beyond.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F6A8;</td>
-        <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Urge support</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Breathing exercises, distraction tools, and a direct line to the National Problem Gambling Helpline — available the moment you need it.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:16px;">&#x1F6A8;</td>
+        <td style="vertical-align:top;padding-bottom:16px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Urge support</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">Breathing exercises, distraction tools, and a direct line to the National Problem Gambling Helpline — available the moment you need it.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4B0;</td>
-        <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Loss &amp; debt tracker</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Log what was lost, record payments as you make them, and watch your recovery progress bar move. Honest numbers, no shame.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:16px;">&#x1F4B0;</td>
+        <td style="vertical-align:top;padding-bottom:16px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Loss &amp; debt tracker</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">Log what was lost, record payments as you make them, and watch your recovery progress bar move. Honest numbers, no shame.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4D4;</td>
-        <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Urge journal</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Log urges as you face them — what triggered it, how you handled it. Patterns become visible. Knowledge becomes power.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:16px;">&#x1F4D4;</td>
+        <td style="vertical-align:top;padding-bottom:16px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Urge journal</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">Log urges as you face them — what triggered it, how you handled it. Patterns become visible. Knowledge becomes power.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F465;</td>
-        <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Community</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">An anonymous space to share wins, post on hard days, and hear from others on the same journey. You're not alone in this.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:16px;">&#x1F465;</td>
+        <td style="vertical-align:top;padding-bottom:16px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Community</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">An anonymous space to share wins, post on hard days, and hear from others on the same journey. You're not alone in this.</div>
         </td>
       </tr>
       <tr>
         <td style="font-size:22px;width:36px;vertical-align:top;">&#x1F916;</td>
-        <td style="vertical-align:top;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">AI Coach <span style="font-size:11px;font-weight:600;color:#fff;background:#0F6E6E;border-radius:6px;padding:2px 7px;vertical-align:middle;">Premium</span></div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">24/7 private support from an AI coach trained on evidence-based recovery strategies. Available whenever you need to talk it through.</div>
+        <td style="vertical-align:top;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">AI Coach <span style="font-size:11px;font-weight:600;color:#fff;background:#0F6E6E;border-radius:6px;padding:2px 7px;vertical-align:middle;">Premium</span></div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">24/7 private support from an AI coach trained on evidence-based recovery strategies. Available whenever you need to talk it through.</div>
         </td>
       </tr>
     </table>
     </td></tr>
 
-    <tr><td style="height:24px;"></td></tr>
-
-    <tr><td style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
+    <tr><td style="height:20px;"></td></tr>
+    <tr><td style="font-size:13px;color:#5a7a7a;text-align:center;border-top:1px solid #e6f7f7;padding-top:16px;line-height:1.6;">
       We'll send you a weekly progress recap every Sunday.<br>
-      To manage notifications: <strong>Account → Notifications</strong>
+      To manage notifications: <strong style="color:#0F6E6E;">Account → Notifications</strong>
     </td></tr>
 
   </table>
   </td></tr>
-  <tr><td style="height:24px;"></td></tr>
+
+  <tr><td style="background:#081e1e;border-radius:0 0 20px 20px;padding:22px 28px;text-align:center;">
+    <div>
+      <img src="${ICON}" width="24" height="24" alt="CornerDay" style="border-radius:6px;opacity:0.85;vertical-align:middle;margin-right:7px;"/>
+      <span style="font-size:14px;font-weight:800;color:#fff;vertical-align:middle;">CornerDay</span>
+    </div>
+    <div style="margin-top:10px;">
+      <a href="https://cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">cornerday.app</a>
+      <a href="https://cornerday.app/privacy" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Privacy</a>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;">© 2026 CornerDay. Built for recovery.</div>
+  </td></tr>
+
+  <tr><td style="height:32px;"></td></tr>
 </table>
 </td></tr>
 </table>

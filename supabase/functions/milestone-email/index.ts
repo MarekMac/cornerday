@@ -9,6 +9,7 @@ const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@corn
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
 
+const ICON = 'https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png';
 
 interface MilestoneDef {
   days: number;
@@ -45,54 +46,65 @@ function parseQuitMs(ts: string | null, date: string | null): number {
 }
 
 function buildHtml(firstName: string, m: MilestoneDef, totalDays: number): string {
-  // Next milestone
   const next = MILESTONES.find(n => n.days > m.days);
   const nextBlock = next ? `
-    <tr><td style="background:#f9fdfd;border-radius:12px;padding:16px;text-align:center;">
-      <div style="font-size:12px;color:#5a8a8a;margin-bottom:4px;">Next milestone</div>
-      <div style="font-size:18px;font-weight:700;color:#0F6E6E;">${next.label}</div>
-      <div style="font-size:13px;color:#888;margin-top:4px;">${next.days - totalDays} day${next.days - totalDays !== 1 ? 's' : ''} away</div>
+    <tr><td style="background:#e6f7f7;border-radius:12px;padding:16px;text-align:center;">
+      <div style="font-size:11px;color:#5a7a7a;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Next milestone</div>
+      <div style="font-size:20px;font-weight:800;color:#0F6E6E;">${next.label}</div>
+      <div style="font-size:13px;color:#5a7a7a;margin-top:4px;">${next.days - totalDays} day${next.days - totalDays !== 1 ? 's' : ''} away</div>
     </td></tr>` : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Milestone reached</title></head>
-<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+<body style="margin:0;padding:0;background:#f5fbfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5fbfb;padding:32px 16px;">
 <tr><td align="center">
-<table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
+<table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
 
-  <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
-    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
-    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-    <div style="font-size:28px;font-weight:900;line-height:1.15;margin-bottom:8px;">${m.heading}</div>
+  <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:20px 20px 0 0;padding:44px 36px 40px;text-align:center;color:#fff;">
+    <img src="${ICON}" width="56" height="56" alt="CornerDay" style="display:block;margin:0 auto 12px;border-radius:13px;"/>
+    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.6;margin-bottom:14px;">CornerDay</div>
+    <div style="font-size:30px;font-weight:900;line-height:1.15;margin-bottom:10px;">${m.heading}</div>
     <div style="font-size:20px;font-weight:600;color:rgba(255,255,255,0.85);">${totalDays} days clean</div>
   </td></tr>
 
-  <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:28px 28px 24px;">
+  <tr><td style="background:#fff;padding:32px 36px 28px;">
   <table width="100%" cellpadding="0" cellspacing="0">
 
-    <tr><td style="font-size:16px;color:#333;line-height:1.75;padding-bottom:20px;">
+    <tr><td style="font-size:16px;color:#3a5a5a;line-height:1.75;padding-bottom:22px;">
       ${firstName}, ${m.message}
     </td></tr>
 
-    <tr><td style="border-left:3px solid #0F6E6E;padding:12px 14px;background:#f9fdfd;border-radius:0 8px 8px 0;margin-bottom:20px;">
+    <tr><td style="border-left:3px solid #0F6E6E;padding:14px 16px;background:#e6f7f7;border-radius:0 10px 10px 0;margin-bottom:20px;">
       <div style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Your milestone</div>
-      <div style="font-size:22px;font-weight:900;color:#0F6E6E;">${m.label}</div>
-      <div style="font-size:13px;color:#888;margin-top:4px;">${totalDays} days without gambling</div>
+      <div style="font-size:24px;font-weight:900;color:#0F6E6E;">${m.label}</div>
+      <div style="font-size:13px;color:#5a7a7a;margin-top:4px;">${totalDays} days without gambling</div>
     </td></tr>
 
-    ${nextBlock ? `<tr><td style="height:12px;"></td></tr>${nextBlock}` : ''}
+    ${nextBlock ? `<tr><td style="height:14px;"></td></tr>${nextBlock}` : ''}
 
-    <tr><td style="height:24px;"></td></tr>
-
-    <tr><td style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
+    <tr><td style="height:22px;"></td></tr>
+    <tr><td style="font-size:13px;color:#5a7a7a;text-align:center;border-top:1px solid #e6f7f7;padding-top:16px;line-height:1.6;">
       Keep going. We'll be here every step of the way.
     </td></tr>
 
   </table>
   </td></tr>
-  <tr><td style="height:24px;"></td></tr>
+
+  <tr><td style="background:#081e1e;border-radius:0 0 20px 20px;padding:22px 28px;text-align:center;">
+    <div>
+      <img src="${ICON}" width="24" height="24" alt="CornerDay" style="border-radius:6px;opacity:0.85;vertical-align:middle;margin-right:7px;"/>
+      <span style="font-size:14px;font-weight:800;color:#fff;vertical-align:middle;">CornerDay</span>
+    </div>
+    <div style="margin-top:10px;">
+      <a href="https://cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">cornerday.app</a>
+      <a href="https://cornerday.app/privacy" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Privacy</a>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;">© 2026 CornerDay. Built for recovery.</div>
+  </td></tr>
+
+  <tr><td style="height:32px;"></td></tr>
 </table>
 </td></tr>
 </table>
@@ -109,7 +121,6 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const body = await req.json().catch(() => ({}));
 
-  // Webhook mode: triggered by streaks table update for a single user
   if (body.user_id) {
     const milestone = MILESTONES.find(m => m.days === Number(body.streak));
     if (!milestone) return new Response(JSON.stringify({ skipped: 'not a milestone day' }), { status: 200 });
@@ -172,7 +183,6 @@ Deno.serve(async (req: Request) => {
       const elapsed   = Math.max(0, Date.now() - quitMs);
       const totalDays = Math.floor(elapsed / 86_400_000);
 
-      // Find a milestone the user crossed today (within last 24 hours)
       const milestone = MILESTONES.find(m => {
         const msAtMilestone = m.days * 86_400_000;
         return elapsed >= msAtMilestone && (elapsed - 86_400_000) < msAtMilestone;
@@ -180,7 +190,6 @@ Deno.serve(async (req: Request) => {
 
       if (!milestone) { skipped++; continue; }
 
-      // Check badge to prevent duplicate sends
       const { data: existing } = await supabase
         .from('badges')
         .select('id')

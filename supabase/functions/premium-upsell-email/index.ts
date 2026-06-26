@@ -9,6 +9,7 @@ const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@corn
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
 
+const ICON = 'https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png';
 
 function buildHtml(firstName: string, streakDays: number): string {
   const streakLine = streakDays > 0
@@ -18,55 +19,55 @@ function buildHtml(firstName: string, streakDays: number): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>What Premium unlocks for you</title></head>
-<body style="margin:0;padding:0;background:#e6f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#e6f0f0;padding:24px 16px;">
+<body style="margin:0;padding:0;background:#f5fbfb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5fbfb;padding:32px 16px;">
 <tr><td align="center">
-<table width="100%" style="max-width:520px;" cellpadding="0" cellspacing="0">
+<table width="100%" style="max-width:600px;" cellpadding="0" cellspacing="0">
 
-  <tr><td style="background:linear-gradient(135deg,#0F6E6E 0%,#1a9a9a 100%);border-radius:16px 16px 0 0;padding:40px 28px 36px;text-align:center;color:#fff;">
-    <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" width="52" height="52" alt="CornerDay" style="display:block;margin:0 auto 10px;border-radius:12px;"/>
-    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.65;margin-bottom:12px;">CornerDay</div>
-    <div style="font-size:24px;font-weight:800;line-height:1.2;margin-bottom:8px;">A month in. Here's what's waiting.</div>
-    <div style="font-size:14px;opacity:0.85;line-height:1.5;">${streakLine} Ready for more support?</div>
+  <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:20px 20px 0 0;padding:44px 36px 40px;text-align:center;color:#fff;">
+    <img src="${ICON}" width="56" height="56" alt="CornerDay" style="display:block;margin:0 auto 12px;border-radius:13px;"/>
+    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.6;margin-bottom:14px;">CornerDay</div>
+    <div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:10px;">A month in. Here's what's waiting.</div>
+    <div style="font-size:15px;opacity:0.85;line-height:1.5;">${streakLine} Ready for more support?</div>
   </td></tr>
 
-  <tr><td style="background:#fff;border-radius:0 0 16px 16px;padding:28px 28px 24px;">
+  <tr><td style="background:#fff;padding:32px 36px 28px;">
   <table width="100%" cellpadding="0" cellspacing="0">
 
-    <tr><td style="font-size:15px;color:#333;line-height:1.7;padding-bottom:20px;">
+    <tr><td style="font-size:15px;color:#3a5a5a;line-height:1.75;padding-bottom:22px;">
       ${firstName}, you've been using CornerDay for a month. The free tools are doing their job — but if you want more personalised support, Premium takes it further.
     </td></tr>
 
-    <tr><td style="font-size:13px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1px;padding-bottom:12px;">What Premium unlocks</td></tr>
+    <tr><td style="font-size:11px;font-weight:700;color:#0F6E6E;text-transform:uppercase;letter-spacing:1.2px;padding-bottom:14px;">What Premium unlocks</td></tr>
 
-    <tr><td style="background:#f9fdfd;border-radius:12px;padding:16px;">
+    <tr><td style="background:#e6f7f7;border-radius:14px;padding:18px;">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F916;</td>
-        <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">AI Coach — 24/7</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">A private conversation partner available any time. Talk through urges, hard days, setbacks — whatever you need in the moment. No waiting rooms. No appointments.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:16px;">&#x1F916;</td>
+        <td style="vertical-align:top;padding-bottom:16px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">AI Coach — 24/7</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">A private conversation partner available any time. Talk through urges, hard days, setbacks — whatever you need in the moment. No waiting rooms. No appointments.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F4CA;</td>
-        <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Detailed analytics</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">See your mood trends, trigger patterns, and recovery progress in depth. Understanding your patterns is how you get ahead of them.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:16px;">&#x1F4CA;</td>
+        <td style="vertical-align:top;padding-bottom:16px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Detailed analytics</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">See your mood trends, trigger patterns, and recovery progress in depth. Understanding your patterns is how you get ahead of them.</div>
         </td>
       </tr>
       <tr>
-        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:14px;">&#x1F91D;</td>
-        <td style="vertical-align:top;padding-bottom:14px;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Someone in your corner</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">Connect a trusted person — a partner, friend, or family member — so they can see your streak and cheer you on. Recovery is stronger with someone in your corner.</div>
+        <td style="font-size:22px;width:36px;vertical-align:top;padding-bottom:16px;">&#x1F91D;</td>
+        <td style="vertical-align:top;padding-bottom:16px;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Someone in your corner</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">Connect a trusted person — a partner, friend, or family member — so they can see your streak and cheer you on. Recovery is stronger with someone in your corner.</div>
         </td>
       </tr>
       <tr>
         <td style="font-size:22px;width:36px;vertical-align:top;">&#x1F6AB;</td>
-        <td style="vertical-align:top;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">Ad-free experience</div>
-          <div style="font-size:13px;color:#666;margin-top:2px;line-height:1.5;">No ads. No distractions. Just the tools you need, whenever you need them.</div>
+        <td style="vertical-align:top;padding-left:4px;">
+          <div style="font-size:14px;font-weight:700;color:#1a2e2e;">Ad-free experience</div>
+          <div style="font-size:13px;color:#5a7a7a;margin-top:3px;line-height:1.55;">No ads. No distractions. Just the tools you need, whenever you need them.</div>
         </td>
       </tr>
     </table>
@@ -74,26 +75,39 @@ function buildHtml(firstName: string, streakDays: number): string {
 
     <tr><td style="height:20px;"></td></tr>
 
-    <tr><td style="background:#0F6E6E;border-radius:12px;padding:20px;text-align:center;">
-      <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-bottom:6px;">CornerDay Premium</div>
-      <div style="font-size:28px;font-weight:900;color:#fff;line-height:1;">from $4.99<span style="font-size:14px;font-weight:400;">/month</span></div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:6px;">Cancel any time. No commitment.</div>
+    <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:14px;padding:22px;text-align:center;">
+      <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">CornerDay Premium</div>
+      <div style="font-size:30px;font-weight:900;color:#fff;line-height:1;">from $4.99<span style="font-size:15px;font-weight:400;">/month</span></div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:8px;">Cancel any time. No commitment.</div>
     </td></tr>
 
-    <tr><td style="height:16px;"></td></tr>
+    <tr><td style="height:18px;"></td></tr>
 
-    <tr><td style="font-size:14px;color:#555;line-height:1.7;padding-bottom:20px;text-align:center;">
-      To upgrade: open CornerDay &#x2192; go to <strong>Settings</strong> &#x2192; tap <strong>Upgrade to Premium</strong>
+    <tr><td style="font-size:14px;color:#5a7a7a;line-height:1.7;padding-bottom:20px;text-align:center;">
+      To upgrade: open CornerDay &#x2192; go to <strong style="color:#0F6E6E;">Settings</strong> &#x2192; tap <strong style="color:#0F6E6E;">Upgrade to Premium</strong>
     </td></tr>
 
-    <tr><td style="text-align:center;font-size:12px;color:#bbb;border-top:1px solid #f0f0f0;padding-top:16px;line-height:1.6;">
-      Free features stay free forever. This is just what's waiting if you want it.<br>
-      To stop receiving these emails: <strong>Settings &#x2192; Notifications</strong>
+    <tr><td style="font-size:13px;color:#5a7a7a;text-align:center;border-top:1px solid #e6f7f7;padding-top:16px;line-height:1.6;">
+      Free features stay free forever. This is just what's waiting if you want it.
     </td></tr>
 
   </table>
   </td></tr>
-  <tr><td style="height:24px;"></td></tr>
+
+  <tr><td style="background:#081e1e;border-radius:0 0 20px 20px;padding:22px 28px;text-align:center;">
+    <div>
+      <img src="${ICON}" width="24" height="24" alt="CornerDay" style="border-radius:6px;opacity:0.85;vertical-align:middle;margin-right:7px;"/>
+      <span style="font-size:14px;font-weight:800;color:#fff;vertical-align:middle;">CornerDay</span>
+    </div>
+    <div style="margin-top:10px;">
+      <a href="https://cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">cornerday.app</a>
+      <a href="https://cornerday.app/privacy" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Privacy</a>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:10px;line-height:1.6;">To stop these emails: Settings &#x2192; Notifications</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:8px;">© 2026 CornerDay. Built for recovery.</div>
+  </td></tr>
+
+  <tr><td style="height:32px;"></td></tr>
 </table>
 </td></tr>
 </table>
@@ -110,7 +124,6 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const body = await req.json().catch(() => ({}));
 
-  // Direct test mode: bypass eligibility, send immediately to given user
   if (body.direct_user_id) {
     const { data: user } = await supabase
       .from('users')
@@ -140,7 +153,6 @@ Deno.serve(async (req: Request) => {
   const now = Date.now();
   const thirtyDaysAgo = new Date(now - 30 * 86_400_000).toISOString();
 
-  // All free users who joined 30+ days ago
   const { data: eligibleUsers, error } = await supabase
     .from('users')
     .select('id, email, display_name')
@@ -157,7 +169,6 @@ Deno.serve(async (req: Request) => {
 
   for (const user of (eligibleUsers ?? [])) {
     try {
-      // Skip if an upsell was sent within the last 30 days
       const { data: recentUpsell } = await supabase
         .from('badges')
         .select('id')
@@ -177,7 +188,6 @@ Deno.serve(async (req: Request) => {
       const firstName = esc(user.display_name?.split(' ')[0] || 'there');
       const html = buildHtml(firstName, streak?.current_streak ?? 0);
 
-      // Upsert so earned_at refreshes each cycle, giving a rolling 30-day window
       const { error: upsertError } = await supabase
         .from('badges')
         .upsert({ user_id: user.id, badge_type: 'upsell_30d', earned_at: new Date().toISOString() },
