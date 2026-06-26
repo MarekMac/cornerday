@@ -396,10 +396,98 @@
       margin: 0 auto 48px;
     }
 
+    /* ── Screenshots ── */
+    .screenshots-section {
+      padding: 88px 24px 96px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .phones-row {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-top: 52px;
+    }
+
+    .phone-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .phone-mockup {
+      width: 148px;
+      height: 296px;
+      background: #1a2e2e;
+      border-radius: 28px;
+      padding: 9px;
+      box-shadow: 0 20px 56px rgba(15,110,110,0.18);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .phone-mockup.featured {
+      width: 172px;
+      height: 344px;
+      border-radius: 32px;
+      box-shadow: 0 28px 72px rgba(15,110,110,0.24);
+    }
+
+    .phone-notch {
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 44px;
+      height: 10px;
+      background: #1a2e2e;
+      border-radius: 0 0 8px 8px;
+      z-index: 2;
+    }
+
+    .phone-screen {
+      background: var(--accent);
+      border-radius: 20px;
+      height: 100%;
+      padding: 18px 9px 9px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .ph-bar {
+      background: linear-gradient(135deg, var(--teal-dark), var(--teal-mid));
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .ph-block {
+      background: #fff;
+      border-radius: 9px;
+      flex-shrink: 0;
+      opacity: 0.9;
+    }
+
+    .ph-block.accent { background: rgba(15,110,110,0.08); }
+
+    .phone-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.2px;
+    }
+
     @media (max-width: 600px) {
       nav { padding: 16px 20px; }
       .nav-links { display: none; }
       .hero { padding: 100px 20px 80px; }
+      .phone-mockup { width: 120px; height: 240px; }
+      .phone-mockup.featured { width: 140px; height: 280px; }
     }
   </style>
 </head>
@@ -532,6 +620,62 @@
       </div>
     </div>
   </div>
+
+  <!-- Screenshots -->
+  <section class="screenshots-section">
+    <p class="section-label">The app</p>
+    <h2 class="section-title">Everything in your pocket.</h2>
+    <div class="phones-row">
+
+      <!-- Phone 1: Loss Tracker -->
+      <div class="phone-wrap">
+        <div class="phone-mockup">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="ph-bar" style="height:48px"></div>
+            <div class="ph-block" style="height:52px"></div>
+            <div class="ph-block accent" style="height:32px"></div>
+            <div class="ph-block" style="height:32px"></div>
+            <div class="ph-block" style="height:32px"></div>
+            <div class="ph-block accent" style="flex:1"></div>
+          </div>
+        </div>
+        <div class="phone-label">Loss Tracker</div>
+      </div>
+
+      <!-- Phone 2: Home (featured, centre) -->
+      <div class="phone-wrap">
+        <div class="phone-mockup featured">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="ph-bar" style="height:72px"></div>
+            <div class="ph-block" style="height:80px"></div>
+            <div class="ph-block accent" style="height:36px"></div>
+            <div class="ph-block" style="height:36px"></div>
+            <div class="ph-block" style="height:36px"></div>
+            <div class="ph-block accent" style="flex:1"></div>
+          </div>
+        </div>
+        <div class="phone-label">Home</div>
+      </div>
+
+      <!-- Phone 3: Urge Support -->
+      <div class="phone-wrap">
+        <div class="phone-mockup">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="ph-bar" style="height:48px"></div>
+            <div class="ph-block" style="height:64px"></div>
+            <div class="ph-block accent" style="height:32px"></div>
+            <div class="ph-block" style="height:32px"></div>
+            <div class="ph-block accent" style="flex:1"></div>
+          </div>
+        </div>
+        <div class="phone-label">Urge Support</div>
+      </div>
+
+    </div>
+  </section>
 
   <!-- Promise -->
   <section class="promise-strip">
