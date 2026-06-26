@@ -84,33 +84,13 @@
       box-shadow: 0 4px 32px rgba(15,110,110,0.10);
     }
 
-    /* ── Desktop 2-column layout ── */
-    @media (min-width: 760px) {
+    /* ── Desktop wider single column ── */
+    @media (min-width: 600px) {
       main { padding: 40px 24px 64px; }
 
       .card {
-        max-width: 860px;
+        max-width: 640px;
         padding: 36px 40px;
-      }
-
-      .card-layout {
-        display: grid;
-        grid-template-columns: 1fr 340px;
-        gap: 32px;
-        align-items: start;
-      }
-
-      .card-right {
-        background: var(--accent);
-        border-radius: 20px;
-        padding: 24px;
-        position: sticky;
-        top: 24px;
-      }
-
-      .card-right .notify-section {
-        background: #fff;
-        margin-top: 12px;
       }
     }
 
@@ -817,32 +797,27 @@
 
         card.innerHTML =
           '<div class="private-banner">🔒 This link was shared with you personally. Please don\'t forward it — anyone with the URL can view this page.</div>' +
-          '<div class="card-layout">' +
-            '<div class="card-left">' +
-              '<div class="streak-box">' +
-                '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
-                '<div class="streak-unit">' + esc(fmt.unit) + '</div>' +
-                (fmt.detail ? '<div class="streak-detail">' + esc(fmt.detail) + '</div>' : '') +
-                '<div class="streak-sub">clean &#x1F389;</div>' +
+          '<div class="streak-box">' +
+            '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
+            '<div class="streak-unit">' + esc(fmt.unit) + '</div>' +
+            (fmt.detail ? '<div class="streak-detail">' + esc(fmt.detail) + '</div>' : '') +
+            '<div class="streak-sub">clean &#x1F389;</div>' +
+          '</div>' +
+          '<h2>' + esc(name) + ' is on a ' + esc(streakLabel) + ' streak</h2>' +
+          '<p>' + esc(name) + ' is working hard on their recovery. Send them a short message of support &mdash; it\'ll appear in the app next time they open it.</p>' +
+          extraSections +
+          notifyHtml +
+          '<div class="divider"></div>' +
+          '<div id="form-area">' +
+            '<div class="encourage-header">' +
+              '<div class="encourage-icon">💙</div>' +
+              '<div>' +
+                '<div class="encourage-title">Send a message</div>' +
+                '<div class="encourage-sub">Shows up in their app — a reminder someone\'s cheering them on.</div>' +
               '</div>' +
-              '<h2>' + esc(name) + ' is on a ' + esc(streakLabel) + ' streak</h2>' +
-              '<p>' + esc(name) + ' is working hard on their recovery. Send them a short message of support &mdash; it\'ll appear in the app next time they open it.</p>' +
-              extraSections +
             '</div>' +
-            '<div class="card-right">' +
-              '<div id="form-area">' +
-                '<div class="encourage-header">' +
-                  '<div class="encourage-icon">💙</div>' +
-                  '<div>' +
-                    '<div class="encourage-title">Send a message</div>' +
-                    '<div class="encourage-sub">Shows up in their app — a reminder someone\'s cheering them on.</div>' +
-                  '</div>' +
-                '</div>' +
-                '<textarea id="msg" rows="5" maxlength="200" placeholder="Write something kind… (max 200 characters)"></textarea>' +
-                '<button id="btn" onclick="send()">Send &#x1F499;</button>' +
-              '</div>' +
-              notifyHtml +
-            '</div>' +
+            '<textarea id="msg" rows="4" maxlength="200" placeholder="Write something kind… (max 200 characters)"></textarea>' +
+            '<button id="btn" onclick="send()">Send &#x1F499;</button>' +
           '</div>';
       } catch { card.innerHTML = '<div class="logo">CornerDay</div><div class="error">Could not load. Please try again.</div>'; }
     })();
