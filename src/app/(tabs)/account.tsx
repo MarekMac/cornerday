@@ -346,10 +346,23 @@ export default function AccountScreen() {
           .maybeSingle(),
         supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
         supabase.from('losses').select('amount').eq('user_id', user.id).eq('type', 'saving'),
-        supabase.from('badges').select('badge_type').eq('user_id', user.id),
+        supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       ]);
       if (profileErr) throw profileErr;
-      const fetchedBadgeTypes = (badgesData ?? []).map((b: { badge_type: string }) => b.badge_type);
+      const quitStr = data?.quit_timestamp ?? data?.quit_date ?? null;
+      let quitIso: string | null = null;
+      if (quitStr) {
+        let iso = String(quitStr).trim().replace(' ', 'T');
+        iso = iso.replace(/([+-])(\d{2})$/, '$1$2:00').replace(/([+-])(\d{2})(\d{2})$/, '$1$2:$3');
+        if (!iso.includes('T')) iso += 'T00:00:00Z';
+        const ms = Date.parse(iso);
+        if (!isNaN(ms)) quitIso = new Date(ms).toISOString();
+      }
+      const allBadges = (badgesData ?? []) as { badge_type: string; earned_at: string }[];
+      const currentBadges = allBadges.filter(b =>
+        b.badge_type !== 'started' && (!quitIso || b.earned_at >= quitIso)
+      );
+      const fetchedBadgeTypes = currentBadges.map(b => b.badge_type);
       earnedBadgeTypesRef.current = fetchedBadgeTypes;
       const badgeCount = fetchedBadgeTypes.length;
       if (!isMounted.current) return;

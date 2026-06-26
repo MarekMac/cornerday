@@ -303,7 +303,7 @@ export default function UrgeScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !isMounted.current) return;
-      const { data } = await supabase.from('users').select('motivation, recovery_distractions, recovery_mantra').eq('id', user.id).maybeSingle();
+      const { data } = await supabase.from('users').select('motivation, recovery_distractions, recovery_mantra, trusted_contact_name, trusted_contact_phone').eq('id', user.id).maybeSingle();
       if (!isMounted.current) return;
       if (data?.motivation != null) {
         setMotivation(data.motivation);
@@ -313,6 +313,11 @@ export default function UrgeScreen() {
         distractions: data?.recovery_distractions ? data.recovery_distractions.split(',').filter(Boolean) : [],
         mantra: data?.recovery_mantra ?? null,
       });
+      if (data?.trusted_contact_name || data?.trusted_contact_phone) {
+        const contact = { name: data.trusted_contact_name ?? '', phone: data.trusted_contact_phone ?? '' };
+        setTrustedContact(contact);
+        await AsyncStorage.setItem(TRUSTED_CONTACT_KEY, JSON.stringify(contact));
+      }
 
       try {
         const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
@@ -368,11 +373,6 @@ export default function UrgeScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !isMounted.current) return;
-      const now = new Date();
-      const localDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const key = `urge_timer_${localDay}`;
-      const already = await AsyncStorage.getItem(key);
-      if (already || !isMounted.current) return;
       const { error } = await supabase.from('urge_journal').insert({
         user_id: user.id,
         trigger: 'timer_completed',
@@ -381,7 +381,6 @@ export default function UrgeScreen() {
       });
       if (!error) {
         if (!isMounted.current) return;
-        await AsyncStorage.setItem(key, '1');
         setTimerPointsEarned(true);
       } else {
         console.warn('awardTimerPoint insert failed:', error.message);
