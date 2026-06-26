@@ -143,11 +143,20 @@
       color: rgba(255,255,255,0.6);
     }
 
-    /* When time has two parts (e.g. "7 hours 4 mins"), shrink the number to match */
-    .streak-row:has(.streak-detail) .streak-num {
-      font-size: 28px;
+    /* Two-part time (e.g. "7 hours 6 mins") — uniform single line */
+    .streak-inline {
+      font-size: 36px;
+      font-weight: 900;
+      color: #fff;
       letter-spacing: -0.5px;
-      line-height: 1.4;
+      line-height: 1.1;
+      text-align: center;
+    }
+
+    .streak-inline-unit {
+      font-size: 22px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.75);
     }
 
     .streak-sub {
@@ -812,11 +821,9 @@
         card.innerHTML =
           '<div class="private-banner">🔒 This link was shared with you personally. Please don\'t forward it — anyone with the URL can view this page.</div>' +
           '<div class="streak-box">' +
-            '<div class="streak-row">' +
-              '<div class="streak-num">' + esc(fmt.primary) + '</div>' +
-              '<div class="streak-unit">' + esc(fmt.unit) + '</div>' +
-              (fmt.detail ? '<div class="streak-detail">' + esc(fmt.detail) + '</div>' : '') +
-            '</div>' +
+            (fmt.detail
+              ? '<div class="streak-inline">' + esc(fmt.primary) + ' <span class="streak-inline-unit">' + esc(fmt.unit) + '</span> ' + esc(fmt.detail) + '</div>'
+              : '<div class="streak-row"><div class="streak-num">' + esc(fmt.primary) + '</div><div class="streak-unit">' + esc(fmt.unit) + '</div></div>') +
             '<div class="streak-sub">clean &#x1F389;</div>' +
           '</div>' +
           '<h2>' + esc(name) + ' is on a ' + esc(streakLabel) + ' streak</h2>' +
