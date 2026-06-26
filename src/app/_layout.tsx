@@ -264,10 +264,12 @@ function InnerLayout() {
         if (signedOutTimerRef.current) clearTimeout(signedOutTimerRef.current);
         signedOutTimerRef.current = setTimeout(async () => {
           signedOutTimerRef.current = null;
-          // If a session now exists, SIGNED_IN already ran — this was an OAuth pair, bail out.
+          // If a session still exists AND this was not an intentional sign-out,
+          // SIGNED_IN already ran — this was an OAuth token-refresh pair, bail out.
           const { data: { session: currentSession } } = await supabase.auth.getSession();
-          if (currentSession) return;
+          if (currentSession && !authFlags.signingOut) return;
           // Real sign-out: clean up and navigate to the right screen.
+          authFlags.signingOut = false;
           await AsyncStorage.removeItem(ONBOARDED_KEY);
           const seen = (await AsyncStorage.getItem(SEEN_WELCOME_KEY)) === 'true';
           setSeenWelcome(seen);
@@ -276,6 +278,9 @@ function InnerLayout() {
           setAuthChecked(true);
         }, 300);
       } else if (event === 'SIGNED_IN') {
+        // During an intentional sign-out a concurrent token refresh may fire SIGNED_IN.
+        // Ignore it entirely — the SIGNED_OUT timer will handle navigation to sign-in.
+        if (authFlags.signingOut) return;
         // Cancel any pending SIGNED_OUT navigation — OAuth always pairs SIGNED_OUT with SIGNED_IN
         if (signedOutTimerRef.current) {
           clearTimeout(signedOutTimerRef.current);

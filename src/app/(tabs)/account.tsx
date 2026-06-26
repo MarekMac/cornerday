@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Contacts from 'expo-contacts/legacy';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { authFlags } from '@/lib/auth-flags';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -1288,6 +1289,7 @@ export default function AccountScreen() {
 
   const executeSignOut = async () => {
     setSigningOut(true);
+    authFlags.signingOut = true;
     try {
       await AsyncStorage.multiRemove([
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
@@ -1304,6 +1306,10 @@ export default function AccountScreen() {
       try { await supabase.auth.signOut(); } catch (_e) {}
     } finally {
       setSigningOut(false);
+      // Flag is reset by _layout.tsx once navigation to sign-in completes.
+      // Safety fallback: clear it here too so a silent signOut failure doesn't
+      // leave the flag stuck and block future SIGNED_IN events.
+      setTimeout(() => { authFlags.signingOut = false; }, 5000);
     }
   };
 
