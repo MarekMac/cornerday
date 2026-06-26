@@ -143,6 +143,13 @@
       color: rgba(255,255,255,0.6);
     }
 
+    /* When time has two parts (e.g. "7 hours 4 mins"), shrink the number to match */
+    .streak-row:has(.streak-detail) .streak-num {
+      font-size: 28px;
+      letter-spacing: -0.5px;
+      line-height: 1.4;
+    }
+
     .streak-sub {
       font-size: 14px;
       color: rgba(255,255,255,0.62);
