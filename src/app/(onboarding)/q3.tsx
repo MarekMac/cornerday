@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import {
@@ -30,12 +30,10 @@ const CURRENCIES = [
 ];
 
 const CHIP_AMOUNTS = [
-  { value: '20',   label: (s: string) => `${s}20` },
-  { value: '50',   label: (s: string) => `${s}50` },
-  { value: '100',  label: (s: string) => `${s}100` },
-  { value: '200',  label: (s: string) => `${s}200` },
-  { value: '500',  label: (s: string) => `${s}500` },
-  { value: '1000', label: (s: string) => `${s}1000+` },
+  { value: '20',  label: (s: string) => `${s}20` },
+  { value: '50',  label: (s: string) => `${s}50` },
+  { value: '100', label: (s: string) => `${s}100` },
+  { value: '200', label: (s: string) => `${s}200` },
 ];
 
 export default function Q3Screen() {
@@ -49,6 +47,8 @@ export default function Q3Screen() {
   const [quitDate, setQuitDate] = useState(new Date());
   const [userChangedDate, setUserChangedDate] = useState(false);
   const [showIOSPicker, setShowIOSPicker] = useState(false);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -60,6 +60,13 @@ export default function Q3Screen() {
   const symbol = CURRENCIES.find(c => c.code === currency)?.symbol ?? '$';
 
   const hasValue = !!selected || !!custom.trim();
+
+  const annualSaving = useMemo(() => {
+    const raw = custom.trim() || selected;
+    const weekly = parseFloat(raw);
+    if (!raw || !Number.isFinite(weekly) || weekly <= 0) return null;
+    return Math.round(weekly * 52);
+  }, [selected, custom]);
 
   const openDatePicker = () => {
     if (Platform.OS === 'ios') {
@@ -129,10 +136,12 @@ export default function Q3Screen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
+        style={s.scrollView}
         contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled">
         <Text style={s.title}>Let's set up your journey</Text>
-        <Text style={s.sectionLabel}>When did you stop betting?</Text>
+        <Text style={[s.sectionLabel, { marginBottom: 10 }]}>When did you stop betting?</Text>
         <Pressable style={s.dateBtn} onPress={openDatePicker}>
           <Text style={s.dateBtnTxt}>
             {quitDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} @ {quitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -140,29 +149,18 @@ export default function Q3Screen() {
           <Text style={s.dateEditTxt}>Change</Text>
         </Pressable>
 
-        <Text style={s.sectionLabel}>How much did you bet per week?</Text>
+        <Text style={[s.sectionLabel, { marginBottom: 10 }]}>How much did you bet per week?</Text>
         <Text style={s.subtitle}>
           We'll use this to show how much you're saving as your streak grows.
         </Text>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={s.currencyScroll}
-          contentContainerStyle={s.currencyRow}>
-          {CURRENCIES.map(c => (
-            <Pressable
-              key={c.code}
-              style={[s.currencyChip, currency === c.code && s.currencyChipSelected]}
-              onPress={() => setCurrency(c.code)}>
-              <Text style={[s.currencyText, currency === c.code && s.currencyTextSelected]}>
-                {c.code}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
         <View style={s.chips}>
+          <Pressable
+            style={[s.chip, s.chipSelected]}
+            onPress={() => setShowCurrencyPicker(true)}>
+            <Text style={[s.chipText, s.chipTextSelected]}>{currency}</Text>
+            <Ionicons name="chevron-down" size={10} color={c.primary} />
+          </Pressable>
           {CHIP_AMOUNTS.map(chip => (
             <Pressable
               key={chip.value}
@@ -195,12 +193,21 @@ export default function Q3Screen() {
             placeholder="0"
             placeholderTextColor={c.textFaint}
             keyboardType="numeric"
+            onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150)}
           />
         </View>
 
-        <Text style={s.privacy}>
-          🔒 This is used only to calculate your savings. Only you can see it.
-        </Text>
+        <View style={s.savingsCard}>
+          <Ionicons name="trending-up-outline" size={28} color={c.primary} />
+          <View style={s.savingsTextCol}>
+            <Text style={s.savingsHeadline}>
+              {symbol}{(annualSaving ?? 0).toLocaleString()} saved per year
+            </Text>
+            <Text style={s.savingsSubtitle}>if you stay on track — that's real money back</Text>
+          </View>
+        </View>
+
+        <Text style={s.privacy}>🔒 Only you can see it.</Text>
       </ScrollView>
 
       {Platform.OS === 'ios' && (
@@ -223,10 +230,26 @@ export default function Q3Screen() {
         </Modal>
       )}
 
-      <View style={s.footer}>
-        <Pressable style={s.skipBtn} onPress={handleSkip}>
-          <Text style={s.skipText}>Skip for now</Text>
+      <Modal visible={showCurrencyPicker} transparent animationType="fade">
+        <Pressable style={s.currencyModalOverlay} onPress={() => setShowCurrencyPicker(false)}>
+          <View style={s.currencyModalCard}>
+            <Text style={s.currencyPickerTitle}>Select currency</Text>
+            {CURRENCIES.map(cur => (
+              <Pressable
+                key={cur.code}
+                style={[s.currencyOption, currency === cur.code && s.currencyOptionSelected]}
+                onPress={() => { setCurrency(cur.code); setShowCurrencyPicker(false); }}>
+                <Text style={[s.currencyOptionText, currency === cur.code && s.currencyOptionTextSelected]}>
+                  {cur.symbol} — {cur.code}
+                </Text>
+                {currency === cur.code && <Ionicons name="checkmark" size={18} color={c.primary} />}
+              </Pressable>
+            ))}
+          </View>
         </Pressable>
+      </Modal>
+
+      <View style={s.footer}>
         <Pressable
           style={({ pressed }) => [
             s.continueBtn,
@@ -237,6 +260,9 @@ export default function Q3Screen() {
           disabled={!hasValue}>
           <Text style={s.continueBtnText}>Continue</Text>
         </Pressable>
+        <Pressable style={s.skipBtn} onPress={handleSkip}>
+          <Text style={s.skipText}>Skip for now</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -244,6 +270,7 @@ export default function Q3Screen() {
 
 const makeStyles = (c: AppColors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: c.bgCard },
+  scrollView: { flex: 1 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -270,7 +297,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: c.textSecondary,
-    marginBottom: 10,
   },
   dateBtn: {
     flexDirection: 'row',
@@ -296,48 +322,68 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   modalSheet: { backgroundColor: c.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
   modalDone: { backgroundColor: c.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 12 },
   modalDoneTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
-  currencyScroll: {
-    marginBottom: 20,
+  currencyModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: c.overlay,
+    paddingHorizontal: 32,
   },
-  currencyRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingRight: 8,
-  },
-  currencyChip: {
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+  currencyModalCard: {
+    width: '100%',
+    backgroundColor: c.bgCard,
     borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: c.bgTealMid,
-    backgroundColor: c.bgElement,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  currencyChipSelected: {
-    borderColor: c.primary,
+  currencyPickerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: c.textPrimary,
+    marginBottom: 12,
+  },
+  currencyOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: c.borderSubtle,
+  },
+  currencyOptionSelected: {
     backgroundColor: c.bgTeal,
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
   },
-  currencyText: {
-    fontSize: 13,
-    fontWeight: '600',
+  currencyOptionText: {
+    fontSize: 15,
     color: c.textBody,
+    fontWeight: '500',
   },
-  currencyTextSelected: {
+  currencyOptionTextSelected: {
     color: c.primary,
+    fontWeight: '700',
   },
   chips: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 6,
     marginBottom: 28,
   },
   chip: {
-    width: '30.5%',
-    paddingVertical: 12,
+    flex: 1,
+    paddingVertical: 7,
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: c.bgTealMid,
     backgroundColor: c.bgElement,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 3,
   },
   chipSelected: {
     borderColor: c.primary,
@@ -364,7 +410,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     borderColor: c.borderMid,
     borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    height: 40,
     backgroundColor: c.bgInput,
     marginBottom: 20,
   },
@@ -377,6 +423,31 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: c.textPrimary,
+    height: 40,
+    paddingVertical: 0,
+  },
+  savingsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: c.bgTeal,
+    borderWidth: 1.5,
+    borderColor: c.bgTealMid,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  savingsTextCol: { flex: 1 },
+  savingsHeadline: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: c.primary,
+    marginBottom: 2,
+  },
+  savingsSubtitle: {
+    fontSize: 12,
+    color: c.textMuted,
+    lineHeight: 17,
   },
   privacy: {
     fontSize: 12,
@@ -388,8 +459,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     paddingBottom: 32,
     paddingTop: 12,
     gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: c.borderSubtle,
   },
   continueBtn: {
     backgroundColor: c.primary,
