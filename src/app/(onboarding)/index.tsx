@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +10,7 @@ import { SEEN_WELCOME_KEY } from '@/constants/storage-keys';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const [btnWidth, setBtnWidth] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     AsyncStorage.setItem(SEEN_WELCOME_KEY, 'true');
@@ -20,22 +21,26 @@ export default function WelcomeScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.hero}>
           <View style={styles.logoBox}>
-            <Logo size={72} variant="white" />
+            <Logo size={84} variant="white" />
           </View>
 
-          <Text style={styles.appName}>CornerDay</Text>
+          <Text
+            style={styles.appName}
+            onLayout={e => setBtnWidth(e.nativeEvent.layout.width)}>
+            CornerDay
+          </Text>
           <Text style={styles.tagline}>The day you turn it around{'\n'}starts today.</Text>
         </View>
 
         <View style={styles.actions}>
           <Pressable
-            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.primaryBtn, btnWidth ? { width: btnWidth } : undefined, pressed && styles.pressed]}
             onPress={() => router.push('/(onboarding)/signup')}>
             <Text style={styles.primaryBtnText}>Get started</Text>
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.secondaryBtn, btnWidth ? { width: btnWidth } : undefined, pressed && styles.pressed]}
             onPress={() => router.push({ pathname: '/(onboarding)/signup', params: { mode: 'signin' } })}>
             <Text style={styles.secondaryBtnText}>I already have an account</Text>
           </Pressable>
@@ -60,9 +65,9 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   logoBox: {
-    width: 100,
-    height: 100,
-    borderRadius: 22,
+    width: 114,
+    height: 114,
+    borderRadius: 26,
     backgroundColor: '#0F6E6E',
     alignItems: 'center',
     justifyContent: 'center',
@@ -73,21 +78,22 @@ const styles = StyleSheet.create({
     elevation: 18,
   },
   appName: {
-    fontSize: 48,
+    fontSize: 54,
     fontWeight: '900',
     color: '#ffffff',
     letterSpacing: -0.5,
   },
   tagline: {
-    fontSize: 18,
+    fontSize: 20,
     color: 'rgba(255,255,255,0.82)',
     textAlign: 'center',
-    lineHeight: 28,
+    lineHeight: 30,
   },
   actions: {
     paddingBottom: 52,
+    marginBottom: 28,
     gap: 14,
-    alignItems: 'stretch',
+    alignItems: 'center',
   },
   primaryBtn: {
     backgroundColor: '#ffffff',
@@ -96,7 +102,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryBtnText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#0F6E6E',
   },
@@ -109,7 +115,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryBtnText: {
-    fontSize: 15,
+    fontSize: 16,
     color: 'rgba(255,255,255,0.9)',
     fontWeight: '500',
   },

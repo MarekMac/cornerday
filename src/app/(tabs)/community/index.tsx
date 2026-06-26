@@ -151,8 +151,16 @@ export default function CommunityFeed() {
       }
     });
 
-    AsyncStorage.getItem(COMMUNITY_GUIDELINES_SEEN_KEY).then(val => {
-      if (val !== 'true') setGuidelinesVisible(true);
+    AsyncStorage.getItem(COMMUNITY_GUIDELINES_SEEN_KEY).then(async val => {
+      if (val !== 'true') {
+        const { data: { user } } = await supabase.auth.getUser();
+        const accountAgeMs = user?.created_at ? Date.now() - new Date(user.created_at).getTime() : 0;
+        if (accountAgeMs > 86400000) {
+          AsyncStorage.setItem(COMMUNITY_GUIDELINES_SEEN_KEY, 'true');
+          return;
+        }
+        setGuidelinesVisible(true);
+      }
     });
   }, []);
 

@@ -824,8 +824,14 @@ export default function HomeScreen() {
   }, [scrollTo, badgesCardY]);
 
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem(PROFILE_NUDGE_SHOWN_KEY).then(v => {
+    AsyncStorage.getItem(PROFILE_NUDGE_SHOWN_KEY).then(async v => {
       if (!v) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const accountAgeMs = user?.created_at ? Date.now() - new Date(user.created_at).getTime() : 0;
+        if (accountAgeMs > 86400000) {
+          AsyncStorage.setItem(PROFILE_NUDGE_SHOWN_KEY, '1');
+          return;
+        }
         setShowProfileNudge(true);
         AsyncStorage.setItem(PROFILE_NUDGE_SHOWN_KEY, '1');
       }
