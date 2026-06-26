@@ -411,9 +411,7 @@ export default function SignupScreen() {
         <View style={StyleSheet.absoluteFill}>
           <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={StyleSheet.absoluteFill} />
           <View style={loadingStyles.center}>
-            <View style={loadingStyles.logoBox}>
-              <Logo size={60} variant="white" />
-            </View>
+            <Logo size={72} variant="white" />
           </View>
         </View>
       )}
@@ -423,19 +421,6 @@ export default function SignupScreen() {
 
 const loadingStyles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logoBox: {
-    width: 88,
-    height: 88,
-    borderRadius: 20,
-    backgroundColor: '#0F6E6E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 18,
-  },
 });
 
 const makeStyles = (c: AppColors) => StyleSheet.create({

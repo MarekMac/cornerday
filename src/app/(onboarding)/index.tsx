@@ -43,8 +43,14 @@ export default function WelcomeScreen() {
 
   // Render a plain gradient while checking — visually matches the loading screen
   // so any flash is invisible to the user.
-  if (!ready) {
-    return <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={styles.gradient} />;
+  if (!ready || authFlags.googleOAuthInProgress) {
+    return (
+      <LinearGradient colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']} style={styles.gradient}>
+        <View style={styles.center}>
+          <Logo size={72} variant="white" />
+        </View>
+      </LinearGradient>
+    );
   }
 
   return (
@@ -85,6 +91,7 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   safe: {
     flex: 1,
     paddingHorizontal: 28,

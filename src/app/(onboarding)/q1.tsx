@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,13 +31,13 @@ export default function Q1Screen() {
     authFlags.googleOAuthInProgress = false;
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       router.replace('/(onboarding)');
       return true;
     });
     return () => sub.remove();
-  }, [router]);
+  }, [router]));
 
   useEffect(() => {
     if (isLoaded && data.motivation) {
