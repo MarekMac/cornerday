@@ -99,9 +99,15 @@ Deno.serve(async (req: Request) => {
     if (link.share_milestones !== false) {
       fetches.push((async () => {
         const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+        const quitIso = new Date(quitMs).toISOString();
         const [badgeCountRes, latestRes, urgeRes] = await Promise.all([
-          sb.from('badges').select('id', { count: 'exact', head: true }).eq('user_id', link.user_id),
+          sb.from('badges').select('id', { count: 'exact', head: true })
+            .eq('user_id', link.user_id)
+            .neq('badge_type', 'started')
+            .gte('earned_at', quitIso),
           sb.from('badges').select('badge_type, earned_at').eq('user_id', link.user_id)
+            .neq('badge_type', 'started')
+            .gte('earned_at', quitIso)
             .order('earned_at', { ascending: false }).limit(1).maybeSingle(),
           sb.from('urge_journal').select('id', { count: 'exact', head: true })
             .eq('user_id', link.user_id).eq('outcome', 'overcame').gte('created_at', weekAgo),
