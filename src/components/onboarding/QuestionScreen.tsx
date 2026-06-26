@@ -69,6 +69,7 @@ export function QuestionScreen({
               label={opt.label}
               selected={selected === opt.value}
               onPress={() => onSelect(opt.value)}
+              compact
             />
           ))}
         </View>
@@ -133,6 +134,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   options: {
     marginTop: 16,
+    gap: 10,
   },
   footer: {
     paddingHorizontal: 24,
