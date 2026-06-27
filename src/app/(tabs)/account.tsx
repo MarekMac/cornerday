@@ -1239,6 +1239,7 @@ export default function AccountScreen() {
       setSavingsGoalFor('');
       setSavingsGoalIcon('🎯');
       setProfile(prev => prev ? { ...prev, weeklyBet: null } : prev);
+      authFlags.postResetInProgress = true;
       router.replace('/(tabs)' as any);
     } finally {
       setResetting(false);
@@ -3219,6 +3220,14 @@ export default function AccountScreen() {
             </Pressable>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Full-screen loading overlay shown while reset is in progress */}
+      <Modal visible={resetting} transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <ActivityIndicator size="large" color="#ffffff" />
+          <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>Resetting your journey…</Text>
+        </View>
       </Modal>
 
       {/* Reset confirmation modal */}

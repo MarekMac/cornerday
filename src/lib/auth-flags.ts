@@ -8,4 +8,7 @@ export const authFlags = {
   // True while the user has explicitly tapped "Sign out" — blocks any
   // SIGNED_IN event (e.g. a concurrent token refresh) from re-routing to tabs.
   signingOut: false,
+  // True immediately before navigating to home after a full data reset, so the
+  // home screen knows to show its loading state instead of briefly showing stale data.
+  postResetInProgress: false,
 };

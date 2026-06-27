@@ -46,6 +46,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { setImagePickerActive } from '@/lib/image-picker-active';
 import { registerHomeRefresh } from '@/lib/homeBus';
+import { authFlags } from '@/lib/auth-flags';
 import { MilestoneCelebrationModal } from '@/components/MilestoneCelebrationModal';
 import { BADGE_CELEBRATIONS, BADGE_EARNED_MSGS } from '@/constants/badgeConstants';
 
@@ -1361,7 +1362,13 @@ export default function HomeScreen() {
 
   const [focusTick, setFocusTick] = useState(0);
   useFocusEffect(useCallback(() => {
-    fetchData();
+    if (authFlags.postResetInProgress) {
+      authFlags.postResetInProgress = false;
+      setLoading(true);
+      fetchData().finally(() => setLoading(false));
+    } else {
+      fetchData();
+    }
     fetchPartnerMsg();
     setFocusTick(t => t + 1);
   }, [fetchData, fetchPartnerMsg]));
