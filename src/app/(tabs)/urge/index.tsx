@@ -372,6 +372,20 @@ export default function UrgeScreen() {
     });
   }, [fetchMotivation]));
 
+  const logUrgeOutcome = async (outcome: 'overcame' | 'slipped') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMounted.current) return;
+      await supabase.from('urge_journal').insert({
+        user_id: user.id,
+        trigger: 'urge_button',
+        outcome,
+      });
+    } catch (e) {
+      console.warn('[urge] logUrgeOutcome error:', e);
+    }
+  };
+
   const awardTimerPoint = async (totalSecs: number) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -567,6 +581,7 @@ export default function UrgeScreen() {
     setCongratsElapsed(elapsed);
     setCongratsVariant(Math.floor(Math.random() * CONGRATS_VARIANTS.length));
     setShowCongrats(true);
+    logUrgeOutcome('overcame');
   };
   const hadASlip = () => {
     resetTimer();
@@ -575,6 +590,7 @@ export default function UrgeScreen() {
     setSlipReset(false);
     setSlipVariant(Math.floor(Math.random() * SLIP_VARIANTS.length));
     setShowSlip(true);
+    logUrgeOutcome('slipped');
   };
 
   const doStreakReset = async () => {
