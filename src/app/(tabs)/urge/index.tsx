@@ -341,8 +341,11 @@ export default function UrgeScreen() {
           });
           const dayNames = ['Sundays','Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays'];
           const todNames = ['mornings','afternoons','evenings','late nights'];
-          const topDay = dayCount.indexOf(Math.max(...dayCount));
-          const topTod = todCount.indexOf(Math.max(...todCount));
+          const maxDay = Math.max(...dayCount);
+          const maxTod = Math.max(...todCount);
+          if (maxDay === 0 || maxTod === 0) { setUrgeInsight(null); return; }
+          const topDay = dayCount.indexOf(maxDay);
+          const topTod = todCount.indexOf(maxTod);
           setUrgeInsight({ day: dayNames[topDay], tod: todNames[topTod] });
         } else {
           setUrgeInsight(null);

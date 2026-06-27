@@ -1600,8 +1600,7 @@ export default function HomeScreen() {
           const weekMoods = prev.weekMoods.map(d => d.date === todayKey ? { ...d, mood, note: noteVal } : d);
           const calendarDays = prev.calendarDays.map(d => d.iso === todayKey ? { ...d, mood } : d);
           if (isNewInsert) {
-            const newCurrent = prev.checkinStreak.current + 1;
-            return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods, calendarDays, moodCount: prev.moodCount + 1, checkinStreak: { current: newCurrent, best: Math.max(prev.checkinStreak.best, newCurrent) } };
+            return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods, calendarDays, moodCount: prev.moodCount + 1 };
           }
           return { ...prev, todayMood: mood, todayMoodNote: noteVal, weekMoods, calendarDays };
         });

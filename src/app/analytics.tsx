@@ -294,7 +294,7 @@ export default function AnalyticsScreen() {
       ? Math.max(1, (Date.now() - firstSavingMs) / 86400000)
       : 0;
 
-    const gamblingLossRows = lossRows.filter(r => r.type === 'loss');
+    const gamblingLossRows = lossRows.filter(r => r.type === 'session');
     const totalLost = gamblingLossRows.reduce((s, r) => s + Number(r.amount), 0);
     const firstLossMs = gamblingLossRows.length > 0
       ? Math.min(...gamblingLossRows.map(r => new Date(r.created_at).getTime()))

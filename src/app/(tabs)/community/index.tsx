@@ -390,7 +390,7 @@ export default function CommunityFeed() {
         }));
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p));
         const { error } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
-        if (error) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+        if (error && isMounted.current) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
       } else if (current) {
         setUserReactions(prev => ({ ...prev, [postId]: emoji }));
         setAllEmojiCounts(prev => ({
@@ -403,9 +403,9 @@ export default function CommunityFeed() {
         }));
         // Delete old reaction first to avoid unique constraint violation on insert
         const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
-        if (delErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); return; }
+        if (delErr) { if (isMounted.current) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); } return; }
         const { error: insErr } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
-        if (insErr) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+        if (insErr && isMounted.current) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
       } else {
         setUserReactions(prev => ({ ...prev, [postId]: emoji }));
         setAllEmojiCounts(prev => ({
@@ -414,7 +414,7 @@ export default function CommunityFeed() {
         }));
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: p.reactions_count + 1 } : p));
         const { error } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
-        if (error) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+        if (error && isMounted.current) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
       }
     } finally {
       reactingRef.current[postId] = false;
