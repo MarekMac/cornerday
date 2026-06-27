@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 42,
+    marginBottom: 46,
   },
   brand: {
     fontSize: 15,
