@@ -2481,8 +2481,8 @@ export default function HomeScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setCustomMilestoneCelebVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: c.bgWarm }]}>
-                <Text style={{ fontSize: 28 }}>{customMilestone?.icon ?? '🎯'}</Text>
+              <View style={s.confirmIconCircle}>
+                <Text style={{ fontSize: 32 }}>{customMilestone?.icon ?? '🎯'}</Text>
               </View>
             </View>
             <Text style={s.confirmTitle}>{
@@ -2494,16 +2494,15 @@ export default function HomeScreen() {
             <Text style={s.confirmBody}>
               You hit your personal milestone.{'\n'}This is exactly what you set out to do. 🏆
             </Text>
-            <View style={s.confirmActions}>
-              <Pressable
-                style={[s.confirmReset, { backgroundColor: c.primary, borderColor: c.primary }]}
-                onPress={() => { setCustomMilestoneCelebVisible(false); openShareCard({ emoji: '🎯', label: customMilestone ? `${customMilestone.target} ${customMilestone.type === 'days' ? 'Days' : customMilestone.type === 'savings' ? 'Saved' : customMilestone.type === 'urges' ? 'Urges' : 'Payments'}` : 'Milestone' }, false); }}>
-                <Text style={[s.confirmResetTxt, { color: '#fff' }]}>Share</Text>
-              </Pressable>
-              <Pressable style={s.confirmCancel} onPress={() => setCustomMilestoneCelebVisible(false)}>
-                <Text style={s.confirmCancelTxt}>Close</Text>
-              </Pressable>
-            </View>
+            <Pressable
+              style={[s.continueBtn, { marginBottom: 6 }]}
+              onPress={() => { setCustomMilestoneCelebVisible(false); openShareCard({ emoji: '🎯', label: customMilestone ? `${customMilestone.target} ${customMilestone.type === 'days' ? 'Days' : customMilestone.type === 'savings' ? 'Saved' : customMilestone.type === 'urges' ? 'Urges' : 'Payments'}` : 'Milestone' }, false); }}>
+              <Text style={s.continueBtnTxt}>Share</Text>
+            </Pressable>
+            <View style={s.confirmDivider} />
+            <Pressable style={s.confirmCancel} onPress={() => setCustomMilestoneCelebVisible(false)}>
+              <Text style={s.confirmCancelTxt}>Close</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -3025,14 +3024,15 @@ export default function HomeScreen() {
               <Text style={{ fontWeight: '700', color: c.primary }}>Account tab</Text>
               {' '}for better recovery stats and more personalised AI conversations.
             </Text>
-            <View style={[s.modalActions, { marginTop: 20 }]}>
+            <View style={{ width: '100%', marginTop: 20 }}>
               <Pressable
-                style={({ pressed }) => [s.continueBtn, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [s.continueBtn, { marginBottom: 6 }, pressed && { opacity: 0.8 }]}
                 onPress={() => { dismissProfileNudge(); router.push('/(tabs)/account'); }}>
                 <Text style={s.continueBtnTxt}>Go to Account</Text>
               </Pressable>
+              <View style={s.confirmDivider} />
               <Pressable
-                style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [s.modalClose, { width: '100%' }, pressed && { opacity: 0.7 }]}
                 onPress={dismissProfileNudge}>
                 <Text style={s.modalCloseTxt}>Got it, maybe later</Text>
               </Pressable>
@@ -3394,28 +3394,29 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   modalCloseTxt: { color: c.textBody, fontWeight: '700', fontSize: 15 },
 
-  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
+  confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 24 },
   confirmSheet: {
-    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+    backgroundColor: c.bgCard, borderRadius: 24, padding: 24, width: '100%', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
   },
-  confirmIconRow: { alignItems: 'center', marginBottom: 12 },
+  confirmIconRow: { alignItems: 'center', marginBottom: 20 },
   confirmIconCircle: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: c.bgWarm, borderWidth: 1.5, borderColor: c.primaryLight,
-    alignItems: 'center', justifyContent: 'center',
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: c.bgTeal,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 0,
   },
-  confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
-  confirmMsg: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21 },
-  confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
-  continueBtn: { backgroundColor: c.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  confirmTitle: { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 10 },
+  confirmMsg: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 22 },
+  confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
+  continueBtn: { backgroundColor: c.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', width: '100%' },
   continueBtnTxt: { color: c.white, fontSize: 15, fontWeight: '700' },
-  confirmSupportBtn: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgTeal, marginTop: 16 },
+  confirmSupportBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.bgTeal, width: '100%' },
   confirmSupportTxt: { fontSize: 15, fontWeight: '700', color: c.primary },
-  confirmActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  confirmDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginVertical: 10 },
+  confirmActions: { width: '100%', marginTop: 10 },
+  confirmCancel: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.bgElement, width: '100%' },
   confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
-  confirmReset: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  confirmReset: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.error, width: '100%', marginBottom: 6 },
   confirmResetTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 
   relapseOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 24 },

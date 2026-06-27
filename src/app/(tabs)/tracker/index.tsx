@@ -1524,11 +1524,10 @@ export default function TrackerIndex() {
       {/* Delete debt confirmation */}
       <Modal visible={!!deleteDebtTarget} transparent animationType="fade" onRequestClose={() => setDeleteDebtTarget(null)}>
         <Pressable style={s.modalOverlay} onPress={() => setDeleteDebtTarget(null)}>
-          <Pressable style={s.sheet} onPress={() => {}}>
-            
+          <Pressable style={[s.sheet, { alignItems: 'center' }]} onPress={() => {}}>
             <View style={s.deleteIconRow}>
               <View style={s.deleteIconCircle}>
-                <Ionicons name="trash-outline" size={26} color={c.error} />
+                <Ionicons name="trash-outline" size={32} color={c.error} />
               </View>
             </View>
             <Text style={s.deleteTitle}>Delete debt?</Text>
@@ -1537,16 +1536,15 @@ export default function TrackerIndex() {
                 This will permanently delete <Text style={s.deleteBold}>{deleteDebtTarget.name}</Text> and all payments made towards it.
               </Text>
             )}
-            <View style={s.sheetActions}>
-              <Pressable style={s.cancelBtn} onPress={() => setDeleteDebtTarget(null)}>
-                <Text style={s.cancelBtnTxt}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteDebt} disabled={deleting}>
-                {deleting
-                  ? <ActivityIndicator color={c.white} size="small" />
-                  : <Text style={s.deleteBtnTxt}>Delete</Text>}
-              </Pressable>
-            </View>
+            <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteDebt} disabled={deleting}>
+              {deleting
+                ? <ActivityIndicator color={c.white} size="small" />
+                : <Text style={s.deleteBtnTxt}>Delete</Text>}
+            </Pressable>
+            <View style={s.deleteDivider} />
+            <Pressable style={s.deleteCancelBtn} onPress={() => setDeleteDebtTarget(null)}>
+              <Text style={s.cancelBtnTxt}>Cancel</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1554,11 +1552,10 @@ export default function TrackerIndex() {
       {/* Delete saving confirmation */}
       <Modal visible={!!deleteSavingTarget} transparent animationType="fade" onRequestClose={() => setDeleteSavingTarget(null)}>
         <Pressable style={s.modalOverlay} onPress={() => setDeleteSavingTarget(null)}>
-          <Pressable style={s.sheet} onPress={() => {}}>
-            
+          <Pressable style={[s.sheet, { alignItems: 'center' }]} onPress={() => {}}>
             <View style={s.deleteIconRow}>
               <View style={s.deleteIconCircle}>
-                <Ionicons name="trash-outline" size={26} color={c.error} />
+                <Ionicons name="trash-outline" size={32} color={c.error} />
               </View>
             </View>
             <Text style={s.deleteTitle}>Delete saving?</Text>
@@ -1568,16 +1565,15 @@ export default function TrackerIndex() {
                 {deleteSavingTarget.note ? `\n${deleteSavingTarget.note}` : ''}
               </Text>
             )}
-            <View style={s.sheetActions}>
-              <Pressable style={s.cancelBtn} onPress={() => setDeleteSavingTarget(null)}>
-                <Text style={s.cancelBtnTxt}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteSaving} disabled={deleting}>
-                {deleting
-                  ? <ActivityIndicator color={c.white} size="small" />
-                  : <Text style={s.deleteBtnTxt}>Delete</Text>}
-              </Pressable>
-            </View>
+            <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteSaving} disabled={deleting}>
+              {deleting
+                ? <ActivityIndicator color={c.white} size="small" />
+                : <Text style={s.deleteBtnTxt}>Delete</Text>}
+            </Pressable>
+            <View style={s.deleteDivider} />
+            <Pressable style={s.deleteCancelBtn} onPress={() => setDeleteSavingTarget(null)}>
+              <Text style={s.cancelBtnTxt}>Cancel</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1878,10 +1874,10 @@ export default function TrackerIndex() {
       {/* Delete session confirmation */}
       <Modal visible={!!deleteSessionTarget} transparent animationType="fade" onRequestClose={() => setDeleteSessionTarget(null)}>
         <Pressable style={s.modalOverlay} onPress={() => setDeleteSessionTarget(null)}>
-          <Pressable style={s.sheet} onPress={() => {}}>
+          <Pressable style={[s.sheet, { alignItems: 'center' }]} onPress={() => {}}>
             <View style={s.deleteIconRow}>
               <View style={s.deleteIconCircle}>
-                <Ionicons name="trash-outline" size={26} color={c.error} />
+                <Ionicons name="trash-outline" size={32} color={c.error} />
               </View>
             </View>
             <Text style={s.deleteTitle}>Delete session?</Text>
@@ -1891,16 +1887,15 @@ export default function TrackerIndex() {
                 {sessionLabel(deleteSessionTarget.category)} entry?
               </Text>
             )}
-            <View style={s.sheetActions}>
-              <Pressable style={s.cancelBtn} onPress={() => setDeleteSessionTarget(null)}>
-                <Text style={s.cancelBtnTxt}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteSession} disabled={deleting}>
-                {deleting
-                  ? <ActivityIndicator color={c.white} size="small" />
-                  : <Text style={s.deleteBtnTxt}>Delete</Text>}
-              </Pressable>
-            </View>
+            <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteSession} disabled={deleting}>
+              {deleting
+                ? <ActivityIndicator color={c.white} size="small" />
+                : <Text style={s.deleteBtnTxt}>Delete</Text>}
+            </Pressable>
+            <View style={s.deleteDivider} />
+            <Pressable style={s.deleteCancelBtn} onPress={() => setDeleteSessionTarget(null)}>
+              <Text style={s.cancelBtnTxt}>Cancel</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2231,14 +2226,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   menuActionDanger: { backgroundColor: c.bgError, borderColor: c.borderError },
   menuActionTxt: { fontSize: 15, fontWeight: '600', color: c.primary },
 
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 24 },
   sheet: {
-    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+    backgroundColor: c.bgCard, borderRadius: 24, padding: 24, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
   },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, marginBottom: 4 },
   sheetActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  cancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  cancelBtn: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: c.bgElement },
   cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
   // Weekly spending modal — mirrors account tab spending modal exactly
@@ -2263,17 +2258,19 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   btnDisabled: { opacity: 0.6 },
 
-  deleteIconRow: { alignItems: 'center', marginBottom: 12 },
+  deleteIconRow: { alignItems: 'center', marginBottom: 16 },
   deleteIconCircle: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: c.bgError, borderWidth: 1.5, borderColor: c.borderError,
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: c.bgError,
     alignItems: 'center', justifyContent: 'center',
   },
-  deleteTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
-  deleteBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
+  deleteTitle: { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 10 },
+  deleteBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
   deleteBold: { fontWeight: '700', color: c.textSecondary },
-  deleteBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  deleteDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginVertical: 10 },
+  deleteBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.error, width: '100%', marginBottom: 6 },
   deleteBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
+  deleteCancelBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.bgElement, width: '100%' },
 
   targetCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
   targetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

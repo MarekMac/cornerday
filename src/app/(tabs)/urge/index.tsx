@@ -1049,6 +1049,7 @@ export default function UrgeScreen() {
               onPress={() => { setShowSlip(false); openLog('slipped'); }}>
               <Text style={s.slipLogBtnTxt}>Log this moment  →</Text>
             </Pressable>
+            <View style={s.slipDivider} />
             <Pressable
               style={({ pressed }) => [s.slipClose, pressed && { opacity: 0.6 }]}
               onPress={() => setShowSlip(false)}
@@ -1471,10 +1472,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   pickerSheet: {
-    backgroundColor: c.bgCard, borderRadius: 20, padding: 20,
+    backgroundColor: c.bgCard, borderRadius: 24, padding: 24,
     width: '100%', maxHeight: '80%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18, shadowRadius: 24, elevation: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18, shadowRadius: 24, elevation: 24,
   },
   pickerTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary },
   pickerSub: { fontSize: 13, color: c.textMuted, marginTop: 2, marginBottom: 12 },
@@ -1570,7 +1571,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   whyPhotoEmptyTxt: { fontSize: 10, color: c.primary, fontWeight: '600' },
 
   // ── Log modal ─────────────────────────────────────────────────────────────────
-  logModalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 20 },
+  logModalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 20 },
   logModalSheet: {
     backgroundColor: c.bgCard, borderRadius: 24,
     padding: 20, paddingBottom: 24, width: '100%', maxHeight: '88%',
@@ -1587,7 +1588,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   // ── Had a slip overlay ────────────────────────────────────────────────────────
   slipOverlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: c.overlayDeep, padding: 28,
+    backgroundColor: 'rgba(0,0,0,0.7)', padding: 28,
   },
   slipContent: {
     backgroundColor: c.bgCard, borderRadius: 24, padding: 28,
@@ -1613,8 +1614,9 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 24, width: '100%', alignItems: 'center',
   },
   slipLogBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
-  slipClose: { marginTop: 16 },
-  slipCloseTxt: { fontSize: 14, color: c.textFaint },
+  slipDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginVertical: 6 },
+  slipClose: { backgroundColor: c.bgElement, borderRadius: 14, paddingVertical: 15, alignItems: 'center', width: '100%' },
+  slipCloseTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
   // ── Legacy inline log card (kept for style refs) ──────────────────────────────
   logCard: { backgroundColor: c.bgCard, borderRadius: 18, padding: 18, gap: 10 },
@@ -1680,7 +1682,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   // ── Inline log form fields ────────────────────────────────────────────────────
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: c.overlay },
+  modalBackdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)' },
   sheet: {
     backgroundColor: c.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, maxHeight: '85%',
