@@ -68,7 +68,7 @@ export function MilestoneCelebrationModal({
   } : {
     gradient:        ['#f8fefe', '#edfafa', '#dff5f5'] as const,
     brand:           '#0a6868',
-    pillBg:          'rgba(10,104,104,0.8)',
+    pillBg:          'rgba(10,104,104,0.6)',
     bigText:         '#0F6E6E',
     unit:            '#0F6E6E',
     sub:             'rgba(10,104,104,0.65)',
