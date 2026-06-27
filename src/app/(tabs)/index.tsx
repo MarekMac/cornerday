@@ -1917,7 +1917,7 @@ export default function HomeScreen() {
         <View style={s.card} onLayout={e => setBadgesCardY(e.nativeEvent.layout.y)}>
           <View style={s.milestonesHeader}>
             <Text style={s.weekStripTitle}>Milestones</Text>
-            <Text style={s.milestonesHint}>Tap to celebrate</Text>
+            <Text style={s.milestonesHint}>Tap for details</Text>
           </View>
           <ScrollView ref={badgeScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.badgesRow}>
             {(() => {
@@ -2876,7 +2876,7 @@ export default function HomeScreen() {
               >
                 <View style={s.shareCardTop}>
                   <Text style={[s.shareCardBrand, { color: cc.brand }]}>CornerDay</Text>
-                  <View style={[s.shareCardLogoBadge, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(10,104,104,0.7)' }]}>
+                  <View style={[s.shareCardLogoBadge, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(10,104,104,0.8)' }]}>
                     <Logo size={28} variant="white" />
                   </View>
                 </View>
