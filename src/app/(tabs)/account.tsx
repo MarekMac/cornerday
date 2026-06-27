@@ -370,7 +370,7 @@ export default function AccountScreen() {
       setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
       const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
       let resolvedAvatar = data?.avatar_url ?? null;
-      if (!resolvedAvatar && googleAvatar) {
+      if (resolvedAvatar === null && googleAvatar) {
         const { error: avatarErr } = await supabase.from('users').update({ avatar_url: googleAvatar }).eq('id', user.id);
         if (!avatarErr) resolvedAvatar = googleAvatar;
       }
@@ -1011,9 +1011,9 @@ export default function AccountScreen() {
         const oldPath = oldUrl.split('/avatars/')[1]?.split('?')[0];
         if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
       }
-      await supabase.from('users').update({ avatar_url: null }).eq('id', user.id);
-      setProfile(prev => prev ? { ...prev, avatarUrl: null } : prev);
-      setGlobalAvatarUrl(null);
+      await supabase.from('users').update({ avatar_url: '' }).eq('id', user.id);
+      setProfile(prev => prev ? { ...prev, avatarUrl: '' } : prev);
+      setGlobalAvatarUrl('');
     } catch (err) {
       Alert.alert('Error', 'Could not remove photo. Please try again.');
     } finally {
