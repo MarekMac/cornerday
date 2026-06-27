@@ -47,7 +47,39 @@ export function MilestoneCelebrationModal({
   onShare: () => void;
   onClose: () => void;
 }) {
-  const { colors: c } = useAppTheme();
+  const { colorScheme } = useAppTheme();
+
+  // Mirrors the cc object in the home screen — card looks identical to the share card
+  const cc = colorScheme === 'dark' ? {
+    gradient:        ['#062e2e', '#0F6E6E', '#1a9a9a'] as const,
+    brand:           'rgba(255,255,255,0.7)',
+    bigText:         '#ffffff',
+    unit:            'rgba(255,255,255,0.8)',
+    sub:             'rgba(255,255,255,0.7)',
+    divider:         'rgba(255,255,255,0.2)',
+    detailBg:        'rgba(255,255,255,0.08)',
+    detailBorder:    'rgba(255,255,255,0.12)',
+    detailLabel:     'rgba(255,255,255,0.55)',
+    detailValue:     '#ffffff',
+    detailHighlight: '#a8d8d0',
+    tagline:         'rgba(255,255,255,0.55)',
+    hashtag:         'rgba(255,255,255,0.4)',
+  } : {
+    gradient:        ['#f8fefe', '#edfafa', '#dff5f5'] as const,
+    brand:           '#0a6868',
+    bigText:         '#0F6E6E',
+    unit:            '#0F6E6E',
+    sub:             'rgba(10,104,104,0.65)',
+    divider:         'rgba(15,110,110,0.15)',
+    detailBg:        'rgba(15,110,110,0.06)',
+    detailBorder:    'rgba(15,110,110,0.12)',
+    detailLabel:     'rgba(10,104,104,0.6)',
+    detailValue:     '#0a5a5a',
+    detailHighlight: '#0F6E6E',
+    tagline:         'rgba(6,46,46,0.5)',
+    hashtag:         'rgba(15,110,110,0.4)',
+  };
+
   const scale = useSharedValue(0);
   const rotate = useSharedValue(-12);
 
@@ -66,62 +98,68 @@ export function MilestoneCelebrationModal({
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      {/* Outer Pressable closes when tapping the dark overlay */}
-      <Pressable style={styles.overlay} onPress={onClose}>
-        {/* Confetti lives outside the card so the shared image is clean */}
+      {/* Outer Pressable catches taps on the teal background to close */}
+      <Pressable style={styles.outerPressable} onPress={onClose}>
+        {/* Teal gradient background with confetti — both non-interactive */}
+        <LinearGradient
+          colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         <View style={styles.confettiLayer} pointerEvents="none">
           {Array.from({ length: 14 }).map((_, i) => <ConfettiParticle key={i} index={i} />)}
         </View>
 
-        {/* Inner Pressable stops tap-propagation so card/buttons don't close the modal */}
+        {/* Inner Pressable stops tap-propagation so card/buttons don't close modal */}
         <Pressable onPress={() => {}} style={{ alignItems: 'center' }}>
+          {/* Card — same gradient and colors as the home screen share card */}
           <View ref={cardRef} collapsable={false} style={styles.card}>
             <LinearGradient
-              colors={['#062e2e', '#0F6E6E', '#1a9a9a']}
+              colors={cc.gradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.cardInner}
             >
               <View style={styles.cardTop}>
-                <Text style={styles.brand}>CornerDay</Text>
-                <Logo size={24} variant="dark" />
+                <Text style={[styles.brand, { color: cc.brand }]}>CornerDay</Text>
+                <Logo size={24} variant="white" />
               </View>
 
               <Animated.View style={[styles.center, centerStyle]}>
                 {isTimeBadge ? (
                   <>
-                    <Text style={styles.num}>{num}</Text>
-                    <Text style={styles.unit}>{unit}</Text>
-                    <Text style={styles.sub}>milestone reached</Text>
+                    <Text style={[styles.num, { color: cc.bigText }]}>{num}</Text>
+                    <Text style={[styles.unit, { color: cc.unit }]}>{unit}</Text>
+                    <Text style={[styles.sub, { color: cc.sub }]}>milestone reached</Text>
                   </>
                 ) : (
                   <>
                     <Text style={styles.achievementEmoji}>{badge.emoji}</Text>
-                    <Text style={styles.achievementLabel}>{badge.label.toUpperCase()}</Text>
-                    <Text style={styles.sub}>milestone earned</Text>
+                    <Text style={[styles.achievementLabel, { color: cc.bigText }]}>{badge.label.toUpperCase()}</Text>
+                    <Text style={[styles.sub, { color: cc.sub }]}>milestone earned</Text>
                   </>
                 )}
               </Animated.View>
 
               {details && details.length > 0 && (
-                <View style={styles.detailBox}>
+                <View style={[styles.detailBox, { backgroundColor: cc.detailBg }]}>
                   {details.map((d, i) => (
                     <View
                       key={i}
-                      style={[styles.detailRow, i === details.length - 1 && { borderBottomWidth: 0 }]}
+                      style={[styles.detailRow, { borderBottomColor: cc.detailBorder }, i === details.length - 1 && { borderBottomWidth: 0 }]}
                     >
-                      <Text style={styles.detailLabel}>{d.label}</Text>
-                      <Text style={[styles.detailValue, d.highlight && styles.detailHighlight]}>{d.value}</Text>
+                      <Text style={[styles.detailLabel, { color: cc.detailLabel }]}>{d.label}</Text>
+                      <Text style={[styles.detailValue, { color: d.highlight ? cc.detailHighlight : cc.detailValue }]}>{d.value}</Text>
                     </View>
                   ))}
                 </View>
               )}
 
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: cc.divider }]} />
 
               <View style={styles.cardBottom}>
-                <Text style={styles.tagline}>"{tagline}"</Text>
-                <Text style={styles.hashtag}>#CornerDay</Text>
+                <Text style={[styles.taglineText, { color: cc.tagline }]}>"{tagline}"</Text>
+                <Text style={[styles.hashtag, { color: cc.hashtag }]}>#CornerDay</Text>
               </View>
             </LinearGradient>
           </View>
@@ -129,7 +167,7 @@ export function MilestoneCelebrationModal({
           <View style={styles.actions}>
             <Pressable
               onPress={onShare}
-              style={({ pressed }) => [styles.shareBtn, { backgroundColor: c.primary, opacity: pressed ? 0.85 : 1 }]}
+              style={({ pressed }) => [styles.shareBtn, { opacity: pressed ? 0.85 : 1 }]}
             >
               <Text style={styles.shareBtnText}>Share milestone</Text>
             </Pressable>
@@ -149,9 +187,8 @@ export function MilestoneCelebrationModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  outerPressable: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.82)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -170,7 +207,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.3,
     shadowRadius: 24,
     elevation: 16,
   },
@@ -186,7 +223,6 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 15,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.7)',
     letterSpacing: 1,
   },
   center: {
@@ -196,18 +232,15 @@ const styles = StyleSheet.create({
   num: {
     fontSize: 80,
     fontWeight: '900',
-    color: '#fff',
     lineHeight: 84,
   },
   unit: {
     fontSize: 18,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.8)',
     letterSpacing: 3,
   },
   sub: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.7)',
     marginTop: 4,
   },
   achievementEmoji: {
@@ -217,13 +250,11 @@ const styles = StyleSheet.create({
   achievementLabel: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#fff',
     letterSpacing: 1,
     textAlign: 'center',
     marginTop: 8,
   },
   detailBox: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 16,
     marginTop: 20,
     paddingVertical: 4,
@@ -235,43 +266,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 11,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   detailLabel: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.55)',
     flexShrink: 0,
     marginRight: 12,
   },
   detailValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
     flex: 1,
     textAlign: 'right',
     flexWrap: 'wrap',
   },
-  detailHighlight: {
-    color: '#a8d8d0',
-  },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     marginVertical: 24,
   },
   cardBottom: {
     alignItems: 'center',
     gap: 6,
   },
-  tagline: {
+  taglineText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
     fontStyle: 'italic',
     textAlign: 'center',
   },
   hashtag: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
     fontWeight: '600',
   },
   actions: {
@@ -285,6 +307,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 14,
     paddingVertical: 15,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   shareBtnText: {
     fontSize: 16,
@@ -298,6 +321,6 @@ const styles = StyleSheet.create({
   dismissText: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.6)',
   },
 });
