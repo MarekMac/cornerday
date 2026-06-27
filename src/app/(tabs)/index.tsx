@@ -2630,34 +2630,32 @@ export default function HomeScreen() {
 
       {/* Reset streak confirmation */}
       <Modal visible={relapseConfirmVisible} transparent animationType="fade" onRequestClose={() => setRelapseConfirmVisible(false)}>
-        <Pressable style={s.confirmOverlay} onPress={() => setRelapseConfirmVisible(false)}>
-          <Pressable style={s.confirmSheet} onPress={() => {}}>
-            
-            <View style={s.confirmIconRow}>
-              <View style={s.confirmIconCircle}>
-                <Text style={{ fontSize: 28 }}>🔄</Text>
-              </View>
+        <Pressable style={s.relapseOverlay} onPress={() => setRelapseConfirmVisible(false)}>
+          <Pressable style={s.relapseSheet} onPress={() => {}}>
+            <View style={s.relapseIconCircle}>
+              <Text style={{ fontSize: 32 }}>🔄</Text>
             </View>
-            <Text style={s.confirmTitle}>Reset your streak?</Text>
-            <Text style={s.confirmBody}>
-              This will start your streak from today.{'\n'}It's okay — every restart is still progress.
+            <Text style={s.relapseSheetTitle}>Had a slip?</Text>
+            <Text style={s.relapseSheetBody}>
+              That's okay — every restart is still progress. You can get support right now, or reset and begin again.
             </Text>
             <Pressable
-              style={s.confirmSupportBtn}
+              style={({ pressed }) => [s.relapseUrgeBtn, pressed && { opacity: 0.85 }]}
               onPress={() => { setRelapseConfirmVisible(false); router.push('/(tabs)/urge' as any); }}>
-              <Text style={s.confirmSupportTxt}>Get urge support first</Text>
+              <Text style={s.relapseUrgeBtnTxt}>Get urge support</Text>
             </Pressable>
-            <View style={s.confirmActions}>
-              <Pressable style={s.confirmCancel} onPress={() => setRelapseConfirmVisible(false)}>
-                <Text style={s.confirmCancelTxt}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={[s.confirmReset, relapseLoading && { opacity: 0.6 }]}
-                onPress={() => { setRelapseConfirmVisible(false); doRelapse(); }}
-                disabled={relapseLoading}>
-                <Text style={s.confirmResetTxt}>Reset streak</Text>
-              </Pressable>
-            </View>
+            <Pressable
+              style={({ pressed }) => [s.relapseResetBtn, relapseLoading && { opacity: 0.5 }, pressed && { opacity: 0.7 }]}
+              onPress={() => { setRelapseConfirmVisible(false); doRelapse(); }}
+              disabled={relapseLoading}>
+              <Text style={s.relapseResetBtnTxt}>Reset my streak</Text>
+            </Pressable>
+            <View style={s.relapseSheetDivider} />
+            <Pressable
+              style={({ pressed }) => [s.relapseNotNowBtn, pressed && { opacity: 0.6 }]}
+              onPress={() => setRelapseConfirmVisible(false)}>
+              <Text style={s.relapseNotNowTxt}>Cancel</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -3419,6 +3417,38 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
   confirmReset: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
   confirmResetTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
+
+  relapseOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 24 },
+
+  // Relapse confirmation sheet
+  relapseSheet: {
+    backgroundColor: c.bgCard, borderRadius: 26, padding: 28, width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
+  },
+  relapseIconCircle: {
+    width: 76, height: 76, borderRadius: 38,
+    backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 20,
+  },
+  relapseSheetTitle: { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 10 },
+  relapseSheetBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
+  relapseUrgeBtn: {
+    backgroundColor: c.primary, borderRadius: 14, paddingVertical: 15,
+    alignItems: 'center', width: '100%', marginBottom: 10,
+  },
+  relapseUrgeBtnTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
+  relapseResetBtn: {
+    backgroundColor: c.error, borderRadius: 14, paddingVertical: 15,
+    alignItems: 'center', width: '100%', marginBottom: 6,
+  },
+  relapseResetBtnTxt: { fontSize: 15, fontWeight: '600', color: c.white },
+  relapseSheetDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginVertical: 10 },
+  relapseNotNowBtn: {
+    backgroundColor: c.bgElement, borderRadius: 14, paddingVertical: 15,
+    alignItems: 'center', width: '100%',
+  },
+  relapseNotNowTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
   // Savings goal card
   goalCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 10 },
