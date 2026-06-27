@@ -37,11 +37,12 @@ function ConfettiParticle({ index }: { index: number }) {
 }
 
 export function MilestoneCelebrationModal({
-  badge, tagline, isTimeBadge, cardRef, onShare, onClose,
+  badge, tagline, isTimeBadge, details, cardRef, onShare, onClose,
 }: {
   badge: { emoji: string; label: string };
   tagline: string;
   isTimeBadge: boolean;
+  details?: Array<{ label: string; value: string; highlight?: boolean }>;
   cardRef?: React.RefObject<any>;
   onShare: () => void;
   onClose: () => void;
@@ -65,66 +66,84 @@ export function MilestoneCelebrationModal({
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        {/* Confetti lives outside the card so the captured share image is clean */}
+      {/* Outer Pressable closes when tapping the dark overlay */}
+      <Pressable style={styles.overlay} onPress={onClose}>
+        {/* Confetti lives outside the card so the shared image is clean */}
         <View style={styles.confettiLayer} pointerEvents="none">
           {Array.from({ length: 14 }).map((_, i) => <ConfettiParticle key={i} index={i} />)}
         </View>
 
-        <View ref={cardRef} collapsable={false} style={styles.card}>
-          <LinearGradient
-            colors={['#0a4f4f', '#0F6E6E', '#1a9a9a']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardInner}
-          >
-            <View style={styles.cardTop}>
-              <Text style={styles.brand}>CornerDay</Text>
-              <Logo size={24} variant="light" />
-            </View>
+        {/* Inner Pressable stops tap-propagation so card/buttons don't close the modal */}
+        <Pressable onPress={() => {}} style={{ alignItems: 'center' }}>
+          <View ref={cardRef} collapsable={false} style={styles.card}>
+            <LinearGradient
+              colors={['#062e2e', '#0F6E6E', '#1a9a9a']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardInner}
+            >
+              <View style={styles.cardTop}>
+                <Text style={styles.brand}>CornerDay</Text>
+                <Logo size={24} variant="dark" />
+              </View>
 
-            <Animated.View style={[styles.center, centerStyle]}>
-              {isTimeBadge ? (
-                <>
-                  <Text style={styles.num}>{num}</Text>
-                  <Text style={styles.unit}>{unit}</Text>
-                  <Text style={styles.sub}>milestone reached</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.achievementEmoji}>{badge.emoji}</Text>
-                  <Text style={styles.achievementLabel}>{badge.label.toUpperCase()}</Text>
-                  <Text style={styles.sub}>milestone earned</Text>
-                </>
+              <Animated.View style={[styles.center, centerStyle]}>
+                {isTimeBadge ? (
+                  <>
+                    <Text style={styles.num}>{num}</Text>
+                    <Text style={styles.unit}>{unit}</Text>
+                    <Text style={styles.sub}>milestone reached</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.achievementEmoji}>{badge.emoji}</Text>
+                    <Text style={styles.achievementLabel}>{badge.label.toUpperCase()}</Text>
+                    <Text style={styles.sub}>milestone earned</Text>
+                  </>
+                )}
+              </Animated.View>
+
+              {details && details.length > 0 && (
+                <View style={styles.detailBox}>
+                  {details.map((d, i) => (
+                    <View
+                      key={i}
+                      style={[styles.detailRow, i === details.length - 1 && { borderBottomWidth: 0 }]}
+                    >
+                      <Text style={styles.detailLabel}>{d.label}</Text>
+                      <Text style={[styles.detailValue, d.highlight && styles.detailHighlight]}>{d.value}</Text>
+                    </View>
+                  ))}
+                </View>
               )}
-            </Animated.View>
 
-            <View style={styles.divider} />
+              <View style={styles.divider} />
 
-            <View style={styles.cardBottom}>
-              <Text style={styles.tagline}>"{tagline}"</Text>
-              <Text style={styles.hashtag}>#CornerDay</Text>
-            </View>
-          </LinearGradient>
-        </View>
+              <View style={styles.cardBottom}>
+                <Text style={styles.tagline}>"{tagline}"</Text>
+                <Text style={styles.hashtag}>#CornerDay</Text>
+              </View>
+            </LinearGradient>
+          </View>
 
-        <View style={styles.actions}>
-          <Pressable
-            onPress={onShare}
-            style={({ pressed }) => [styles.shareBtn, { backgroundColor: c.primary, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <Text style={styles.shareBtnText}>Share milestone</Text>
-          </Pressable>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.dismissBtn, { opacity: pressed ? 0.6 : 1 }]}
-            accessibilityLabel="Dismiss"
-            accessibilityRole="button"
-          >
-            <Text style={styles.dismissText}>Maybe later</Text>
-          </Pressable>
-        </View>
-      </View>
+          <View style={styles.actions}>
+            <Pressable
+              onPress={onShare}
+              style={({ pressed }) => [styles.shareBtn, { backgroundColor: c.primary, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Text style={styles.shareBtnText}>Share milestone</Text>
+            </Pressable>
+            <Pressable
+              onPress={onClose}
+              style={({ pressed }) => [styles.dismissBtn, { opacity: pressed ? 0.6 : 1 }]}
+              accessibilityLabel="Dismiss"
+              accessibilityRole="button"
+            >
+              <Text style={styles.dismissText}>Maybe later</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
@@ -202,6 +221,38 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textAlign: 'center',
     marginTop: 8,
+  },
+  detailBox: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    marginTop: 20,
+    paddingVertical: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
+  },
+  detailLabel: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.55)',
+    flexShrink: 0,
+    marginRight: 12,
+  },
+  detailValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'right',
+    flexWrap: 'wrap',
+  },
+  detailHighlight: {
+    color: '#a8d8d0',
   },
   divider: {
     height: 1,

@@ -3038,11 +3038,23 @@ export default function HomeScreen() {
       {celebrationBadge && (() => {
         const badgeDef = BADGE_DEFS.find(d => d.type === celebrationBadge.type);
         const isTimeBadge = badgeDef !== undefined && badgeDef.days > 0;
+        const earnedAtTs = celebrationBadge.earnedAt;
+        const dailyRate = data ? weeklyToDaily(data.weeklyBet) : 0;
+        const celebrationDetails: Array<{ label: string; value: string; highlight?: boolean }> = [];
+        if (isTimeBadge && badgeDef) {
+          if (earnedAtTs) celebrationDetails.push({ label: 'Earned on', value: new Date(earnedAtTs).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) });
+          celebrationDetails.push({ label: 'Current streak', value: formatStreakFull(streakMs) });
+          if (dailyRate > 0) {
+            celebrationDetails.push({ label: 'Saved at milestone', value: fmt(badgeDef.days * dailyRate, data?.currency) });
+            celebrationDetails.push({ label: 'Total saved', value: fmt((streakMs / 86400000) * dailyRate, data?.currency), highlight: true });
+          }
+        }
         return (
         <MilestoneCelebrationModal
           badge={celebrationBadge}
           tagline={celebrationTagline}
           isTimeBadge={isTimeBadge}
+          details={celebrationDetails}
           cardRef={celebrationCardRef}
           onShare={handleCelebrationShare}
           onClose={async () => {
