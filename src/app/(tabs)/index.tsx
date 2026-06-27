@@ -771,7 +771,7 @@ export default function HomeScreen() {
     stat:            '#0F6E6E',
     detailBg:        'rgba(15,110,110,0.06)',
     detailBorder:    'rgba(15,110,110,0.12)',
-    detailLabel:     'rgba(10,104,104,0.3)',
+    detailLabel:     'rgba(10,104,104,0.5)',
     detailValue:     '#0a5a5a',
     detailHighlight: '#0F6E6E',
     tagline:         'rgba(6,46,46,0.5)',
@@ -2869,7 +2869,7 @@ export default function HomeScreen() {
               >
                 <View style={s.shareCardTop}>
                   <Text style={[s.shareCardBrand, { color: cc.brand }]}>CornerDay</Text>
-                  <View style={[s.shareCardLogoBadge, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(10,104,104,0.3)' }]}>
+                  <View style={[s.shareCardLogoBadge, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(10,104,104,0.5)' }]}>
                     <Logo size={28} variant="white" />
                   </View>
                 </View>
