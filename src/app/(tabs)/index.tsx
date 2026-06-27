@@ -1896,8 +1896,7 @@ export default function HomeScreen() {
             onPress={async () => {
               setPartnerMsg(null);
               try {
-                const { data: { user: msgUser } } = await supabase.auth.getUser();
-                await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id).eq('user_id', msgUser?.id ?? '');
+                await supabase.from('partner_messages').update({ read_at: new Date().toISOString() }).eq('id', partnerMsg.id);
               } catch (_e) {}
             }}>
             <Text style={s.partnerMsgEmoji}>💙</Text>
