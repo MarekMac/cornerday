@@ -2869,7 +2869,7 @@ export default function HomeScreen() {
               >
                 <View style={s.shareCardTop}>
                   <Text style={[s.shareCardBrand, { color: cc.brand }]}>CornerDay</Text>
-                  <View style={[s.shareCardLogoBadge, { backgroundColor: cc.pillBg }]}>
+                  <View style={[s.shareCardLogoBadge, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(15,110,110,0.3)' }]}>
                     <Logo size={28} variant={colorScheme === 'dark' ? 'dark' : 'light'} />
                   </View>
                 </View>
