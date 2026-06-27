@@ -2869,7 +2869,9 @@ export default function HomeScreen() {
               >
                 <View style={s.shareCardTop}>
                   <Text style={[s.shareCardBrand, { color: cc.brand }]}>CornerDay</Text>
-                  <Logo size={28} variant={colorScheme === 'dark' ? 'dark' : 'light'} />
+                  <View style={[s.shareCardLogoBadge, { backgroundColor: cc.pillBg }]}>
+                    <Logo size={28} variant={colorScheme === 'dark' ? 'dark' : 'light'} />
+                  </View>
                 </View>
 
                 {shareCardLocked ? (
@@ -3440,6 +3442,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     marginBottom: 28,
   },
   shareCardBrand: { fontSize: 15, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1 },
+  shareCardLogoBadge: { borderRadius: 8, padding: 5 },
   shareCardBadgeEmoji: { fontSize: 26 },
   shareCardCenter: { alignItems: 'center', gap: 4 },
   shareCardNum: { fontSize: 80, fontWeight: '900', color: '#fff', lineHeight: 84 },

@@ -53,6 +53,7 @@ export function MilestoneCelebrationModal({
   const cc = colorScheme === 'dark' ? {
     gradient:        ['#062e2e', '#0F6E6E', '#1a9a9a'] as const,
     brand:           'rgba(255,255,255,0.7)',
+    pillBg:          'rgba(255,255,255,0.15)',
     bigText:         '#ffffff',
     unit:            'rgba(255,255,255,0.8)',
     sub:             'rgba(255,255,255,0.7)',
@@ -67,6 +68,7 @@ export function MilestoneCelebrationModal({
   } : {
     gradient:        ['#f8fefe', '#edfafa', '#dff5f5'] as const,
     brand:           '#0a6868',
+    pillBg:          'rgba(15,110,110,0.1)',
     bigText:         '#0F6E6E',
     unit:            '#0F6E6E',
     sub:             'rgba(10,104,104,0.65)',
@@ -122,7 +124,9 @@ export function MilestoneCelebrationModal({
             >
               <View style={styles.cardTop}>
                 <Text style={[styles.brand, { color: cc.brand }]}>CornerDay</Text>
-                <Logo size={24} variant="white" />
+                <View style={[styles.logoBadge, { backgroundColor: cc.pillBg }]}>
+                  <Logo size={24} variant="white" />
+                </View>
               </View>
 
               <Animated.View style={[styles.center, centerStyle]}>
@@ -224,6 +228,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  logoBadge: {
+    borderRadius: 8,
+    padding: 5,
   },
   center: {
     alignItems: 'center',
