@@ -1381,7 +1381,7 @@ export default function TrackerIndex() {
                   onChangeText={setDebtAmount}
                 />
                 <Text style={s.fieldLbl}>Category</Text>
-                <View style={s.chipRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.sessionCatScroll} contentContainerStyle={s.sessionCatContent}>
                   {DEBT_CATEGORIES.map(cat => (
                     <Pressable
                       key={cat.key}
@@ -1392,7 +1392,7 @@ export default function TrackerIndex() {
                       </Text>
                     </Pressable>
                   ))}
-                </View>
+                </ScrollView>
                 <Text style={s.fieldLbl}>
                   Payoff target date <Text style={[s.fieldLbl, { fontWeight: '400', textTransform: 'none', letterSpacing: 0 }]}>(optional)</Text>
                 </Text>
