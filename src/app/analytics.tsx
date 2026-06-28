@@ -633,7 +633,7 @@ export default function AnalyticsScreen() {
       <SafeAreaView style={s.root} edges={['bottom']}>
         {renderHeader()}
         <ScrollView contentContainerStyle={s.lockScroll} showsVerticalScrollIndicator={false}>
-          <View style={s.lockHero}>
+          <View style={s.lockHeroCard}>
             <Text style={s.lockEmoji}>📊</Text>
             <Text style={s.lockTitle}>Progress Analytics</Text>
             <Text style={s.lockDesc}>
@@ -1359,7 +1359,12 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 22, fontWeight: '700', color: c.white, textAlign: 'center' },
 
   lockScroll:    { flexGrow: 1 },
-  lockHero:      { paddingTop: 48, paddingBottom: 40, paddingHorizontal: 24, alignItems: 'center', gap: 10 },
+  lockHeroCard:  {
+    marginHorizontal: 16, marginTop: 20, marginBottom: 4,
+    backgroundColor: c.bgCard, borderRadius: 18, padding: 24,
+    alignItems: 'center', gap: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+  },
   lockEmoji:     { fontSize: 52 },
   lockTitle:     { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', letterSpacing: -0.3 },
   lockDesc:      { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 },
