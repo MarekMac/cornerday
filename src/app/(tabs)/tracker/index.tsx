@@ -1359,9 +1359,9 @@ export default function TrackerIndex() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeDebtModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
-              
-              <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Add a debt'}</Text>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <View style={[s.sheetIconCircle, { backgroundColor: c.bgError }]}><Text style={s.sheetIconEmoji}>💳</Text></View>
+              <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Log a debt'}</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>
                 <Text style={s.fieldLbl}>Name</Text>
                 <TextInput
                   style={s.input}
@@ -1411,13 +1411,14 @@ export default function TrackerIndex() {
                 </Pressable>
               </ScrollView>
               <View style={s.sheetActions}>
-                <Pressable style={s.cancelBtn} onPress={closeDebtModal}>
-                  <Text style={s.cancelBtnTxt}>Cancel</Text>
-                </Pressable>
                 <Pressable style={[s.saveBtn, savingDebt && s.btnDisabled]} onPress={saveDebt} disabled={savingDebt}>
                   {savingDebt
                     ? <ActivityIndicator color={c.white} size="small" />
-                    : <Text style={s.saveBtnTxt}>{editingDebt ? 'Save changes' : 'Add debt'}</Text>}
+                    : <Text style={s.saveBtnTxt}>{editingDebt ? 'Save changes' : 'Log debt'}</Text>}
+                </Pressable>
+                <View style={s.sheetDivider} />
+                <Pressable style={s.cancelBtn} onPress={closeDebtModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -1430,9 +1431,9 @@ export default function TrackerIndex() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeSavingModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
-              
+              <View style={[s.sheetIconCircle, { backgroundColor: c.bgTeal }]}><Text style={s.sheetIconEmoji}>💰</Text></View>
               <Text style={s.sheetTitle}>{editingSaving ? 'Edit saving' : 'Log a saving'}</Text>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>
                 <Text style={s.fieldLbl}>Amount</Text>
                 <TextInput
                   style={s.input}
@@ -1452,13 +1453,14 @@ export default function TrackerIndex() {
                 />
               </ScrollView>
               <View style={s.sheetActions}>
-                <Pressable style={s.cancelBtn} onPress={closeSavingModal}>
-                  <Text style={s.cancelBtnTxt}>Cancel</Text>
-                </Pressable>
                 <Pressable style={[s.saveBtn, submitting && s.btnDisabled]} onPress={saveSaving} disabled={submitting}>
                   {submitting
                     ? <ActivityIndicator color={c.white} size="small" />
-                    : <Text style={s.saveBtnTxt}>{editingSaving ? 'Save changes' : 'Add saving'}</Text>}
+                    : <Text style={s.saveBtnTxt}>{editingSaving ? 'Save changes' : 'Log saving'}</Text>}
+                </Pressable>
+                <View style={s.sheetDivider} />
+                <Pressable style={s.cancelBtn} onPress={closeSavingModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -1760,13 +1762,14 @@ export default function TrackerIndex() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeSessionModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
+              <View style={[s.sheetIconCircle, { backgroundColor: SESSION_CHIP_BG }]}><Text style={s.sheetIconEmoji}>🎲</Text></View>
               <Text style={s.sheetTitle}>{editingSession ? 'Edit session' : 'Log a session'}</Text>
               {!editingSession && (
-                <Text style={[s.fieldLbl, { color: c.textFaint, fontWeight: '400', textTransform: 'none', letterSpacing: 0, marginTop: 4 }]}>
+                <Text style={s.sheetSubtitle}>
                   This won't affect your debt or streak — it's just for your own awareness.
                 </Text>
               )}
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>
                 <Text style={s.fieldLbl}>Amount lost</Text>
                 <TextInput
                   style={s.input}
@@ -1824,13 +1827,14 @@ export default function TrackerIndex() {
                 </Pressable>
               </ScrollView>
               <View style={s.sheetActions}>
-                <Pressable style={s.cancelBtn} onPress={closeSessionModal}>
-                  <Text style={s.cancelBtnTxt}>Cancel</Text>
-                </Pressable>
                 <Pressable style={[s.sessionSaveBtn, submittingSession && s.btnDisabled]} onPress={saveSession} disabled={submittingSession}>
                   {submittingSession
                     ? <ActivityIndicator color={c.white} size="small" />
                     : <Text style={s.saveBtnTxt}>{editingSession ? 'Save changes' : 'Log session'}</Text>}
+                </Pressable>
+                <View style={s.sheetDivider} />
+                <Pressable style={s.cancelBtn} onPress={closeSessionModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -2228,12 +2232,20 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 24 },
   sheet: {
-    backgroundColor: c.bgCard, borderRadius: 24, padding: 24, width: '100%',
+    backgroundColor: c.bgCard, borderRadius: 26, padding: 28, width: '100%',
+    alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
   },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, marginBottom: 4 },
-  sheetActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  cancelBtn: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: c.bgElement },
+  sheetIconCircle: {
+    width: 76, height: 76, borderRadius: 38,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  sheetIconEmoji: { fontSize: 32 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 16 },
+  sheetSubtitle: { fontSize: 13, color: c.textMuted, textAlign: 'center', lineHeight: 19, marginBottom: 4 },
+  sheetActions: { width: '100%', marginTop: 20 },
+  sheetDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginVertical: 10 },
+  cancelBtn: { width: '100%', borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: c.bgElement },
   cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
   // Weekly spending modal — mirrors account tab spending modal exactly
@@ -2254,7 +2266,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   spendingBtnCancel: { fontSize: 15, color: c.textBody, fontWeight: '600' },
   spendingBtnSave: { backgroundColor: c.primary },
   spendingBtnSaveTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
-  saveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.primary },
+  saveBtn: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.primary },
   saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   btnDisabled: { opacity: 0.6 },
 
@@ -2344,7 +2356,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   sessionChipActive: { borderColor: SESSION_COLOR, backgroundColor: SESSION_CHIP_BG },
   sessionChipTxtActive: { color: SESSION_COLOR, fontWeight: '600' },
-  sessionSaveBtn: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: SESSION_COLOR },
+  sessionSaveBtn: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: SESSION_COLOR },
 
   payInFullBtn: {
     alignSelf: 'flex-start', marginTop: 6,
