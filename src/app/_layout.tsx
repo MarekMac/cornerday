@@ -6,8 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Updates from 'expo-updates';
 import * as Notifications from 'expo-notifications';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { AppState, AppStateStatus, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppState, AppStateStatus, Linking, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
 import { initHaptics } from '@/lib/haptics';
@@ -360,10 +359,9 @@ function InnerLayout() {
 
 function OfflineBanner() {
   const isOnline = useIsOnline();
-  const insets = useSafeAreaInsets();
   if (isOnline) return null;
   return (
-    <View style={[offlineStyles.banner, { top: insets.top }]} pointerEvents="none">
+    <View style={[offlineStyles.banner, { top: StatusBar.currentHeight ?? 0 }]} pointerEvents="none">
       <Text style={offlineStyles.text}>No internet connection</Text>
     </View>
   );
