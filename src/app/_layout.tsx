@@ -37,6 +37,7 @@ import { UserProvider } from '@/context/user';
 import { PurchasesProvider, usePurchases } from '@/context/purchases';
 import { AppThemeProvider, useAppTheme } from '@/context/theme';
 import { NetworkProvider, useIsOnline } from '@/context/network';
+import { initAds } from '@/lib/ads';
 import { Paywall } from '@/components/Paywall';
 
 function InnerLayout() {
@@ -75,6 +76,7 @@ function InnerLayout() {
 
   useEffect(() => { authCheckedRef.current = authChecked; }, [authChecked]);
   useEffect(() => { initHaptics(); }, []);
+  useEffect(() => { initAds(); }, []);
 
   useEffect(() => {
     if (__DEV__ || !Updates.isEnabled) return;

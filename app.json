@@ -67,7 +67,10 @@
       "expo-sharing",
       "expo-image",
       "expo-contacts",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      ["react-native-google-mobile-ads", {
+        "androidAppId": "ca-app-pub-5720390815287437~4576547556"
+      }]
     ],
     "experiments": {
       "typedRoutes": true,
