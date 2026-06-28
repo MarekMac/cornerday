@@ -586,7 +586,7 @@ export default function AnalyticsScreen() {
   };
 
   const renderHeader = () => (
-    <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.header}>
+    <View style={[s.header, { backgroundColor: c.headerBg }]}>
       <SafeAreaView edges={['top']}>
         <View style={s.headerRow}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>
@@ -596,24 +596,24 @@ export default function AnalyticsScreen() {
           <View style={s.backBtn} />
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 
   if (loading) return (
-    <View style={s.root}>
+    <SafeAreaView style={s.root} edges={['bottom']}>
       {renderHeader()}
       <View style={s.loadingWrap}><ActivityIndicator color={c.primary} size="large" /></View>
-    </View>
+    </SafeAreaView>
   );
 
   if (isLoadingPurchases) {
     return (
-      <View style={s.root}>
+      <SafeAreaView style={s.root} edges={['bottom']}>
         {renderHeader()}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color={c.primary} />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -630,18 +630,16 @@ export default function AnalyticsScreen() {
       { emoji: '📅', title: 'Streak history', desc: 'Every streak you\'ve ever had — see how they\'re getting longer' },
     ];
     return (
-      <View style={s.root}>
+      <SafeAreaView style={s.root} edges={['bottom']}>
         {renderHeader()}
         <ScrollView contentContainerStyle={s.lockScroll} showsVerticalScrollIndicator={false}>
-          <LinearGradient colors={['#0b5252', '#0F6E6E', '#1a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.lockHero}>
-            <View style={s.lockIconWrap}>
-              <Text style={s.lockEmoji}>📊</Text>
-            </View>
+          <View style={s.lockHero}>
+            <Text style={s.lockEmoji}>📊</Text>
             <Text style={s.lockTitle}>Progress Analytics</Text>
             <Text style={s.lockDesc}>
               Deep insights into your recovery — see exactly how far you've come and what's driving your progress.
             </Text>
-          </LinearGradient>
+          </View>
 
           <Pressable style={({ pressed }) => [s.lockBtn, pressed && { opacity: 0.88 }]} onPress={showPaywall}>
             <LinearGradient colors={['#0F6E6E', '#1a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.lockBtnGradient}>
@@ -665,13 +663,13 @@ export default function AnalyticsScreen() {
           </View>
           <View style={{ height: 32 }} />
         </ScrollView>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (fetchError && !data) {
     return (
-      <View style={s.root}>
+      <SafeAreaView style={s.root} edges={['bottom']}>
         {renderHeader()}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
           <Text style={{ fontSize: 40 }}>⚠️</Text>
@@ -683,7 +681,7 @@ export default function AnalyticsScreen() {
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Retry</Text>
           </Pressable>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -788,7 +786,7 @@ export default function AnalyticsScreen() {
     insights.push({ emoji: '📆', text: `${wkCiDelta} more check-in${wkCiDelta > 1 ? 's' : ''} this week than last — building momentum`, bg: '#eff6ff', tc: '#1d4ed8' });
 
   return (
-    <View style={s.root}>
+    <SafeAreaView style={s.root} edges={['bottom']}>
       {renderHeader()}
       <ScrollView
         style={s.body}
@@ -1344,7 +1342,7 @@ export default function AnalyticsScreen() {
           </View>
         </Modal>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -1361,11 +1359,10 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 22, fontWeight: '700', color: c.white, textAlign: 'center' },
 
   lockScroll:    { flexGrow: 1 },
-  lockHero:      { margin: 16, borderRadius: 20, padding: 24, alignItems: 'center', gap: 10 },
-  lockIconWrap:  { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  lockEmoji:     { fontSize: 36 },
-  lockTitle:     { fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.3 },
-  lockDesc:      { fontSize: 14, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 21 },
+  lockHero:      { paddingTop: 32, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center', gap: 10 },
+  lockEmoji:     { fontSize: 52 },
+  lockTitle:     { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', letterSpacing: -0.3 },
+  lockDesc:      { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 },
   lockBtn:       { marginHorizontal: 16, marginBottom: 20, borderRadius: 16, overflow: 'hidden' },
   lockBtnGradient: { paddingVertical: 16, alignItems: 'center' },
   lockBtnTxt:    { color: '#ffffff', fontWeight: '800', fontSize: 16, letterSpacing: 0.2 },
