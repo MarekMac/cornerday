@@ -1254,10 +1254,12 @@ export default function AccountScreen() {
 
   const executeDeleteAccount = async () => {
     setSigningOut(true);
+    authFlags.signingOut = true;
     try {
       const { error: deleteErr } = await supabase.functions.invoke('delete-account');
       if (deleteErr) {
         Alert.alert('Could not delete account', 'Please try again or contact support.');
+        authFlags.signingOut = false;
         return;
       }
       if (profile?.avatarUrl) {
@@ -1281,6 +1283,8 @@ export default function AccountScreen() {
     } finally {
       setSigningOut(false);
     }
+    // Guaranteed navigation — signOut on a deleted account may not fire SIGNED_OUT reliably
+    router.replace('/(onboarding)' as any);
   };
 
   const confirmSignOut = () => setSignOutVisible(true);
@@ -1307,11 +1311,10 @@ export default function AccountScreen() {
       try { await supabase.auth.signOut(); } catch (_e) {}
     } finally {
       setSigningOut(false);
-      // Flag is reset by _layout.tsx once navigation to sign-in completes.
-      // Safety fallback: clear it here too so a silent signOut failure doesn't
-      // leave the flag stuck and block future SIGNED_IN events.
       setTimeout(() => { authFlags.signingOut = false; }, 5000);
     }
+    // Guaranteed navigation — don't rely solely on SIGNED_OUT event from _layout.tsx
+    router.replace('/(onboarding)/signup?mode=signin' as any);
   };
 
   const handleExport = async () => {
