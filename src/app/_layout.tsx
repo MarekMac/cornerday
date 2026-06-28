@@ -3,6 +3,7 @@ initSentry();
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import * as Updates from 'expo-updates';
 import * as Notifications from 'expo-notifications';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { AppState, AppStateStatus, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -73,6 +74,19 @@ function InnerLayout() {
 
   useEffect(() => { authCheckedRef.current = authChecked; }, [authChecked]);
   useEffect(() => { initHaptics(); }, []);
+
+  useEffect(() => {
+    if (__DEV__ || !Updates.isEnabled) return;
+    (async () => {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch { /* silent — never block startup */ }
+    })();
+  }, []);
 
   useEffect(() => {
     if (locked) authenticate();
