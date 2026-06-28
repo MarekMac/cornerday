@@ -1359,7 +1359,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 22, fontWeight: '700', color: c.white, textAlign: 'center' },
 
   lockScroll:    { flexGrow: 1 },
-  lockHero:      { paddingTop: 32, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center', gap: 10 },
+  lockHero:      { paddingTop: 48, paddingBottom: 40, paddingHorizontal: 24, alignItems: 'center', gap: 10 },
   lockEmoji:     { fontSize: 52 },
   lockTitle:     { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', letterSpacing: -0.3 },
   lockDesc:      { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 },
