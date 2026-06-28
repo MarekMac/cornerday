@@ -1005,7 +1005,7 @@ export default function TrackerIndex() {
               <View style={s.savingsRowBody}>
                 <Text style={s.savingsRowLabel}>Not spent since day one</Text>
                 <Text style={s.savingsRowSub}>
-                  {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Tap to set your weekly spending →'}
+                  {weeklyBet ? `Theoretical · ${fmt(Number(weeklyBet), currency)}/week` : 'Tap to set your weekly spending'}
                 </Text>
               </View>
               {weeklyBet
