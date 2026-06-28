@@ -1276,6 +1276,7 @@ export default function AccountScreen() {
         CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
         URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
         CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
+        BIOMETRIC_LOCK_KEY, HAPTICS_KEY,
         'coach_chat_history',
       ]);
       try { await FileSystem.deleteAsync(FileSystem.documentDirectory + 'motivation_photo.jpg', { idempotent: true }); } catch (_e) {}
@@ -1306,12 +1307,14 @@ export default function AccountScreen() {
         CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
         URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY,
         CHECKLIST_KEY, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GAME_BESTS_STORAGE_KEY,
+        BIOMETRIC_LOCK_KEY, HAPTICS_KEY,
         'coach_chat_history',
       ]);
       try { await supabase.auth.signOut(); } catch (_e) {}
     } finally {
       setSigningOut(false);
-      setTimeout(() => { authFlags.signingOut = false; }, 5000);
+      // 500ms covers any concurrent OAuth token-refresh SIGNED_IN without blocking fast re-login
+      setTimeout(() => { authFlags.signingOut = false; }, 500);
     }
     // Guaranteed navigation — don't rely solely on SIGNED_OUT event from _layout.tsx
     router.replace('/(onboarding)/signup?mode=signin' as any);

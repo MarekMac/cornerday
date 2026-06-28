@@ -54,3 +54,6 @@ example
 
 # Supabase CLI local cache (auto-generated, contains DB URLs)
 supabase/.temp/
+
+# Google Play service account key (used by eas submit — never commit)
+credentials/

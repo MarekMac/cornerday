@@ -21,7 +21,7 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "C:/Users/mmaci/Downloads/project-8769e173-2107-472b-b13-ca7c06c18eef.json",
+        "serviceAccountKeyPath": "./credentials/play-service-account.json",
         "track": "internal"
       }
     }
