@@ -1619,8 +1619,9 @@ export default function TrackerIndex() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeGoalModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
+              <View style={[s.sheetIconCircle, { backgroundColor: c.bgTeal }]}><Text style={s.sheetIconEmoji}>🎯</Text></View>
               <Text style={s.sheetTitle}>Savings goal</Text>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>
                 <Text style={s.fieldLbl}>Icon</Text>
                 <View style={s.iconGrid}>
                   {GOAL_ICONS.map(icon => (
@@ -1695,11 +1696,12 @@ export default function TrackerIndex() {
                 )}
               </ScrollView>
               <View style={s.sheetActions}>
-                <Pressable style={s.cancelBtn} onPress={closeGoalModal}>
-                  <Text style={s.cancelBtnTxt}>Cancel</Text>
-                </Pressable>
                 <Pressable style={[s.saveBtn, savingGoalBusy && { opacity: 0.6 }]} onPress={saveGoal} disabled={savingGoalBusy}>
                   <Text style={s.saveBtnTxt}>{savingGoalBusy ? 'Saving…' : 'Save goal'}</Text>
+                </Pressable>
+                <View style={s.sheetDivider} />
+                <Pressable style={s.cancelBtn} onPress={closeGoalModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -1996,52 +1998,52 @@ export default function TrackerIndex() {
       <Modal visible={showSpendingModal} transparent animationType="fade" onRequestClose={() => setShowSpendingModal(false)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={() => setShowSpendingModal(false)}>
-            <Pressable style={s.spendingSheet} onPress={() => {}}>
-            <Text style={s.spendingTitle}>Weekly spending</Text>
-            <View style={s.spendingChips}>
-              {CHIP_AMOUNTS.map(chip => {
-                const sym = CURRENCY_SYMBOLS[currency] ?? '';
-                const isSelected = spendingChip === chip.value;
-                return (
-                  <Pressable
-                    key={chip.value}
-                    style={[s.spendingChip, isSelected && s.spendingChipSelected]}
-                    onPress={() => { setSpendingChip(prev => prev === chip.value ? '' : chip.value); setSpendingCustom(''); }}>
-                    <Text style={[s.spendingChipTxt, isSelected && s.spendingChipTxtSelected]}>
-                      {chip.label(sym)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={s.spendingCustomLabel}>Or enter your exact amount:</Text>
-            <View style={s.spendingInputRow}>
-              <Text style={s.spendingSymbol}>{CURRENCY_SYMBOLS[currency] ?? ''}</Text>
-              <TextInput
-                style={s.spendingInput}
-                value={spendingCustom}
-                onChangeText={t => { setSpendingCustom(t); if (t.trim()) setSpendingChip(''); }}
-                placeholder="0"
-                placeholderTextColor={c.textFaint}
-                keyboardType="numeric"
-              />
-              <Text style={s.spendingPerWk}>/week</Text>
-            </View>
-            <View style={s.spendingActions}>
-              <Pressable
-                style={({ pressed }) => [s.spendingBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
-                onPress={() => setShowSpendingModal(false)}>
-                <Text style={s.spendingBtnCancel}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [s.spendingBtn, s.spendingBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
-                onPress={saveWeeklyBet}
-                disabled={savingSpending}>
-                {savingSpending
-                  ? <ActivityIndicator color={c.white} size="small" />
-                  : <Text style={s.spendingBtnSaveTxt}>Save</Text>}
-              </Pressable>
-            </View>
+            <Pressable style={s.sheet} onPress={() => {}}>
+              <View style={[s.sheetIconCircle, { backgroundColor: c.bgTeal }]}><Text style={s.sheetIconEmoji}>💸</Text></View>
+              <Text style={s.sheetTitle}>Weekly spending</Text>
+              <View style={[s.spendingChips, { alignSelf: 'stretch' }]}>
+                {CHIP_AMOUNTS.map(chip => {
+                  const sym = CURRENCY_SYMBOLS[currency] ?? '';
+                  const isSelected = spendingChip === chip.value;
+                  return (
+                    <Pressable
+                      key={chip.value}
+                      style={[s.spendingChip, isSelected && s.spendingChipSelected]}
+                      onPress={() => { setSpendingChip(prev => prev === chip.value ? '' : chip.value); setSpendingCustom(''); }}>
+                      <Text style={[s.spendingChipTxt, isSelected && s.spendingChipTxtSelected]}>
+                        {chip.label(sym)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={[s.spendingCustomLabel, { alignSelf: 'stretch' }]}>Or enter your exact amount:</Text>
+              <View style={[s.spendingInputRow, { alignSelf: 'stretch' }]}>
+                <Text style={s.spendingSymbol}>{CURRENCY_SYMBOLS[currency] ?? ''}</Text>
+                <TextInput
+                  style={s.spendingInput}
+                  value={spendingCustom}
+                  onChangeText={t => { setSpendingCustom(t); if (t.trim()) setSpendingChip(''); }}
+                  placeholder="0"
+                  placeholderTextColor={c.textFaint}
+                  keyboardType="numeric"
+                />
+                <Text style={s.spendingPerWk}>/week</Text>
+              </View>
+              <View style={s.sheetActions}>
+                <Pressable
+                  style={[s.saveBtn, savingSpending && { opacity: 0.6 }]}
+                  onPress={saveWeeklyBet}
+                  disabled={savingSpending}>
+                  {savingSpending
+                    ? <ActivityIndicator color={c.white} size="small" />
+                    : <Text style={s.saveBtnTxt}>Save</Text>}
+                </Pressable>
+                <View style={s.sheetDivider} />
+                <Pressable style={s.cancelBtn} onPress={() => setShowSpendingModal(false)}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
+                </Pressable>
+              </View>
             </Pressable>
           </Pressable>
         </KeyboardAvoidingView>
