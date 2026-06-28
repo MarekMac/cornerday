@@ -36,6 +36,7 @@ import { supabase } from '@/lib/supabase';
 import { UserProvider } from '@/context/user';
 import { PurchasesProvider, usePurchases } from '@/context/purchases';
 import { AppThemeProvider, useAppTheme } from '@/context/theme';
+import { NetworkProvider, useIsOnline } from '@/context/network';
 import { Paywall } from '@/components/Paywall';
 
 function InnerLayout() {
@@ -337,6 +338,7 @@ function InnerLayout() {
       <AnimatedSplashOverlay />
       <Slot />
       <Paywall />
+      <OfflineBanner />
       {authChecked && locked && (
         <View style={lockStyles.overlay}>
           <LinearGradient colors={['#0F6E6E', '#1a9a9a', '#a8d8d0']} style={lockStyles.gradient}>
@@ -352,6 +354,30 @@ function InnerLayout() {
     </ThemeProvider>
   );
 }
+
+function OfflineBanner() {
+  const isOnline = useIsOnline();
+  if (isOnline) return null;
+  return (
+    <View style={offlineStyles.banner} pointerEvents="none">
+      <Text style={offlineStyles.text}>No internet connection</Text>
+    </View>
+  );
+}
+
+const offlineStyles = StyleSheet.create({
+  banner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#555',
+    paddingVertical: 6,
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  text: { color: '#fff', fontSize: 12, fontWeight: '600' },
+});
 
 const lockStyles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
@@ -391,13 +417,15 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppThemeProvider>
-        <UserProvider>
-          <PurchasesProvider>
-            <InnerLayout />
-          </PurchasesProvider>
-        </UserProvider>
-      </AppThemeProvider>
+      <NetworkProvider>
+        <AppThemeProvider>
+          <UserProvider>
+            <PurchasesProvider>
+              <InnerLayout />
+            </PurchasesProvider>
+          </UserProvider>
+        </AppThemeProvider>
+      </NetworkProvider>
     </GestureHandlerRootView>
   );
 }
