@@ -1076,7 +1076,7 @@ export default function TrackerIndex() {
                 style={({ pressed }) => [s.addBtn, { borderColor: c.error }, pressed && { opacity: 0.85 }]}
                 onPress={openAddDebt}>
                 <Ionicons name="add-circle-outline" size={18} color={c.error} />
-                <Text style={[s.addBtnTxt, { color: c.error }]}>Add a debt</Text>
+                <Text style={[s.addBtnTxt, { color: c.error }]}>Log a debt</Text>
               </Pressable>
 
               {debts.length > 1 && (
