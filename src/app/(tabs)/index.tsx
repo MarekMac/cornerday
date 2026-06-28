@@ -1041,16 +1041,18 @@ export default function HomeScreen() {
 
       newlyAwarded.forEach(b => earnedBadges.push(b.type));
       if (newlyAwarded.length > 0) {
-        const allCelebrations = newlyAwarded.map(b => ({
-          type: b.type,
-          emoji: b.emoji,
-          label: b.label,
+        // Only celebrate the highest milestone reached — avoids flooding the user
+        // with sequential popups when they reopen the app after time away.
+        const highest = newlyAwarded[newlyAwarded.length - 1];
+        pendingCelebration = {
+          type: highest.type,
+          emoji: highest.emoji,
+          label: highest.label,
           celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
           msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-          earnedAt: new Date(quitTs + b.days * 86400000).toISOString(),
-        }));
-        pendingCelebration = allCelebrations[0];
-        celebrationQueue.current = allCelebrations.slice(1);
+          earnedAt: new Date(quitTs + highest.days * 86400000).toISOString(),
+        };
+        celebrationQueue.current = [];
       }
 
       // Notify supporter for the highest milestone earned this run (last = most significant)
