@@ -45,6 +45,13 @@ type MainTab = 'debts' | 'saving' | 'session';
 
 // Deliberate purple brand color for the session tab — no theme token since it's category-specific.
 const SESSION_COLOR = '#7b5ea7';
+
+const GOAL_ICON_LABELS: Record<string, string> = {
+  '🎯': 'Goal', '🏖️': 'Holiday', '✈️': 'Travel', '🚗': 'Car',
+  '🏠': 'Home', '💍': 'Ring', '📱': 'Phone', '🎓': 'Education',
+  '💪': 'Health', '🛡️': 'Safety', '👶': 'Family', '🎮': 'Gaming',
+  '🌟': 'Dreams', '💰': 'Money', '🐕': 'Pet',
+};
 const SESSION_CHIP_BG = 'rgba(123, 94, 167, 0.12)';
 
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PLN: 'zł', AUD: 'A$', CAD: 'C$' };
@@ -233,6 +240,7 @@ export default function TrackerIndex() {
   const [goalInput, setGoalInput] = useState('');
   const [goalForInput, setGoalForInput] = useState('');
   const [goalIconInput, setGoalIconInput] = useState<string>('🎯');
+  const [iconDropdownOpen, setIconDropdownOpen] = useState(false);
 
   // Target dates
   const [debtTargetDate, setDebtTargetDate] = useState<Date | null>(null);
@@ -683,6 +691,7 @@ export default function TrackerIndex() {
   const closeGoalModal = () => {
     if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
+    setIconDropdownOpen(false);
     setGoalModalVisible(false);
     setGoalInput('');
     setGoalForInput('');
@@ -1623,16 +1632,27 @@ export default function TrackerIndex() {
               <Text style={s.sheetTitle}>Savings goal</Text>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>
                 <Text style={s.fieldLbl}>Icon</Text>
-                <View style={s.iconGrid}>
-                  {GOAL_ICONS.map(icon => (
-                    <Pressable
-                      key={icon}
-                      style={[s.iconChip, goalIconInput === icon && s.iconChipActive]}
-                      onPress={() => setGoalIconInput(icon)}>
-                      <Text style={s.iconChipEmoji}>{icon}</Text>
-                    </Pressable>
-                  ))}
-                </View>
+                <Pressable style={s.iconDropdownTrigger} onPress={() => setIconDropdownOpen(v => !v)}>
+                  <Text style={s.iconDropdownEmoji}>{goalIconInput}</Text>
+                  <Text style={s.iconDropdownValue}>{GOAL_ICON_LABELS[goalIconInput] ?? goalIconInput}</Text>
+                  <Ionicons name={iconDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.textMuted} />
+                </Pressable>
+                {iconDropdownOpen && (
+                  <View style={s.iconDropdownList}>
+                    {GOAL_ICONS.map((icon, idx) => (
+                      <Pressable
+                        key={icon}
+                        style={[s.iconDropdownItem, goalIconInput === icon && s.iconDropdownItemActive, idx > 0 && s.iconDropdownItemBorder]}
+                        onPress={() => { setGoalIconInput(icon); setIconDropdownOpen(false); }}>
+                        <Text style={s.iconDropdownItemEmoji}>{icon}</Text>
+                        <Text style={[s.iconDropdownItemLabel, goalIconInput === icon && { color: c.primary, fontWeight: '600' }]}>
+                          {GOAL_ICON_LABELS[icon] ?? icon}
+                        </Text>
+                        {goalIconInput === icon && <Ionicons name="checkmark" size={16} color={c.primary} />}
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
                 <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
                 <TextInput
                   style={s.input}
@@ -2172,14 +2192,15 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   goalRightSet: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 
-  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  iconChip: {
-    width: 44, height: 44, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: 'transparent',
-  },
-  iconChipActive: { borderColor: c.primary, backgroundColor: c.bgTeal },
-  iconChipEmoji: { fontSize: 22 },
+  iconDropdownTrigger: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: c.bgInput, gap: 10, marginBottom: 4 },
+  iconDropdownEmoji: { fontSize: 20 },
+  iconDropdownValue: { flex: 1, fontSize: 15, color: c.textPrimary },
+  iconDropdownList: { borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, backgroundColor: c.bgCard, marginBottom: 4, overflow: 'hidden' },
+  iconDropdownItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 12 },
+  iconDropdownItemBorder: { borderTopWidth: 1, borderTopColor: c.borderSubtle },
+  iconDropdownItemActive: { backgroundColor: c.bgTeal },
+  iconDropdownItemEmoji: { fontSize: 18 },
+  iconDropdownItemLabel: { flex: 1, fontSize: 14, color: c.textBody },
 
   swipeDeleteAction: {
     backgroundColor: c.error, borderRadius: 14, marginRight: 8,
