@@ -42,7 +42,7 @@
     "updates": {
       "url": "https://u.expo.dev/85956181-34e1-4957-a48b-faefd588895f"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.0.1",
     "plugins": [
       "expo-router",
       "expo-updates",

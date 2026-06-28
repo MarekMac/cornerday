@@ -1,5 +1,4 @@
-﻿import { Sentry } from '@/lib/sentry';
-import * as Contacts from 'expo-contacts/legacy';
+﻿import * as Contacts from 'expo-contacts/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -383,7 +382,7 @@ export default function UrgeScreen() {
         outcome,
       });
     } catch (e) {
-      Sentry.captureException(e, { tags: { context: 'logUrgeOutcome' } });
+      console.warn('[urge] logUrgeOutcome error:', e);
     }
   };
 
