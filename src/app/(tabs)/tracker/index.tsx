@@ -2259,7 +2259,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   spendingChipTxt: { fontSize: 14, fontWeight: '600', color: c.textBody },
   spendingChipTxtSelected: { color: c.primary },
   spendingCustomLabel: { fontSize: 13, color: c.textBody, marginBottom: 10 },
-  spendingInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: c.bgInput },
+  spendingInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: c.bgInput },
   spendingSymbol: { fontSize: 16, color: c.textBody, marginRight: 6 },
   spendingInput: { flex: 1, fontSize: 15, color: c.textPrimary },
   spendingPerWk: { fontSize: 13, color: c.textMuted, marginLeft: 6 },
