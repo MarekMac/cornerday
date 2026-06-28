@@ -19,6 +19,14 @@ allprojects {
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
+  // play-services-ads ships AAR metadata compiled with Kotlin 2.3.0 while
+  // the EAS build environment targets 2.1.0 — skip the version check so the
+  // build doesn't fail on a metadata mismatch that doesn't affect correctness.
+  tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+      freeCompilerArgs += ["-Xskip-metadata-version-check"]
+    }
+  }
 }
 
 apply plugin: "expo-root-project"
