@@ -634,7 +634,9 @@ export default function AnalyticsScreen() {
         {renderHeader()}
         <ScrollView contentContainerStyle={s.lockScroll} showsVerticalScrollIndicator={false}>
           <View style={s.lockHeroCard}>
-            <Text style={s.lockEmoji}>📊</Text>
+            <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.lockIconCircle}>
+              <Text style={s.lockEmoji}>📊</Text>
+            </LinearGradient>
             <Text style={s.lockTitle}>Progress Analytics</Text>
             <Text style={s.lockDesc}>
               Deep insights into your recovery — see exactly how far you've come and what's driving your progress.
@@ -1365,10 +1367,15 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     alignItems: 'center', gap: 10,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-  lockEmoji:     { fontSize: 52 },
+  lockIconCircle: {
+    width: 72, height: 72, borderRadius: 36,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    shadowColor: '#0F6E6E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
+  },
+  lockEmoji:     { fontSize: 36 },
   lockTitle:     { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', letterSpacing: -0.3 },
   lockDesc:      { fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 },
-  lockBtn:       { marginHorizontal: 16, marginBottom: 20, borderRadius: 16, overflow: 'hidden' },
+  lockBtn:       { marginHorizontal: 16, marginTop: 16, marginBottom: 20, borderRadius: 16, overflow: 'hidden' },
   lockBtnGradient: { paddingVertical: 16, alignItems: 'center' },
   lockBtnTxt:    { color: '#ffffff', fontWeight: '800', fontSize: 16, letterSpacing: 0.2 },
   teaserHeading: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, paddingHorizontal: 16 },
