@@ -1781,7 +1781,7 @@ export default function TrackerIndex() {
                   autoFocus
                 />
                 <Text style={s.fieldLbl}>Type of gambling</Text>
-                <View style={s.chipRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.sessionCatScroll} contentContainerStyle={s.sessionCatContent}>
                   {SESSION_CATEGORIES.map(cat => (
                     <Pressable
                       key={cat.key}
@@ -1792,7 +1792,7 @@ export default function TrackerIndex() {
                       </Text>
                     </Pressable>
                   ))}
-                </View>
+                </ScrollView>
                 <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
                 <TextInput
                   style={s.input}
@@ -2356,6 +2356,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   sessionChipActive: { borderColor: SESSION_COLOR, backgroundColor: SESSION_CHIP_BG },
   sessionChipTxtActive: { color: SESSION_COLOR, fontWeight: '600' },
+  sessionCatScroll: { alignSelf: 'stretch', marginBottom: 4 },
+  sessionCatContent: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
   sessionSaveBtn: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: SESSION_COLOR },
 
   payInFullBtn: {
