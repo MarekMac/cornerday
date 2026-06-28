@@ -1294,6 +1294,13 @@ export default function TrackerIndex() {
                 </View>
               )}
 
+              <Pressable
+                style={({ pressed }) => [s.addBtn, { borderColor: SESSION_COLOR }, pressed && { opacity: 0.85 }]}
+                onPress={openAddSession}>
+                <Ionicons name="add-circle-outline" size={18} color={SESSION_COLOR} />
+                <Text style={[s.addBtnTxt, { color: SESSION_COLOR }]}>Log a session</Text>
+              </Pressable>
+
               {/* Info card — only shown before first entry */}
               {sessions.length === 0 && <View style={s.sessionInfoCard}>
                 <View style={s.sessionInfoHeader}>
@@ -1312,13 +1319,6 @@ export default function TrackerIndex() {
                   <Text style={s.sessionInfoTipTxt}>Only you can see these entries.</Text>
                 </View>
               </View>}
-
-              <Pressable
-                style={({ pressed }) => [s.addBtn, { borderColor: SESSION_COLOR }, pressed && { opacity: 0.85 }]}
-                onPress={openAddSession}>
-                <Ionicons name="add-circle-outline" size={18} color={SESSION_COLOR} />
-                <Text style={[s.addBtnTxt, { color: SESSION_COLOR }]}>Log a session</Text>
-              </Pressable>
 
               {sessions.length === 0 ? (
                 <View style={s.emptyCard}>
