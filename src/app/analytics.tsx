@@ -586,17 +586,17 @@ export default function AnalyticsScreen() {
   };
 
   const renderHeader = () => (
-    <View style={[s.header, { backgroundColor: c.headerBg }]}>
+    <LinearGradient colors={[c.headerGradDeep, c.headerGradStart, c.headerGradEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.header}>
       <SafeAreaView edges={['top']}>
         <View style={s.headerRow}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>
-            <Text style={s.backArrow}>‹</Text>
+            <Text style={s.backArrow}>←</Text>
           </Pressable>
           <Text style={s.headerTitle}>Progress Analytics</Text>
           <View style={s.backBtn} />
         </View>
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 
   if (loading) return (
@@ -618,40 +618,51 @@ export default function AnalyticsScreen() {
   }
 
   if (!hasAccess) {
+    const teaserItems = [
+      { emoji: '⏱️', title: 'Live streak hero', desc: 'Precise time without gambling — hours, days, months at a glance' },
+      { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts from your real data — patterns you won\'t see yourself' },
+      { emoji: '📊', title: 'Weekly summary', desc: 'Urges, mood, check-ins and savings — this week vs last' },
+      { emoji: '😊', title: '30-day mood tracking', desc: 'Daily bars and check-in streak to spot your emotional trends' },
+      { emoji: '🧠', title: 'Urge patterns', desc: 'When you\'re most challenged — by day of week and time of day' },
+      { emoji: '💰', title: 'Savings + projections', desc: 'Money not spent, plus what you\'ll save this week, month and year' },
+      { emoji: '🏦', title: 'Debt recovery pacing', desc: 'Per-debt progress, target dates and a projected debt-free date' },
+      { emoji: '⚡', title: 'Trigger breakdown', desc: 'Your top triggers ranked by frequency — and how often you beat them' },
+      { emoji: '📅', title: 'Streak history', desc: 'Every streak you\'ve ever had — see how they\'re getting longer' },
+    ];
     return (
       <View style={s.root}>
         {renderHeader()}
-        <ScrollView contentContainerStyle={s.lockScroll}>
-          <View style={s.lockTop}>
-            <Text style={s.lockEmoji}>📊</Text>
-            <Text style={s.lockTitle}>Detailed Analytics</Text>
+        <ScrollView contentContainerStyle={s.lockScroll} showsVerticalScrollIndicator={false}>
+          <LinearGradient colors={['#0b5252', '#0F6E6E', '#1a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.lockHero}>
+            <View style={s.lockIconWrap}>
+              <Text style={s.lockEmoji}>📊</Text>
+            </View>
+            <Text style={s.lockTitle}>Progress Analytics</Text>
             <Text style={s.lockDesc}>
               Deep insights into your recovery — see exactly how far you've come and what's driving your progress.
             </Text>
-            <Pressable style={({ pressed }) => [s.lockBtn, pressed && { opacity: 0.85 }]} onPress={showPaywall}>
-              <Text style={s.lockBtnTxt}>Upgrade to Premium</Text>
-            </Pressable>
-          </View>
+          </LinearGradient>
+
+          <Pressable style={({ pressed }) => [s.lockBtn, pressed && { opacity: 0.88 }]} onPress={showPaywall}>
+            <LinearGradient colors={['#0F6E6E', '#1a9a9a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.lockBtnGradient}>
+              <Text style={s.lockBtnTxt}>Unlock Premium</Text>
+            </LinearGradient>
+          </Pressable>
+
           <Text style={s.teaserHeading}>What you'll unlock</Text>
-          {[
-            { emoji: '⏱️', title: 'Live streak hero', desc: 'Precise time without gambling — hours, days, months at a glance' },
-            { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts from your real data — patterns you won\'t see yourself' },
-            { emoji: '📊', title: 'Weekly summary', desc: 'Urges, mood, check-ins and savings — this week vs last' },
-            { emoji: '😊', title: '30-day mood tracking', desc: 'Daily bars and check-in streak to spot your emotional trends' },
-            { emoji: '🧠', title: 'Urge patterns', desc: 'When you\'re most challenged — by day of week and time of day' },
-            { emoji: '💰', title: 'Savings + projections', desc: 'Money not spent, plus what you\'ll save this week, month and year' },
-            { emoji: '🏦', title: 'Debt recovery pacing', desc: 'Per-debt progress, target dates and a projected debt-free date' },
-            { emoji: '⚡', title: 'Trigger breakdown', desc: 'Your top triggers ranked by frequency — and how often you beat them' },
-            { emoji: '📅', title: 'Streak history', desc: 'Every streak you\'ve ever had — see how they\'re getting longer' },
-          ].map((item, i) => (
-            <View key={i} style={s.teaserCard}>
-              <Text style={s.teaserEmoji}>{item.emoji}</Text>
-              <View style={s.teaserText}>
-                <Text style={s.teaserTitle}>{item.title}</Text>
-                <Text style={s.teaserDesc}>{item.desc}</Text>
+          <View style={s.teaserListCard}>
+            {teaserItems.map((item, i) => (
+              <View key={i} style={[s.teaserRow, i < teaserItems.length - 1 && s.teaserRowBorder]}>
+                <View style={s.teaserIconWrap}>
+                  <Text style={s.teaserEmoji}>{item.emoji}</Text>
+                </View>
+                <View style={s.teaserText}>
+                  <Text style={s.teaserTitle}>{item.title}</Text>
+                  <Text style={s.teaserDesc}>{item.desc}</Text>
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
+          </View>
           <View style={{ height: 32 }} />
         </ScrollView>
       </View>
@@ -813,10 +824,10 @@ export default function AnalyticsScreen() {
           ) : (
             <View style={s.insightGap}>
               {insights.map((item, i) => (
-                <View key={i} style={s.insightChip}>
+                <View key={i} style={[s.insightChip, { backgroundColor: item.bg }]}>
                   <View style={[s.insightAccent, { backgroundColor: item.tc }]} />
                   <Text style={s.insightEmoji}>{item.emoji}</Text>
-                  <Text style={s.insightText}>{item.text}</Text>
+                  <Text style={[s.insightText, { color: item.tc }]}>{item.text}</Text>
                 </View>
               ))}
             </View>
@@ -1343,29 +1354,33 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   root:        { flex: 1, backgroundColor: c.bgScreen },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header:      { paddingBottom: 16 },
+  header:      { paddingBottom: 20 },
   headerRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 },
   backBtn:     { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  backArrow:   { fontSize: 30, color: c.white, fontWeight: '300', lineHeight: 36 },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: c.white, textAlign: 'center' },
+  backArrow:   { fontSize: 22, color: c.white, fontWeight: '600' },
+  headerTitle: { flex: 1, fontSize: 22, fontWeight: '700', color: c.white, textAlign: 'center' },
 
-  lockScroll: { padding: 20, gap: 12 },
-  lockTop:    { alignItems: 'center', gap: 10, paddingVertical: 24, paddingHorizontal: 12 },
-  lockEmoji:  { fontSize: 52 },
-  lockTitle:  { fontSize: 22, fontWeight: '700', color: c.textPrimary, textAlign: 'center' },
-  lockDesc:   { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 22 },
-  lockBtn:    { backgroundColor: c.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 },
-  lockBtnTxt: { color: c.white, fontWeight: '700', fontSize: 16 },
-  teaserHeading: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
-  teaserCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
-    backgroundColor: c.bgCard, borderRadius: 14, padding: 14,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+  lockScroll:    { flexGrow: 1 },
+  lockHero:      { margin: 16, borderRadius: 20, padding: 24, alignItems: 'center', gap: 10 },
+  lockIconWrap:  { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  lockEmoji:     { fontSize: 36 },
+  lockTitle:     { fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center', letterSpacing: -0.3 },
+  lockDesc:      { fontSize: 14, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 21 },
+  lockBtn:       { marginHorizontal: 16, marginBottom: 20, borderRadius: 16, overflow: 'hidden' },
+  lockBtnGradient: { paddingVertical: 16, alignItems: 'center' },
+  lockBtnTxt:    { color: '#ffffff', fontWeight: '800', fontSize: 16, letterSpacing: 0.2 },
+  teaserHeading: { fontSize: 13, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, paddingHorizontal: 16 },
+  teaserListCard: {
+    marginHorizontal: 16, backgroundColor: c.bgCard, borderRadius: 18, padding: 4, marginBottom: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-  teaserEmoji: { fontSize: 26, marginTop: 2 },
-  teaserText:  { flex: 1, gap: 3 },
-  teaserTitle: { fontSize: 14, fontWeight: '700', color: c.textPrimary },
-  teaserDesc:  { fontSize: 13, color: c.textMuted, lineHeight: 19 },
+  teaserRow:     { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 14 },
+  teaserRowBorder: { borderBottomWidth: 1, borderBottomColor: c.borderSubtle },
+  teaserIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: c.bgTeal, alignItems: 'center', justifyContent: 'center' },
+  teaserEmoji:   { fontSize: 22 },
+  teaserText:    { flex: 1, gap: 3 },
+  teaserTitle:   { fontSize: 14, fontWeight: '700', color: c.textPrimary },
+  teaserDesc:    { fontSize: 13, color: c.textMuted, lineHeight: 18 },
 
   heroCard: {
     borderRadius: 20, padding: 20, alignItems: 'center', gap: 8,
@@ -1403,7 +1418,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   statSub:     { fontSize: 10, color: c.success, textAlign: 'center' },
 
   insightGap:   { gap: 8 },
-  insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 12, backgroundColor: c.bgInput },
+  insightChip:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 12 },
   insightAccent:{ width: 3, alignSelf: 'stretch', borderRadius: 2 },
   insightEmoji: { fontSize: 16 },
   insightText:  { flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 19, color: c.textPrimary },
