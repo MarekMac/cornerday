@@ -57,3 +57,6 @@ supabase/.temp/
 
 # Google Play service account key (used by eas submit — never commit)
 credentials/
+
+# Android keystore credentials (contains signing passwords — never commit)
+credentials.json

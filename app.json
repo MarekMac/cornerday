@@ -83,5 +83,8 @@
       }
     },
     "owner": "marekmac"
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-5720390815287437~4576547556"
   }
 }
