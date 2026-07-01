@@ -2603,6 +2603,11 @@ export default function AccountScreen() {
       <Modal visible={showCurrencyModal} transparent animationType="fade" onRequestClose={() => setShowCurrencyModal(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setShowCurrencyModal(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                <Ionicons name="cash-outline" size={32} color={c.primary} />
+              </View>
+            </View>
             <Text style={s.confirmTitle}>Currency</Text>
             <Text style={[s.confirmBody, { marginBottom: 20 }]}>Choose how money is displayed throughout the app.</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
@@ -2617,6 +2622,9 @@ export default function AccountScreen() {
                 </Pressable>
               ))}
             </View>
+            <Pressable style={[s.cancelBtn, { marginTop: 20 }]} onPress={() => setShowCurrencyModal(false)}>
+              <Text style={s.cancelBtnTxt}>Done</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2722,8 +2730,14 @@ export default function AccountScreen() {
       {/* Notification settings modal */}
       <Modal visible={notifModalVisible} transparent animationType="fade" onRequestClose={() => setNotifModalVisible(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setNotifModalVisible(false)}>
-          <Pressable style={s.confirmSheet} onPress={() => {}}>
+          <Pressable style={[s.confirmSheet, { maxHeight: '88%' }]} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                <Ionicons name="notifications-outline" size={32} color={c.primary} />
+              </View>
+            </View>
             <Text style={s.confirmTitle}>Notifications</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
             {([
               { key: 'notif_milestone',             label: 'Milestone reached',     desc: 'Alert when you hit a streak milestone' },
               { key: 'notif_daily_streak',          label: 'Daily streak reminder', desc: 'Evening nudge to keep your streak going' },
@@ -2795,8 +2809,9 @@ export default function AccountScreen() {
                 </Pressable>
               )}
             </View>
-            <Pressable style={[s.confirmSave, { marginTop: 20, flex: 0 }]} onPress={() => setNotifModalVisible(false)}>
-              <Text style={s.confirmSaveTxt}>Done</Text>
+            </ScrollView>
+            <Pressable style={[s.saveBtn, { marginTop: 20 }]} onPress={() => setNotifModalVisible(false)}>
+              <Text style={s.saveBtnTxt}>Done</Text>
             </Pressable>
           </Pressable>
         </Pressable>
