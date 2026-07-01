@@ -1645,11 +1645,17 @@ export default function HomeScreen() {
           ]);
           setShieldUndo({ prevQuit: undoData.prevQuit, prevStreakDays: undoData.prevStreakDays, expiresAt: undoData.expiresAt });
         }
-        // Delete badges so they re-award on the new streak.
+        // Delete day-based streak badges so they re-award on the new streak — but
+        // NOT activity/achievement badges (payments, check-ins, urges overcome,
+        // debt paid off, etc.), which stay true regardless of the current streak
+        // length. Deleting everything meant a relapsing user immediately got a
+        // fresh "🏅 Achievement earned!" celebration popup for something they'd
+        // unlocked long ago, the moment they opened Home after a relapse.
         // Skip deletion when shield is on — doUndoRelapse restores the old quit date,
         // and 23505 upsert guards prevent duplicate badges from re-awarding cleanly.
         if (!shieldEnabled) {
-          await supabase.from('badges').delete().eq('user_id', user.id);
+          const streakBadgeTypes = BADGE_DEFS.map(b => b.type);
+          await supabase.from('badges').delete().eq('user_id', user.id).in('badge_type', streakBadgeTypes);
         }
         // When shield is on, badges survive — keep MILESTONE_NOTIFS_KEY so the scheduler
         // doesn't re-fire notifications for milestones the user still owns.
@@ -1677,11 +1683,18 @@ export default function HomeScreen() {
         await scheduleOnboardingCheckin();
         notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
         if (!isMountedRef.current) return;
-        setData(prev => prev ? {
-          ...prev,
-          quitDate: newQuitTimestamp,
-          ...(shieldEnabled ? {} : { earnedBadges: [], badgeTimestamps: {} }),
-        } : prev);
+        setData(prev => {
+          if (!prev) return prev;
+          if (shieldEnabled) return { ...prev, quitDate: newQuitTimestamp };
+          // Only the deleted streak badges drop out of local state — achievement
+          // badges (payments, check-ins, etc.) were never deleted, so keep them.
+          const streakBadgeTypeSet = new Set(BADGE_DEFS.map(b => b.type));
+          const earnedBadges = prev.earnedBadges.filter(t => !streakBadgeTypeSet.has(t));
+          const badgeTimestamps = Object.fromEntries(
+            Object.entries(prev.badgeTimestamps).filter(([t]) => !streakBadgeTypeSet.has(t))
+          );
+          return { ...prev, quitDate: newQuitTimestamp, earnedBadges, badgeTimestamps };
+        });
       }
     } finally {
       relapseInProgressRef.current = false;

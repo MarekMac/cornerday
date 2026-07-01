@@ -56,6 +56,7 @@ import { ENTITLEMENT_ID } from '@/constants/revenuecat';
 import { useAppTheme } from '@/context/theme';
 import type { ThemePref } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
+import { BADGE_DEFS } from '@/constants/badgeConstants';
 
 const ADMIN_BADGE_COLOR = '#7c5700'; // amber — admin-only, no theme equivalent
 
@@ -1144,6 +1145,13 @@ export default function AccountScreen() {
           p_quit_timestamp: iso,
         });
         if (error) { Alert.alert('Could not save date', error.message); return; }
+        // Delete day-based streak badges so they re-derive against the new quit
+        // date next fetch — otherwise a shortened date (e.g. fixing a wrong entry)
+        // leaves badges like "100 Days" showing as earned even though the live
+        // streak no longer supports them. Achievement badges (payments, check-ins,
+        // etc.) aren't tied to streak length and are left untouched.
+        const streakBadgeTypes = BADGE_DEFS.map(b => b.type);
+        await supabase.from('badges').delete().eq('user_id', user.id).in('badge_type', streakBadgeTypes);
         await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         await supabase.from('losses').insert({
           user_id: user.id, type: 'quit_date_changed', amount: 0,
