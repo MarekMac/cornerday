@@ -828,6 +828,14 @@ export default function HomeScreen() {
     }
   }, [scrollTo, badgesCardY]);
 
+  // Declared here (rather than with the rest of the state further down) because
+  // the two useFocusEffect callbacks immediately below reference their setters.
+  const [showProfileNudge, setShowProfileNudge] = useState(false);
+  const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
+  const [shieldEnabled, setShieldEnabled] = useState(false);
+  const [shieldUndo, setShieldUndo] = useState<{ prevQuit: string; prevStreakDays: number; expiresAt: number } | null>(null);
+  const [customMilestone, setCustomMilestone] = useState<{ type: string; target: number; icon?: string } | null>(null);
+
   useFocusEffect(useCallback(() => {
     AsyncStorage.getItem(PROFILE_NUDGE_SHOWN_KEY).then(async v => {
       if (!v) {
@@ -885,7 +893,6 @@ export default function HomeScreen() {
   const [moodNote, setMoodNote] = useState('');
   const [editMoodValue, setEditMoodValue] = useState<number | null>(null);
   const [partnerMsg, setPartnerMsg] = useState<{ id: string; message: string } | null>(null);
-  const [showProfileNudge, setShowProfileNudge] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
   const [capturingShare, setCapturingShare] = useState(false);
   const [shareCardBadge, setShareCardBadge] = useState<{ emoji: string; label: string } | null>(null);
@@ -899,10 +906,6 @@ export default function HomeScreen() {
   const [shareCardEarnedOn, setShareCardEarnedOn] = useState<string | null>(null);
   const [shareCardAction, setShareCardAction] = useState<{ label: string; onPress: () => void } | null>(null);
   const [urgePeakHour, setUrgePeakHour] = useState<number | null>(null);
-  const [motivationPhoto, setMotivationPhoto] = useState<string | null>(null);
-  const [shieldEnabled, setShieldEnabled] = useState(false);
-  const [shieldUndo, setShieldUndo] = useState<{ prevQuit: string; prevStreakDays: number; expiresAt: number } | null>(null);
-  const [customMilestone, setCustomMilestone] = useState<{ type: string; target: number; icon?: string } | null>(null);
   const [customMilestoneCelebVisible, setCustomMilestoneCelebVisible] = useState(false);
   const [calDayModal, setCalDayModal] = useState<{ iso: string; status: 'clean' | 'relapse' | 'inactive'; mood: number | null } | null>(null);
   const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string; earnedAt?: string } | null>(null);
@@ -915,23 +918,6 @@ export default function HomeScreen() {
       setCelebrationTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
     }
   }, [celebrationBadge]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-refresh when a milestone is crossed so the badge is awarded and the display updates
-  useEffect(() => {
-    if (!data?.quitDate) return;
-    const quitDate = parseQuitDate(data.quitDate);
-    if (isNaN(quitDate.getTime())) return;
-    const ms = Math.max(0, Date.now() - quitDate.getTime());
-    const { next } = getMilestone(ms);
-    if (prevNextMilestone.current !== null && prevNextMilestone.current !== next) {
-      if (!fetchingRef.current) {
-        fetchData().then(() => { prevNextMilestone.current = next; });
-      }
-    } else {
-      prevNextMilestone.current = next;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, fetchData]);
 
   // Check custom milestone when data or milestone setting changes
   useEffect(() => {
@@ -1332,6 +1318,25 @@ export default function HomeScreen() {
       }
     }
   }, []);
+
+  // Auto-refresh when a milestone is crossed so the badge is awarded and the display
+  // updates. Placed after fetchData's own declaration (rather than up with the other
+  // effects) since it calls fetchData directly.
+  useEffect(() => {
+    if (!data?.quitDate) return;
+    const quitDate = parseQuitDate(data.quitDate);
+    if (isNaN(quitDate.getTime())) return;
+    const ms = Math.max(0, Date.now() - quitDate.getTime());
+    const { next } = getMilestone(ms);
+    if (prevNextMilestone.current !== null && prevNextMilestone.current !== next) {
+      if (!fetchingRef.current) {
+        fetchData().then(() => { prevNextMilestone.current = next; });
+      }
+    } else {
+      prevNextMilestone.current = next;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, fetchData]);
 
   useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
 
