@@ -294,6 +294,7 @@ export default function AccountScreen() {
   const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
   const [signOutVisible, setSignOutVisible] = useState(false);
   const [revokePartnerVisible, setRevokePartnerVisible] = useState(false);
+  const [showCornerModal, setShowCornerModal] = useState(false);
   const [resetDataModalVisible, setResetDataModalVisible] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [pendingReset, setPendingReset] = useState<{ title: string; body: string; onConfirm: () => void } | null>(null);
@@ -2004,6 +2005,35 @@ export default function AccountScreen() {
             </View>
           </Pressable>
           <View style={s.infoDivider} />
+          <View style={[s.infoItem, { paddingVertical: 12 }]}>
+            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="shield-outline" size={17} color={c.primary} /></View>
+            <View style={s.infoItemMain}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={s.infoItemLabel}>Streak shield</Text>
+                {!isPremiumFromRC && (
+                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[s.infoItemValue, { fontSize: 13, color: c.textBody, fontWeight: '400' }]}>
+                24h window to undo a relapse
+              </Text>
+            </View>
+            {isPremiumFromRC ? (
+              <Switch
+                value={streakShieldEnabled}
+                onValueChange={handleShieldToggle}
+                trackColor={{ false: c.borderMid, true: c.primaryLight }}
+                thumbColor={streakShieldEnabled ? c.primary : c.textFaint}
+              />
+            ) : (
+              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                <Text style={{ fontSize: 12, color: c.primary, fontWeight: '600' }}>Upgrade</Text>
+              </Pressable>
+            )}
+          </View>
+          <View style={s.infoDivider} />
           <Pressable
             onPress={() => {
               setPlanDistractionsInput([...recoveryDistractions]);
@@ -2036,35 +2066,6 @@ export default function AccountScreen() {
             <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
           </Pressable>
           <View style={s.infoDivider} />
-          <View style={[s.infoItem, { paddingVertical: 12 }]}>
-            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="shield-outline" size={17} color={c.primary} /></View>
-            <View style={s.infoItemMain}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={s.infoItemLabel}>Streak shield</Text>
-                {!isPremiumFromRC && (
-                  <View style={{ backgroundColor: c.primary, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-                    <Text style={{ fontSize: 9, color: '#fff', fontWeight: '700' }}>PREMIUM</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={[s.infoItemValue, { fontSize: 13, color: c.textBody, fontWeight: '400' }]}>
-                24h window to undo a relapse
-              </Text>
-            </View>
-            {isPremiumFromRC ? (
-              <Switch
-                value={streakShieldEnabled}
-                onValueChange={handleShieldToggle}
-                trackColor={{ false: c.borderMid, true: c.primaryLight }}
-                thumbColor={streakShieldEnabled ? c.primary : c.textFaint}
-              />
-            ) : (
-              <Pressable onPress={() => showPaywall()} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 12, color: c.primary, fontWeight: '600' }}>Upgrade</Text>
-              </Pressable>
-            )}
-          </View>
-          <View style={s.infoDivider} />
           <Pressable
             onPress={() => router.push('/(tabs)/urge/checklist')}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
@@ -2086,91 +2087,18 @@ export default function AccountScreen() {
         {/* Someone in your corner */}
         <View style={s.infoCard}>
           <Text style={s.infoCardTitle}>Someone in your corner</Text>
-          <Text style={s.partnerDesc}>
-            Share a private link with one trusted person — they'll get a live view of your progress and can send you messages.
-          </Text>
-          {!isPremiumFromRC ? (
-            <>
-              <View style={s.partnerLockedRow}>
-                <Ionicons name="lock-closed" size={13} color={c.textMuted} />
-                <Text style={s.partnerLockedTxt}>Premium feature</Text>
-              </View>
-              <Pressable
-                style={({ pressed }) => [s.partnerShareBtn, s.partnerLockedBtn, pressed && { opacity: 0.8 }]}
-                onPress={showPaywall}>
-                <Text style={s.partnerLockedBtnTxt}>Unlock with Premium</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              {/* What you share — pill chips */}
-              <View style={s.shareNotifyRow}>
-                <Text style={s.shareCollapseLabel}>What you share</Text>
-                <View style={s.shareNotifyChips}>
-                  {([
-                    { key: 'mood' as const,       label: 'Mood',       field: 'share_mood' as const },
-                    { key: 'milestones' as const, label: 'Milestones', field: 'share_milestones' as const },
-                    { key: 'recovery' as const,   label: 'Recovery',   field: 'share_recovery' as const },
-                  ]).map(item => (
-                    <Pressable
-                      key={item.key}
-                      style={[s.shareNotifyChip, shareSettings[item.key] && s.shareNotifyChipOn]}
-                      onPress={() => updateShareSetting(item.field, !shareSettings[item.key])}>
-                      <Text style={[s.shareNotifyChipTxt, shareSettings[item.key] && s.shareNotifyChipTxtOn]}>
-                        {item.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-              <Text style={s.shareHint}>Your streak is always shown. Tap a chip to hide a section — changes apply instantly, no need to reshare.</Text>
-
-              {/* Notify by email — pill chips */}
-              <View style={s.shareNotifyRow}>
-                <Text style={s.shareCollapseLabel}>Notify by email</Text>
-                <View style={s.shareNotifyChips}>
-                  {([
-                    { key: 'urge' as const,      label: 'Urge',      field: 'notify_urge' as const },
-                    { key: 'relapse' as const,   label: 'Relapse',   field: 'notify_relapse' as const },
-                    { key: 'milestone' as const, label: 'Milestone', field: 'notify_milestone' as const },
-                  ]).map(item => (
-                    <Pressable
-                      key={item.key}
-                      style={[s.shareNotifyChip, notifySettings[item.key] && s.shareNotifyChipOn]}
-                      onPress={() => updateNotifySetting(item.field, !notifySettings[item.key])}>
-                      <Text style={[s.shareNotifyChipTxt, notifySettings[item.key] && s.shareNotifyChipTxtOn]}>
-                        {item.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-              <Text style={s.shareHint}>Your supporter subscribes on the page using their email. You choose which events they're notified about.</Text>
-
-              {/* Primary CTA — generates link on first press, just shares on subsequent */}
-              <Pressable
-                style={({ pressed }) => [s.partnerShareBtn, { marginTop: 14 }, pressed && { opacity: 0.85 }]}
-                onPress={generateAndShare}
-                disabled={partnerLinkLoading}>
-                {partnerLinkLoading
-                  ? <ActivityIndicator color={c.white} size="small" />
-                  : <>
-                      <Ionicons name="share-outline" size={16} color={c.white} />
-                      <Text style={s.partnerShareBtnTxt}>
-                        {partnerToken ? 'Share link again' : 'Share with my supporter'}
-                      </Text>
-                    </>}
-              </Pressable>
-              {partnerToken && (
-                <Pressable
-                  style={s.partnerRevokeLink}
-                  onPress={revokePartnerLink}
-                  disabled={partnerLinkLoading}>
-                  <Text style={s.partnerRevokeLinkTxt}>Revoke to cut off access completely</Text>
-                </Pressable>
-              )}
-            </>
-          )}
+          <Pressable
+            onPress={() => setShowCornerModal(true)}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="people-outline" size={17} color={c.primary} /></View>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Trusted supporter</Text>
+              <Text style={[s.infoItemValue, !isPremiumFromRC && s.infoValueEmpty]}>
+                {!isPremiumFromRC ? 'Premium feature' : partnerToken ? 'Active — tap to manage' : 'Not set up'}
+              </Text>
+            </View>
+            <Ionicons name={!isPremiumFromRC ? 'lock-closed' : 'chevron-forward'} size={15} color={c.textFaint} />
+          </Pressable>
         </View>
 
         {/* Settings */}
@@ -2926,6 +2854,103 @@ export default function AccountScreen() {
         </Pressable>
       </Modal>
 
+      {/* Someone in your corner — manage modal */}
+      <Modal visible={showCornerModal} transparent animationType="fade" onRequestClose={() => setShowCornerModal(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setShowCornerModal(false)}>
+          <Pressable style={[s.confirmSheet, { maxHeight: '85%' }]} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                <Text style={{ fontSize: 32 }}>🤝</Text>
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Someone in your corner</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={[s.confirmBody, { marginBottom: 16 }]}>
+                Share a private link with one trusted person — they'll get a live view of your progress and can send you messages.
+              </Text>
+              {!isPremiumFromRC ? (
+                <>
+                  <View style={s.partnerLockedRow}>
+                    <Ionicons name="lock-closed" size={13} color={c.textMuted} />
+                    <Text style={s.partnerLockedTxt}>Premium feature</Text>
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [s.saveBtn, pressed && { opacity: 0.85 }]}
+                    onPress={() => { setShowCornerModal(false); showPaywall(); }}>
+                    <Text style={s.saveBtnTxt}>Unlock with Premium</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  {/* What you share — pill chips */}
+                  <Text style={[s.fieldLbl, { marginTop: 0 }]}>What you share</Text>
+                  <View style={s.shareNotifyChips}>
+                    {([
+                      { key: 'mood' as const,       label: 'Mood',       field: 'share_mood' as const },
+                      { key: 'milestones' as const, label: 'Milestones', field: 'share_milestones' as const },
+                      { key: 'recovery' as const,   label: 'Recovery',   field: 'share_recovery' as const },
+                    ]).map(item => (
+                      <Pressable
+                        key={item.key}
+                        style={[s.shareNotifyChip, shareSettings[item.key] && s.shareNotifyChipOn]}
+                        onPress={() => updateShareSetting(item.field, !shareSettings[item.key])}>
+                        <Text style={[s.shareNotifyChipTxt, shareSettings[item.key] && s.shareNotifyChipTxtOn]}>
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={s.shareHint}>Your streak is always shown. Tap a chip to hide a section — changes apply instantly, no need to reshare.</Text>
+
+                  {/* Notify by email — pill chips */}
+                  <Text style={s.fieldLbl}>Notify by email</Text>
+                  <View style={s.shareNotifyChips}>
+                    {([
+                      { key: 'urge' as const,      label: 'Urge',      field: 'notify_urge' as const },
+                      { key: 'relapse' as const,   label: 'Relapse',   field: 'notify_relapse' as const },
+                      { key: 'milestone' as const, label: 'Milestone', field: 'notify_milestone' as const },
+                    ]).map(item => (
+                      <Pressable
+                        key={item.key}
+                        style={[s.shareNotifyChip, notifySettings[item.key] && s.shareNotifyChipOn]}
+                        onPress={() => updateNotifySetting(item.field, !notifySettings[item.key])}>
+                        <Text style={[s.shareNotifyChipTxt, notifySettings[item.key] && s.shareNotifyChipTxtOn]}>
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={s.shareHint}>Your supporter subscribes on the page using their email. You choose which events they're notified about.</Text>
+
+                  <View style={[s.sheetDivider, { marginTop: 20 }]} />
+                  <Pressable
+                    style={[s.saveBtn, partnerLinkLoading && { opacity: 0.6 }]}
+                    onPress={generateAndShare}
+                    disabled={partnerLinkLoading}>
+                    {partnerLinkLoading
+                      ? <ActivityIndicator color={c.white} size="small" />
+                      : <Text style={s.saveBtnTxt}>
+                          {partnerToken ? 'Share link again' : 'Share with my supporter'}
+                        </Text>}
+                  </Pressable>
+                  {partnerToken && (
+                    <Pressable
+                      style={{ alignSelf: 'center', marginTop: 14 }}
+                      onPress={revokePartnerLink}
+                      disabled={partnerLinkLoading}>
+                      <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>Revoke to cut off access completely</Text>
+                    </Pressable>
+                  )}
+                </>
+              )}
+              <Pressable style={[s.cancelBtn, { marginTop: 16 }]} onPress={() => setShowCornerModal(false)}>
+                <Text style={s.cancelBtnTxt}>Close</Text>
+              </Pressable>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Revoke partner link */}
       <Modal visible={revokePartnerVisible} transparent animationType="fade" onRequestClose={() => setRevokePartnerVisible(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setRevokePartnerVisible(false)}>
@@ -3325,10 +3350,15 @@ export default function AccountScreen() {
       {/* Recovery plan modal */}
       <Modal visible={showRecoveryPlanModal} transparent animationType="fade" onRequestClose={() => setShowRecoveryPlanModal(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setShowRecoveryPlanModal(false)}>
-          <Pressable style={[s.editCenterSheet, { maxHeight: '92%' }]} onPress={() => {}}>
-            <Text style={s.editFieldTitle}>My distraction plan</Text>
+          <Pressable style={[s.confirmSheet, { maxHeight: '92%' }]} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                <Text style={{ fontSize: 32 }}>🧩</Text>
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>My distraction plan</Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
-              <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>
+              <Text style={[s.fieldLbl, { marginTop: 0 }]}>
                 Personal mantra <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
               </Text>
               <TextInput
@@ -3341,14 +3371,14 @@ export default function AccountScreen() {
                 maxLength={120}
                 textAlignVertical="top"
               />
-              <Text style={{ fontSize: 11, color: c.textFaint, marginTop: 4, marginBottom: 20 }}>
+              <Text style={{ fontSize: 11, color: c.textFaint, marginTop: 4, marginBottom: 4 }}>
                 {planMantraInput.length}/120
               </Text>
+              <Text style={s.fieldLbl}>Activities when urge hits</Text>
               <Pressable
                 style={({ pressed }) => [s.planDropdownBtn, pressed && { opacity: 0.8 }]}
                 onPress={() => setPlanOptionsExpanded(v => !v)}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.planDropdownLabel}>Activities when urge hits</Text>
                   {planDistractionsInput.length > 0 ? (
                     <Text style={s.planDropdownValue}>
                       {planDistractionsInput.map(k => PLAN_DISTRACTION_OPTIONS.find(o => o.key === k)?.emoji).join('  ')}
@@ -3382,29 +3412,28 @@ export default function AccountScreen() {
                   })}
                 </View>
               )}
-              <View style={[s.modalActions, { marginTop: 16 }]}>
-                <Pressable
-                  style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
-                  onPress={() => setShowRecoveryPlanModal(false)}>
-                  <Text style={s.modalBtnCancel}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
-                  onPress={savePlan}
-                  disabled={savingPlan}>
-                  {savingPlan
-                    ? <ActivityIndicator color={c.white} size="small" />
-                    : <Text style={s.modalBtnSaveTxt}>Save plan</Text>}
-                </Pressable>
-              </View>
+              <View style={[s.sheetDivider, { marginTop: 20 }]} />
+              <Pressable
+                style={[s.saveBtn, savingPlan && { opacity: 0.6 }]}
+                onPress={savePlan}
+                disabled={savingPlan}>
+                {savingPlan
+                  ? <ActivityIndicator color={c.white} size="small" />
+                  : <Text style={s.saveBtnTxt}>Save plan</Text>}
+              </Pressable>
               {(recoveryDistractions.length > 0 || !!recoveryMantra) && (
                 <Pressable
-                  style={{ alignSelf: 'center', marginTop: 28 }}
+                  style={{ alignSelf: 'center', marginTop: 14 }}
                   onPress={clearPlan}
                   disabled={savingPlan}>
-                  <Text style={{ color: c.error, fontSize: 13 }}>Remove distraction plan</Text>
+                  <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>Remove distraction plan</Text>
                 </Pressable>
               )}
+              <Pressable
+                style={[s.cancelBtn, { marginTop: 10 }]}
+                onPress={() => setShowRecoveryPlanModal(false)}>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
+              </Pressable>
             </ScrollView>
           </Pressable>
         </Pressable>
@@ -3990,25 +4019,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   dangerRowLabel: { color: c.error },
 
   // Someone in your corner
-  partnerDesc: { fontSize: 13, color: c.textBody, lineHeight: 19, marginBottom: 14 },
-  partnerLinkUrl: { fontSize: 12, color: c.textMuted, flex: 1 },
-  partnerHint: { fontSize: 11, color: c.textFaint, lineHeight: 16, marginTop: 6 },
-  partnerShareBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: c.primary, borderRadius: 10, paddingVertical: 13 },
-  partnerShareBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
-  partnerUrlRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, backgroundColor: c.bgElement, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  partnerRevokeLink: { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
-  partnerRevokeLinkTxt: { fontSize: 12, color: c.error },
   partnerLockedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
   partnerLockedTxt: { fontSize: 12, color: c.textMuted },
-  partnerLockedBtn: { backgroundColor: c.bgElement },
-  partnerLockedBtnTxt: { fontSize: 14, fontWeight: '600', color: c.primary },
-  shareSettingsBox: { marginTop: 12, borderTopWidth: 1, borderTopColor: c.bgElement, paddingTop: 12, gap: 2 },
-  shareSettingsTitle: { fontSize: 11, fontWeight: '700', color: c.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
-  shareSettingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
-  shareSettingLabel: { fontSize: 14, color: c.textBody },
-  shareAlwaysTxt: { fontSize: 12, color: c.textFaint },
-  shareCollapseLabel: { fontSize: 13, fontWeight: '600', color: c.textBody },
-  shareNotifyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9, borderTopWidth: 1, borderTopColor: c.bgElement },
   shareNotifyChips: { flexDirection: 'row', gap: 5 },
   shareNotifyChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: c.bgElement },
   shareNotifyChipOn: { backgroundColor: c.primary },
