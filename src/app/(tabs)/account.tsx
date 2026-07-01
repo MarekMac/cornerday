@@ -2730,13 +2730,13 @@ export default function AccountScreen() {
       {/* Notification settings modal */}
       <Modal visible={notifModalVisible} transparent animationType="fade" onRequestClose={() => setNotifModalVisible(false)}>
         <Pressable style={s.confirmOverlay} onPress={() => setNotifModalVisible(false)}>
-          <Pressable style={[s.confirmSheet, { maxHeight: '88%' }]} onPress={() => {}}>
-            <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
-                <Ionicons name="notifications-outline" size={32} color={c.primary} />
+          <Pressable style={[s.confirmSheet, { maxHeight: '95%' }]} onPress={() => {}}>
+            <View style={[s.confirmIconRow, { marginBottom: 8 }]}>
+              <View style={[s.confirmIconCircle, { width: 48, height: 48, borderRadius: 24, backgroundColor: c.bgTeal }]}>
+                <Ionicons name="notifications-outline" size={22} color={c.primary} />
               </View>
             </View>
-            <Text style={s.confirmTitle}>Notifications</Text>
+            <Text style={[s.confirmTitle, { marginBottom: 4 }]}>Notifications</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
             {([
               { key: 'notif_milestone',             label: 'Milestone reached',     desc: 'Alert when you hit a streak milestone' },
@@ -2810,7 +2810,7 @@ export default function AccountScreen() {
               )}
             </View>
             </ScrollView>
-            <Pressable style={[s.saveBtn, { marginTop: 20 }]} onPress={() => setNotifModalVisible(false)}>
+            <Pressable style={[s.saveBtn, { marginTop: 12 }]} onPress={() => setNotifModalVisible(false)}>
               <Text style={s.saveBtnTxt}>Done</Text>
             </Pressable>
           </Pressable>
@@ -3759,15 +3759,15 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   },
   notifSettingsTxt: { fontSize: 15, color: c.primary, fontWeight: '600' },
 
-  notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.borderSubtle },
-  notifTimeRow: { flexDirection: 'row', gap: 6, paddingBottom: 10, paddingTop: 4 },
-  notifTimeChip: { borderRadius: 8, paddingVertical: 5, paddingHorizontal: 12, backgroundColor: c.bgElement },
+  notifRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: c.borderSubtle },
+  notifTimeRow: { flexDirection: 'row', gap: 6, paddingBottom: 6, paddingTop: 2 },
+  notifTimeChip: { borderRadius: 8, paddingVertical: 4, paddingHorizontal: 12, backgroundColor: c.bgElement },
   notifTimeChipActive: { backgroundColor: c.primary },
   notifTimeChipTxt: { fontSize: 13, fontWeight: '600', color: c.textBody },
   notifTimeChipTxtActive: { color: c.white },
   notifText: { flex: 1, paddingRight: 12 },
   notifLabel: { fontSize: 14, fontWeight: '600', color: c.textPrimary },
-  notifDesc: { fontSize: 12, color: c.textMuted, marginTop: 2 },
+  notifDesc: { fontSize: 11, color: c.textMuted, marginTop: 1 },
 
   // Spending modal
   currencyChip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, borderColor: c.borderTeal, backgroundColor: c.bgInputMid },
