@@ -1604,7 +1604,7 @@ export default function AccountScreen() {
     await AsyncStorage.setItem(CUSTOM_MILESTONE_KEY, JSON.stringify(milestone));
     setCustomMilestone(milestone);
     const { data: { user: u } } = await supabase.auth.getUser();
-    if (u) supabase.from('users').update({ custom_milestone_type: customMilestoneType, custom_milestone_target: target, custom_milestone_icon: customMilestoneIcon }).eq('id', u.id).then(() => {}).catch(() => {});
+    if (u) supabase.from('users').update({ custom_milestone_type: customMilestoneType, custom_milestone_target: target, custom_milestone_icon: customMilestoneIcon }).eq('id', u.id).then(({ error }) => { if (error) console.warn('[custom milestone] server sync failed:', error.message); });
     // Schedule push notification only for days type (others are event-driven)
     if (customMilestoneType === 'days' && quitTimestamp) {
       const targetTime = new Date(new Date(quitTimestamp).getTime() + target * 86400000);
@@ -1640,7 +1640,7 @@ export default function AccountScreen() {
     await AsyncStorage.multiRemove([CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY]);
     setCustomMilestone(null);
     const { data: { user: u } } = await supabase.auth.getUser();
-    if (u) supabase.from('users').update({ custom_milestone_type: null, custom_milestone_target: null, custom_milestone_icon: null }).eq('id', u.id).then(() => {}).catch(() => {});
+    if (u) supabase.from('users').update({ custom_milestone_type: null, custom_milestone_target: null, custom_milestone_icon: null }).eq('id', u.id).then(({ error }) => { if (error) console.warn('[custom milestone] server sync failed:', error.message); });
     setShowCustomMilestoneModal(false);
   };
 

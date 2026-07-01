@@ -267,7 +267,7 @@ function getMilestone(ms: number) {
   // previous milestone — the ring shows "how close to [next milestone]", and
   // a 6-day streak with "1 Week" as the label should read as ~86% (6/7), not
   // 50% (as it would if measured from the prior 5-day badge instead).
-  const progress = next > 0 ? Math.min(1, days / next) : 1;
+  const progress = Math.min(1, days / next);
   return { next, remainingMs, progress };
 }
 

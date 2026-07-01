@@ -38,6 +38,16 @@ export default function ResetPasswordScreen() {
 
     setLoading(true);
     try {
+      // This screen assumes _layout.tsx's deep-link handler already verified
+      // the recovery token and set a session before routing here — but if
+      // that session has since expired, or this route was reached any other
+      // way, updateUser would fail unpredictably against no/stale session.
+      // Check explicitly so the user gets a clear message instead.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Your reset link has expired. Please request a new one.');
+        return;
+      }
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) { setError(updateError.message); return; }
       setDone(true);
