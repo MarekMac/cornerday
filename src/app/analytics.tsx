@@ -559,7 +559,9 @@ export default function AnalyticsScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { Alert.alert('Session expired', 'Please sign in again.'); return; }
-      const { error: updateErr } = await supabase.from('users').update({ savings_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+      // en-CA gives local-timezone YYYY-MM-DD — toISOString() would convert to UTC
+      // first, shifting the date back a day for anyone east of UTC.
+      const { error: updateErr } = await supabase.from('users').update({ savings_target_date: date.toLocaleDateString('en-CA') }).eq('id', user.id);
       if (updateErr) { Alert.alert('Could not save date', updateErr.message); return; }
       if (isMounted.current) { setSavingsTargetDate(date); setShowTargetModal(false); }
     } finally {

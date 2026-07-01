@@ -401,7 +401,10 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const targetDateStr = debtTargetDate ? debtTargetDate.toISOString().split('T')[0] : null;
+        // en-CA gives local-timezone YYYY-MM-DD — toISOString() converts to UTC first,
+        // which shifts the date by a day for anyone east of UTC (picker dates are
+        // local midnight, so a positive UTC offset rolls it back to the prior day).
+        const targetDateStr = debtTargetDate ? debtTargetDate.toLocaleDateString('en-CA') : null;
         if (editingDebt) {
           const { error: updateErr } = await supabase.from('debts').update({
             name: debtName.trim(), total_amount: amount, category: debtCategory,
@@ -427,6 +430,11 @@ export default function TrackerIndex() {
           }
         }
         hapticMedium();
+        // closeDebtModal() restores debtTargetDate from this snapshot (for the
+        // Cancel path) — update it to the just-saved value first, otherwise a
+        // successful save would flicker back to the pre-edit date until fetchAll()
+        // below overwrites it with fresh server data.
+        debtTargetDateBeforeEdit.current = debtTargetDate;
         closeDebtModal();
         await fetchAll();
       }
@@ -746,7 +754,7 @@ export default function TrackerIndex() {
           if (user) {
             const { error: goalErr } = await supabase.from('users').update({
               savings_goal_amount: null, savings_goal_label: null, savings_goal_icon: null,
-              savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
+              savings_target_date: goalTargetDateInput ? goalTargetDateInput.toLocaleDateString('en-CA') : null,
             }).eq('id', user.id);
             if (goalErr) throw new Error(goalErr.message);
           }
@@ -764,7 +772,7 @@ export default function TrackerIndex() {
           if (user) {
             const { error: goalErr } = await supabase.from('users').update({
               savings_goal_amount: val, savings_goal_label: forVal || null, savings_goal_icon: iconVal,
-              savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
+              savings_target_date: goalTargetDateInput ? goalTargetDateInput.toLocaleDateString('en-CA') : null,
             }).eq('id', user.id);
             if (goalErr) throw new Error(goalErr.message);
           }
@@ -792,7 +800,7 @@ export default function TrackerIndex() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { error } = await supabase.from('users').update({ debt_target_date: date.toISOString().split('T')[0] }).eq('id', user.id);
+        const { error } = await supabase.from('users').update({ debt_target_date: date.toLocaleDateString('en-CA') }).eq('id', user.id);
         if (error) { Alert.alert('Could not save target date', friendlyError(error)); return; }
         setDebtTargetDate(date);
       }

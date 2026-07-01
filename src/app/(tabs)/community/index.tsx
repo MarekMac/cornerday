@@ -121,6 +121,12 @@ export default function CommunityFeed() {
   const bookmarkingRef = useRef<Record<string, boolean>>({});
   const followingInFlightRef = useRef<Record<string, boolean>>({});
   const flatListRef = useRef<FlatList<Post>>(null);
+  // Rapid tag/sort switching can have two load() calls in flight at once —
+  // without this, whichever network response resolves last wins, which can
+  // overwrite the feed with results for a tag the user has already switched
+  // away from. Each load() captures the generation at start and only applies
+  // its result if it's still the most recent call.
+  const loadGenerationRef = useRef(0);
 
   useEffect(() => {
     // Use cached session first so currentUserIdRef is set before useFocusEffect runs
@@ -221,22 +227,25 @@ export default function CommunityFeed() {
   };
 
   const load = useCallback(async (tag: FilterTag, sort: SortBy = 'new', isRefresh = false) => {
+    const myGen = ++loadGenerationRef.current;
+    const isStale = () => myGen !== loadGenerationRef.current;
     if (!isRefresh) { setLoading(true); reactingRef.current = {}; }
     setLoadError(false);
     try {
       if (tag === 'Following') {
         const uid = currentUserIdRef.current;
-        if (!uid) { setPosts([]); setHasMore(false); return; }
+        if (!uid) { if (!isStale()) { setPosts([]); setHasMore(false); } return; }
         const { data: followRows } = await supabase
           .from('community_follows').select('following_id').eq('follower_id', uid);
         const ids = (followRows ?? []).map((r: { following_id: string }) => r.following_id);
-        if (ids.length === 0) { postsRef.current = []; setPosts([]); setHasMore(false); return; }
+        if (ids.length === 0) { if (!isStale()) { postsRef.current = []; setPosts([]); setHasMore(false); } return; }
         let q: any = supabase.from('community_posts_public').select(POST_SELECT).in('user_id', ids);
-        if (sort === 'popular') q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
-        else q = q.order('created_at', { ascending: false });
+        if (sort === 'popular') q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false }).order('id', { ascending: false });
+        else q = q.order('created_at', { ascending: false }).order('id', { ascending: false });
         q = q.range(0, PAGE_SIZE - 1);
         const { data, error } = await q;
         if (error) console.warn('[community] following load error:', error.message);
+        if (isStale()) return;
         const items = maskAnonPosts((data as Post[]) ?? [], currentUserIdRef.current);
         postsRef.current = items;
         setPosts(items);
@@ -248,8 +257,7 @@ export default function CommunityFeed() {
       if (tag === 'Saved') {
         const uid = currentUserIdRef.current;
         if (!uid) {
-          setPosts([]);
-          setHasMore(false);
+          if (!isStale()) { setPosts([]); setHasMore(false); }
           return;
         }
         const { data: bookmarkRows } = await supabase
@@ -258,20 +266,19 @@ export default function CommunityFeed() {
           .eq('user_id', uid);
         const ids = (bookmarkRows ?? []).map((r: { post_id: string }) => r.post_id);
         if (ids.length === 0) {
-          postsRef.current = [];
-          setPosts([]);
-          setHasMore(false);
+          if (!isStale()) { postsRef.current = []; setPosts([]); setHasMore(false); }
           return;
         }
         let q: any = supabase.from('community_posts_public').select(POST_SELECT).in('id', ids);
         if (sort === 'popular') {
-          q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+          q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false }).order('id', { ascending: false });
         } else {
-          q = q.order('created_at', { ascending: false });
+          q = q.order('created_at', { ascending: false }).order('id', { ascending: false });
         }
         q = q.range(0, PAGE_SIZE - 1);
         const { data, error } = await q;
         if (error) console.warn('[community] saved load error:', error.message);
+        if (isStale()) return;
         const items = maskAnonPosts((data as Post[]) ?? [], currentUserIdRef.current);
         postsRef.current = items;
         setPosts(items);
@@ -282,21 +289,22 @@ export default function CommunityFeed() {
 
       let q: any = supabase.from('community_posts_public').select(POST_SELECT);
       if (sort === 'popular') {
-        q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+        q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false }).order('id', { ascending: false });
       } else {
-        q = q.order('created_at', { ascending: false });
+        q = q.order('created_at', { ascending: false }).order('id', { ascending: false });
       }
       q = q.range(0, PAGE_SIZE - 1);
       if (tag === 'Mine') {
-        if (!currentUserIdRef.current) { postsRef.current = []; setPosts([]); setHasMore(false); return; }
+        if (!currentUserIdRef.current) { if (!isStale()) { postsRef.current = []; setPosts([]); setHasMore(false); } return; }
         q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
       } else if (tag !== 'All') q = q.eq('tag', tag);
 
       const { data, error } = await q;
       if (error) {
         console.warn('[community] feed load error:', error.message);
-        setLoadError(true);
+        if (!isStale()) setLoadError(true);
       }
+      if (isStale()) return;
       const items = maskAnonPosts((data as Post[]) ?? [], currentUserIdRef.current);
       postsRef.current = items;
       setPosts(items);
@@ -304,10 +312,9 @@ export default function CommunityFeed() {
       fetchReactions(items.map(p => p.id), true);
     } catch (e) {
       console.warn('[community] load exception:', e);
-      setLoadError(true);
+      if (!isStale()) setLoadError(true);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) { setLoading(false); setRefreshing(false); }
     }
   }, []);
 
@@ -323,9 +330,9 @@ export default function CommunityFeed() {
       const sort = sortByRef.current;
       let q: any = supabase.from('community_posts_public').select(POST_SELECT);
       if (sort === 'popular') {
-        q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false });
+        q = q.order('reactions_count', { ascending: false }).order('comments_count', { ascending: false }).order('id', { ascending: false });
       } else {
-        q = q.order('created_at', { ascending: false });
+        q = q.order('created_at', { ascending: false }).order('id', { ascending: false });
       }
       q = q.range(offset, offset + PAGE_SIZE - 1);
       if (tag === 'Mine' && currentUserIdRef.current) {

@@ -211,7 +211,9 @@ export default function DebtDetailScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { error } = await supabase.from('debts').update({ target_date: date.toISOString().split('T')[0] }).eq('id', id).eq('user_id', user.id);
+      // en-CA gives local-timezone YYYY-MM-DD — toISOString() would convert to UTC
+      // first, shifting the date back a day for anyone east of UTC.
+      const { error } = await supabase.from('debts').update({ target_date: date.toLocaleDateString('en-CA') }).eq('id', id).eq('user_id', user.id);
       if (error) { Alert.alert('Could not save date', friendlyError(error)); return; }
       setTargetDate(date);
       setShowTargetModal(false);

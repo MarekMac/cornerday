@@ -42,6 +42,8 @@ export default function ForgotPasswordScreen() {
       } else {
         setSent(true);
       }
+    } catch {
+      setError('Something went wrong. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }

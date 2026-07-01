@@ -42,6 +42,8 @@ export default function ResetPasswordScreen() {
       if (updateError) { setError(updateError.message); return; }
       setDone(true);
       navTimerRef.current = setTimeout(() => router.replace('/(tabs)/'), 2500);
+    } catch {
+      setError('Something went wrong. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }

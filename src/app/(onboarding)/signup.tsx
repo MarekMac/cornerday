@@ -85,9 +85,14 @@ export default function SignupScreen() {
   const handleResend = async () => {
     setResendLoading(true);
     try {
-      await supabase.auth.resend({ type: 'signup', email: sentEmail, options: { emailRedirectTo: 'cornerday://confirm-email' } });
+      const { error: resendError } = await supabase.auth.resend({ type: 'signup', email: sentEmail, options: { emailRedirectTo: 'cornerday://confirm-email' } });
+      if (resendError) {
+        setError(resendError.message);
+        return;
+      }
       setResendCooldown(60);
-    } catch (_e) {
+    } catch {
+      setError('Could not resend the email. Please check your connection and try again.');
     } finally {
       setResendLoading(false);
     }
@@ -240,6 +245,8 @@ export default function SignupScreen() {
         }
         router.push('/(onboarding)/q1');
       }
+    } catch {
+      setError('Something went wrong. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -256,6 +263,7 @@ export default function SignupScreen() {
             <Text style={styles.emailSentAddress}>{sentEmail}</Text>
             {'\n\n'}Tap the link in the email to continue setting up your account.
           </Text>
+          {!!error && <Text style={[styles.errorText, { marginTop: 16 }]}>{error}</Text>}
           <Pressable
             style={({ pressed }) => [styles.submitBtn, { marginTop: 32, alignSelf: 'stretch' }, pressed && styles.pressed, (resendCooldown > 0 || resendLoading) && { opacity: 0.5 }]}
             onPress={handleResend}
