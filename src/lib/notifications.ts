@@ -180,7 +180,26 @@ function androidTrigger(trigger: object) {
   return { ...trigger, channelId: CHANNEL_ID };
 }
 
-export async function scheduleAllNotifications(
+// Each call does cancelAll-then-reschedule-everything. Two overlapping calls
+// (e.g. a user flipping two notification switches in quick succession) would
+// otherwise interleave — both cancel (the second a no-op), then both schedule
+// their own full job list from whatever prefs snapshot they closed over,
+// leaving duplicate notifications. Chain calls onto this promise so they run
+// one at a time instead.
+let scheduleQueue: Promise<void> = Promise.resolve();
+
+export function scheduleAllNotifications(
+  prefs: NotifPrefs,
+  quitTimestamp: string | null,
+  earnedBadgeTypes: string[] = [],
+  timeOverrides: { streakHour?: number; checkinHour?: number } = {},
+): Promise<void> {
+  const run = () => scheduleAllNotificationsImpl(prefs, quitTimestamp, earnedBadgeTypes, timeOverrides);
+  scheduleQueue = scheduleQueue.then(run, run);
+  return scheduleQueue;
+}
+
+async function scheduleAllNotificationsImpl(
   prefs: NotifPrefs,
   quitTimestamp: string | null,
   earnedBadgeTypes: string[] = [],

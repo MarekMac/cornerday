@@ -342,6 +342,7 @@ export default function JournalScreen() {
         supabase.from('users').select('currency').eq('id', user.id).maybeSingle(),
       ]);
 
+      if (!isMountedRef.current) return;
       if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
 
       const entries: FeedEntry[] = [];
@@ -370,7 +371,7 @@ export default function JournalScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchFeed().finally(() => setLoading(false)); }, [fetchFeed]);
+  useEffect(() => { fetchFeed().finally(() => { if (isMountedRef.current) setLoading(false); }); }, [fetchFeed]);
   useFocusEffect(useCallback(() => { fetchFeed(); }, [fetchFeed]));
 
   const filteredFeed = feed.filter(e => {
