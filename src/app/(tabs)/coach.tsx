@@ -358,7 +358,7 @@ export default function CoachScreen() {
         <View style={[s.msgRow, isUser ? s.msgRowUser : s.msgRowAssistant]}>
           {!isUser && (
             <View style={s.avatarCircle}>
-              <Logo size={20} variant="white" />
+              <Logo size={18} variant="white" />
             </View>
           )}
           <View style={[s.bubble, isUser ? s.bubbleUser : s.bubbleAssistant]}>
