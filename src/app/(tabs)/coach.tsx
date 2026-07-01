@@ -358,7 +358,7 @@ export default function CoachScreen() {
         <View style={[s.msgRow, isUser ? s.msgRowUser : s.msgRowAssistant]}>
           {!isUser && (
             <View style={s.avatarCircle}>
-              <Logo size={20} variant="dark" />
+              <Logo size={20} variant="white" />
             </View>
           )}
           <View style={[s.bubble, isUser ? s.bubbleUser : s.bubbleAssistant]}>
@@ -410,7 +410,7 @@ export default function CoachScreen() {
         {header}
         <ScrollView contentContainerStyle={s.paywallScroll} style={s.paywallBg}>
           <LinearGradient colors={[c.headerGradStart, c.headerGradEnd]} style={s.paywallIcon}>
-            <Logo size={36} variant="dark" />
+            <Logo size={36} variant="white" />
           </LinearGradient>
           <Text style={s.paywallTitle}>AI Corner</Text>
           <Text style={s.paywallSub}>
