@@ -485,6 +485,9 @@ export default function AccountScreen() {
         setShareSettings(prev => ({ ...prev, [shortKey]: !value }));
         Alert.alert('Could not save setting', error.message);
       }
+    } catch {
+      if (isMounted.current) setShareSettings(prev => ({ ...prev, [shortKey]: !value }));
+      Alert.alert('Could not save setting', 'Please try again.');
     } finally {
       partnerSettingInFlight.current.delete(key);
     }
@@ -504,6 +507,9 @@ export default function AccountScreen() {
         setNotifySettings(prev => ({ ...prev, [shortKey]: !value }));
         Alert.alert('Could not save setting', error.message);
       }
+    } catch {
+      if (isMounted.current) setNotifySettings(prev => ({ ...prev, [shortKey]: !value }));
+      Alert.alert('Could not save setting', 'Please try again.');
     } finally {
       partnerSettingInFlight.current.delete(key);
     }
@@ -541,8 +547,10 @@ export default function AccountScreen() {
           }
         }
       }
+    } catch {
+      Alert.alert('Could not generate link', 'Please try again.');
     } finally {
-      setPartnerLinkLoading(false);
+      if (isMounted.current) setPartnerLinkLoading(false);
     }
     if (token) {
       const url = `https://cornerday.app/partner.html?t=${token}`;
@@ -567,8 +575,10 @@ export default function AccountScreen() {
         setShareSettings({ mood: true, milestones: true, recovery: true });
         setNotifySettings({ urge: false, relapse: false, milestone: false });
       }
+    } catch {
+      Alert.alert('Could not revoke link', 'Please try again.');
     } finally {
-      setPartnerLinkLoading(false);
+      if (isMounted.current) setPartnerLinkLoading(false);
     }
   };
 
@@ -702,8 +712,10 @@ export default function AccountScreen() {
         setRecoveryMantra(planMantraInput.trim());
       }
       setShowRecoveryPlanModal(false);
+    } catch {
+      Alert.alert('Could not save', 'Please try again.');
     } finally {
-      setSavingPlan(false);
+      if (isMounted.current) setSavingPlan(false);
     }
   };
 
@@ -718,8 +730,10 @@ export default function AccountScreen() {
         setRecoveryMantra('');
       }
       setShowRecoveryPlanModal(false);
+    } catch {
+      Alert.alert('Could not clear plan', 'Please try again.');
     } finally {
-      setSavingPlan(false);
+      if (isMounted.current) setSavingPlan(false);
     }
   };
 
@@ -737,8 +751,10 @@ export default function AccountScreen() {
         if (kind === 'debt') { setDebtTargetDate(date); setShowDebtTargetModal(false); }
         else { setSavingsTargetDate(date); setShowSavingsTargetModal(false); }
       }
+    } catch {
+      Alert.alert('Could not save date', 'Please try again.');
     } finally {
-      setSavingGoalTarget(false);
+      if (isMounted.current) setSavingGoalTarget(false);
     }
   };
 
@@ -906,8 +922,10 @@ export default function AccountScreen() {
         });
       }
       setEditField(null);
+    } catch {
+      Alert.alert('Could not save', 'Please try again.');
     } finally {
-      setSavingField(false);
+      if (isMounted.current) setSavingField(false);
     }
   };
 
@@ -938,8 +956,10 @@ export default function AccountScreen() {
         setProfile(prev => prev ? { ...prev, weeklyBet: value } : prev);
       }
       setShowSpendingModal(false);
+    } catch {
+      Alert.alert('Could not save', 'Please try again.');
     } finally {
-      setSavingSpending(false);
+      if (isMounted.current) setSavingSpending(false);
     }
   };
 
@@ -1024,7 +1044,7 @@ export default function AccountScreen() {
       }
     } finally {
       setTimeout(() => setImagePickerActive(false), 500);
-      setUploadingAvatar(false);
+      if (isMounted.current) setUploadingAvatar(false);
     }
   };
 
@@ -1044,7 +1064,7 @@ export default function AccountScreen() {
     } catch (err) {
       Alert.alert('Error', 'Could not remove photo. Please try again.');
     } finally {
-      setUploadingAvatar(false);
+      if (isMounted.current) setUploadingAvatar(false);
     }
   };
 
@@ -1060,8 +1080,10 @@ export default function AccountScreen() {
         setProfile(prev => prev ? { ...prev, displayName: trimmed } : prev);
       }
       setEditingName(false);
+    } catch {
+      Alert.alert('Could not save name', 'Please try again.');
     } finally {
-      setSavingName(false);
+      if (isMounted.current) setSavingName(false);
     }
   };
 
@@ -1132,8 +1154,10 @@ export default function AccountScreen() {
           await scheduleOnboardingCheckin();
         }
       }
+    } catch {
+      Alert.alert('Could not save date', 'Please try again.');
     } finally {
-      setSaving(false);
+      if (isMounted.current) setSaving(false);
     }
   };
 
@@ -1156,7 +1180,7 @@ export default function AccountScreen() {
     } catch (e: any) {
       Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
-      setResetting(false);
+      if (isMounted.current) setResetting(false);
     }
   };
 
@@ -1183,7 +1207,7 @@ export default function AccountScreen() {
     } catch (e: any) {
       Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
-      setResetting(false);
+      if (isMounted.current) setResetting(false);
     }
   };
 
@@ -1203,7 +1227,7 @@ export default function AccountScreen() {
     } catch (e: any) {
       Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
-      setResetting(false);
+      if (isMounted.current) setResetting(false);
     }
   };
 
@@ -1213,8 +1237,10 @@ export default function AccountScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) await supabase.from('game_scores').delete().eq('user_id', user.id);
       await AsyncStorage.removeItem(GAME_BESTS_STORAGE_KEY);
+    } catch (e: any) {
+      Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
-      setResetting(false);
+      if (isMounted.current) setResetting(false);
     }
   };
 
@@ -1268,8 +1294,10 @@ export default function AccountScreen() {
       setProfile(prev => prev ? { ...prev, weeklyBet: null } : prev);
       authFlags.postResetInProgress = true;
       router.replace('/(tabs)' as any);
+    } catch (e: any) {
+      Alert.alert('Reset failed', e?.message ?? 'Something went wrong. Please try again.');
     } finally {
-      setResetting(false);
+      if (isMounted.current) setResetting(false);
     }
   };
 
@@ -1308,8 +1336,12 @@ export default function AccountScreen() {
       ]);
       try { await FileSystem.deleteAsync(FileSystem.documentDirectory + 'motivation_photo.jpg', { idempotent: true }); } catch (_e) {}
       try { await supabase.auth.signOut(); } catch (_e) {}
+    } catch {
+      authFlags.signingOut = false;
+      Alert.alert('Could not delete account', 'Please try again or contact support.');
+      return;
     } finally {
-      setSigningOut(false);
+      if (isMounted.current) setSigningOut(false);
     }
     // Guaranteed navigation — signOut on a deleted account may not fire SIGNED_OUT reliably
     router.replace('/(onboarding)' as any);
@@ -1338,8 +1370,11 @@ export default function AccountScreen() {
         'coach_chat_history',
       ]);
       try { await supabase.auth.signOut(); } catch (_e) {}
+    } catch {
+      Alert.alert('Could not sign out', 'Please try again.');
+      return;
     } finally {
-      setSigningOut(false);
+      if (isMounted.current) setSigningOut(false);
       // 500ms covers any concurrent OAuth token-refresh SIGNED_IN without blocking fast re-login
       setTimeout(() => { authFlags.signingOut = false; }, 500);
     }
@@ -1455,8 +1490,10 @@ export default function AccountScreen() {
       const path = `${FileSystem.documentDirectory}${filename}`;
       await FileSystem.writeAsStringAsync(path, lines.join('\n'), { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(path, { mimeType: 'text/plain', dialogTitle: 'Save your CornerDay report' });
+    } catch {
+      Alert.alert('Could not export data', 'Please try again.');
     } finally {
-      setExportLoading(false);
+      if (isMounted.current) setExportLoading(false);
     }
   };
 
@@ -1475,8 +1512,10 @@ export default function AccountScreen() {
       } else {
         setPassResetSent(true);
       }
+    } catch {
+      Alert.alert('Error', 'Could not send reset email. Please try again.');
     } finally {
-      setSendingPassReset(false);
+      if (isMounted.current) setSendingPassReset(false);
     }
   };
 
