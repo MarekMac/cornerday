@@ -156,7 +156,7 @@ const ACTIVITY_BADGE_DEFS = [
   { type: 'urge_overcame_50',emoji: '🔰', label: '50 Urges',       earned: 'Overcame 50 urges.',                          pending: 'Overcome 50 urges.' },
   { type: 'urge_overcame_75',emoji: '🦅', label: '75 Urges',       earned: 'Overcame 75 urges.',                          pending: 'Overcome 75 urges.' },
   { type: 'urge_overcame_100',emoji:'🏆', label: '100 Urges',      earned: 'Overcame 100 urges.',                         pending: 'Overcome 100 urges.' },
-  { type: 'loss_first_log',  emoji: '🪞', label: 'Honest Start',   earned: 'Faced your situation honestly — that takes real courage.', pending: 'Log a loss or add a debt in the Tracker tab.' },
+  { type: 'loss_first_log',  emoji: '🧭', label: 'Honest Start',   earned: 'Faced your situation honestly — that takes real courage.', pending: 'Log a loss or add a debt in the Tracker tab.' },
   { type: 'first_payment',   emoji: '💰', label: 'First Payment',  earned: 'First debt payment logged.',                  pending: 'Log a payment in the Tracker tab.' },
   { type: 'payments_5',      emoji: '📈', label: '5 Payments',     earned: '5 debt payments logged.',                     pending: 'Log 5 payments in the Tracker tab.' },
   { type: 'payments_10',     emoji: '💸', label: '10 Payments',    earned: '10 debt payments logged.',                    pending: 'Log 10 payments in the Tracker tab.' },

@@ -94,6 +94,13 @@ const CHIP_AMOUNTS = [
   { value: '1000', label: (s: string) => `${s}1000+` },
 ];
 
+const GOAL_ICON_LABELS: Record<string, string> = {
+  '🎯': 'Goal', '🏖️': 'Holiday', '✈️': 'Travel', '🚗': 'Car',
+  '🏠': 'Home', '💍': 'Ring', '📱': 'Phone', '🎓': 'Education',
+  '💪': 'Health', '🛡️': 'Safety', '👶': 'Family', '🎮': 'Gaming',
+  '🌟': 'Dreams', '💰': 'Money', '🐕': 'Pet',
+};
+
 type FieldKey = 'motivation' | 'trigger' | 'goal' | 'support';
 
 const MOTIVATION_OPTIONS = [
@@ -269,6 +276,7 @@ export default function AccountScreen() {
   const [goalInput, setGoalInput] = useState('');
   const [goalForInput, setGoalForInput] = useState('');
   const [goalIconInput, setGoalIconInput] = useState('🎯');
+  const [iconDropdownOpen, setIconDropdownOpen] = useState(false);
   const [spendingChip, setSpendingChip] = useState('');
   const [spendingCustom, setSpendingCustom] = useState('');
   const [savingSpending, setSavingSpending] = useState(false);
@@ -301,7 +309,7 @@ export default function AccountScreen() {
   const [thankYouVisible, setThankYouVisible] = useState(false);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
   const [isPasswordUser, setIsPasswordUser] = useState(true);
-  const [renewalDate, setRenewalDate] = useState<string | null>(null);
+  const [renewalLabel, setRenewalLabel] = useState<string | null>(null);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [streakShieldEnabled, setStreakShieldEnabled] = useState(false);
@@ -645,15 +653,23 @@ export default function AccountScreen() {
   }, [fetchProfile, loadPartnerLink]);
 
   useEffect(() => {
-    if (!isPremiumFromRC) { setRenewalDate(null); return; }
+    if (!isPremiumFromRC) { setRenewalLabel(null); return; }
     Purchases.getCustomerInfo().then(info => {
       if (!isMounted.current) return;
       const entitlement = info.entitlements.active[ENTITLEMENT_ID];
-      if (entitlement?.expirationDate) {
-        const d = new Date(entitlement.expirationDate);
-        setRenewalDate(d.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }));
+      if (!entitlement) { setRenewalLabel(null); return; }
+      if (!entitlement.expirationDate) {
+        // RevenueCat returns null expirationDate for lifetime/non-expiring entitlements
+        setRenewalLabel('Lifetime access');
+        return;
       }
-    }).catch(() => {});
+      const d = new Date(entitlement.expirationDate).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+      setRenewalLabel(entitlement.willRenew ? `Renews ${d}` : `Expires ${d}`);
+    }).catch(err => {
+      if (!isMounted.current) return;
+      console.warn('[CornerDay] Failed to fetch renewal date:', err);
+      setRenewalLabel(null);
+    });
   }, [isPremiumFromRC]);
 
   useFocusEffect(useCallback(() => {
@@ -742,6 +758,15 @@ export default function AccountScreen() {
     }
   };
 
+  const clearSavingsTargetDate = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('users').update({ savings_target_date: null }).eq('id', user.id);
+      if (error) { Alert.alert('Could not clear date', error.message); return; }
+    }
+    setSavingsTargetDate(null);
+  };
+
   const openGoalModal = () => {
     setGoalInput(savingsGoal ? String(savingsGoal) : '');
     setGoalForInput(savingsGoalFor);
@@ -752,6 +777,7 @@ export default function AccountScreen() {
     if (Platform.OS === 'android') setAndroidKbOffset(0);
     setShowGoalModal(false);
     setGoalInput(''); setGoalForInput(''); setGoalIconInput('🎯');
+    setIconDropdownOpen(false);
   };
   const logGoalEvent = async (type: string, amount: number | null, note: string | null) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1732,7 +1758,7 @@ export default function AccountScreen() {
                 ) : isPremiumFromRC ? (
                   <>
                     <Text style={s.heroBadge}>✨ Premium</Text>
-                    {renewalDate ? <Text style={s.heroRenewal}>· Renews {renewalDate}</Text> : null}
+                    {renewalLabel ? <Text style={s.heroRenewal}>· {renewalLabel}</Text> : null}
                   </>
                 ) : (
                   <>
@@ -2351,32 +2377,44 @@ export default function AccountScreen() {
 
       {/* Savings goal modal */}
       <Modal visible={showGoalModal} transparent animationType="fade" onRequestClose={closeGoalModal}>
-        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={[s.confirmOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeGoalModal}>
-          <Pressable style={s.editCenterSheet} onPress={() => {}}>
-            <Text style={s.editFieldTitle}>Savings goal</Text>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={[s.spendingCustomLabel, { marginBottom: 8 }]}>Icon</Text>
-              <View style={s.goalIconGrid}>
-                {GOAL_ICONS.map(icon => (
-                  <Pressable
-                    key={icon}
-                    style={[s.goalIconChip, goalIconInput === icon && s.goalIconChipActive]}
-                    onPress={() => setGoalIconInput(icon)}>
-                    <Text style={s.goalIconChipEmoji}>{icon}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={s.spendingCustomLabel}>What are you saving for? <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
+          <Pressable style={s.sheet} onPress={() => {}}>
+            <View style={[s.sheetIconCircle, { backgroundColor: c.bgTeal }]}><Text style={s.sheetIconEmoji}>🎯</Text></View>
+            <Text style={s.sheetTitle}>Savings goal</Text>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>
+              <Text style={s.fieldLbl}>Icon</Text>
+              <Pressable style={s.iconDropdownTrigger} onPress={() => setIconDropdownOpen(v => !v)}>
+                <Text style={s.iconDropdownEmoji}>{goalIconInput}</Text>
+                <Text style={s.iconDropdownValue}>{GOAL_ICON_LABELS[goalIconInput] ?? goalIconInput}</Text>
+                <Ionicons name={iconDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.textMuted} />
+              </Pressable>
+              {iconDropdownOpen && (
+                <View style={s.iconDropdownList}>
+                  {GOAL_ICONS.map((icon, idx) => (
+                    <Pressable
+                      key={icon}
+                      style={[s.iconDropdownItem, goalIconInput === icon && s.iconDropdownItemActive, idx > 0 && s.iconDropdownItemBorder]}
+                      onPress={() => { setGoalIconInput(icon); setIconDropdownOpen(false); }}>
+                      <Text style={s.iconDropdownItemEmoji}>{icon}</Text>
+                      <Text style={[s.iconDropdownItemLabel, goalIconInput === icon && { color: c.primary, fontWeight: '600' }]}>
+                        {GOAL_ICON_LABELS[icon] ?? icon}
+                      </Text>
+                      {goalIconInput === icon && <Ionicons name="checkmark" size={16} color={c.primary} />}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
               <TextInput
-                style={s.spendingInput}
-                placeholder="e.g. Holiday, New car, Emergency fund"
+                style={s.input}
+                placeholder="e.g. Holiday, New car"
                 placeholderTextColor={c.textFaint}
                 value={goalForInput}
                 onChangeText={setGoalForInput}
                 maxLength={40}
               />
-              <Text style={s.spendingCustomLabel}>Target amount</Text>
+              <Text style={s.fieldLbl}>Target amount</Text>
               <View style={s.spendingInputRow}>
                 <Text style={s.spendingSymbol}>{CURRENCIES.find(c => c.code === profile?.currency)?.symbol ?? '$'}</Text>
                 <TextInput
@@ -2388,6 +2426,22 @@ export default function AccountScreen() {
                   onChangeText={setGoalInput}
                 />
               </View>
+              <Text style={s.fieldLbl}>
+                Target date <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
+              </Text>
+              <Pressable style={s.dateRow} onPress={() => openGoalTargetPicker('savings')}>
+                <Ionicons name="calendar-outline" size={16} color={c.textMuted} />
+                <Text style={[s.dateRowTxt, !savingsTargetDate && { color: c.textFaint }]}>
+                  {savingsTargetDate
+                    ? savingsTargetDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+                    : 'Set a target date'}
+                </Text>
+                {savingsTargetDate && (
+                  <Pressable onPress={clearSavingsTargetDate} hitSlop={8}>
+                    <Ionicons name="close-circle" size={16} color={c.textFaint} />
+                  </Pressable>
+                )}
+              </Pressable>
               {savingsGoal && (
                 <Pressable
                   onPress={async () => {
@@ -2413,12 +2467,13 @@ export default function AccountScreen() {
                 </Pressable>
               )}
             </ScrollView>
-            <View style={[s.modalActions, { marginTop: 16 }]}>
-              <Pressable style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]} onPress={closeGoalModal}>
-                <Text style={s.modalBtnCancel}>Cancel</Text>
+            <View style={s.sheetActions}>
+              <Pressable style={s.saveBtn} onPress={saveGoal}>
+                <Text style={s.saveBtnTxt}>Save goal</Text>
               </Pressable>
-              <Pressable style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]} onPress={saveGoal}>
-                <Text style={s.modalBtnSaveTxt}>Save goal</Text>
+              <View style={s.sheetDivider} />
+              <Pressable style={s.cancelBtn} onPress={closeGoalModal}>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -2502,12 +2557,13 @@ export default function AccountScreen() {
 
       {/* Weekly spending modal */}
       <Modal visible={showSpendingModal} transparent animationType="fade">
-        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={[s.confirmOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={() => setShowSpendingModal(false)}>
-          <Pressable style={s.editCenterSheet} onPress={() => {}}>
-            <Text style={s.editFieldTitle}>Weekly spending</Text>
+          <Pressable style={s.sheet} onPress={() => {}}>
+            <View style={[s.sheetIconCircle, { backgroundColor: c.bgTeal }]}><Text style={s.sheetIconEmoji}>💸</Text></View>
+            <Text style={s.sheetTitle}>Weekly spending</Text>
 
-            <View style={s.spendingChips}>
+            <View style={[s.spendingChips, { alignSelf: 'stretch' }]}>
               {CHIP_AMOUNTS.map(chip => {
                 const sym = CURRENCIES.find(cur => cur.code === (profile?.currency ?? 'USD'))?.symbol ?? '';
                 const isSelected = spendingChip === chip.value;
@@ -2524,8 +2580,8 @@ export default function AccountScreen() {
               })}
             </View>
 
-            <Text style={s.spendingCustomLabel}>Or enter your exact amount:</Text>
-            <View style={s.spendingInputRow}>
+            <Text style={[s.spendingCustomLabel, { alignSelf: 'stretch' }]}>Or enter your exact amount:</Text>
+            <View style={[s.spendingInputRow, { alignSelf: 'stretch' }]}>
               <Text style={s.spendingSymbol}>{CURRENCIES.find(cur => cur.code === (profile?.currency ?? 'USD'))?.symbol ?? ''}</Text>
               <TextInput
                 style={s.spendingInput}
@@ -2538,19 +2594,18 @@ export default function AccountScreen() {
               <Text style={s.spendingPerWk}>/week</Text>
             </View>
 
-            <View style={[s.modalActions, { marginTop: 16 }]}>
+            <View style={s.sheetActions}>
               <Pressable
-                style={({ pressed }) => [s.modalBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
-                onPress={() => setShowSpendingModal(false)}>
-                <Text style={s.modalBtnCancel}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [s.modalBtn, s.modalBtnSave, { flex: 2 }, pressed && { opacity: 0.85 }]}
+                style={[s.saveBtn, savingSpending && { opacity: 0.6 }]}
                 onPress={saveSpending}
                 disabled={savingSpending}>
                 {savingSpending
                   ? <ActivityIndicator color={c.white} size="small" />
-                  : <Text style={s.modalBtnSaveTxt}>Save</Text>}
+                  : <Text style={s.saveBtnTxt}>Save</Text>}
+              </Pressable>
+              <View style={s.sheetDivider} />
+              <Pressable style={s.cancelBtn} onPress={() => setShowSpendingModal(false)}>
+                <Text style={s.cancelBtnTxt}>Cancel</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -2661,8 +2716,8 @@ export default function AccountScreen() {
             ) : (
               <>
                 <View style={s.confirmIconRow}>
-                  <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
-                    <Ionicons name="key-outline" size={26} color={c.primary} />
+                  <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                    <Ionicons name="key-outline" size={32} color={c.primary} />
                   </View>
                 </View>
                 <Text style={s.confirmTitle}>Change password</Text>
@@ -2698,8 +2753,8 @@ export default function AccountScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setShowContactsPermModal(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
-                <Ionicons name="people-outline" size={26} color={c.primary} />
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                <Ionicons name="people-outline" size={32} color={c.primary} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Contacts access needed</Text>
@@ -2846,8 +2901,8 @@ export default function AccountScreen() {
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
-                <Ionicons name="calendar-outline" size={26} color={c.primary} />
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                <Ionicons name="calendar-outline" size={32} color={c.primary} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Update start date?</Text>
@@ -2877,7 +2932,7 @@ export default function AccountScreen() {
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
               <View style={s.confirmIconCircle}>
-                <Ionicons name="link-outline" size={26} color={c.error} />
+                <Ionicons name="link-outline" size={32} color={c.error} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Revoke link?</Text>
@@ -2901,9 +2956,15 @@ export default function AccountScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={[s.confirmOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={() => setShowCustomMilestoneModal(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                <Text style={{ fontSize: 32 }}>🚩</Text>
+              </View>
+            </View>
             <Text style={s.confirmTitle}>Custom milestone</Text>
 
             {/* Type picker */}
+            <Text style={[s.fieldLbl, { marginTop: 0 }]}>Milestone type</Text>
             <View style={s.milestoneTypeGrid}>
               {MILESTONE_TYPES.map(mt => {
                 const selected = customMilestoneType === mt.type;
@@ -2920,6 +2981,7 @@ export default function AccountScreen() {
             </View>
 
             {/* Input row + inline icon trigger */}
+            <Text style={s.fieldLbl}>Target</Text>
             <View style={s.milestoneInputRow}>
               <Pressable
                 style={[s.milestoneIconTrigger, milestoneIconPickerOpen && s.milestoneIconTriggerOpen]}
@@ -2958,19 +3020,18 @@ export default function AccountScreen() {
               </ScrollView>
             )}
 
-            <View style={s.confirmActions}>
-              <Pressable style={s.confirmCancel} onPress={() => setShowCustomMilestoneModal(false)}>
-                <Text style={s.confirmCancelTxt}>Cancel</Text>
+            <View style={[s.sheetDivider, { marginTop: 20 }]} />
+            <Pressable style={s.saveBtn} onPress={saveCustomMilestone}>
+              <Text style={s.saveBtnTxt}>Save</Text>
+            </Pressable>
+            {customMilestone && (
+              <Pressable onPress={removeCustomMilestone} style={{ alignSelf: 'center', marginTop: 14 }}>
+                <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>Remove milestone</Text>
               </Pressable>
-              {customMilestone && (
-                <Pressable style={[s.confirmCancel, { borderColor: c.error }]} onPress={removeCustomMilestone}>
-                  <Text style={[s.confirmCancelTxt, { color: c.error }]}>Remove</Text>
-                </Pressable>
-              )}
-              <Pressable style={[s.confirmDelete, { backgroundColor: c.primary, borderColor: c.primary }]} onPress={saveCustomMilestone}>
-                <Text style={[s.confirmDeleteTxt, { color: '#fff' }]}>Save</Text>
-              </Pressable>
-            </View>
+            )}
+            <Pressable style={[s.cancelBtn, { marginTop: 10 }]} onPress={() => setShowCustomMilestoneModal(false)}>
+              <Text style={s.cancelBtnTxt}>Cancel</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
         </KeyboardAvoidingView>
@@ -2982,8 +3043,8 @@ export default function AccountScreen() {
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: c.bgElement, borderColor: c.borderLight }]}>
-                <Ionicons name="log-out-outline" size={26} color={c.textBody} />
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgElement }]}>
+                <Ionicons name="log-out-outline" size={32} color={c.textBody} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Sign out?</Text>
@@ -3010,7 +3071,7 @@ export default function AccountScreen() {
             
             <View style={s.confirmIconRow}>
               <View style={s.confirmIconCircle}>
-                <Ionicons name="trash-outline" size={26} color={c.error} />
+                <Ionicons name="trash-outline" size={32} color={c.error} />
               </View>
             </View>
             <Text style={s.confirmTitle}>Delete account?</Text>
@@ -3120,8 +3181,8 @@ export default function AccountScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setThankYouVisible(false)}>
           <Pressable style={s.confirmSheet} onPress={() => {}}>
             <View style={s.confirmIconRow}>
-              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal, borderColor: c.borderTeal }]}>
-                <Text style={{ fontSize: 26 }}>💚</Text>
+              <View style={[s.confirmIconCircle, { backgroundColor: c.bgTeal }]}>
+                <Text style={{ fontSize: 32 }}>💚</Text>
               </View>
             </View>
             <Text style={s.confirmTitle}>Thank you!</Text>
@@ -3230,9 +3291,9 @@ export default function AccountScreen() {
 
       {/* Full-screen loading overlay shown while reset is in progress */}
       <Modal visible={resetting} transparent animationType="fade" onRequestClose={() => {}}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>Resetting your journey…</Text>
+        <View style={{ flex: 1, backgroundColor: c.overlay, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <ActivityIndicator size="large" color={c.white} />
+          <Text style={{ color: c.white, fontSize: 16, fontWeight: '600' }}>Resetting your journey…</Text>
         </View>
       </Modal>
 
@@ -3241,7 +3302,7 @@ export default function AccountScreen() {
         <Pressable style={s.confirmOverlay} onPress={() => setPendingReset(null)}>
           <Pressable style={s.resetConfirmSheet} onPress={() => {}}>
             <View style={s.resetConfirmIconWrap}>
-              <Ionicons name="warning-outline" size={28} color={c.error} />
+              <Ionicons name="warning-outline" size={32} color={c.error} />
             </View>
             <Text style={s.resetConfirmTitle}>{pendingReset?.title}</Text>
             <Text style={s.resetConfirmBody}>{pendingReset?.body}</Text>
@@ -3692,14 +3753,51 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   permStepNumTxt: { fontSize: 12, fontWeight: '700', color: c.white },
   permStepTxt: { flex: 1, fontSize: 13, color: c.textBody, lineHeight: 20 },
   permStepBold: { fontWeight: '700', color: c.textPrimary },
-  goalIconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  goalIconChip: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bgElement, borderWidth: 1.5, borderColor: 'transparent' },
-  goalIconChipActive: { borderColor: c.primary, backgroundColor: c.bgTeal },
-  goalIconChipEmoji: { fontSize: 22 },
-  spendingInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: c.bgInput },
+  fieldLbl: { fontSize: 13, color: c.textBody, fontWeight: '600', marginTop: 14, marginBottom: 8 },
+  input: {
+    borderWidth: 1, borderColor: c.borderLight, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: c.textPrimary, backgroundColor: c.bgInput,
+  },
+  dateRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: c.borderLight, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: c.bgInput,
+  },
+  dateRowTxt: { flex: 1, fontSize: 15, color: c.textPrimary },
+  iconDropdownTrigger: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: c.bgInput, gap: 10, marginBottom: 4 },
+  iconDropdownEmoji: { fontSize: 20 },
+  iconDropdownValue: { flex: 1, fontSize: 15, color: c.textPrimary },
+  iconDropdownList: { borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, backgroundColor: c.bgCard, marginBottom: 4, overflow: 'hidden' },
+  iconDropdownItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 12 },
+  iconDropdownItemBorder: { borderTopWidth: 1, borderTopColor: c.borderSubtle },
+  iconDropdownItemActive: { backgroundColor: c.bgTeal },
+  iconDropdownItemEmoji: { fontSize: 18 },
+  iconDropdownItemLabel: { flex: 1, fontSize: 14, color: c.textBody },
+  spendingInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: c.borderMid, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: c.bgInput },
   spendingSymbol: { fontSize: 16, color: c.textBody, marginRight: 6 },
   spendingInput: { flex: 1, fontSize: 15, color: c.textPrimary },
   spendingPerWk: { fontSize: 13, color: c.textMuted, marginLeft: 6 },
+
+  // Centered icon-header sheet (matches tracker tab's weekly spending modal)
+  sheet: {
+    backgroundColor: c.bgCard, borderRadius: 26, padding: 28, width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
+  },
+  sheetIconCircle: {
+    width: 76, height: 76, borderRadius: 38,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  sheetIconEmoji: { fontSize: 32 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 16 },
+  sheetActions: { width: '100%', marginTop: 20 },
+  sheetDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginVertical: 10 },
+  saveBtn: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.primary },
+  saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
+  cancelBtn: { width: '100%', borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: c.bgElement },
+  cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
   // Edit field modal
   editFieldSheet: {
@@ -3707,11 +3805,11 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
     padding: 20, paddingBottom: 36,
   },
   editCenterSheet: {
-    backgroundColor: c.bgCard, borderRadius: 20,
+    backgroundColor: c.bgCard, borderRadius: 26,
     padding: 20, paddingBottom: 24, width: '100%', maxHeight: '85%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
   },
-  editFieldTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, marginBottom: 16 },
+  editFieldTitle: { fontSize: 20, fontWeight: '800', color: c.textPrimary, marginTop: 10, marginBottom: 24 },
   editFieldOption: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 13, paddingHorizontal: 4,
@@ -3738,29 +3836,32 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
 
   // iOS modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay },
-  modalSheet: { backgroundColor: c.bgCard, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  modalSheet: {
+    backgroundColor: c.bgCard, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 24,
+  },
   modalHeader: { alignItems: 'center', marginBottom: 8 },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: c.textPrimary },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: c.bgElement },
+  modalBtn: { flex: 1, paddingVertical: 15, borderRadius: 14, alignItems: 'center', backgroundColor: c.bgElement },
   modalBtnCancel: { fontSize: 15, color: c.textBody, fontWeight: '600' },
   modalBtnSave: { backgroundColor: c.primary },
   modalBtnSaveTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
-  thankYouDoneBtn: { backgroundColor: c.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', alignSelf: 'stretch' },
+  thankYouDoneBtn: { backgroundColor: c.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', alignSelf: 'stretch' },
   thankYouDoneBtnTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
 
   confirmOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.overlay, padding: 24 },
   confirmSheet: {
-    backgroundColor: c.bgCard, borderRadius: 22, padding: 20, width: '100%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 32,
+    backgroundColor: c.bgCard, borderRadius: 26, padding: 24, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
   },
-  confirmIconRow: { alignItems: 'center', marginBottom: 12 },
+  confirmIconRow: { alignItems: 'center', marginBottom: 16 },
   confirmIconCircle: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: c.bgError, borderWidth: 1.5, borderColor: c.borderError,
+    width: 76, height: 76, borderRadius: 38,
+    backgroundColor: c.bgError,
     alignItems: 'center', justifyContent: 'center',
   },
-  confirmTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  confirmTitle: { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 10 },
   confirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 21, marginBottom: 4 },
   milestoneTypeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16, marginBottom: 10 },
   milestoneTypeBtn: {
@@ -3793,17 +3894,20 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   milestoneIconEmoji: { fontSize: 18 },
   confirmBold: { fontWeight: '700', color: c.textSecondary },
   confirmActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  confirmCancel: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.bgElement },
+  confirmCancel: { flex: 1, borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.bgElement },
   confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
-  confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
+  confirmDelete: { flex: 2, borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.error },
   confirmDeleteTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
-  confirmSave: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.primary },
+  confirmSave: { flex: 2, borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.primary },
   confirmSaveTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
 
   settingsDivider: { height: 1, backgroundColor: c.borderSubtle, marginVertical: 4 },
 
-  resetSheet: { backgroundColor: c.bgCard, borderRadius: 20, padding: 24, width: '100%', maxWidth: 420 },
-  resetSheetTitle: { fontSize: 18, fontWeight: '700', color: c.textPrimary, marginBottom: 4 },
+  resetSheet: {
+    backgroundColor: c.bgCard, borderRadius: 26, padding: 24, width: '100%', maxWidth: 420,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
+  },
+  resetSheetTitle: { fontSize: 20, fontWeight: '800', color: c.textPrimary, marginBottom: 4 },
   resetSheetSub: { fontSize: 13, color: c.textMuted, marginBottom: 20 },
   resetRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
   resetRowLabel: { fontSize: 15, fontWeight: '600', color: c.textPrimary },
@@ -3812,17 +3916,20 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   resetNuclearSep: { height: 1, backgroundColor: c.bgErrorMid, marginVertical: 8 },
   resetNuclearRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
   resetNuclearLabel: { fontSize: 15, fontWeight: '700', color: c.error },
-  resetCancelBtn: { marginTop: 16, paddingVertical: 13, borderRadius: 12, backgroundColor: c.bgElement, alignItems: 'center' },
+  resetCancelBtn: { marginTop: 16, paddingVertical: 15, borderRadius: 14, backgroundColor: c.bgElement, alignItems: 'center' },
   resetCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 
-  resetConfirmSheet: { backgroundColor: c.bgCard, borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' },
-  resetConfirmIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.bgErrorMid, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  resetConfirmTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary, textAlign: 'center', marginBottom: 8 },
+  resetConfirmSheet: {
+    backgroundColor: c.bgCard, borderRadius: 26, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
+  },
+  resetConfirmIconWrap: { width: 76, height: 76, borderRadius: 38, backgroundColor: c.bgErrorMid, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  resetConfirmTitle: { fontSize: 22, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 10 },
   resetConfirmBody: { fontSize: 14, color: c.textBody, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   resetConfirmActions: { flexDirection: 'row', gap: 10, width: '100%' },
-  resetConfirmCancel: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: c.bgElement, alignItems: 'center' },
+  resetConfirmCancel: { flex: 1, paddingVertical: 15, borderRadius: 14, backgroundColor: c.bgElement, alignItems: 'center' },
   resetConfirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
-  resetConfirmBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: c.error, alignItems: 'center' },
+  resetConfirmBtn: { flex: 1, paddingVertical: 15, borderRadius: 14, backgroundColor: c.error, alignItems: 'center' },
   resetConfirmBtnTxt: { fontSize: 15, fontWeight: '700', color: c.white },
 
   // Premium subscription card

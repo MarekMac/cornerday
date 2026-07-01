@@ -406,7 +406,7 @@ export default function TrackerIndex() {
           if (isFirstDebt) {
             const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
             if (!badgeErr) {
-              triggerCelebration({ type: 'loss_first_log', emoji: '🪞', label: 'Honest Start', celebration: randCelebration(), msg: randMsg() });
+              triggerCelebration({ type: 'loss_first_log', emoji: '🧭', label: 'Honest Start', celebration: randCelebration(), msg: randMsg() });
             }
             requestHomeRefresh();
           }
@@ -603,7 +603,7 @@ export default function TrackerIndex() {
           if (isFirstSession) {
             const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
             if (!badgeErr) {
-              triggerCelebration({ type: 'loss_first_log', emoji: '🪞', label: 'Honest Start', celebration: randCelebration(), msg: randMsg() });
+              triggerCelebration({ type: 'loss_first_log', emoji: '🧭', label: 'Honest Start', celebration: randCelebration(), msg: randMsg() });
             }
             requestHomeRefresh();
           }
@@ -1656,7 +1656,7 @@ export default function TrackerIndex() {
                 <Text style={s.fieldLbl}>What are you saving for? <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
                 <TextInput
                   style={s.input}
-                  placeholder="e.g. Holiday, New car, Emergency fund"
+                  placeholder="e.g. Holiday, New car"
                   placeholderTextColor={c.textFaint}
                   value={goalForInput}
                   onChangeText={setGoalForInput}
