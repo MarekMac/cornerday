@@ -45,7 +45,7 @@ import { File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { setImagePickerActive } from '@/lib/image-picker-active';
-import { registerHomeRefresh } from '@/lib/homeBus';
+import { registerHomeRefresh, unregisterHomeRefresh } from '@/lib/homeBus';
 import { authFlags } from '@/lib/auth-flags';
 import { MilestoneCelebrationModal } from '@/components/MilestoneCelebrationModal';
 import { BADGE_CELEBRATIONS, BADGE_EARNED_MSGS } from '@/constants/badgeConstants';
@@ -1337,6 +1337,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     registerHomeRefresh(fetchData);
+    return () => unregisterHomeRefresh(fetchData);
   }, [fetchData]);
 
   useEffect(() => {

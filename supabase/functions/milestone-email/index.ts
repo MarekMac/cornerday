@@ -132,9 +132,6 @@ Deno.serve(async (req: Request) => {
   const body = await req.json().catch(() => ({}));
 
   if (body.user_id) {
-    const milestone = MILESTONES.find(m => m.days === Number(body.streak));
-    if (!milestone) return new Response(JSON.stringify({ skipped: 'not a milestone day' }), { status: 200 });
-
     const { data: user } = await supabase
       .from('users')
       .select('email, display_name, quit_date, quit_timestamp, notif_milestone')
@@ -144,6 +141,17 @@ Deno.serve(async (req: Request) => {
     if (!user?.email || user.notif_milestone === false) {
       return new Response(JSON.stringify({ skipped: 'no email or notifications off' }), { status: 200 });
     }
+
+    // Recompute the streak server-side from quit_timestamp rather than trusting
+    // body.streak — a wrong/stale value from the caller would send a false
+    // "you've hit N days" congratulation email, which matters more than usual
+    // given this app's whole purpose is honestly tracking recovery progress.
+    const quitMs = parseQuitMs(user.quit_timestamp, user.quit_date);
+    if (!quitMs) return new Response(JSON.stringify({ skipped: 'no quit date' }), { status: 200 });
+    const totalDays = Math.floor(Math.max(0, Date.now() - quitMs) / 86_400_000);
+
+    const milestone = MILESTONES.find(m => m.days === totalDays);
+    if (!milestone) return new Response(JSON.stringify({ skipped: 'not a milestone day' }), { status: 200 });
 
     const { data: existing } = await supabase
       .from('badges').select('id').eq('user_id', body.user_id).eq('badge_type', milestone.badge).maybeSingle();
@@ -157,8 +165,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: insertError.message }), { status: 500 });
     }
 
-    const totalDays = Number(body.streak);
-    const html      = buildHtml(esc(user.display_name?.split(' ')?.[0] || 'there'), milestone, totalDays);
+    const html = buildHtml(esc(user.display_name?.split(' ')?.[0] || 'there'), milestone, totalDays);
 
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',

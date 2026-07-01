@@ -213,7 +213,10 @@ function TapDotGame({ onScore }: { onScore?: (s: number) => void }) {
     timer.current = setTimeout(() => {
       setPos(null);
       countRef.current++;
-      setTimeout(showDot, 300);
+      // Track this gap timer too (reusing the same ref) — otherwise it isn't
+      // cleared by the unmount cleanup below and can call showDot() after the
+      // component (and its state setters) are gone.
+      timer.current = setTimeout(showDot, 300);
     }, 1400);
   }, []);
 
@@ -221,11 +224,11 @@ function TapDotGame({ onScore }: { onScore?: (s: number) => void }) {
 
   const tap = () => {
     if (!pos) return;
-    clearTimeout(timer.current);
+    if (timer.current) clearTimeout(timer.current);
     setScore(s => s + 1);
     setPos(null);
     countRef.current++;
-    setTimeout(showDot, 300);
+    timer.current = setTimeout(showDot, 300);
   };
 
   if (!started || done) return (

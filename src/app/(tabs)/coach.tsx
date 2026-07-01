@@ -157,12 +157,16 @@ export default function CoachScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist chat history whenever messages change (skip greeting, limit to 100)
+  // Persist chat history whenever messages change (skip greeting, limit to 100).
+  // Skip while streaming — content updates on every token, which would
+  // otherwise write the whole history to disk on every delta. Saves once the
+  // stream settles instead (isStreaming flipping false re-triggers this).
   useEffect(() => {
+    if (isStreaming) return;
     const toSave = messages.filter(m => m.id !== 'greeting' && !m.pending).slice(-100);
     if (toSave.length === 0) return;
     AsyncStorage.setItem(COACH_HISTORY_KEY, JSON.stringify(toSave)).catch(() => {});
-  }, [messages]);
+  }, [messages, isStreaming]);
 
   const scrollToBottom = useCallback((animated = true) => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated }), 80);

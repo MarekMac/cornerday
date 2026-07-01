@@ -55,7 +55,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearProgress = useCallback(() => {
-    AsyncStorage.multiRemove([ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY]).catch(e => console.warn('[onboarding] storage write failed:', e));
+    // ONBOARDING_DATA_KEY isn't included here — setData({}) below triggers the
+    // persistence effect above, which immediately rewrites that key anyway, so
+    // removing it here would just be overwritten a moment later.
+    AsyncStorage.removeItem(ONBOARDING_STEP_KEY).catch(e => console.warn('[onboarding] storage write failed:', e));
     setData({});
   }, []);
 

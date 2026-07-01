@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { TimerProvider, useTimer } from '@/lib/TimerContext';
 import { MilestoneCelebrationModal } from '@/components/MilestoneCelebrationModal';
-import { registerCelebrationHandler, CelebrationPayload } from '@/lib/celebrationBus';
+import { registerCelebrationHandler, unregisterCelebrationHandler, CelebrationPayload } from '@/lib/celebrationBus';
 import {
   configureNotificationHandler,
   DEFAULT_NOTIF_PREFS,
@@ -172,6 +172,7 @@ export default function TabsLayout() {
 
   useEffect(() => {
     registerCelebrationHandler(setCelebPayload);
+    return () => unregisterCelebrationHandler(setCelebPayload);
   }, []);
 
   useEffect(() => {

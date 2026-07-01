@@ -688,21 +688,26 @@ export default function TrackerIndex() {
 
   const saveWeeklyBet = async () => {
     const raw = spendingCustom.trim();
+    // weekly_bet is a numeric column and Home/Tracker do arithmetic on it —
+    // this used to save the raw string ("50") instead of a number, which
+    // silently breaks anywhere it's later combined with `+` instead of `*`.
+    let value: number | null = null;
     if (raw) {
-      const parsed = parseFloat(raw);
-      if (isNaN(parsed) || parsed <= 0 || parsed > 999_999_999) {
+      value = parseFloat(raw);
+      if (isNaN(value) || value <= 0 || value > 999_999_999) {
         Alert.alert('Invalid amount', 'Please enter a valid amount between 0 and 999,999,999.');
         return;
       }
+    } else if (spendingChip) {
+      value = Number(spendingChip);
     }
-    const value = raw || spendingChip || null;
     setSavingSpending(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { error } = await supabase.from('users').update({ weekly_bet: value }).eq('id', user.id);
         if (error) { Alert.alert('Could not save', friendlyError(error)); return; }
-        setWeeklyBet(value);
+        setWeeklyBet(value !== null ? String(value) : null);
       }
       setShowSpendingModal(false);
     } finally {
