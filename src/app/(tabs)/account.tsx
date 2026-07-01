@@ -53,6 +53,7 @@ import {
 import { usePurchases } from '@/context/purchases';
 import Purchases from 'react-native-purchases';
 import { ENTITLEMENT_ID } from '@/constants/revenuecat';
+import { BADGE_DEFS } from '@/constants/badgeConstants';
 import { useAppTheme } from '@/context/theme';
 import type { ThemePref } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -372,7 +373,13 @@ export default function AccountScreen() {
       );
       const fetchedBadgeTypes = currentBadges.map(b => b.badge_type);
       earnedBadgeTypesRef.current = fetchedBadgeTypes;
-      const badgeCount = fetchedBadgeTypes.length;
+      // The badges table also holds non-milestone achievement badges (first_payment,
+      // loss_first_log, goal_set, community_first_post, debt_${id}, etc.) — the
+      // "Milestones" stat should only count day-based streak milestones (BADGE_DEFS),
+      // matching what the Milestones screen shows, otherwise this count runs ahead of
+      // what the user recognizes as a "milestone".
+      const milestoneBadgeTypes = new Set(BADGE_DEFS.map(b => b.type));
+      const badgeCount = fetchedBadgeTypes.filter(t => milestoneBadgeTypes.has(t)).length;
       if (!isMounted.current) return;
       setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
       const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
@@ -2046,6 +2053,19 @@ export default function AccountScreen() {
             </View>
           </Pressable>
           <View style={s.infoDivider} />
+          <Pressable
+            onPress={() => setShowCornerModal(true)}
+            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
+            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="people-outline" size={17} color={c.primary} /></View>
+            <View style={s.infoItemMain}>
+              <Text style={s.infoItemLabel}>Trusted supporter</Text>
+              <Text style={[s.infoItemValue, !isPremiumFromRC && s.infoValueEmpty]}>
+                {!isPremiumFromRC ? 'Premium feature' : partnerToken ? 'Active — tap to manage' : 'Not set up'}
+              </Text>
+            </View>
+            <Ionicons name={!isPremiumFromRC ? 'lock-closed' : 'chevron-forward'} size={15} color={c.textFaint} />
+          </Pressable>
+          <View style={s.infoDivider} />
           <View style={[s.infoItem, { paddingVertical: 12 }]}>
             <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="shield-outline" size={17} color={c.primary} /></View>
             <View style={s.infoItemMain}>
@@ -2122,23 +2142,6 @@ export default function AccountScreen() {
               )}
             </View>
             <Ionicons name="chevron-forward" size={15} color={c.textFaint} />
-          </Pressable>
-        </View>
-
-        {/* Someone in your corner */}
-        <View style={s.infoCard}>
-          <Text style={s.infoCardTitle}>Someone in your corner</Text>
-          <Pressable
-            onPress={() => setShowCornerModal(true)}
-            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-            <View style={[s.menuIconWrap, { marginRight: 0 }]}><Ionicons name="people-outline" size={17} color={c.primary} /></View>
-            <View style={s.infoItemMain}>
-              <Text style={s.infoItemLabel}>Trusted supporter</Text>
-              <Text style={[s.infoItemValue, !isPremiumFromRC && s.infoValueEmpty]}>
-                {!isPremiumFromRC ? 'Premium feature' : partnerToken ? 'Active — tap to manage' : 'Not set up'}
-              </Text>
-            </View>
-            <Ionicons name={!isPremiumFromRC ? 'lock-closed' : 'chevron-forward'} size={15} color={c.textFaint} />
           </Pressable>
         </View>
 

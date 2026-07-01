@@ -6,8 +6,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Updates from 'expo-updates';
 import * as Notifications from 'expo-notifications';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { AppState, AppStateStatus, Linking, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { AppState, AppStateStatus, Linking, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { NavigationBar } from 'expo-navigation-bar';
 import { BIOMETRIC_LOCK_KEY } from '@/constants/storage-keys';
 import { initHaptics } from '@/lib/haptics';
 import { getImagePickerActive } from '@/lib/image-picker-active';
@@ -28,6 +29,7 @@ if (__DEV__) {
 import { DarkTheme, DefaultTheme, ThemeProvider, ErrorBoundaryProps } from 'expo-router';
 import { Slot, useRouter, useRootNavigationState } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Session } from '@supabase/supabase-js';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
@@ -43,6 +45,7 @@ import { Paywall } from '@/components/Paywall';
 function InnerLayout() {
   const { colorScheme } = useAppTheme();
   const { isPremium } = usePurchases();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigationState = useRootNavigationState();
   const [session, setSession] = useState<Session | null>(null);
@@ -77,6 +80,11 @@ function InnerLayout() {
   useEffect(() => { authCheckedRef.current = authChecked; }, [authChecked]);
   useEffect(() => { initHaptics(); }, []);
   useEffect(() => { initAds(); }, []);
+  // Belt-and-suspenders alongside the expo-navigation-bar config plugin (app.json) —
+  // that only takes effect on a native rebuild, this makes it OTA-updatable too.
+  useEffect(() => {
+    if (Platform.OS === 'android') NavigationBar.setStyle('dark');
+  }, []);
 
   useEffect(() => {
     if (__DEV__ || !Updates.isEnabled) return;
@@ -351,6 +359,19 @@ function InnerLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
       <Slot />
+      {/* The Android system nav bar is transparent (edge-to-edge, enforced by the OS on
+          target SDK 35+) and shows whatever's drawn behind it — without this, that's
+          each screen's own (often light) background, making the system buttons look
+          like they sit on a white bar. See plugins/withNavigationBarContrastFix.js —
+          without android:enforceNavigationBarContrast=false in the native theme, the
+          OS also forces a ~90% opacity white scrim over this that washes out any dark
+          color regardless of what's rendered here, so both fixes are required together. */}
+      {Platform.OS === 'android' && insets.bottom > 0 && (
+        <View
+          style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: insets.bottom, backgroundColor: '#1a1a1a' }}
+          pointerEvents="none"
+        />
+      )}
       <Paywall />
       <OfflineBanner />
       {authChecked && locked && (

@@ -70,7 +70,12 @@
       "@sentry/react-native",
       ["react-native-google-mobile-ads", {
         "androidAppId": "ca-app-pub-5720390815287437~4576547556"
-      }]
+      }],
+      ["expo-navigation-bar", {
+        "enforceContrast": false,
+        "style": "dark"
+      }],
+      "./plugins/withNavigationBarContrastFix.js"
     ],
     "experiments": {
       "typedRoutes": true,

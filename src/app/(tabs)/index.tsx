@@ -48,7 +48,7 @@ import { setImagePickerActive } from '@/lib/image-picker-active';
 import { registerHomeRefresh, unregisterHomeRefresh } from '@/lib/homeBus';
 import { authFlags } from '@/lib/auth-flags';
 import { MilestoneCelebrationModal } from '@/components/MilestoneCelebrationModal';
-import { BADGE_CELEBRATIONS, BADGE_EARNED_MSGS } from '@/constants/badgeConstants';
+import { BADGE_CELEBRATIONS, BADGE_DEFS, BADGE_EARNED_MSGS } from '@/constants/badgeConstants';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -75,67 +75,6 @@ const SHARE_TAGLINES = [
   'What you\'re building here is worth more than any win.',
   'This is your story. You\'re writing a better one.',
   'Keep going. You\'re closer than you think.',
-];
-
-const BADGE_DEFS = [
-  { type: 'started',    emoji: '🚀', label: 'Started',    days: 0 },
-  { type: '1_hour',     emoji: '⏰', label: '1 Hour',     days: 1/24 },
-  { type: '3_hours',    emoji: '🌤️', label: '3 Hours',    days: 3/24 },
-  { type: '6_hours',    emoji: '☀️', label: '6 Hours',    days: 6/24 },
-  { type: '12_hours',   emoji: '🌗', label: '12 Hours',   days: 12/24 },
-  { type: '1_day',      emoji: '🌱', label: '1 Day',      days: 1 },
-  { type: '3_days',     emoji: '🌿', label: '3 Days',     days: 3 },
-  { type: '5_days',     emoji: '🕊️', label: '5 Days',     days: 5 },
-  { type: '1_week',     emoji: '⭐', label: '1 Week',     days: 7 },
-  { type: '10_days',    emoji: '✨', label: '10 Days',    days: 10 },
-  { type: '2_weeks',    emoji: '🌙', label: '2 Weeks',    days: 14 },
-  { type: '3_weeks',    emoji: '💫', label: '3 Weeks',    days: 21 },
-  { type: '1_month',    emoji: '🔥', label: '1 Month',    days: 30 },
-  { type: '45_days',    emoji: '⚡', label: '45 Days',    days: 45 },
-  { type: '2_months',   emoji: '🏅', label: '2 Months',   days: 60 },
-  { type: '3_months',   emoji: '🎯', label: '3 Months',   days: 90 },
-  { type: '100_days',   emoji: '💯', label: '100 Days',   days: 100 },
-  { type: '4_months',   emoji: '🌊', label: '4 Months',   days: 120 },
-  { type: '5_months',   emoji: '🦋', label: '5 Months',   days: 150 },
-  { type: '6_months',   emoji: '💎', label: '6 Months',   days: 180 },
-  { type: '200_days',   emoji: '🌈', label: '200 Days',   days: 200 },
-  { type: '9_months',   emoji: '🌸', label: '9 Months',   days: 270 },
-  { type: '1_year',     emoji: '🏆', label: '1 Year',     days: 365 },
-  { type: '500_days',   emoji: '🔑', label: '500 Days',   days: 500 },
-  { type: '18_months',  emoji: '🦅', label: '18 Months',  days: 548 },
-  { type: '2_years',    emoji: '👑', label: '2 Years',    days: 730 },
-  { type: '27_months',  emoji: '🕯️', label: '27 Months',  days: 821 },
-  { type: '2_5_years',  emoji: '⚓', label: '2.5 Years',  days: 912 },
-  { type: '1000_days',  emoji: '🎖️', label: '1000 Days',  days: 1000 },
-  { type: '3_years',    emoji: '🌟', label: '3 Years',    days: 1095 },
-  { type: '39_months',  emoji: '🌷', label: '39 Months',  days: 1186 },
-  { type: '3_5_years',  emoji: '🧭', label: '3.5 Years',  days: 1278 },
-  { type: '45_months',  emoji: '🌻', label: '45 Months',  days: 1369 },
-  { type: '4_years',    emoji: '🔱', label: '4 Years',    days: 1460 },
-  { type: '51_months',  emoji: '🦩', label: '51 Months',  days: 1551 },
-  { type: '4_5_years',  emoji: '🎸', label: '4.5 Years',  days: 1643 },
-  { type: '57_months',  emoji: '🌾', label: '57 Months',  days: 1734 },
-  { type: '5_years',    emoji: '🦁', label: '5 Years',    days: 1825 },
-  { type: '63_months',  emoji: '🐢', label: '63 Months',  days: 1917 },
-  { type: '5_5_years',  emoji: '🦊', label: '5.5 Years',  days: 2008 },
-  { type: '69_months',  emoji: '🌼', label: '69 Months',  days: 2099 },
-  { type: '6_years',    emoji: '🌍', label: '6 Years',    days: 2190 },
-  { type: '75_months',  emoji: '🍃', label: '75 Months',  days: 2281 },
-  { type: '6_5_years',  emoji: '🦜', label: '6.5 Years',  days: 2373 },
-  { type: '81_months',  emoji: '🍀', label: '81 Months',  days: 2464 },
-  { type: '7_years',    emoji: '⚜️', label: '7 Years',    days: 2555 },
-  { type: '87_months',  emoji: '🎋', label: '87 Months',  days: 2646 },
-  { type: '7_5_years',  emoji: '🦢', label: '7.5 Years',  days: 2738 },
-  { type: '93_months',  emoji: '🌺', label: '93 Months',  days: 2829 },
-  { type: '8_years',    emoji: '🔮', label: '8 Years',    days: 2920 },
-  { type: '99_months',  emoji: '🐋', label: '99 Months',  days: 3011 },
-  { type: '8_5_years',  emoji: '🌏', label: '8.5 Years',  days: 3103 },
-  { type: '105_months', emoji: '🪷', label: '105 Months', days: 3194 },
-  { type: '9_years',    emoji: '🌠', label: '9 Years',    days: 3285 },
-  { type: '111_months', emoji: '🦄', label: '111 Months', days: 3376 },
-  { type: '9_5_years',  emoji: '🔭', label: '9.5 Years',  days: 3468 },
-  { type: '117_months', emoji: '✴️', label: '117 Months', days: 3559 },
-  { type: '10_years',   emoji: '💫', label: '10 Years',   days: 3650 },
 ];
 
 const ACTIVITY_BADGE_DEFS = [
@@ -323,9 +262,12 @@ function formatStreakFull(ms: number): string {
 function getMilestone(ms: number) {
   const days = ms / 86400000;
   const next = MILESTONES.find(m => m > days) ?? 3650;
-  const prev = [...MILESTONES].reverse().find(m => m <= days) ?? 0;
   const remainingMs = Math.max(0, next * 86400000 - ms);
-  const progress = next > prev ? Math.min(1, (days - prev) / (next - prev)) : 1;
+  // Measured from the quit date (day 0) to the next milestone, not from the
+  // previous milestone — the ring shows "how close to [next milestone]", and
+  // a 6-day streak with "1 Week" as the label should read as ~86% (6/7), not
+  // 50% (as it would if measured from the prior 5-day badge instead).
+  const progress = next > 0 ? Math.min(1, days / next) : 1;
   return { next, remainingMs, progress };
 }
 
