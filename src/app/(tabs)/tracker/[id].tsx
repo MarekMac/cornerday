@@ -76,6 +76,9 @@ export default function DebtDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isMounted = useRef(true);
   useEffect(() => () => { isMounted.current = false; }, []);
+  // Guards addPayment against a double-tap firing a second insert before the
+  // busy state has re-rendered the button as disabled.
+  const submitInFlightRef = useRef(false);
 
   const [debt, setDebt] = useState<Debt | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -165,6 +168,8 @@ export default function DebtDetailScreen() {
 
     const isPayingOff = Math.round(val * 100) === Math.round(remaining * 100);
 
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -196,6 +201,7 @@ export default function DebtDetailScreen() {
       if (isMounted.current) { setAmount(''); setNote(''); }
       await fetchData();
     } finally {
+      submitInFlightRef.current = false;
       if (isMounted.current) setSubmitting(false);
     }
   };

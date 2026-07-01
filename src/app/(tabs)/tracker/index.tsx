@@ -260,6 +260,10 @@ export default function TrackerIndex() {
   const initialFetchDone = useRef(false);
   const fetchingRef = useRef(false);
   const isMountedRef = useRef(true);
+  // Guards the save* handlers below against a double-tap firing a second
+  // insert before the busy state has re-rendered the button as disabled —
+  // only one save modal is open at a time, so one shared ref is enough.
+  const submitInFlightRef = useRef(false);
   // Prevent Modal's onRequestClose firing while a native Android picker is open
   const nativePickerOpen = useRef(false);
   // Snapshot of debt target date when modal opens — restored on Cancel
@@ -391,6 +395,8 @@ export default function TrackerIndex() {
         return;
       }
     }
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSavingDebt(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -425,6 +431,7 @@ export default function TrackerIndex() {
         await fetchAll();
       }
     } finally {
+      submitInFlightRef.current = false;
       setSavingDebt(false);
     }
   };
@@ -492,6 +499,8 @@ export default function TrackerIndex() {
       Alert.alert('Invalid amount', 'Please enter a valid amount.');
       return;
     }
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -517,6 +526,7 @@ export default function TrackerIndex() {
         await fetchAll();
       }
     } finally {
+      submitInFlightRef.current = false;
       setSubmitting(false);
     }
   };
@@ -582,6 +592,8 @@ export default function TrackerIndex() {
       Alert.alert('Invalid amount', 'Please enter a valid amount.');
       return;
     }
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSubmittingSession(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -622,6 +634,7 @@ export default function TrackerIndex() {
         await fetchAll();
       }
     } finally {
+      submitInFlightRef.current = false;
       setSubmittingSession(false);
     }
   };
@@ -720,6 +733,8 @@ export default function TrackerIndex() {
       Alert.alert('Invalid amount', 'Please enter a valid goal amount.');
       return;
     }
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSavingGoalBusy(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -767,6 +782,7 @@ export default function TrackerIndex() {
       haptic();
       closeGoalModal();
     } finally {
+      submitInFlightRef.current = false;
       setSavingGoalBusy(false);
     }
   };
@@ -848,6 +864,8 @@ export default function TrackerIndex() {
       return;
     }
     const isPayingOff = Math.round(val * 100) === Math.round(remaining * 100);
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSubmittingQuickPay(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -893,6 +911,7 @@ export default function TrackerIndex() {
         await fetchAll();
       }
     } finally {
+      submitInFlightRef.current = false;
       setSubmittingQuickPay(false);
     }
   };

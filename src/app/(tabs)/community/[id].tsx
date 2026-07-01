@@ -86,6 +86,7 @@ export default function PostDetail() {
   const inputRef = useRef<TextInput>(null);
   const flatListRef = useRef<FlatList>(null);
   const isMountedRef = useRef(true);
+  const followInFlightRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -396,16 +397,21 @@ export default function PostDetail() {
   };
 
   const toggleFollow = async () => {
-    if (!currentUserId || !post || !post.user_id) return;
+    if (!currentUserId || !post || !post.user_id || followInFlightRef.current) return;
+    followInFlightRef.current = true;
     const prev = isFollowing;
     setIsFollowing(f => !f);
-    let error;
-    if (isFollowing) {
-      ({ error } = await supabase.from('community_follows').delete().eq('follower_id', currentUserId).eq('following_id', post.user_id));
-    } else {
-      ({ error } = await supabase.from('community_follows').insert({ follower_id: currentUserId, following_id: post.user_id }));
+    try {
+      let error;
+      if (isFollowing) {
+        ({ error } = await supabase.from('community_follows').delete().eq('follower_id', currentUserId).eq('following_id', post.user_id));
+      } else {
+        ({ error } = await supabase.from('community_follows').insert({ follower_id: currentUserId, following_id: post.user_id }));
+      }
+      if (error) setIsFollowing(prev);
+    } finally {
+      followInFlightRef.current = false;
     }
-    if (error) setIsFollowing(prev);
   };
 
   // ─── Render ─────────────────────────────────────────────────────────────────

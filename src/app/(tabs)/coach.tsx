@@ -169,8 +169,13 @@ export default function CoachScreen() {
   }, []);
 
   const sendText = useCallback(async (text: string) => {
-    if (!text || isStreaming) return;
+    if (!text) return;
     if (!hasAccess) { showPaywall(); return; }
+    // isStreaming is a state check, not a lock — two starter chips tapped in
+    // the same tick (before the first send's setIsStreaming re-renders them
+    // as hidden) can both reach here. Abort any in-flight stream before
+    // starting a new one so responses never interleave into the same bubble.
+    abortControllerRef.current?.abort();
 
     // Build the API message history before mutating state
     const apiMessages = messages
@@ -294,7 +299,11 @@ export default function CoachScreen() {
     } finally {
       clearTimeout(streamTimeout);
       reader?.cancel().catch(() => {});
-      if (isMountedRef.current) {
+      // Only this call's own controller is still current if no newer send has
+      // superseded it — otherwise a newer stream owns isStreaming now, and
+      // clearing it here would re-enable input mid-response.
+      const isStillCurrent = abortControllerRef.current === abortController;
+      if (isMountedRef.current && isStillCurrent) {
         setIsStreaming(false);
         // Clear pending flag if the stream ended before any text arrived
         setMessages(prev =>
@@ -303,7 +312,7 @@ export default function CoachScreen() {
         scrollToBottom();
       }
     }
-  }, [isStreaming, messages, scrollToBottom, hasAccess, showPaywall]);
+  }, [messages, scrollToBottom, hasAccess, showPaywall]);
 
   const sendMessage = useCallback(() => {
     const text = input.trim();

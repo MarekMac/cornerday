@@ -1654,11 +1654,13 @@ export default function HomeScreen() {
   const handleRelapse = () => { haptic(); setRelapseConfirmVisible(true); };
 
   const doRelapse = async () => {
-    setRelapseLoading(true);
-    // Set before touching badges/quit_timestamp so a concurrent fetchData's
-    // badge-award loop (see relapseInProgressRef comment above) stops instead
-    // of re-inserting badges for the streak we're about to reset.
+    // Ref check (not just the relapseLoading state disabling the button) —
+    // state updates are async, so a fast double-tap can fire this twice
+    // before the button re-renders as disabled, which would double-insert
+    // the streak_reset journal row and race the RPC.
+    if (relapseInProgressRef.current) return;
     relapseInProgressRef.current = true;
+    setRelapseLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {

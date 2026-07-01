@@ -118,6 +118,8 @@ export default function CommunityFeed() {
   const sortByRef = useRef<SortBy>('new');
   const activeTagRef = useRef<FilterTag>('All');
   const reactingRef = useRef<Record<string, boolean>>({});
+  const bookmarkingRef = useRef<Record<string, boolean>>({});
+  const followingInFlightRef = useRef<Record<string, boolean>>({});
   const flatListRef = useRef<FlatList<Post>>(null);
 
   useEffect(() => {
@@ -423,7 +425,8 @@ export default function CommunityFeed() {
 
   const toggleBookmark = async (postId: string) => {
     const uid = currentUserIdRef.current;
-    if (!uid) return;
+    if (!uid || bookmarkingRef.current[postId]) return;
+    bookmarkingRef.current[postId] = true;
     haptic();
     const isBookmarked = userBookmarks[postId] ?? false;
     setUserBookmarks(prev => ({ ...prev, [postId]: !isBookmarked }));
@@ -441,12 +444,15 @@ export default function CommunityFeed() {
       }
     } catch {
       setUserBookmarks(prev => ({ ...prev, [postId]: isBookmarked }));
+    } finally {
+      bookmarkingRef.current[postId] = false;
     }
   };
 
   const toggleFollow = async (userId: string) => {
     const uid = currentUserIdRef.current;
-    if (!uid || uid === userId) return;
+    if (!uid || uid === userId || followingInFlightRef.current[userId]) return;
+    followingInFlightRef.current[userId] = true;
     haptic();
     const isFollowing = followedUsers[userId] ?? false;
     setFollowedUsers(prev => ({ ...prev, [userId]: !isFollowing }));
@@ -464,6 +470,8 @@ export default function CommunityFeed() {
       }
     } catch {
       setFollowedUsers(prev => ({ ...prev, [userId]: isFollowing }));
+    } finally {
+      followingInFlightRef.current[userId] = false;
     }
   };
 
