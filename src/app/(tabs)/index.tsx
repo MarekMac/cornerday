@@ -719,7 +719,7 @@ function SavedCard({ quitDate, weeklyBet, currency, totalPaid, nowMs }: {
             <Text style={s.savedEmoji}>💰</Text>
             <View style={s.savedBody}>
               <Text style={s.savedLabel}>Total banked</Text>
-              <Text style={s.savedSub}>Money you've set aside</Text>
+              <Text style={s.savedSub}>Money you&apos;ve set aside</Text>
             </View>
             <Text style={[s.savedAmt, { color: c.success }]}>{fmt(totalPaid, currency)}</Text>
           </View>
@@ -1819,7 +1819,7 @@ export default function HomeScreen() {
         {loadError ? (
           <>
             <Text style={{ fontSize: 15, color: c.textBody, textAlign: 'center' }}>
-              Couldn't load your data. Check your connection.
+              Couldn&apos;t load your data. Check your connection.
             </Text>
             <Pressable
               style={({ pressed }) => [{ backgroundColor: c.primary, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12 }, pressed && { opacity: 0.8 }]}
@@ -1850,7 +1850,7 @@ export default function HomeScreen() {
             <View style={s.headerTop}>
               <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={s.greeting} numberOfLines={1}>{getGreeting(data.displayName)}</Text>
-                <Text style={s.quote} numberOfLines={2}>"{QUOTES[quoteIndex]}"</Text>
+                <Text style={s.quote} numberOfLines={2}>&quot;{QUOTES[quoteIndex]}&quot;</Text>
               </View>
               <Pressable onPress={() => router.push('/(tabs)/account' as any)} hitSlop={10} accessibilityLabel="Account and settings" accessibilityRole="button" style={{ marginTop: 6, marginRight: 2 }}>
                 {avatarUrl ? (
@@ -2182,7 +2182,7 @@ export default function HomeScreen() {
             <View style={s.moodDoneWrap}>
               <View style={s.moodDone}>
                 <View style={s.moodDoneRow}>
-                  <Text style={s.moodDoneLabel}>Today's mood: </Text>
+                  <Text style={s.moodDoneLabel}>Today&apos;s mood: </Text>
                   <Text style={s.moodDoneEmoji}>{MOODS[data.todayMood - 1]}</Text>
                   {data.todayMoodNote
                     ? <Text style={s.moodDoneNote} numberOfLines={1}>{' '}{data.todayMoodNote}</Text>
@@ -2257,7 +2257,7 @@ export default function HomeScreen() {
                   {editingMood && (
                     <View style={s.moodCancelRow}>
                       <Pressable onPress={handleClearMood} style={({ pressed }) => [s.moodCancelBtn, pressed && { opacity: 0.6 }]}>
-                        <Text style={s.moodClearTxt}>Clear today's mood</Text>
+                        <Text style={s.moodClearTxt}>Clear today&apos;s mood</Text>
                       </Pressable>
                       <Pressable onPress={() => { setEditingMood(false); setMoodNote(''); setEditMoodValue(null); }} style={({ pressed }) => [s.moodCancelBtn, pressed && { opacity: 0.6 }]}>
                         <Text style={s.moodCancelTxt}>Cancel</Text>
@@ -2307,7 +2307,7 @@ export default function HomeScreen() {
             <View style={s.whyAnchorHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={s.whyAnchorLabel}>Your why</Text>
-                <Text style={s.whyAnchorSub}>What you're fighting for</Text>
+                <Text style={s.whyAnchorSub}>What you&apos;re fighting for</Text>
                 <ScrollView style={{ marginTop: 12, maxHeight: 80 }} showsVerticalScrollIndicator={false} nestedScrollEnabled contentContainerStyle={s.whyAnchorCol}>
                   {motivations.map((m, i) => (
                     <View key={i} style={[s.whyAnchorChip, i > 0 && { marginTop: 6 }]}>
@@ -2424,9 +2424,9 @@ export default function HomeScreen() {
           </Pressable>
         ) : (
           <View style={s.relapseCard}>
-            <Text style={s.relapseTitle}>Had a slip? That's okay.</Text>
+            <Text style={s.relapseTitle}>Had a slip? That&apos;s okay.</Text>
             <Text style={s.relapseSubtitle}>
-              Recovery isn't linear. Every restart is still progress.
+              Recovery isn&apos;t linear. Every restart is still progress.
             </Text>
             <Pressable
               style={({ pressed }) => [s.relapseBtn, pressed && s.pressed]}
@@ -2595,7 +2595,7 @@ export default function HomeScreen() {
                   <>
                     <Text style={s.modalEmoji}>🔒</Text>
                     <Text style={s.modalTitle}>{selectedBadge.label}</Text>
-                    <Text style={s.modalSubtitle}>You're {pct}% of the way there</Text>
+                    <Text style={s.modalSubtitle}>You&apos;re {pct}% of the way there</Text>
                     <View style={s.modalProgressBar}>
                       <View style={[s.modalProgressFill, { width: `${pct}%` }]} />
                     </View>
@@ -2612,7 +2612,7 @@ export default function HomeScreen() {
                     )}
                     {dailyRate > 0 && (
                       <View style={s.modalRow}>
-                        <Text style={s.modalRowLabel}>You'll have saved</Text>
+                        <Text style={s.modalRowLabel}>You&apos;ll have saved</Text>
                         <Text style={[s.modalRowValue, { color: c.primary }]}>{fmt(savedAtMilestone, data.currency)}</Text>
                       </View>
                     )}
@@ -2651,7 +2651,7 @@ export default function HomeScreen() {
             </View>
             <Text style={s.relapseSheetTitle}>Had a slip?</Text>
             <Text style={s.relapseSheetBody}>
-              That's okay — every restart is still progress. You can get support right now, or reset and begin again.
+              That&apos;s okay — every restart is still progress. You can get support right now, or reset and begin again.
             </Text>
             <Pressable
               style={({ pressed }) => [s.relapseUrgeBtn, pressed && { opacity: 0.85 }]}
@@ -2972,7 +2972,7 @@ export default function HomeScreen() {
                     <Text style={[s.shareCardTagline, { color: cc.tagline }]}>{shareCardMessage}</Text>
                   ) : (
                     <>
-                      <Text style={[s.shareCardTagline, { color: cc.tagline }]}>"{shareTagline}"</Text>
+                      <Text style={[s.shareCardTagline, { color: cc.tagline }]}>&quot;{shareTagline}&quot;</Text>
                       <Text style={[s.shareCardHashtag, { color: cc.hashtag }]}>#CornerDay</Text>
                     </>
                   )}

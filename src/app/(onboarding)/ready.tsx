@@ -200,8 +200,8 @@ export default function ReadyScreen() {
 
         <View style={s.hero}>
           <OvercomeIllustration />
-          <Text style={s.title}>You're all set!</Text>
-          <Text style={s.subtitle}>Let's start turning things around.</Text>
+          <Text style={s.title}>You&apos;re all set!</Text>
+          <Text style={s.subtitle}>Let&apos;s start turning things around.</Text>
         </View>
 
         {/* Username picker */}

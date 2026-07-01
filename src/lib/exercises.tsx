@@ -218,7 +218,7 @@ function Gratitude() {
   return (
     <Wrap>
       <Text style={es.gratitudeTitle}>Name three things you are grateful for right now.</Text>
-      <Text style={es.subtleSub}>They don't need to be big. Anything counts.</Text>
+      <Text style={es.subtleSub}>They don&apos;t need to be big. Anything counts.</Text>
       {vals.map((v, i) => (
         <View key={i} style={es.gratitudeInputRow}>
           <Text style={es.gratitudeInputNum}>{i + 1}.</Text>
@@ -270,7 +270,7 @@ function Affirmations() {
       <Text style={es.subtleSub}>Tap the card to see the next affirmation</Text>
       <Pressable onPress={next} style={es.affirmCard}>
         <Animated.Text style={[es.affirmText, { opacity: fadeAnim }]}>
-          "{AFFIRMATIONS[idx]}"
+          &quot;{AFFIRMATIONS[idx]}&quot;
         </Animated.Text>
       </Pressable>
       <Text style={es.affirmCounter}>{idx + 1} / {AFFIRMATIONS.length}</Text>

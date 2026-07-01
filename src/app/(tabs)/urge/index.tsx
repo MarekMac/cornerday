@@ -271,6 +271,36 @@ export default function UrgeScreen() {
     return () => { show.remove(); hide.remove(); };
   }, []);
 
+  const resetLogState = () => {
+    setSelectedTrigger(null);
+    setCustomTrigger('');
+    setOutcome(null);
+    setDistractionUsed(null);
+    setNote('');
+    setSaved(false);
+  };
+
+  const awardTimerPoint = async (totalSecs: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMounted.current) return;
+      const { error } = await supabase.from('urge_journal').insert({
+        user_id: user.id,
+        trigger: 'timer_completed',
+        outcome: 'overcame',
+        note: `Completed ${Math.round(totalSecs / 60)}-minute urge timer`,
+      });
+      if (!error) {
+        if (!isMounted.current) return;
+        setTimerPointsEarned(true);
+      } else {
+        console.warn('awardTimerPoint insert failed:', error.message);
+      }
+    } catch (e) {
+      console.warn('awardTimerPoint error:', e);
+    }
+  };
+
   // Reset log form state after modal has finished closing
   useEffect(() => { if (!logExpanded) resetLogState(); }, [logExpanded]);
 
@@ -386,27 +416,6 @@ export default function UrgeScreen() {
     }
   };
 
-  const awardTimerPoint = async (totalSecs: number) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !isMounted.current) return;
-      const { error } = await supabase.from('urge_journal').insert({
-        user_id: user.id,
-        trigger: 'timer_completed',
-        outcome: 'overcame',
-        note: `Completed ${Math.round(totalSecs / 60)}-minute urge timer`,
-      });
-      if (!error) {
-        if (!isMounted.current) return;
-        setTimerPointsEarned(true);
-      } else {
-        console.warn('awardTimerPoint insert failed:', error.message);
-      }
-    } catch (e) {
-      console.warn('awardTimerPoint error:', e);
-    }
-  };
-
   const openLog = (presetOutcome: 'overcame' | 'slipped') => {
     setOutcome(presetOutcome);
     setSelectedTrigger(null);
@@ -426,15 +435,6 @@ export default function UrgeScreen() {
       Keyboard.dismiss();
       setLogExpanded(false);
     }
-  };
-
-  const resetLogState = () => {
-    setSelectedTrigger(null);
-    setCustomTrigger('');
-    setOutcome(null);
-    setDistractionUsed(null);
-    setNote('');
-    setSaved(false);
   };
 
   const saveEntry = async () => {
@@ -738,7 +738,7 @@ export default function UrgeScreen() {
               {timerRunning && (
                 <>
                   <Pressable style={({ pressed }) => [s.timerPastBtn, pressed && { opacity: 0.88 }]} onPress={stopTimer}>
-                    <Text style={s.timerPastBtnTxt}>I'm past it  ✓</Text>
+                    <Text style={s.timerPastBtnTxt}>I&apos;m past it  ✓</Text>
                   </Pressable>
                   <Pressable style={({ pressed }) => [s.timerSlipBtn, pressed && { opacity: 0.7 }]} onPress={hadASlip}>
                     <Text style={s.timerSlipBtnTxt}>Had a slip</Text>
@@ -833,7 +833,7 @@ export default function UrgeScreen() {
               </Text>
               {!!recoveryPlan.mantra && (
                 <View style={s.planMantraBox}>
-                  <Text style={s.planMantraTxt}>"{recoveryPlan.mantra}"</Text>
+                  <Text style={s.planMantraTxt}>&quot;{recoveryPlan.mantra}&quot;</Text>
                 </View>
               )}
               {recoveryPlan.distractions.length > 0 && (
@@ -866,8 +866,8 @@ export default function UrgeScreen() {
           <Pressable
             style={({ pressed }) => [s.logNowBtn, pressed && { opacity: 0.8 }]}
             onPress={() => openLog('overcame')}>
-            <Text style={s.logNowBtnTxt}>✍️  Note how I'm feeling</Text>
-            <Text style={s.logNowBtnSub}>Track what's on your mind right now</Text>
+            <Text style={s.logNowBtnTxt}>✍️  Note how I&apos;m feeling</Text>
+            <Text style={s.logNowBtnSub}>Track what&apos;s on your mind right now</Text>
           </Pressable>
 
           {/* Urge pattern insight */}
@@ -943,7 +943,7 @@ export default function UrgeScreen() {
                 </View>
               ) : (
                 <ScrollView ref={logScrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                  <Text style={s.logExpandedTitle}>Note how I'm feeling</Text>
+                  <Text style={s.logExpandedTitle}>Note how I&apos;m feeling</Text>
                   <View style={s.outcomeRow}>
                     <Pressable
                       style={[s.outcomeBtn, outcome === 'overcame' && s.outcomeBtnGreen]}
@@ -1196,7 +1196,7 @@ export default function UrgeScreen() {
                 trustedContact && !editingContact ? (
                   <View style={s.distractionTipBox}>
                     <Text style={s.distractionTipTxt}>
-                      Reach out to {trustedContact.name} — they're in your corner.
+                      Reach out to {trustedContact.name} — they&apos;re in your corner.
                     </Text>
                     <Pressable
                       style={({ pressed }) => [s.distractionCallBtn, pressed && { opacity: 0.85 }]}

@@ -95,14 +95,6 @@ export default function ModerationScreen() {
   const { isAdmin } = useUser();
   const [tab, setTab] = useState<AdminTab>('reports');
 
-  if (!isAdmin) {
-    return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background }}>
-        <Text style={{ fontSize: 16, color: c.textSecondary }}>Unauthorized</Text>
-      </SafeAreaView>
-    );
-  }
-
   // ── Reports ──────────────────────────────────────────────────────────────────
   const [reports, setReports] = useState<Report[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
@@ -408,6 +400,18 @@ export default function ModerationScreen() {
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: '2-digit' });
+
+  // Moved below all hooks — this used to return before ~30 useState/useCallback
+  // calls further down, so a component that mounts with isAdmin false and later
+  // flips true (e.g. once the user profile loads) would call a different number
+  // of hooks between renders, a genuine Rules-of-Hooks violation that crashes.
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background }}>
+        <Text style={{ fontSize: 16, color: c.textSecondary }}>Unauthorized</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <View style={s.root}>

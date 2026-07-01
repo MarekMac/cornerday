@@ -641,7 +641,7 @@ export default function AnalyticsScreen() {
             </LinearGradient>
             <Text style={s.lockTitle}>Progress Analytics</Text>
             <Text style={s.lockDesc}>
-              Deep insights into your recovery — see exactly how far you've come and what's driving your progress.
+              Deep insights into your recovery — see exactly how far you&apos;ve come and what&apos;s driving your progress.
             </Text>
           </View>
 
@@ -651,7 +651,7 @@ export default function AnalyticsScreen() {
             </LinearGradient>
           </Pressable>
 
-          <Text style={s.teaserHeading}>What you'll unlock</Text>
+          <Text style={s.teaserHeading}>What you&apos;ll unlock</Text>
           <View style={s.teaserListCard}>
             {teaserItems.map((item, i) => (
               <View key={i} style={[s.teaserRow, i < teaserItems.length - 1 && s.teaserRowBorder]}>
@@ -677,7 +677,7 @@ export default function AnalyticsScreen() {
         {renderHeader()}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
           <Text style={{ fontSize: 40 }}>⚠️</Text>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: c.textPrimary, textAlign: 'center' }}>Couldn't load analytics</Text>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: c.textPrimary, textAlign: 'center' }}>Couldn&apos;t load analytics</Text>
           <Text style={{ fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 21 }}>Check your connection and try again.</Text>
           <Pressable
             style={({ pressed }) => [{ marginTop: 8, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: c.primary, borderRadius: 20 }, pressed && { opacity: 0.8 }]}

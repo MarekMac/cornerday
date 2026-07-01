@@ -2096,7 +2096,7 @@ export default function AccountScreen() {
                   )}
                   {recoveryMantra ? (
                     <Text style={[s.infoItemValue, { fontStyle: 'italic' }]} numberOfLines={1}>
-                      "{recoveryMantra}"
+                      &quot;{recoveryMantra}&quot;
                     </Text>
                   ) : null}
                 </View>
@@ -2699,7 +2699,7 @@ export default function AccountScreen() {
                 </View>
                 <Text style={s.confirmTitle}>Change password</Text>
                 <Text style={[s.confirmBody, { textAlign: 'center', marginBottom: 4 }]}>
-                  We'll send a reset link to
+                  We&apos;ll send a reset link to
                 </Text>
                 <Text style={[s.confirmBody, { textAlign: 'center', fontWeight: '600', color: c.primary, marginBottom: 20 }]}>
                   {profile?.email}
@@ -2922,7 +2922,7 @@ export default function AccountScreen() {
             <Text style={s.confirmTitle}>Someone in your corner</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={[s.confirmBody, { marginBottom: 16 }]}>
-                Share a private link with one trusted person — they'll get a live view of your progress and can send you messages.
+                Share a private link with one trusted person — they&apos;ll get a live view of your progress and can send you messages.
               </Text>
               {!isPremiumFromRC ? (
                 <>
@@ -2976,7 +2976,7 @@ export default function AccountScreen() {
                       </Pressable>
                     ))}
                   </View>
-                  <Text style={s.shareHint}>Your supporter subscribes on the page using their email. You choose which events they're notified about.</Text>
+                  <Text style={s.shareHint}>Your supporter subscribes on the page using their email. You choose which events they&apos;re notified about.</Text>
 
                   <View style={[s.sheetDivider, { marginTop: 20 }]} />
                   <Pressable
@@ -3018,7 +3018,7 @@ export default function AccountScreen() {
             </View>
             <Text style={s.confirmTitle}>Revoke link?</Text>
             <Text style={s.confirmBody}>
-              Your partner will lose access to your progress and won't be able to send you messages.
+              Your partner will lose access to your progress and won&apos;t be able to send you messages.
             </Text>
             <View style={s.confirmActions}>
               <Pressable style={s.confirmCancel} onPress={() => setRevokePartnerVisible(false)}>

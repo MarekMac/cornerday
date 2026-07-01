@@ -88,42 +88,6 @@ export default function PostDetail() {
   const isMountedRef = useRef(true);
   const followInFlightRef = useRef(false);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    loadAll();
-
-    const channel = supabase
-      .channel(`comments-${id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'community_comments', filter: `post_id=eq.${id}` },
-        async (payload) => {
-          const { data } = await supabase
-            .from('community_comments_public')
-            .select('id, user_id, content, created_at, helpful_count, is_anonymous, author_name')
-            .eq('id', payload.new.id)
-            .maybeSingle();
-          if (data && isMountedRef.current) {
-            setComments(prev => {
-              if (prev.some(c => c.id === (data as any).id)) return prev;
-              return [...prev, data as Comment];
-            });
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { isMountedRef.current = false; supabase.removeChannel(channel); };
-  }, [id]);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKbOffset(e.endCoordinates.height));
-    const hide  = Keyboard.addListener('keyboardDidHide', () => setAndroidKbOffset(0));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
-
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -186,6 +150,42 @@ export default function PostDetail() {
       if (isMountedRef.current) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    loadAll();
+
+    const channel = supabase
+      .channel(`comments-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'community_comments', filter: `post_id=eq.${id}` },
+        async (payload) => {
+          const { data } = await supabase
+            .from('community_comments_public')
+            .select('id, user_id, content, created_at, helpful_count, is_anonymous, author_name')
+            .eq('id', payload.new.id)
+            .maybeSingle();
+          if (data && isMountedRef.current) {
+            setComments(prev => {
+              if (prev.some(c => c.id === (data as any).id)) return prev;
+              return [...prev, data as Comment];
+            });
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { isMountedRef.current = false; supabase.removeChannel(channel); };
+  }, [id]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKbOffset(e.endCoordinates.height));
+    const hide  = Keyboard.addListener('keyboardDidHide', () => setAndroidKbOffset(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const pickReaction = async (emoji: string) => {
     if (!currentUserId || !post) return;

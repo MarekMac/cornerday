@@ -1066,7 +1066,7 @@ export default function TrackerIndex() {
                   <Text style={s.savingsRowEmoji}>💰</Text>
                   <View style={s.savingsRowBody}>
                     <Text style={s.savingsRowLabel}>Total banked</Text>
-                    <Text style={s.savingsRowSub}>Money you've set aside</Text>
+                    <Text style={s.savingsRowSub}>Money you&apos;ve set aside</Text>
                   </View>
                   <Text style={[s.savingsRowAmt, { color: c.success }]}>{fmt(totalManualSavings, currency)}</Text>
                 </View>
@@ -1292,7 +1292,7 @@ export default function TrackerIndex() {
                     <Text style={s.sessionInfoTitle}>Build your savings</Text>
                   </View>
                   <Text style={s.sessionInfoBody}>
-                    Every time you set money aside — even a small amount — log it here. It's proof that stopping gambling is already working.
+                    Every time you set money aside — even a small amount — log it here. It&apos;s proof that stopping gambling is already working.
                   </Text>
                   <Text style={s.sessionInfoBody}>
                     Set a savings goal and target date to stay motivated. The tracker will show your progress towards it automatically.
@@ -1368,7 +1368,7 @@ export default function TrackerIndex() {
                 </Text>
                 <Text style={s.sessionInfoBody}>
                   Use it to track when you gambled, how much you lost, and spot patterns over time. It does{' '}
-                  <Text style={s.sessionInfoBold}>not</Text> affect your streak, your debt recovery progress, or your savings — it's purely for self-awareness.
+                  <Text style={s.sessionInfoBold}>not</Text> affect your streak, your debt recovery progress, or your savings — it&apos;s purely for self-awareness.
                 </Text>
                 <View style={s.sessionInfoTip}>
                   <Ionicons name="information-circle-outline" size={15} color={SESSION_COLOR} />
@@ -1378,7 +1378,7 @@ export default function TrackerIndex() {
 
               {sessions.length === 0 ? (
                 <View style={s.emptyCard}>
-                  <Text style={s.emptyTxt}>No sessions logged yet.{'\n'}Tap "Log a session" to start tracking honestly.</Text>
+                  <Text style={s.emptyTxt}>No sessions logged yet.{'\n'}Tap &quot;Log a session&quot; to start tracking honestly.</Text>
                 </View>
               ) : (
                 sessions.map(entry => (
@@ -1835,7 +1835,7 @@ export default function TrackerIndex() {
               <Text style={s.sheetTitle}>{editingSession ? 'Edit session' : 'Log a session'}</Text>
               {!editingSession && (
                 <Text style={s.sheetSubtitle}>
-                  This won't affect your debt or streak — it's just for your own awareness.
+                  This won&apos;t affect your debt or streak — it&apos;s just for your own awareness.
                 </Text>
               )}
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>

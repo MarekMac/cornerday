@@ -140,7 +140,7 @@ export default function Q3Screen() {
         style={s.scrollView}
         contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled">
-        <Text style={s.title}>Let's set up your journey</Text>
+        <Text style={s.title}>Let&apos;s set up your journey</Text>
         <Text style={[s.sectionLabel, { marginBottom: 10 }]}>When did you stop betting?</Text>
         <Pressable style={s.dateBtn} onPress={openDatePicker}>
           <Text style={s.dateBtnTxt}>
@@ -151,7 +151,7 @@ export default function Q3Screen() {
 
         <Text style={[s.sectionLabel, { marginBottom: 10 }]}>How much did you bet per week?</Text>
         <Text style={s.subtitle}>
-          We'll use this to show how much you're saving as your streak grows.
+          We&apos;ll use this to show how much you&apos;re saving as your streak grows.
         </Text>
 
         <View style={s.chips}>
@@ -203,7 +203,7 @@ export default function Q3Screen() {
             <Text style={s.savingsHeadline}>
               {symbol}{(annualSaving ?? 0).toLocaleString()} saved per year
             </Text>
-            <Text style={s.savingsSubtitle}>if you stay on track — that's real money back</Text>
+            <Text style={s.savingsSubtitle}>if you stay on track — that&apos;s real money back</Text>
           </View>
         </View>
 

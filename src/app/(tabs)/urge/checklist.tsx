@@ -113,7 +113,7 @@ export default function ChecklistScreen() {
           </View>
           {completed === TOTAL && (
             <Text style={s.progressDone}>
-              You've taken every step. Your recovery environment is solid.
+              You&apos;ve taken every step. Your recovery environment is solid.
             </Text>
           )}
         </View>

@@ -162,7 +162,7 @@ export function MilestoneCelebrationModal({
               <View style={[styles.divider, { backgroundColor: cc.divider }]} />
 
               <View style={styles.cardBottom}>
-                <Text style={[styles.taglineText, { color: cc.tagline }]}>"{tagline}"</Text>
+                <Text style={[styles.taglineText, { color: cc.tagline }]}>&quot;{tagline}&quot;</Text>
                 <Text style={[styles.hashtag, { color: cc.hashtag }]}>#CornerDay</Text>
               </View>
             </LinearGradient>

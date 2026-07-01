@@ -70,7 +70,7 @@ export default function ResetPasswordScreen() {
           </Pressable>
 
           <Text style={styles.title}>Set a new password</Text>
-          <Text style={styles.subtitle}>Choose something strong that you haven't used before.</Text>
+          <Text style={styles.subtitle}>Choose something strong that you haven&apos;t used before.</Text>
 
           <Text style={styles.label}>New password</Text>
           <TextInput

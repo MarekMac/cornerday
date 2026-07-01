@@ -749,7 +749,7 @@ export default function CommunityFeed() {
               loadingMore ? <ActivityIndicator style={s.loadingMore} color={c.primary} /> :
               loadMoreError ? (
                 <View style={s.loadMoreErr}>
-                  <Text style={s.loadMoreErrText}>Couldn't load more posts.</Text>
+                  <Text style={s.loadMoreErrText}>Couldn&apos;t load more posts.</Text>
                   <Pressable onPress={loadMore} style={s.loadMoreRetry}>
                     <Text style={s.loadMoreRetryText}>Try again</Text>
                   </Pressable>
@@ -759,7 +759,7 @@ export default function CommunityFeed() {
             ListEmptyComponent={loadError ? (
               <View style={s.empty}>
                 <Text style={s.emptyEmoji}>⚠️</Text>
-                <Text style={s.emptyTitle}>Couldn't load posts</Text>
+                <Text style={s.emptyTitle}>Couldn&apos;t load posts</Text>
                 <Text style={s.emptyBody}>Check your connection and try again.</Text>
                 <Pressable
                   style={s.retryBtn}

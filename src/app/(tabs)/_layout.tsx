@@ -1,4 +1,3 @@
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Tabs, router } from 'expo-router';
@@ -101,7 +100,12 @@ function TabButton({
 
 // ─── Custom Tab Bar ───────────────────────────────────────────────────────────
 
-function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+// @react-navigation/bottom-tabs isn't a direct/resolvable dependency of this
+// project (only pulled in transitively via expo-router), so BottomTabBarProps
+// can't be imported here. The prop shape is only loosely typed as a result —
+// same as before, since the unresolved import already made it effectively
+// untyped — but this is deliberate instead of a broken import.
+function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const visibleRoutes = state.routes.filter(r => r.name !== 'account');
 

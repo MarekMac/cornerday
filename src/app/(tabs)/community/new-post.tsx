@@ -169,7 +169,7 @@ export default function NewPost() {
               <Ionicons name="eye-off-outline" size={20} color={c.textBody} />
               <View style={s.anonTextWrap}>
                 <Text style={s.anonLabel}>Post anonymously</Text>
-                <Text style={s.anonSub}>Your name won't appear on this post</Text>
+                <Text style={s.anonSub}>Your name won&apos;t appear on this post</Text>
               </View>
             </View>
             <Switch
