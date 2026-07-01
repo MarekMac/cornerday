@@ -53,7 +53,6 @@ import {
 import { usePurchases } from '@/context/purchases';
 import Purchases from 'react-native-purchases';
 import { ENTITLEMENT_ID } from '@/constants/revenuecat';
-import { BADGE_DEFS } from '@/constants/badgeConstants';
 import { useAppTheme } from '@/context/theme';
 import type { ThemePref } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
@@ -368,18 +367,13 @@ export default function AccountScreen() {
         if (!isNaN(ms)) quitIso = new Date(ms).toISOString();
       }
       const allBadges = (badgesData ?? []) as { badge_type: string; earned_at: string }[];
-      const currentBadges = allBadges.filter(b =>
-        b.badge_type !== 'started' && (!quitIso || b.earned_at >= quitIso)
-      );
+      // "Milestones" counts every badge earned this streak — day-based streak
+      // badges and activity/achievement badges (daily check-ins, urges
+      // overcome, started, etc.) alike.
+      const currentBadges = allBadges.filter(b => !quitIso || b.earned_at >= quitIso);
       const fetchedBadgeTypes = currentBadges.map(b => b.badge_type);
-      earnedBadgeTypesRef.current = fetchedBadgeTypes;
-      // The badges table also holds non-milestone achievement badges (first_payment,
-      // loss_first_log, goal_set, community_first_post, debt_${id}, etc.) — the
-      // "Milestones" stat should only count day-based streak milestones (BADGE_DEFS),
-      // matching what the Milestones screen shows, otherwise this count runs ahead of
-      // what the user recognizes as a "milestone".
-      const milestoneBadgeTypes = new Set(BADGE_DEFS.map(b => b.type));
-      const badgeCount = fetchedBadgeTypes.filter(t => milestoneBadgeTypes.has(t)).length;
+      earnedBadgeTypesRef.current = fetchedBadgeTypes.filter(t => t !== 'started');
+      const badgeCount = fetchedBadgeTypes.length;
       if (!isMounted.current) return;
       setTotalManualSavings((savingsRows ?? []).reduce((s, r) => s + Number(r.amount), 0));
       const googleAvatar = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
