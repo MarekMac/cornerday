@@ -2935,10 +2935,10 @@ export default function AccountScreen() {
                   </Pressable>
                   {partnerToken && (
                     <Pressable
-                      style={{ alignSelf: 'center', marginTop: 14 }}
+                      style={[s.revokeBtn, { marginTop: 10 }, partnerLinkLoading && { opacity: 0.6 }]}
                       onPress={revokePartnerLink}
                       disabled={partnerLinkLoading}>
-                      <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>Revoke to cut off access completely</Text>
+                      <Text style={s.revokeBtnTxt}>Revoke to cut off access completely</Text>
                     </Pressable>
                   )}
                 </>
@@ -4021,6 +4021,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   // Someone in your corner
   partnerLockedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
   partnerLockedTxt: { fontSize: 12, color: c.textMuted },
+  revokeBtn: { width: '100%', borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: c.bgErrorMid },
+  revokeBtnTxt: { fontSize: 14, fontWeight: '700', color: c.error },
   shareNotifyChips: { flexDirection: 'row', gap: 5 },
   shareNotifyChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: c.bgElement },
   shareNotifyChipOn: { backgroundColor: c.primary },
