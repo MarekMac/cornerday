@@ -84,6 +84,7 @@ export default function DebtDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [deletePayTarget, setDeletePayTarget] = useState<{ id: string; amount: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -105,6 +106,16 @@ export default function DebtDetailScreen() {
       ]);
 
       if (!isMounted.current) return;
+      // supabase-js resolves (rather than throws) on a failed query — check .error
+      // explicitly so a network/RLS failure shows a "couldn't load" state instead of
+      // silently rendering as "Debt not found" or a stale $0 balance.
+      const queryError = debtRes.error || paymentsRes.error || profileRes.error;
+      if (queryError) {
+        console.warn('[tracker/id] fetchData query error:', queryError);
+        setLoadError(true);
+        return;
+      }
+      setLoadError(false);
       if (debtRes.data) {
         setDebt(debtRes.data as Debt);
         if (debtRes.data.target_date) setTargetDate(new Date(debtRes.data.target_date + 'T12:00:00'));
@@ -113,6 +124,7 @@ export default function DebtDetailScreen() {
       if (profileRes.data?.currency) setCurrency(profileRes.data.currency);
     } catch (e) {
       console.warn('[tracker/id] fetchData error:', e);
+      if (isMounted.current) setLoadError(true);
     }
   }, [id]);
 
@@ -234,7 +246,16 @@ export default function DebtDetailScreen() {
   if (!debt) {
     return (
       <View style={s.center}>
-        <Text style={{ color: c.textMuted }}>Debt not found.</Text>
+        <Text style={{ color: c.textMuted }}>
+          {loadError ? 'Could not load this debt.' : 'Debt not found.'}
+        </Text>
+        {loadError && (
+          <Pressable
+            style={{ marginTop: 14, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, backgroundColor: c.primary }}
+            onPress={() => { setLoadError(false); fetchData(); }}>
+            <Text style={{ color: c.white, fontWeight: '700' }}>Try again</Text>
+          </Pressable>
+        )}
       </View>
     );
   }

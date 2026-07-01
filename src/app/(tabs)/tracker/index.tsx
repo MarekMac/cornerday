@@ -286,6 +286,15 @@ export default function TrackerIndex() {
       ]);
 
       if (!isMountedRef.current) return;
+      // supabase-js resolves (rather than throws) on a failed query, so a network/RLS
+      // error here would otherwise render as "no debts" / $0 owed instead of an error —
+      // showing wrong financial data as if it were correct. Treat it as a fetch failure.
+      const queryError = debtsRes.error || paymentsRes.error || savingsRes.error || sessionsRes.error || profileRes.error;
+      if (queryError) {
+        console.warn('fetchAll query error:', queryError);
+        setLoadError(true);
+        return;
+      }
       setDebts((debtsRes.data ?? []) as Debt[]);
       setPayments((paymentsRes.data ?? []) as DebtPayment[]);
       setSavings((savingsRes.data ?? []) as SavingEntry[]);
@@ -713,9 +722,19 @@ export default function TrackerIndex() {
     }
     setSavingGoalBusy(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
       try {
         if (!goalInput) {
           await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+          // Supabase is the source of truth Home/Account read from — write there too,
+          // otherwise a goal cleared from this tab keeps showing on Home/Account.
+          if (user) {
+            const { error: goalErr } = await supabase.from('users').update({
+              savings_goal_amount: null, savings_goal_label: null, savings_goal_icon: null,
+              savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
+            }).eq('id', user.id);
+            if (goalErr) throw new Error(goalErr.message);
+          }
           await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
           setSavingsGoal(null);
           setSavingsGoalFor('');
@@ -727,6 +746,13 @@ export default function TrackerIndex() {
           await AsyncStorage.setItem(SAVINGS_GOAL_ICON_KEY, iconVal);
           if (forVal) await AsyncStorage.setItem(SAVINGS_GOAL_FOR_KEY, forVal);
           else await AsyncStorage.removeItem(SAVINGS_GOAL_FOR_KEY);
+          if (user) {
+            const { error: goalErr } = await supabase.from('users').update({
+              savings_goal_amount: val, savings_goal_label: forVal || null, savings_goal_icon: iconVal,
+              savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
+            }).eq('id', user.id);
+            if (goalErr) throw new Error(goalErr.message);
+          }
           const eventType = savingsGoal ? 'goal_updated' : 'goal_set';
           await logGoalEvent(eventType, val, forVal || null);
           setSavingsGoal(val);
@@ -737,18 +763,7 @@ export default function TrackerIndex() {
         Alert.alert('Save failed', 'Could not save goal. Please try again.');
         return;
       }
-      // Persist savings target date to DB
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error: dateErr } = await supabase.from('users').update({
-          savings_target_date: goalTargetDateInput ? goalTargetDateInput.toISOString().split('T')[0] : null,
-        }).eq('id', user.id);
-        if (dateErr) {
-          Alert.alert('Could not save target date', friendlyError(dateErr));
-          return;
-        }
-        setSavingsTargetDate(goalTargetDateInput);
-      }
+      setSavingsTargetDate(goalTargetDateInput);
       haptic();
       closeGoalModal();
     } finally {

@@ -803,6 +803,10 @@ export default function HomeScreen() {
   const fetchingRef = useRef(false);
   const pendingFetchRef = useRef(false);
   const isMountedRef = useRef(true);
+  // Guards against fetchData's badge-award loop (computed from a snapshot of
+  // quit_timestamp) racing with doRelapse (which resets quit_timestamp and
+  // deletes all badges) — see doRelapse and the badge-award loop in fetchData.
+  const relapseInProgressRef = useRef(false);
   const moodScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrolledBadgeCountRef = useRef(0);
   const [moodCardY, setMoodCardY] = useState(0);
@@ -1016,6 +1020,9 @@ export default function HomeScreen() {
       // This is reliable even when the SELECT above returns stale/empty data due to RLS.
       const newlyAwarded: typeof toAward = [];
       for (const b of toAward) {
+        // A relapse mid-loop resets quit_timestamp and deletes all badges — stop
+        // awarding against this now-stale streak snapshot instead of racing it.
+        if (relapseInProgressRef.current) break;
         // Use the actual moment the milestone was reached, not now
         const earnedAt = new Date(quitTs + b.days * 86400000).toISOString();
         const { error } = await supabase.from('badges').insert({ user_id: user.id, badge_type: b.type, earned_at: earnedAt });
@@ -1648,6 +1655,10 @@ export default function HomeScreen() {
 
   const doRelapse = async () => {
     setRelapseLoading(true);
+    // Set before touching badges/quit_timestamp so a concurrent fetchData's
+    // badge-award loop (see relapseInProgressRef comment above) stops instead
+    // of re-inserting badges for the streak we're about to reset.
+    relapseInProgressRef.current = true;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -1723,6 +1734,7 @@ export default function HomeScreen() {
         } : prev);
       }
     } finally {
+      relapseInProgressRef.current = false;
       setRelapseLoading(false);
     }
   };
