@@ -27,9 +27,18 @@ interface ExpoPushMessage {
 
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET')!;
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
-  if (auth !== `Bearer ${WEBHOOK_SECRET}`) {
+  if (!timingSafeEqual(auth, `Bearer ${WEBHOOK_SECRET}`)) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }
 

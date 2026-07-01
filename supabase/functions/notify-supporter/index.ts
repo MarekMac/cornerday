@@ -135,13 +135,16 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (type === 'urge') {
-    const { data: claimed } = await sb.rpc('claim_urge_notify_slot', { p_link_id: link.id });
-    if (!claimed) {
-      return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'rate_limited' }), {
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
-    }
+  const RATE_LIMIT_RPC: Record<string, string> = {
+    urge: 'claim_urge_notify_slot',
+    relapse: 'claim_relapse_notify_slot',
+    milestone: 'claim_milestone_notify_slot',
+  };
+  const { data: claimed } = await sb.rpc(RATE_LIMIT_RPC[type], { p_link_id: link.id });
+  if (!claimed) {
+    return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'rate_limited' }), {
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
   }
 
   const { data: userData } = await sb

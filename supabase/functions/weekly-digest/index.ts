@@ -7,6 +7,15 @@ const CRON_SECRET    = Deno.env.get('CRON_SECRET') ?? '';
 const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET')!;
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'CornerDay <noreply@cornerday.app>';
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
+  return diff === 0;
+}
+
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ESC[c]);
 
@@ -720,8 +729,8 @@ async function buildEmailForUser(
 Deno.serve(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
   const cronKey = req.headers.get('x-cron-secret') ?? '';
-  const validSrk = auth === `Bearer ${WEBHOOK_SECRET}`;
-  const validCron = CRON_SECRET && cronKey === CRON_SECRET;
+  const validSrk = timingSafeEqual(auth, `Bearer ${WEBHOOK_SECRET}`);
+  const validCron = !!CRON_SECRET && timingSafeEqual(cronKey, CRON_SECRET);
   if (!validSrk && !validCron) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
   }

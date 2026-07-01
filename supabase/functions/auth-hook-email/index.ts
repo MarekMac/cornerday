@@ -87,14 +87,28 @@ const recoveryHtml = (resetUrl: string) => `<!DOCTYPE html>
 </table>
 </body></html>`;
 
-const HOOK_SECRET = Deno.env.get('HOOK_SECRET');
+const HOOK_SECRET = Deno.env.get('HOOK_SECRET') ?? '';
+
+function timingSafeEqual(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
+  return diff === 0;
+}
 
 Deno.serve(async (req: Request) => {
-  if (HOOK_SECRET) {
-    const auth = req.headers.get('Authorization') ?? '';
-    if (!auth.startsWith('Bearer ') || auth.slice(7) !== HOOK_SECRET) {
-      return err('Unauthorized', 401);
-    }
+  // Fail closed: an unset secret used to skip auth entirely, letting anyone
+  // POST an arbitrary email + email_data to send a branded confirm/reset email
+  // to any address using CornerDay's Resend account and domain reputation.
+  if (!HOOK_SECRET) {
+    console.error('HOOK_SECRET env var not set');
+    return err('server_misconfigured', 500);
+  }
+  const auth = req.headers.get('Authorization') ?? '';
+  if (!auth.startsWith('Bearer ') || !timingSafeEqual(auth.slice(7), HOOK_SECRET)) {
+    return err('Unauthorized', 401);
   }
 
   let data: { user: { email: string }; email_data: { email_action_type: string; token?: string; token_hash?: string; redirect_to: string } };
