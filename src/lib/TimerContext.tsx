@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 export const DEFAULT_TIMER_TOTAL = 20 * 60;
 
@@ -29,27 +30,40 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSecsLeft, setTimerSecsLeft] = useState(DEFAULT_TIMER_TOTAL);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Wall-clock end timestamp, not a countdown decremented per tick — this way the
+  // displayed time stays accurate even if JS timers are throttled/paused while the
+  // app is backgrounded (which happens easily mid-urge, e.g. switching apps to call
+  // someone), instead of silently freezing and resuming from a stale value.
+  const endAtRef = useRef<number | null>(null);
+
+  const syncFromEndAt = () => {
+    if (endAtRef.current == null) return;
+    const remaining = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000));
+    setTimerSecsLeft(remaining);
+    if (remaining <= 0) setTimerRunning(false);
+  };
 
   useEffect(() => {
     if (!timerRunning) return;
-    intervalRef.current = setInterval(() => {
-      setTimerSecsLeft(prev => {
-        if (prev <= 1) {
-          setTimerRunning(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    intervalRef.current = setInterval(syncFromEndAt, 1000);
     return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
   }, [timerRunning]);
 
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && timerRunning) syncFromEndAt();
+    });
+    return () => sub.remove();
+  }, [timerRunning]);
+
   const startTimer = (totalSecs = DEFAULT_TIMER_TOTAL) => {
+    endAtRef.current = Date.now() + totalSecs * 1000;
     setTimerTotal(totalSecs);
     setTimerSecsLeft(totalSecs);
     setTimerRunning(true);
   };
   const resetTimer = () => {
+    endAtRef.current = null;
     setTimerRunning(false);
     setTimerSecsLeft(timerTotal);
   };

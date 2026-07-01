@@ -153,6 +153,7 @@ export default function SignupScreen() {
         }
         if (profile?.quit_date) {
           await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+          authFlags.googleOAuthInProgress = false;
           router.replace('/(tabs)');
           return; // keep overlay up until component unmounts
         } else {

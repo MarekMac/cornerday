@@ -191,6 +191,7 @@ function InnerLayout() {
     };
 
     const init = async () => {
+     try {
       // Check for password-reset deep link first — must win over normal auth flow
       const initialUrl = await Linking.getInitialURL();
       if (initialUrl && await handleResetUrl(initialUrl)) {
@@ -259,9 +260,19 @@ function InnerLayout() {
       if (biometricFlag === 'true' && sess) setLocked(true);
 
       setAuthChecked(true);
+     } catch (e) {
+      Sentry.captureException(e);
+      // Fail safe: never leave the app stuck on the splash screen if any step above throws.
+      setAuthChecked(true);
+     }
     };
 
     init();
+    // Absolute fallback: if init() somehow hangs (e.g. a network call that never
+    // resolves or rejects), don't leave the user stuck on the splash screen forever.
+    const authFallbackTimer = setTimeout(() => {
+      if (!authCheckedRef.current) setAuthChecked(true);
+    }, 12000);
 
     // Handle deep links when the app is already foregrounded
     const urlSub = Linking.addEventListener('url', async ({ url }) => {
@@ -326,6 +337,7 @@ function InnerLayout() {
       subscription.unsubscribe();
       urlSub.remove();
       if (signedOutTimerRef.current) clearTimeout(signedOutTimerRef.current);
+      clearTimeout(authFallbackTimer);
     };
   }, []);
 

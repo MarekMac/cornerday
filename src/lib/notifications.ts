@@ -357,6 +357,12 @@ export async function scheduleAllNotifications(
   // Clear the urge prediction ID BEFORE cancelAll so a concurrent
   // scheduleUrgePredictionNotification can't write a new ID that we then delete.
   await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
+  // cancelAllScheduledNotificationsAsync wipes every OS-scheduled notification,
+  // including the re-engagement ones from scheduleOnboardingCheckin — clear their
+  // tracking keys too, otherwise scheduleOnboardingCheckin (always called right
+  // after this function) sees stale ids and skips rescheduling, permanently
+  // killing the 3/5/14/30-day win-back notifications after the next call.
+  await AsyncStorage.multiRemove([AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY]);
   try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {
     // cancellation can fail if permissions were revoked — continue scheduling anyway
   }
