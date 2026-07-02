@@ -101,6 +101,14 @@ function fmtDurationMs(ms: number): string {
   return mo > 0 ? `${y}y ${mo}mo` : `${y}y`;
 }
 
+// Minimum real elapsed days before a "per day/week" rate is trusted enough
+// to extrapolate into a projection. Below this, a single entry logged today
+// would otherwise floor to 1 day of span and wildly overstate any rate
+// derived from it (e.g. "$2000/day" from one $2000 payment logged minutes
+// ago). Applied at the source of each rate so every downstream projection
+// (payoff pacing, savings-rate cards, goal ETA) is covered consistently.
+const MIN_RELIABLE_DAYS = 3;
+
 const MOODS     = ['😞', '😕', '😐', '🙂', '😄'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_SHORT  = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -290,16 +298,16 @@ export default function AnalyticsScreen() {
     const firstSavingMs = savingRows.length > 0
       ? Math.min(...savingRows.map(r => new Date(r.created_at).getTime()))
       : 0;
-    const savingsDaysSpan = firstSavingMs > 0
-      ? Math.max(1, (Date.now() - firstSavingMs) / 86400000)
-      : 0;
+    const rawSavingsDaysSpan = firstSavingMs > 0 ? (Date.now() - firstSavingMs) / 86400000 : 0;
+    const savingsDaysSpan = rawSavingsDaysSpan >= MIN_RELIABLE_DAYS ? Math.max(1, rawSavingsDaysSpan) : 0;
 
     const gamblingLossRows = lossRows.filter(r => r.type === 'session');
     const totalLost = gamblingLossRows.reduce((s, r) => s + Number(r.amount), 0);
     const firstLossMs = gamblingLossRows.length > 0
       ? Math.min(...gamblingLossRows.map(r => new Date(r.created_at).getTime()))
       : 0;
-    const spanWeeks = firstLossMs > 0 ? Math.max(1, (Date.now() - firstLossMs) / (7 * 86400000)) : 0;
+    const rawLossDaysSpan = firstLossMs > 0 ? (Date.now() - firstLossMs) / 86400000 : 0;
+    const spanWeeks = rawLossDaysSpan >= MIN_RELIABLE_DAYS ? Math.max(1, rawLossDaysSpan / 7) : 0;
     const avgWeeklySpend = spanWeeks > 0 ? totalLost / spanWeeks : 0;
 
     const monthMap: Record<string, number> = {};
@@ -335,8 +343,9 @@ export default function AnalyticsScreen() {
       const firstPaymentMs = debtPayments.length > 0
         ? Math.min(...debtPayments.map(p => new Date(p.created_at).getTime()))
         : null;
-      const daysElapsed = firstPaymentMs !== null
-        ? Math.max(1, (Date.now() - firstPaymentMs) / 86400000)
+      const rawDaysElapsed = firstPaymentMs !== null ? (Date.now() - firstPaymentMs) / 86400000 : null;
+      const daysElapsed = rawDaysElapsed !== null && rawDaysElapsed >= MIN_RELIABLE_DAYS
+        ? Math.max(1, rawDaysElapsed)
         : null;
       const requiredPerDay = !isPaidOff && daysRemaining && daysRemaining > 0 && remaining > 0
         ? remaining / daysRemaining : null;
@@ -779,10 +788,10 @@ export default function AnalyticsScreen() {
     insights.push({ emoji: '📈', text: 'Your streaks are getting longer over time', bg: c.bgSuccess, tc: c.success });
   if (data.checkinStreak.current >= 7)
     insights.push({ emoji: '🔥', text: `${data.checkinStreak.current}-day check-in streak — showing up every single day`, bg: '#fef9c3', tc: '#92400e' });
-  // Require a few days of real data before projecting a monthly figure —
-  // with savingsDaysSpan floored at 1, a single large entry logged on day 1
-  // would otherwise extrapolate to totalSavings * 30 from one data point.
-  if (data.dailySavingsRate > 0 && data.totalSavings > 0 && data.savingsDaysSpan >= 3)
+  // dailySavingsRate is already 0 below MIN_RELIABLE_DAYS of span (see its
+  // computation above), so this is naturally guarded against a single
+  // large entry extrapolating into a monthly figure.
+  if (data.dailySavingsRate > 0 && data.totalSavings > 0)
     insights.push({ emoji: '💸', text: `On track to save ${fmt(data.dailySavingsRate * 30, data.currency)} this month`, bg: c.bgTeal, tc: c.primary });
   if (cleanDaysCount >= 52)
     insights.push({ emoji: '🗓️', text: `${cleanDaysCount} of your last 60 days were clean — remarkable`, bg: c.bgSuccess, tc: c.success });
