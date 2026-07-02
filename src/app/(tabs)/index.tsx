@@ -2160,21 +2160,6 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* On this day */}
-        {streakDays >= 30 && (() => {
-          const lines: string[] = [];
-          if (streakDays >= 365) lines.push(`A year ago you were on day ${streakDays - 365} — look how far you've come.`);
-          if (streakDays >= 60) lines.push(`Two months ago you were on day ${streakDays - 60}.`);
-          else if (streakDays >= 30) lines.push(`A month ago you were on day ${streakDays - 30}.`);
-          if (lines.length === 0) return null;
-          return (
-            <View style={s.onThisDayCard}>
-              <Text style={s.onThisDayTitle}>On this day</Text>
-              {lines.map((l, i) => <Text key={i} style={s.onThisDayBody}>{l}</Text>)}
-            </View>
-          );
-        })()}
-
         {/* Mood — combined check-in + week strip */}
         <View style={s.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
           {data.todayMood !== null && !editingMood ? (
@@ -3175,10 +3160,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   cardTitle: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
 
   // Mood
-  onThisDayCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16, gap: 6 },
-  onThisDayTitle: { fontSize: 13, fontWeight: '700', color: c.primary, textTransform: 'uppercase', letterSpacing: 0.6 },
-  onThisDayBody: { fontSize: 14, color: c.textBody, lineHeight: 20 },
-
   moodCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 12 },
   moodInnerDivider: { height: 1, backgroundColor: c.borderLight, marginHorizontal: -12, marginVertical: 18 },
   moodCardTitleRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
