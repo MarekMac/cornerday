@@ -368,7 +368,7 @@ export default function CommunityFeed() {
           const fm: Record<string, boolean> = {};
           for (const row of data as { following_id: string }[]) fm[row.following_id] = true;
           setFollowedUsers(fm);
-        }).catch(() => {});
+        }, () => {});
     }
     return () => { cancelled = true; };
   }, [load]));

@@ -646,7 +646,7 @@ export default function AccountScreen() {
       if (rawMilestone) {
         try {
           const parsed = JSON.parse(rawMilestone) as CustomMilestone;
-          if (parsed.type && parsed.target > 0) setCustomMilestone({ icon: DEFAULT_MILESTONE_ICON[parsed.type as MilestoneType] ?? '🎯', ...parsed });
+          if (parsed.type && parsed.target > 0) setCustomMilestone({ ...parsed, icon: parsed.icon ?? DEFAULT_MILESTONE_ICON[parsed.type as MilestoneType] ?? '🎯' });
         } catch {
           const n = Number(rawMilestone);
           if (!isNaN(n) && n > 0) setCustomMilestone({ type: 'days', target: n, icon: '📅' });

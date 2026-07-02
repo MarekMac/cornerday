@@ -960,7 +960,7 @@ export default function TrackerIndex() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.bgScreen }}>
         <SkeletonBox height={140} radius={0} />
         <View style={{ padding: 16, gap: 12 }}>
           <SkeletonBox height={90} />
@@ -978,7 +978,7 @@ export default function TrackerIndex() {
 
   if (loadError) {
     return (
-      <View style={{ flex: 1, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <View style={{ flex: 1, backgroundColor: c.bgScreen, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <Text style={{ fontSize: 15, color: c.textBody, textAlign: 'center', marginBottom: 16 }}>
           Could not load data. Tap to retry.
         </Text>

@@ -126,7 +126,7 @@ export default function PostDetail() {
       if (uid && loadedPost && loadedPost.user_id && loadedPost.user_id !== uid && !loadedPost.is_anonymous) {
         supabase.from('community_follows').select('id')
           .eq('follower_id', uid).eq('following_id', loadedPost.user_id)
-          .maybeSingle().then(({ data }) => { if (isMountedRef.current) setIsFollowing(!!data); }).catch(e => console.warn('[Follow check]', e));
+          .maybeSingle().then(({ data }) => { if (isMountedRef.current) setIsFollowing(!!data); }, e => console.warn('[Follow check]', e));
       }
 
       const counts: Record<string, number> = {};

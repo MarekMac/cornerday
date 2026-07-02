@@ -36,9 +36,9 @@ function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
+        type={isFocused ? 'bgTealMid' : 'bgElement'}
         style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+        <ThemedText type="small" themeColor={isFocused ? 'textPrimary' : 'textSecondary'}>
           {children}
         </ThemedText>
       </ThemedView>
@@ -49,7 +49,7 @@ function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
 function TabListContainer(props: TabListProps) {
   return (
     <View {...(props as any)} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
+      <ThemedView type="bgElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
           CornerDay
         </ThemedText>

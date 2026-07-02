@@ -16,7 +16,7 @@ export default function ConfirmEmailScreen() {
   }, []);
 
   return (
-    <View style={[s.wrap, { backgroundColor: c.bgApp }]}>
+    <View style={[s.wrap, { backgroundColor: c.bgScreen }]}>
       {timedOut ? (
         <>
           <Text style={[s.emoji]}>⚠️</Text>

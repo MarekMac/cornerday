@@ -109,7 +109,8 @@ export const Colors = {
   },
 } as const;
 
-export type AppColors = typeof Colors.light;
+export type AppColors = { [K in keyof typeof Colors.light]: string };
+export type ThemeColor = keyof AppColors;
 
 export const Fonts = Platform.select({
   ios: {

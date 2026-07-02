@@ -51,7 +51,7 @@ export default function ResetPasswordScreen() {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) { setError(updateError.message); return; }
       setDone(true);
-      navTimerRef.current = setTimeout(() => router.replace('/(tabs)/'), 2500);
+      navTimerRef.current = setTimeout(() => router.replace('/(tabs)'), 2500);
     } catch {
       setError('Something went wrong. Please check your connection and try again.');
     } finally {

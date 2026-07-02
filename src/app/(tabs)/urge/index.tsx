@@ -612,7 +612,7 @@ export default function UrgeScreen() {
         // the AsyncStorage flag, so a lapsed subscription can't keep badges
         // surviving a relapse indefinitely.
         const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true' && isPremium;
-        const resetOps: Promise<any>[] = [
+        const resetOps: PromiseLike<any>[] = [
           supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null }),
         ];
         // Only delete day-based streak badges, not permanent achievement badges
@@ -638,7 +638,7 @@ export default function UrgeScreen() {
 
         const { data: prefsRow } = await supabase
           .from('users')
-          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction')
+          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
           .eq('id', user.id).maybeSingle();
         const prefs = {
           notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
@@ -647,6 +647,7 @@ export default function UrgeScreen() {
           notif_weekly_summary:        prefsRow?.notif_weekly_summary        ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
           notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
           notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+          notif_community:             prefsRow?.notif_community             ?? DEFAULT_NOTIF_PREFS.notif_community,
         };
         await scheduleAllNotifications(prefs, newQuitTimestamp, badgeTypesForNotif);
         await scheduleOnboardingCheckin();

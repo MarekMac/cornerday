@@ -1170,7 +1170,7 @@ export default function HomeScreen() {
       setShieldUndo(prev => prev ?? undoData);
     } else if (sbUndoExpires > 0 && sbUndoExpires <= Date.now()) {
       // Expired entry still on server — clean it up
-      supabase.from('users').update({ shield_undo_prev_quit: null, shield_undo_prev_streak_days: null, shield_undo_expires_at: null, shield_undo_relapse_row_id: null }).eq('id', user.id).then(() => {}).catch(() => {});
+      supabase.from('users').update({ shield_undo_prev_quit: null, shield_undo_prev_streak_days: null, shield_undo_expires_at: null, shield_undo_relapse_row_id: null }).eq('id', user.id).then(() => {}, () => {});
     }
 
     const notifPrefs = {
@@ -1767,7 +1767,7 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.bgScreen }}>
         <SkeletonBox height={220} radius={0} />
         <View style={{ padding: 16, gap: 12 }}>
           <SkeletonBox height={160} />

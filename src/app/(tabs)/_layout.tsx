@@ -107,12 +107,12 @@ function TabButton({
 // untyped — but this is deliberate instead of a broken import.
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
-  const visibleRoutes = state.routes.filter(r => r.name !== 'account');
+  const visibleRoutes = state.routes.filter((r: any) => r.name !== 'account');
 
   return (
     <View style={[tbs.wrapper, { paddingBottom: Math.max(insets.bottom + (Platform.OS === 'android' ? 12 : 0), 20) }]}>
       <View style={tbs.bar}>
-        {visibleRoutes.map((route) => {
+        {visibleRoutes.map((route: any) => {
           const { options } = descriptors[route.key];
           const isFocused = state.routes[state.index]?.name === route.name;
 
@@ -259,9 +259,8 @@ export default function TabsLayout() {
       {celebPayload && (
         <MilestoneCelebrationModal
           badge={celebPayload}
-          celebration={celebPayload.celebration}
-          message={celebPayload.msg}
-          earnedAt={celebPayload.earnedAt}
+          tagline={celebPayload.celebration.text}
+          isTimeBadge={false}
           onShare={async () => {
             const p = celebPayload;
             setCelebPayload(null);

@@ -407,7 +407,7 @@ export default function ModerationScreen() {
   // of hooks between renders, a genuine Rules-of-Hooks violation that crashes.
   if (!isAdmin) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bgScreen }}>
         <Text style={{ fontSize: 16, color: c.textSecondary }}>Unauthorized</Text>
       </SafeAreaView>
     );
