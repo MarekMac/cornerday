@@ -779,7 +779,10 @@ export default function AnalyticsScreen() {
     insights.push({ emoji: '📈', text: 'Your streaks are getting longer over time', bg: c.bgSuccess, tc: c.success });
   if (data.checkinStreak.current >= 7)
     insights.push({ emoji: '🔥', text: `${data.checkinStreak.current}-day check-in streak — showing up every single day`, bg: '#fef9c3', tc: '#92400e' });
-  if (data.dailySavingsRate > 0 && data.totalSavings > 0)
+  // Require a few days of real data before projecting a monthly figure —
+  // with savingsDaysSpan floored at 1, a single large entry logged on day 1
+  // would otherwise extrapolate to totalSavings * 30 from one data point.
+  if (data.dailySavingsRate > 0 && data.totalSavings > 0 && data.savingsDaysSpan >= 3)
     insights.push({ emoji: '💸', text: `On track to save ${fmt(data.dailySavingsRate * 30, data.currency)} this month`, bg: c.bgTeal, tc: c.primary });
   if (cleanDaysCount >= 52)
     insights.push({ emoji: '🗓️', text: `${cleanDaysCount} of your last 60 days were clean — remarkable`, bg: c.bgSuccess, tc: c.success });
