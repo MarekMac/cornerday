@@ -1,0 +1,14 @@
+-- recovery-milestone-email already fires immediately via the
+-- on_payment_recovery_milestone_email trigger (see
+-- supabase/milestone-email-triggers.sql) on every debt_payments insert, and
+-- its own internal per-threshold badge-claim check is idempotent (it
+-- iterates every recovery_*pct milestone the user has crossed and only
+-- sends for ones not yet claimed) — so unlike the milestone-email-daily
+-- cron this one wasn't misfiring on stale/already-reached milestones.
+--
+-- Removed anyway for consistency: milestone/achievement-style emails
+-- (first-loss, streak milestones, recovery-percent milestones) should only
+-- ever fire at the moment the event actually happens, not re-scanned on a
+-- fixed schedule. The daily cron's only remaining value was as a safety net
+-- against the trigger's net.http_post silently failing — accepted trade-off.
+select cron.unschedule(jobid) from cron.job where jobname = 'recovery-milestone-email';

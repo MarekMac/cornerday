@@ -130,7 +130,11 @@ Deno.serve(async (req: Request) => {
   const record = body.record ?? body;
   const { user_id, amount, type } = record;
 
-  if (type !== 'loss') return new Response(JSON.stringify({ skipped: 'not a loss entry' }), { status: 200 });
+  // 'session' is the current type for a logged gambling-loss entry (the
+  // tracker screen's "Log Loss" tab writes type: 'session') — this used to
+  // check for a 'loss' type that no code path has written since the
+  // debt-tracker rewrite, so this email could never actually fire.
+  if (type !== 'session') return new Response(JSON.stringify({ skipped: 'not a loss entry' }), { status: 200 });
   if (!user_id)        return new Response(JSON.stringify({ error: 'no user_id' }), { status: 400 });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
