@@ -411,7 +411,21 @@ const REENGAGEMENT_SCHEDULE: { seconds: number; title: string; body: string }[] 
   },
 ];
 
-export async function scheduleOnboardingCheckin(): Promise<void> {
+// Routed through the same scheduleQueue as scheduleAllNotifications (not
+// just serialized against its own other calls) — this function's
+// scheduleNotificationAsync calls used to be able to run concurrently with
+// scheduleAllNotificationsImpl's cancelAllScheduledNotificationsAsync(),
+// which could cancel a re-engagement notification this function had just
+// created a moment before this function got a chance to record its ID,
+// silently and permanently losing it (scheduleOnboardingCheckin only
+// reschedules when its AsyncStorage key is empty, and by then it wouldn't be).
+export function scheduleOnboardingCheckin(): Promise<void> {
+  const run = () => scheduleOnboardingCheckinImpl();
+  scheduleQueue = scheduleQueue.then(run, run);
+  return scheduleQueue;
+}
+
+async function scheduleOnboardingCheckinImpl(): Promise<void> {
   // Skip if already scheduled — calling this on every launch would reset the countdown,
   // meaning users who open the app daily would never receive re-engagement notifications.
   // Keys are cleared on relapse/reset so a fresh schedule fires correctly after a restart.
@@ -456,7 +470,21 @@ async function cancelExistingUrgePredictionNotif() {
   }
 }
 
-export async function scheduleUrgePredictionNotification(
+// Same reasoning as scheduleOnboardingCheckin above — routed through the
+// shared scheduleQueue so it can't race scheduleAllNotificationsImpl's
+// cancelAllScheduledNotificationsAsync() and have its own newly-created
+// notification silently cancelled out from under it.
+export function scheduleUrgePredictionNotification(
+  entries: { created_at: string }[],
+  prefs: NotifPrefs,
+  isPremium: boolean,
+): Promise<void> {
+  const run = () => scheduleUrgePredictionNotificationImpl(entries, prefs, isPremium);
+  scheduleQueue = scheduleQueue.then(run, run);
+  return scheduleQueue;
+}
+
+async function scheduleUrgePredictionNotificationImpl(
   entries: { created_at: string }[],
   prefs: NotifPrefs,
   isPremium: boolean,

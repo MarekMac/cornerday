@@ -268,11 +268,16 @@ export default function Q3Screen() {
         <Pressable
           style={({ pressed }) => [
             s.continueBtn,
-            !hasValue && s.continueBtnDisabled,
+            // Weekly-bet is optional/skippable by design, but a deliberately
+            // picked quit date must also unlock Continue on its own —
+            // otherwise the only way forward for someone who set a date but
+            // left the bet field blank was "Skip for now", which discards
+            // the date they just carefully picked.
+            !hasValue && !userChangedDate && s.continueBtnDisabled,
             pressed && s.pressed,
           ]}
           onPress={handleContinue}
-          disabled={!hasValue}>
+          disabled={!hasValue && !userChangedDate}>
           <Text style={s.continueBtnText}>Continue</Text>
         </Pressable>
         <Pressable style={s.skipBtn} onPress={handleSkip}>

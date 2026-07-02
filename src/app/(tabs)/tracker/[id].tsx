@@ -276,10 +276,15 @@ export default function DebtDetailScreen() {
   let payoffEstimate: string | null = null;
   if (!isPaidOff && payments.length > 0) {
     const firstPayment = new Date(payments[payments.length - 1].created_at);
-    const daysSinceFirst = Math.max(1, (Date.now() - firstPayment.getTime()) / 86400000);
-    const dailyRate = totalPaid / daysSinceFirst;
-    if (dailyRate > 0) {
-      payoffEstimate = fmtPayoffDate(new Date(Date.now() + (remaining / dailyRate) * 86400000));
+    const rawDaysSinceFirst = (Date.now() - firstPayment.getTime()) / 86400000;
+    // Require a few days of real history before projecting a payoff date —
+    // a single payment logged minutes ago would otherwise floor to 1 day and
+    // wildly overstate the daily rate (see the pace calc below for the same guard).
+    if (rawDaysSinceFirst >= 3) {
+      const dailyRate = totalPaid / Math.max(1, rawDaysSinceFirst);
+      if (dailyRate > 0) {
+        payoffEstimate = fmtPayoffDate(new Date(Date.now() + (remaining / dailyRate) * 86400000));
+      }
     }
   }
 
@@ -328,10 +333,14 @@ export default function DebtDetailScreen() {
             </Text>
             {!isPaidOff && (() => {
               const firstPayment = payments.length > 0 ? new Date(payments[payments.length - 1].created_at) : null;
-              const daysElapsed = firstPayment ? Math.max(1, (Date.now() - firstPayment.getTime()) / 86400000) : 1;
+              const rawDaysElapsed = firstPayment ? (Date.now() - firstPayment.getTime()) / 86400000 : null;
+              // Require a few days of real payment history before trusting a
+              // pace extrapolation — a single payment logged minutes ago would
+              // otherwise floor to 1 day and wildly overstate "pace"/"Ahead".
+              const daysElapsed = rawDaysElapsed !== null && rawDaysElapsed >= 3 ? Math.max(1, rawDaysElapsed) : null;
               const daysRemaining = targetDate ? Math.ceil((targetDate.getTime() - Date.now()) / 86400000) : null;
               const requiredPerDay = daysRemaining && daysRemaining > 0 ? remaining / daysRemaining : null;
-              const actualPerDay = payments.length > 0 ? totalPaid / daysElapsed : null;
+              const actualPerDay = payments.length > 0 && daysElapsed !== null ? totalPaid / daysElapsed : null;
               const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
               return (
                 <View style={s.targetSection}>

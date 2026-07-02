@@ -288,17 +288,41 @@ export default function CoachScreen() {
     } catch (err) {
       console.error('ai-coach fetch error:', err);
       if (isMountedRef.current) {
-        const isTimeout = err instanceof Error && err.name === 'AbortError';
-        const errMsg = isTimeout
-          ? "The response took too long. Please try again."
-          : "I'm having trouble connecting right now. Please try again in a moment.";
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantId
-              ? { ...m, content: m.content.length > 0 ? m.content : errMsg, pending: false }
-              : m,
-          ),
-        );
+        const isAbort = err instanceof Error && err.name === 'AbortError';
+        // A newer sendText() call aborts this one deliberately (line ~182)
+        // whenever two messages are sent close together, by design — that's
+        // not a timeout or a failure. abortControllerRef.current no longer
+        // points at this call's own controller once that's happened (the
+        // newer call replaced it with its own), which is exactly what
+        // isStillCurrent checks in `finally` below — recompute it here too
+        // so a merely-superseded message doesn't get falsely labeled "took
+        // too long" and have that wrong text permanently persisted to
+        // chat history.
+        const isStillCurrent = abortControllerRef.current === abortController;
+        if (isAbort && !isStillCurrent) {
+          // By the time this runs, the newer call has already appended its
+          // own user message + placeholder after this one, so this bubble
+          // is no longer last — drop it outright if it never got any
+          // content (an empty bubble would otherwise sit there permanently),
+          // or just clear its spinner if some text had already streamed in.
+          setMessages(prev => {
+            const mine = prev.find(m => m.id === assistantId);
+            if (mine && mine.content.length === 0) return prev.filter(m => m.id !== assistantId);
+            return prev.map(m => (m.id === assistantId ? { ...m, pending: false } : m));
+          });
+        } else {
+          const isTimeout = isAbort; // still current + AbortError only happens via the 30s streamTimeout
+          const errMsg = isTimeout
+            ? "The response took too long. Please try again."
+            : "I'm having trouble connecting right now. Please try again in a moment.";
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantId
+                ? { ...m, content: m.content.length > 0 ? m.content : errMsg, pending: false }
+                : m,
+            ),
+          );
+        }
       }
     } finally {
       clearTimeout(streamTimeout);

@@ -46,6 +46,12 @@ type MainTab = 'debts' | 'saving' | 'session';
 // Deliberate purple brand color for the session tab — no theme token since it's category-specific.
 const SESSION_COLOR = '#7b5ea7';
 
+// Minimum real elapsed days before a payoff-pace rate is trusted enough to
+// show — a single payment logged minutes ago would otherwise floor to 1 day
+// of span and wildly overstate the "pace"/"Ahead" figures. Matches
+// analytics.tsx's MIN_RELIABLE_DAYS.
+const MIN_RELIABLE_PACE_DAYS = 3;
+
 const GOAL_ICON_LABELS: Record<string, string> = {
   '🎯': 'Goal', '🏖️': 'Holiday', '✈️': 'Travel', '🚗': 'Car',
   '🏠': 'Home', '💍': 'Ring', '📱': 'Phone', '🎓': 'Education',
@@ -79,6 +85,7 @@ interface Debt {
 interface DebtPayment {
   debt_id: string;
   amount: number;
+  created_at: string;
 }
 
 interface SavingEntry {
@@ -280,7 +287,7 @@ export default function TrackerIndex() {
 
       const [debtsRes, paymentsRes, savingsRes, sessionsRes, profileRes, rawGoal, rawFor, rawIcon] = await Promise.all([
         supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-        supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
+        supabase.from('debt_payments').select('debt_id, amount, created_at').eq('user_id', user.id),
         supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
         supabase.from('losses').select('id, amount, category, note, created_at').eq('user_id', user.id).eq('type', 'session').order('created_at', { ascending: false }),
         supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, debt_target_date, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon').eq('id', user.id).maybeSingle(),
@@ -347,6 +354,20 @@ export default function TrackerIndex() {
   const paidByDebt = useMemo(() => {
     const result: Record<string, number> = {};
     payments.forEach(p => { result[p.debt_id] = (result[p.debt_id] ?? 0) + Number(p.amount); });
+    return result;
+  }, [payments]);
+
+  // Matches tracker/[id].tsx and analytics.tsx: pace is measured from the
+  // first payment, not from when the debt was created — otherwise time
+  // spent before making any payment at all drags down the "pace" number,
+  // and the same debt could show contradictory Ahead/Behind badges between
+  // this list and its detail screen depending on which denominator was used.
+  const firstPaymentMsByDebt = useMemo(() => {
+    const result: Record<string, number> = {};
+    payments.forEach(p => {
+      const ms = new Date(p.created_at).getTime();
+      if (result[p.debt_id] === undefined || ms < result[p.debt_id]) result[p.debt_id] = ms;
+    });
     return result;
   }, [payments]);
 
@@ -1236,9 +1257,13 @@ export default function TrackerIndex() {
                         {!isPaidOff && (() => {
                           const td = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
                           const daysRemaining = td ? Math.ceil((td.getTime() - Date.now()) / 86400000) : null;
-                          const daysElapsed = Math.max(1, (Date.now() - new Date(debt.created_at).getTime()) / 86400000);
+                          const firstPaymentMs = firstPaymentMsByDebt[debt.id];
+                          const rawDaysElapsed = firstPaymentMs !== undefined ? (Date.now() - firstPaymentMs) / 86400000 : null;
+                          const daysElapsed = rawDaysElapsed !== null && rawDaysElapsed >= MIN_RELIABLE_PACE_DAYS
+                            ? Math.max(1, rawDaysElapsed)
+                            : null;
                           const requiredPerDay = td && daysRemaining && daysRemaining > 0 ? remaining / daysRemaining : null;
-                          const actualPerDay = paid > 0 ? paid / daysElapsed : null;
+                          const actualPerDay = paid > 0 && daysElapsed !== null ? paid / daysElapsed : null;
                           const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
                           return (
                             <View style={s.debtTargetRow}>

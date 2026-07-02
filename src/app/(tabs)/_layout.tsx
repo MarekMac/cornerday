@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Tabs, router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
@@ -173,10 +173,32 @@ const tbs = StyleSheet.create({
 
 export default function TabsLayout() {
   const [celebPayload, setCelebPayload] = useState<CelebrationPayload | null>(null);
+  // triggerCelebration() is a single-slot event bus with no queue of its own
+  // (see celebrationBus.ts) — a second celebration firing before the first
+  // one's modal was dismissed used to silently overwrite and lose it. Queue
+  // here instead. A ref (not celebPayload state) tracks "currently showing"
+  // since the handler below is registered once and would otherwise close
+  // over a stale null forever.
+  const celebPayloadRef = useRef<CelebrationPayload | null>(null);
+  const celebQueueRef = useRef<CelebrationPayload[]>([]);
+
+  const advanceCelebration = useCallback(() => {
+    const next = celebQueueRef.current.shift() ?? null;
+    celebPayloadRef.current = next;
+    setCelebPayload(next);
+  }, []);
 
   useEffect(() => {
-    registerCelebrationHandler(setCelebPayload);
-    return () => unregisterCelebrationHandler(setCelebPayload);
+    const handler = (p: CelebrationPayload) => {
+      if (celebPayloadRef.current) {
+        celebQueueRef.current.push(p);
+      } else {
+        celebPayloadRef.current = p;
+        setCelebPayload(p);
+      }
+    };
+    registerCelebrationHandler(handler);
+    return () => unregisterCelebrationHandler(handler);
   }, []);
 
   useEffect(() => {
@@ -263,10 +285,10 @@ export default function TabsLayout() {
           isTimeBadge={false}
           onShare={async () => {
             const p = celebPayload;
-            setCelebPayload(null);
+            advanceCelebration();
             await Share.share({ message: `${p.emoji} ${p.label} — I hit a milestone on CornerDay! #CornerDay` });
           }}
-          onClose={() => setCelebPayload(null)}
+          onClose={advanceCelebration}
         />
       )}
       <Tabs

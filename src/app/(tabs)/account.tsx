@@ -1161,6 +1161,12 @@ export default function AccountScreen() {
         // etc.) aren't tied to streak length and are left untouched.
         const streakBadgeTypes = BADGE_DEFS.map(b => b.type);
         await supabase.from('badges').delete().eq('user_id', user.id).in('badge_type', streakBadgeTypes);
+        // Otherwise a later notif-preference toggle this session would still
+        // pass the stale ref (with these now-deleted types in it) into
+        // scheduleAllNotifications, which treats "already in earnedBadgeTypes"
+        // as "already earned" and skips scheduling their push for the new streak.
+        const streakBadgeTypeSet = new Set(streakBadgeTypes);
+        earnedBadgeTypesRef.current = earnedBadgeTypesRef.current.filter(t => !streakBadgeTypeSet.has(t));
         await AsyncStorage.multiRemove([MILESTONE_NOTIFS_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY]);
         await supabase.from('losses').insert({
           user_id: user.id, type: 'quit_date_changed', amount: 0,
@@ -1208,7 +1214,18 @@ export default function AccountScreen() {
     setResetting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) await supabase.from('badges').delete().eq('user_id', user.id);
+      if (user) {
+        await supabase.from('badges').delete().eq('user_id', user.id);
+        earnedBadgeTypesRef.current = [];
+        // removeCustomMilestone (below) clears these same columns — without
+        // it here too, fetchProfile's next read (e.g. on app restart) would
+        // find them still populated server-side and restore the "reset"
+        // custom milestone right back.
+        const { error: msErr } = await supabase.from('users')
+          .update({ custom_milestone_type: null, custom_milestone_target: null, custom_milestone_icon: null })
+          .eq('id', user.id);
+        if (msErr) console.warn('[resetMilestones] custom milestone server sync failed:', msErr.message);
+      }
       await Promise.all([
         AsyncStorage.removeItem(MILESTONE_NOTIFS_KEY),
         AsyncStorage.removeItem(CHECKLIST_KEY),
@@ -1241,7 +1258,17 @@ export default function AccountScreen() {
         if (paymentsErr) { Alert.alert('Could not reset tracker', paymentsErr.message); return; }
         const { error: debtsErr } = await supabase.from('debts').delete().eq('user_id', user.id);
         if (debtsErr) { Alert.alert('Could not reset tracker', debtsErr.message); return; }
-        const { error: lossesErr } = await supabase.from('losses').delete().eq('user_id', user.id);
+        // `losses` is shared by several unrelated features (savings entries,
+        // savings-goal events, streak/milestone journal, onboarding markers)
+        // — an unfiltered delete here used to wipe all of it, silently
+        // zeroing the user's savings-goal progress even though this action
+        // only promises to reset "losses, payments and debt records."
+        // 'loss'/'payment' are the original type values (still present on
+        // rows from before the debt-tracker rewrite); 'session'/
+        // 'session_edited' are current gambling-loss entries; the
+        // 'debt_*' types are this screen's own debt audit trail.
+        const { error: lossesErr } = await supabase.from('losses').delete().eq('user_id', user.id)
+          .in('type', ['loss', 'payment', 'session', 'session_edited', 'debt_paid_off', 'debt_edited', 'debt_deleted']);
         if (lossesErr) { Alert.alert('Could not reset tracker', lossesErr.message); return; }
       }
     } catch (e: any) {
@@ -1355,6 +1382,12 @@ export default function AccountScreen() {
         'coach_chat_history',
       ]);
       try { await FileSystem.deleteAsync(FileSystem.documentDirectory + 'motivation_photo.jpg', { idempotent: true }); } catch (_e) {}
+      // Clearing the AsyncStorage notification-ID keys above only forgets that
+      // these were scheduled — it doesn't cancel them at the OS level. Every
+      // milestone/streak/check-in/weekly-summary/re-engagement push would
+      // otherwise keep firing after the account is gone, which matters more
+      // than usual on a shared/handed-down device for an app like this.
+      try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {}
       try { await supabase.auth.signOut(); } catch (_e) {}
     } catch {
       authFlags.signingOut = false;
@@ -1389,6 +1422,11 @@ export default function AccountScreen() {
         BIOMETRIC_LOCK_KEY, HAPTICS_KEY,
         'coach_chat_history',
       ]);
+      // See the matching comment in executeDeleteAccount — clearing the
+      // AsyncStorage notification-ID keys doesn't cancel the OS-level
+      // schedules, so every scheduled push would otherwise keep firing for
+      // whoever signs in next on this device.
+      try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {}
       try { await supabase.auth.signOut(); } catch (_e) {}
     } catch {
       Alert.alert('Could not sign out', 'Please try again.');
@@ -1658,12 +1696,18 @@ export default function AccountScreen() {
   };
 
   const handleNotifToggle = async (key: keyof NotifPrefs, value: boolean) => {
+    // Functional updates (not the notifPrefs closure captured at call time) —
+    // otherwise toggling a second preference while the first toggle's
+    // Supabase write is still in flight, then having that first write fail,
+    // would revert to the pre-either-toggle snapshot and silently discard
+    // the second toggle's already-applied change (matching the pattern
+    // already used correctly by updateShareSetting/updateNotifySetting above).
+    setNotifPrefs(prev => ({ ...prev, [key]: value }));
     const updated = { ...notifPrefs, [key]: value };
-    setNotifPrefs(updated);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { error: updateErr } = await supabase.from('users').update({ [key]: value }).eq('id', user.id);
-      if (updateErr) { setNotifPrefs(notifPrefs); return; }
+      if (updateErr) { setNotifPrefs(prev => ({ ...prev, [key]: !value })); return; }
       const granted = await requestNotificationPermissions();
       if (granted) {
         await scheduleAllNotifications(updated, quitTimestamp, earnedBadgeTypesRef.current, { streakHour: notifStreakHour, checkinHour: notifCheckinHour });

@@ -322,6 +322,14 @@ export default function CommunityFeed() {
     const tag = activeTagRef.current;
     if (loadingMore || !hasMore || activeFetch.current) return;
     if (tag === 'Saved' || tag === 'Following') return;
+    // Read (don't bump) the generation load() owns — if a tag/sort switch
+    // calls load() while this request is in flight, that bumps the counter
+    // and this stale check below catches it. Without this, a fast tag
+    // switch mid-loadMore used to append the old tag's page-2 results onto
+    // whatever the new tag's load() had just set, splicing unrelated posts
+    // into the wrong feed.
+    const myGen = loadGenerationRef.current;
+    const isStale = () => myGen !== loadGenerationRef.current;
     activeFetch.current = true;
     setLoadingMore(true);
     setLoadMoreError(false);
@@ -339,6 +347,7 @@ export default function CommunityFeed() {
         q = q.eq('user_id', currentUserIdRef.current).eq('is_anonymous', false);
       } else if (tag !== 'All') q = q.eq('tag', tag);
       const { data, error } = await q;
+      if (isStale()) return;
       if (error) {
         console.warn('[community] loadMore error:', error.message);
         setLoadMoreError(true);
@@ -351,6 +360,9 @@ export default function CommunityFeed() {
       setHasMore(items.length === PAGE_SIZE);
       await fetchReactions(items.map(p => p.id), false);
     } finally {
+      // Always clear the mutex/spinner regardless of staleness — this only
+      // guards against *applying* stale results above, not against leaving
+      // loadMore permanently blocked for the new tag.
       setLoadingMore(false);
       activeFetch.current = false;
     }

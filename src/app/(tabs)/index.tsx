@@ -388,13 +388,24 @@ function localMidnight(): string {
   return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 0, 0, 0, 0).toISOString();
 }
 
-// The mood_checkins unique constraint uses UTC day, so use UTC midnight here to
-// avoid a mismatch in UTC-negative timezones: a late-night local entry is stored
-// on the *next* UTC day and localMidnight() would miss it on the following morning.
-function utcMidnight(): string {
+function localDayEnd(): string {
   const n = new Date();
-  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())).toISOString();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 0, 0).toISOString();
 }
+
+// "Today" here must mean the user's local calendar day, not UTC — the app
+// and its Recovery Calendar/streak displays are all local-day concepts. The
+// mood_checkins unique constraint is scoped to UTC day server-side (it has
+// no per-user timezone to key on), so this query and that constraint aren't
+// the same boundary — but that's fine: this query is only for "what should
+// the UI show/treat as today's entry," which is a local-day question.
+// (A UTC-midnight query used to be used here to dodge one direction of the
+// mismatch — a late-night local entry appearing to vanish the next
+// morning — but that traded it for the opposite, more common bug: for any
+// UTC-negative timezone, once local clock time passes the point where UTC
+// has already rolled to the next date, an entry from *earlier that same
+// local day* would fall before a UTC-midnight cutoff and look missing,
+// letting a second check-in slip through as "new" for the same local day.)
 
 function formatStartDate(quitDate: string | null): string {
   if (!quitDate) return '';
@@ -914,7 +925,7 @@ export default function HomeScreen() {
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium, savings_goal_amount, savings_goal_label, savings_goal_icon, custom_milestone_type, custom_milestone_target, custom_milestone_icon, shield_undo_prev_quit, shield_undo_prev_streak_days, shield_undo_expires_at, shield_undo_relapse_row_id').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
-      supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', utcMidnight()).maybeSingle(),
+      supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).lt('created_at', localDayEnd()).maybeSingle(),
       supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const t = new Date(); t.setDate(t.getDate() - 6); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
@@ -942,6 +953,19 @@ export default function HomeScreen() {
     badgeRows.forEach(b => { if (b.earned_at) badgeTimestamps[b.badge_type] = b.earned_at; });
 
     let pendingCelebration: { type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string; earnedAt?: string } | null = null;
+    // Each badge category below only fired the *first* one to newly-earn a
+    // celebration and silently dropped the rest — badges from a later
+    // category were still written to the DB (so they're not lost from
+    // "earned" state), but their popup was permanently skipped even after
+    // the first one was dismissed. celebrationQueue exists precisely for
+    // this ("next" is shifted off it when a celebration is closed, further
+    // down) but nothing was ever pushed into it. Route every newly-earned
+    // celebration through here instead of dropping it.
+    celebrationQueue.current = [];
+    const addCelebration = (payload: NonNullable<typeof pendingCelebration>) => {
+      if (!pendingCelebration) pendingCelebration = payload;
+      else celebrationQueue.current.push(payload);
+    };
 
     // Auto-award badges
     const quitStr = profile?.quit_timestamp ?? profile?.quit_date;
@@ -989,15 +1013,14 @@ export default function HomeScreen() {
         // Only celebrate the highest milestone reached — avoids flooding the user
         // with sequential popups when they reopen the app after time away.
         const highest = newlyAwarded[newlyAwarded.length - 1];
-        pendingCelebration = {
+        addCelebration({
           type: highest.type,
           emoji: highest.emoji,
           label: highest.label,
           celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
           msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
           earnedAt: new Date(quitTs + highest.days * 86400000).toISOString(),
-        };
-        celebrationQueue.current = [];
+        });
       }
 
       // Notify supporter for the highest milestone earned this run (last = most significant)
@@ -1038,12 +1061,12 @@ export default function HomeScreen() {
       await supabase.from('badges').upsert(newDebtBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       newDebtBadges.forEach(b => earnedBadges.push(b.badge_type));
       const newlyPaidDebt = debtItems.filter(d => d.earned && !dedupeGuard.has(`debt_${d.id}`)).pop();
-      if (newlyPaidDebt && !pendingCelebration) {
-        pendingCelebration = {
+      if (newlyPaidDebt) {
+        addCelebration({
           emoji: '🏦', label: `${newlyPaidDebt.name} paid off`,
           celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
           msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-        };
+        });
       }
     }
 
@@ -1087,17 +1110,15 @@ export default function HomeScreen() {
     if (newActivityBadges.length > 0) {
       await supabase.from('badges').upsert(newActivityBadges, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       newActivityBadges.forEach(b => earnedBadges.push(b.badge_type));
-      if (!pendingCelebration) {
-        const celebBadge = ACTIVITY_BADGE_DEFS.find(b => b.type === newActivityBadges[newActivityBadges.length - 1].badge_type);
-        if (celebBadge) {
-          pendingCelebration = {
-            type: celebBadge.type,
-            emoji: celebBadge.emoji,
-            label: celebBadge.label,
-            celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
-            msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-          };
-        }
+      const celebBadge = ACTIVITY_BADGE_DEFS.find(b => b.type === newActivityBadges[newActivityBadges.length - 1].badge_type);
+      if (celebBadge) {
+        addCelebration({
+          type: celebBadge.type,
+          emoji: celebBadge.emoji,
+          label: celebBadge.label,
+          celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
+          msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
+        });
       }
     }
 
@@ -1120,22 +1141,22 @@ export default function HomeScreen() {
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_set' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: 0, category: 'Milestone', note: '📍 Goal Setter badge earned' });
       earnedBadges.push('goal_set');
-      if (!pendingCelebration) pendingCelebration = {
+      addCelebration({
         emoji: '📍', label: 'Goal Setter',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-      };
+      });
     }
     if (savingsGoalAmount && savingsGoalAmount > 0 && totalManualSavings >= savingsGoalAmount && !earnedBadges.includes('goal_reached')) {
       await supabase.from('badges').upsert([{ user_id: user.id, badge_type: 'goal_reached' }], { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
       await supabase.from('losses').insert({ user_id: user.id, type: 'milestone_earned', amount: savingsGoalAmount, category: 'Milestone', note: '🎊 Savings goal reached' });
       earnedBadges.push('goal_reached');
       maybeRequestReview('savings_goal');
-      if (!pendingCelebration) pendingCelebration = {
+      addCelebration({
         emoji: '🎊', label: 'Goal Met',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-      };
+      });
     }
 
     // Prevention checklist badge — guard via DB earnedBadges (source of truth)
@@ -1150,11 +1171,11 @@ export default function HomeScreen() {
         user_id: user.id, type: 'milestone_earned', amount: 0,
         category: 'Milestone', note: '🛡️ Safe Zone — prevention checklist completed',
       });
-      if (!pendingCelebration) pendingCelebration = {
+      addCelebration({
         emoji: '🛡️', label: 'Safe Zone',
         celebration: BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)],
         msg: BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)],
-      };
+      });
     }
 
     // Custom milestone: restore from Supabase if AsyncStorage was wiped
@@ -1537,9 +1558,13 @@ export default function HomeScreen() {
           const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
           if (insertErr) {
             if (insertErr.code === '23505') {
-              // Unique constraint hit — a row already exists for today's UTC day (timezone mismatch).
-              // Find it and update instead.
-              const { data: existing } = await supabase.from('mood_checkins').select('id').eq('user_id', user.id).gte('created_at', utcMidnight()).maybeSingle();
+              // The DB constraint that just rejected this insert is scoped to
+              // UTC day (it has no per-user timezone to key on), so the
+              // conflicting row is guaranteed to fall within the current UTC
+              // day specifically — search by that same boundary to reliably
+              // find it, then update instead.
+              const utcDayStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())).toISOString();
+              const { data: existing } = await supabase.from('mood_checkins').select('id').eq('user_id', user.id).gte('created_at', utcDayStart).maybeSingle();
               if (existing?.id) {
                 const { error: updateErr } = await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', existing.id).eq('user_id', user.id);
                 if (updateErr) { Alert.alert('Could not save mood', updateErr.message); return; }

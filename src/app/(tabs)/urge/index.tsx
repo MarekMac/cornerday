@@ -26,7 +26,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { setImagePickerActive } from '@/lib/image-picker-active';
-import { usePurchases } from '@/context/purchases';
+import { useUser } from '@/context/user';
+import Purchases from 'react-native-purchases';
+import { ENTITLEMENT_ID } from '@/constants/revenuecat';
 import { type GameKey, GAMES, renderGame } from '@/lib/games';
 import { GAME_SCORE_FMT, useGameBests } from '@/lib/useGameBests';
 import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
@@ -231,7 +233,7 @@ export default function UrgeScreen() {
   const [slipReset, setSlipReset] = useState(false);
 
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
-  const { isPremium } = usePurchases();
+  const { isAdmin } = useUser();
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const { personalBests, globalBests, handleScore } = useGameBests();
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
@@ -620,8 +622,20 @@ export default function UrgeScreen() {
       }
       // Streak Shield is premium-only — recheck live premium status, not just
       // the AsyncStorage flag, so a lapsed subscription can't keep badges
-      // surviving a relapse indefinitely.
-      const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true' && isPremium;
+      // surviving a relapse indefinitely. Query RevenueCat directly here
+      // rather than trusting the usePurchases() context's isPremium: that
+      // value can be stale/still-false during the SDK's async init window
+      // right after a cold start, which would wrongly delete shield-protected
+      // badges on a relapse tapped before it resolves — or the inverse,
+      // stale-true after a lapse, which would wrongly preserve them.
+      let liveIsPremium = isAdmin;
+      try {
+        const info = await Purchases.getCustomerInfo();
+        liveIsPremium = liveIsPremium || typeof info.entitlements.active[ENTITLEMENT_ID] !== 'undefined';
+      } catch (e) {
+        console.warn('[doStreakReset] live premium check failed, falling back to admin status only:', e);
+      }
+      const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true' && liveIsPremium;
       const resetOps: PromiseLike<{ error: { message: string } | null }>[] = [
         supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null }),
       ];
