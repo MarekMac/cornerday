@@ -87,6 +87,8 @@ export default function PostDetail() {
   const flatListRef = useRef<FlatList>(null);
   const isMountedRef = useRef(true);
   const followInFlightRef = useRef(false);
+  const reactingRef = useRef(false);
+  const commentReactingRef = useRef<Record<string, boolean>>({});
 
   const loadAll = async () => {
     setLoading(true);
@@ -188,72 +190,106 @@ export default function PostDetail() {
   }, []);
 
   const pickReaction = async (emoji: string) => {
-    if (!currentUserId || !post) return;
+    // Every other toggle in this feature guards re-entry with a ref checked
+    // synchronously before any state/await (see followInFlightRef above,
+    // and bookmarkingRef/followingInFlightRef in community/index.tsx) —
+    // this one didn't, so a fast double-tap could fire twice before the
+    // first insert lands, both taking the "insert" branch and violating the
+    // UNIQUE(post_id, user_id) constraint on the second one.
+    if (!currentUserId || !post || reactingRef.current) return;
+    reactingRef.current = true;
     const prevReaction = userReaction;
     const prevCounts = { ...reactionCounts };
     const prevPost = post;
 
-    if (userReaction === emoji) {
-      setUserReaction(null);
-      setReactionCounts(prev => ({ ...prev, [emoji]: Math.max(0, (prev[emoji] ?? 1) - 1) }));
-      setPost(p => p ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p);
-      const { error } = await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
-      if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
-    } else if (userReaction) {
-      const old = userReaction;
-      setUserReaction(emoji);
-      setReactionCounts(prev => ({
-        ...prev,
-        [old]: Math.max(0, (prev[old] ?? 1) - 1),
-        [emoji]: (prev[emoji] ?? 0) + 1,
-      }));
-      const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
-      if (delErr) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); return; }
-      const { error: insErr } = await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
-      if (insErr) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
-    } else {
-      setUserReaction(emoji);
-      setReactionCounts(prev => ({ ...prev, [emoji]: (prev[emoji] ?? 0) + 1 }));
-      setPost(p => p ? { ...p, reactions_count: p.reactions_count + 1 } : p);
-      const { error } = await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
-      if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
+    try {
+      if (userReaction === emoji) {
+        setUserReaction(null);
+        setReactionCounts(prev => ({ ...prev, [emoji]: Math.max(0, (prev[emoji] ?? 1) - 1) }));
+        setPost(p => p ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p);
+        const { error } = await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+        if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
+      } else if (userReaction) {
+        const old = userReaction;
+        setUserReaction(emoji);
+        setReactionCounts(prev => ({
+          ...prev,
+          [old]: Math.max(0, (prev[old] ?? 1) - 1),
+          [emoji]: (prev[emoji] ?? 0) + 1,
+        }));
+        const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+        if (delErr) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); return; }
+        const { error: insErr } = await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
+        if (insErr) {
+          // The delete already succeeded by this point — the DB now has no
+          // reaction row at all for this user on this post. Rolling back to
+          // prevReaction (the old emoji) would show it as still active when
+          // it's actually gone, invisibly out of sync until a reload. Land
+          // on "no reaction" instead, which matches DB truth.
+          setUserReaction(null);
+          // `old`'s count is already correctly decremented by the optimistic
+          // update above (matches the delete that really did succeed) — only
+          // undo the `emoji` increment, since the insert that would have
+          // earned it never actually landed.
+          setReactionCounts(prev => ({ ...prev, [emoji]: Math.max(0, (prev[emoji] ?? 1) - 1) }));
+          setPost(p => p ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p);
+        }
+      } else {
+        setUserReaction(emoji);
+        setReactionCounts(prev => ({ ...prev, [emoji]: (prev[emoji] ?? 0) + 1 }));
+        setPost(p => p ? { ...p, reactions_count: p.reactions_count + 1 } : p);
+        const { error } = await supabase.from('community_reactions').insert({ post_id: post.id, user_id: currentUserId, emoji });
+        if (error) { setUserReaction(prevReaction); setReactionCounts(prevCounts); setPost(prevPost); }
+      }
+    } finally {
+      reactingRef.current = false;
     }
   };
 
   const toggleCommentReaction = async (commentId: string) => {
-    if (!currentUserId) return;
+    if (!currentUserId || commentReactingRef.current[commentId]) return;
+    commentReactingRef.current[commentId] = true;
     const hasReacted = myHelpfulReactions.has(commentId);
     const prevReactions = new Set(myHelpfulReactions);
     const prevComments = comments;
 
-    setMyHelpfulReactions(prev => {
-      const next = new Set(prev);
-      if (hasReacted) next.delete(commentId);
-      else next.add(commentId);
-      return next;
-    });
-    setComments(prev => prev.map(c =>
-      c.id === commentId
-        ? { ...c, helpful_count: Math.max(0, c.helpful_count + (hasReacted ? -1 : 1)) }
-        : c
-    ));
+    try {
+      setMyHelpfulReactions(prev => {
+        const next = new Set(prev);
+        if (hasReacted) next.delete(commentId);
+        else next.add(commentId);
+        return next;
+      });
+      setComments(prev => prev.map(c =>
+        c.id === commentId
+          ? { ...c, helpful_count: Math.max(0, c.helpful_count + (hasReacted ? -1 : 1)) }
+          : c
+      ));
 
-    let error;
-    if (hasReacted) {
-      ({ error } = await supabase
-        .from('community_comment_reactions')
-        .delete()
-        .eq('comment_id', commentId)
-        .eq('user_id', currentUserId));
-    } else {
-      ({ error } = await supabase
-        .from('community_comment_reactions')
-        .insert({ comment_id: commentId, user_id: currentUserId }));
+      let error;
+      if (hasReacted) {
+        ({ error } = await supabase
+          .from('community_comment_reactions')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', currentUserId));
+      } else {
+        ({ error } = await supabase
+          .from('community_comment_reactions')
+          .insert({ comment_id: commentId, user_id: currentUserId }));
+      }
+      if (error) { setMyHelpfulReactions(prevReactions); setComments(prevComments); }
+    } finally {
+      commentReactingRef.current[commentId] = false;
     }
-    if (error) { setMyHelpfulReactions(prevReactions); setComments(prevComments); }
   };
 
   const submitComment = async () => {
+    // Synchronous re-entrancy guard — this is wired to both the send
+    // button's onPress and the TextInput's onSubmitEditing, so a fast
+    // double-trigger (e.g. Enter then tap) before React re-renders the
+    // disabled state could otherwise insert two identical comments.
+    if (submitting) return;
     if (!commentText.trim() || !currentUserId || !post) return;
     setSubmitting(true);
     const text = commentText.trim();
@@ -408,7 +444,15 @@ export default function PostDetail() {
       } else {
         ({ error } = await supabase.from('community_follows').insert({ follower_id: currentUserId, following_id: post.user_id }));
       }
-      if (error) setIsFollowing(prev);
+      if (error) {
+        setIsFollowing(prev);
+        // The insert branch in particular can hit a unique-constraint error
+        // if the initial follow-status fetch (fire-and-forget on load,
+        // below) hadn't resolved yet when this was tapped — silently
+        // reverting with no explanation left the user unsure whether they
+        // were following or not.
+        Alert.alert(prev ? 'Could not unfollow' : 'Could not follow', 'Please try again.');
+      }
     } finally {
       followInFlightRef.current = false;
     }

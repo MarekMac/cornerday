@@ -204,13 +204,19 @@ export default function CommunityFeed() {
     load(activeTag, sort);
   };
 
-  const fetchReactions = async (postIds: string[], replace: boolean) => {
+  const fetchReactions = async (postIds: string[], replace: boolean, isStale?: () => boolean) => {
     if (postIds.length === 0) return;
     const uid = currentUserIdRef.current;
     const { data } = await supabase
       .from('community_reactions')
       .select('post_id, emoji, user_id')
       .in('post_id', postIds);
+
+    // Without this, a fast tag switch (e.g. Struggling -> WinToday) could
+    // have this call's response arrive after a newer tag's fetchReactions
+    // response, overwriting userReactions/allEmojiCounts with data keyed to
+    // post IDs that aren't even on screen anymore.
+    if (isStale?.()) return;
 
     const userMap: Record<string, string> = {};
     const countMap: Record<string, Record<string, number>> = {};
@@ -250,7 +256,7 @@ export default function CommunityFeed() {
         postsRef.current = items;
         setPosts(items);
         setHasMore(items.length === PAGE_SIZE);
-        await fetchReactions(items.map(p => p.id), true);
+        await fetchReactions(items.map(p => p.id), true, isStale);
         return;
       }
 
@@ -283,7 +289,7 @@ export default function CommunityFeed() {
         postsRef.current = items;
         setPosts(items);
         setHasMore(items.length === PAGE_SIZE);
-        await fetchReactions(items.map(p => p.id), true);
+        await fetchReactions(items.map(p => p.id), true, isStale);
         return;
       }
 
@@ -309,7 +315,7 @@ export default function CommunityFeed() {
       postsRef.current = items;
       setPosts(items);
       setHasMore(items.length === PAGE_SIZE);
-      fetchReactions(items.map(p => p.id), true);
+      await fetchReactions(items.map(p => p.id), true, isStale);
     } catch (e) {
       console.warn('[community] load exception:', e);
       if (!isStale()) setLoadError(true);
@@ -358,7 +364,7 @@ export default function CommunityFeed() {
       postsRef.current = next;
       setPosts(next);
       setHasMore(items.length === PAGE_SIZE);
-      await fetchReactions(items.map(p => p.id), false);
+      await fetchReactions(items.map(p => p.id), false, isStale);
     } finally {
       // Always clear the mutex/spinner regardless of staleness — this only
       // guards against *applying* stale results above, not against leaving
@@ -426,7 +432,21 @@ export default function CommunityFeed() {
         const { error: delErr } = await supabase.from('community_reactions').delete().eq('post_id', postId).eq('user_id', uid);
         if (delErr) { if (isMounted.current) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); } return; }
         const { error: insErr } = await supabase.from('community_reactions').insert({ post_id: postId, user_id: uid, emoji });
-        if (insErr && isMounted.current) { setUserReactions(prevReactions); setAllEmojiCounts(prevCounts); setPosts(prevPosts); }
+        if (insErr && isMounted.current) {
+          // The delete already succeeded — the DB now has no reaction row
+          // for this user on this post. Rolling all the way back to
+          // prevReactions/prevCounts (the pre-switch snapshot) would show
+          // the old emoji as still active when it's actually gone from the
+          // DB. Land on "no reaction" instead, only undoing the emoji
+          // increment (the old-emoji decrement above already matches what
+          // really happened).
+          setUserReactions(prev => { const next = { ...prev }; delete next[postId]; return next; });
+          setAllEmojiCounts(prev => ({
+            ...prev,
+            [postId]: { ...prev[postId], [emoji]: Math.max(0, (prev[postId]?.[emoji] ?? 1) - 1) },
+          }));
+          setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactions_count: Math.max(0, p.reactions_count - 1) } : p));
+        }
       } else {
         setUserReactions(prev => ({ ...prev, [postId]: emoji }));
         setAllEmojiCounts(prev => ({
@@ -452,14 +472,14 @@ export default function CommunityFeed() {
     try {
       if (isBookmarked) {
         const { error } = await supabase.from('community_bookmarks').delete().eq('post_id', postId).eq('user_id', uid);
-        if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: true })); return; }
+        if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: true })); Alert.alert('Could not remove bookmark', 'Please try again.'); return; }
         if (activeTag === 'Saved') {
           setPosts(prev => prev.filter(p => p.id !== postId));
           postsRef.current = postsRef.current.filter(p => p.id !== postId);
         }
       } else {
         const { error } = await supabase.from('community_bookmarks').insert({ post_id: postId, user_id: uid });
-        if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: false })); }
+        if (error) { setUserBookmarks(prev => ({ ...prev, [postId]: false })); Alert.alert('Could not save bookmark', 'Please try again.'); }
       }
     } catch {
       setUserBookmarks(prev => ({ ...prev, [postId]: isBookmarked }));
@@ -478,14 +498,14 @@ export default function CommunityFeed() {
     try {
       if (isFollowing) {
         const { error } = await supabase.from('community_follows').delete().eq('follower_id', uid).eq('following_id', userId);
-        if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: true })); return; }
+        if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: true })); Alert.alert('Could not unfollow', 'Please try again.'); return; }
         if (activeTag === 'Following') {
           setPosts(prev => prev.filter(p => p.user_id !== userId));
           postsRef.current = postsRef.current.filter(p => p.user_id !== userId);
         }
       } else {
         const { error } = await supabase.from('community_follows').insert({ follower_id: uid, following_id: userId });
-        if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: false })); }
+        if (error) { setFollowedUsers(prev => ({ ...prev, [userId]: false })); Alert.alert('Could not follow', 'Please try again.'); }
       }
     } catch {
       setFollowedUsers(prev => ({ ...prev, [userId]: isFollowing }));

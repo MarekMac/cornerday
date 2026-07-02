@@ -161,8 +161,14 @@ export default function ModerationScreen() {
             setActioning(report.id);
             try {
               const table = report.target_type === 'post' ? 'community_posts' : 'community_comments';
-              const { error: delErr } = await supabase.from(table).delete().eq('id', report.target_id);
+              // .select('id') so we can tell "deleted nothing" (RLS-blocked
+              // or already-gone row, resolves with no error and zero rows)
+              // from a genuine success — without it this would still mark
+              // the report resolved and remove it from the queue even if
+              // the underlying content was never actually removed.
+              const { data: delData, error: delErr } = await supabase.from(table).delete().eq('id', report.target_id).select('id');
               if (delErr) { Alert.alert('Error', 'Could not delete content. Please try again.'); return; }
+              if (!delData || delData.length === 0) { Alert.alert('Error', 'Content was not found — it may have already been removed.'); return; }
               const { error: updErr } = await supabase
                 .from('community_reports')
                 .update({ status: 'actioned', reviewed_at: new Date().toISOString() })
@@ -202,6 +208,7 @@ export default function ModerationScreen() {
 
   // Delete content modal
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+  const [deleteTargetCounts, setDeleteTargetCounts] = useState<{ postCount: number; commentCount: number } | null>(null);
   const [deletePosts, setDeletePosts] = useState(true);
   const [deleteComments, setDeleteComments] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -319,8 +326,14 @@ export default function ModerationScreen() {
     ]);
   };
 
-  const openDeleteModal = (user: UserRow) => {
+  const openDeleteModal = (user: UserRow, counts?: { postCount: number; commentCount: number } | null) => {
     setDeleteTarget(user);
+    // Previously this modal tried to read the counts from detailData/
+    // detailUser at render time — but the one call site that has that data
+    // (from inside the detail modal) always calls closeDetail() first,
+    // which nulls both, so the "N posts / N comments" subtext could never
+    // render regardless of entry path. Capture it explicitly instead.
+    setDeleteTargetCounts(counts ?? null);
     setDeletePosts(true);
     setDeleteComments(true);
   };
@@ -398,7 +411,19 @@ export default function ModerationScreen() {
     );
   };
 
-  useEffect(() => { loadReports(); loadUsers(); loadFeedback(); }, [loadReports, loadUsers, loadFeedback]);
+  // RLS already restricts these queries to admins server-side (verified:
+  // community_reports/community_posts/community_comments/feedback/users are
+  // all gated by is_admin_user() there), so this isn't a live data leak —
+  // but the client had zero defense-in-depth, firing three admin-only
+  // queries for any authenticated user who mounts this route (deep-linkable
+  // regardless of whether the Admin Panel button is shown). That RLS has
+  // regressed once before on this exact screen (see the
+  // fix_community_rls_and_admin_users migration's own comment), so gate
+  // the fetch on isAdmin too rather than relying solely on the DB layer.
+  useEffect(() => {
+    if (!isAdmin) return;
+    loadReports(); loadUsers(); loadFeedback();
+  }, [isAdmin, loadReports, loadUsers, loadFeedback]);
 
   const FEEDBACK_TYPE_LABEL: Record<string, string> = {
     bug: '🐛 Bug',
@@ -808,7 +833,7 @@ export default function ModerationScreen() {
                 {detailUser && (
                   <Pressable
                     style={({ pressed }) => [s.modalActionBtn, s.modalActionDelete, pressed && { opacity: 0.8 }]}
-                    onPress={() => { closeDetail(); openDeleteModal(detailUser!); }}>
+                    onPress={() => { const counts = detailData; closeDetail(); openDeleteModal(detailUser!, counts); }}>
                     <Ionicons name="trash-outline" size={16} color={c.white} />
                     <Text style={s.modalActionBtnTxt}>Delete content</Text>
                   </Pressable>
@@ -898,8 +923,8 @@ export default function ModerationScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.checkLabel}>Community posts</Text>
-                {detailData && deleteTarget?.id === detailUser?.id && (
-                  <Text style={s.checkSub}>{detailData.postCount} post{detailData.postCount !== 1 ? 's' : ''}</Text>
+                {deleteTargetCounts && (
+                  <Text style={s.checkSub}>{deleteTargetCounts.postCount} post{deleteTargetCounts.postCount !== 1 ? 's' : ''}</Text>
                 )}
               </View>
             </Pressable>
@@ -910,8 +935,8 @@ export default function ModerationScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.checkLabel}>Community comments</Text>
-                {detailData && deleteTarget?.id === detailUser?.id && (
-                  <Text style={s.checkSub}>{detailData.commentCount} comment{detailData.commentCount !== 1 ? 's' : ''}</Text>
+                {deleteTargetCounts && (
+                  <Text style={s.checkSub}>{deleteTargetCounts.commentCount} comment{deleteTargetCounts.commentCount !== 1 ? 's' : ''}</Text>
                 )}
               </View>
             </Pressable>

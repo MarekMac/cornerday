@@ -70,6 +70,13 @@ export default function NewPost() {
   }, [content]);
 
   const submit = async () => {
+    // Synchronous re-entrancy guard — the `disabled` prop on the submit
+    // button alone doesn't block a second tap that lands before React
+    // re-renders it as disabled, which could insert a duplicate post and
+    // also let a fast double-tap slip a 4th post past the hourly rate
+    // limit (both reads of recentCount below would see the same pre-insert
+    // count).
+    if (submitting) return;
     if (!tag) { Alert.alert('Pick a tag', 'Select a tag that fits your story.'); return; }
     if (!content.trim()) { Alert.alert('Empty story', "Your story can't be empty."); return; }
     setSubmitting(true);
