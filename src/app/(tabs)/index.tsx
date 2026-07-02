@@ -383,29 +383,16 @@ function todayStr() {
 }
 
 
-function localMidnight(): string {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 0, 0, 0, 0).toISOString();
-}
-
-function localDayEnd(): string {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 0, 0).toISOString();
-}
-
-// "Today" here must mean the user's local calendar day, not UTC — the app
-// and its Recovery Calendar/streak displays are all local-day concepts. The
-// mood_checkins unique constraint is scoped to UTC day server-side (it has
-// no per-user timezone to key on), so this query and that constraint aren't
-// the same boundary — but that's fine: this query is only for "what should
-// the UI show/treat as today's entry," which is a local-day question.
-// (A UTC-midnight query used to be used here to dodge one direction of the
-// mismatch — a late-night local entry appearing to vanish the next
-// morning — but that traded it for the opposite, more common bug: for any
-// UTC-negative timezone, once local clock time passes the point where UTC
-// has already rolled to the next date, an entry from *earlier that same
-// local day* would fall before a UTC-midnight cutoff and look missing,
-// letting a second check-in slip through as "new" for the same local day.)
+// mood_checkins.local_date is an explicit date column the client sets at
+// insert time (see todayStr() below) — the DB's uniqueness constraint is
+// keyed on it, not on created_at, so there's no timestamp-boundary math to
+// get wrong here. (An earlier version of this tried to approximate "today"
+// via created_at range queries against a UTC-day-scoped DB constraint;
+// those two boundaries disagree for any non-UTC timezone during some part
+// of the day, in both directions — a real mood log could get silently
+// rejected as a duplicate of a differently-dated row, or a genuinely new
+// day's entry could get merged into an old one and immediately display as
+// unset again. Storing the local day explicitly removes the ambiguity.)
 
 function formatStartDate(quitDate: string | null): string {
   if (!quitDate) return '';
@@ -925,7 +912,7 @@ export default function HomeScreen() {
       supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium, savings_goal_amount, savings_goal_label, savings_goal_icon, custom_milestone_type, custom_milestone_target, custom_milestone_icon, shield_undo_prev_quit, shield_undo_prev_streak_days, shield_undo_expires_at, shield_undo_relapse_row_id').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
-      supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).gte('created_at', localMidnight()).lt('created_at', localDayEnd()).maybeSingle(),
+      supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).eq('local_date', today).maybeSingle(),
       supabase.from('mood_checkins').select('mood, note, created_at').eq('user_id', user.id).gte('created_at', (() => { const t = new Date(); t.setDate(t.getDate() - 6); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).toISOString(); })()).order('created_at', { ascending: true }),
       supabase.from('losses').select('type, amount').eq('user_id', user.id).eq('type', 'saving'),
       supabase.from('debts').select('id, name, total_amount').eq('user_id', user.id),
@@ -1555,16 +1542,15 @@ export default function HomeScreen() {
           const { error: updateErr } = await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', data.todayMoodId).eq('user_id', user.id);
           if (updateErr) { Alert.alert('Could not save mood', updateErr.message); setEditingMood(false); setMoodNote(''); setEditMoodValue(null); return; }
         } else {
-          const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal }).select('id').maybeSingle();
+          const localDate = todayStr();
+          const { data: inserted, error: insertErr } = await supabase.from('mood_checkins').insert({ user_id: user.id, mood, note: noteVal, local_date: localDate }).select('id').maybeSingle();
           if (insertErr) {
             if (insertErr.code === '23505') {
-              // The DB constraint that just rejected this insert is scoped to
-              // UTC day (it has no per-user timezone to key on), so the
-              // conflicting row is guaranteed to fall within the current UTC
-              // day specifically — search by that same boundary to reliably
-              // find it, then update instead.
-              const utcDayStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())).toISOString();
-              const { data: existing } = await supabase.from('mood_checkins').select('id').eq('user_id', user.id).gte('created_at', utcDayStart).maybeSingle();
+              // The DB constraint is keyed on (user_id, local_date), so a
+              // conflict means a row already exists for this exact local
+              // date — e.g. logged from another device, or this client's
+              // local todayMoodId was stale — find it by the same key.
+              const { data: existing } = await supabase.from('mood_checkins').select('id').eq('user_id', user.id).eq('local_date', localDate).maybeSingle();
               if (existing?.id) {
                 const { error: updateErr } = await supabase.from('mood_checkins').update({ mood, note: noteVal }).eq('id', existing.id).eq('user_id', user.id);
                 if (updateErr) { Alert.alert('Could not save mood', updateErr.message); return; }
