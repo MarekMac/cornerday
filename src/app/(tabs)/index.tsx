@@ -2507,8 +2507,8 @@ export default function HomeScreen() {
       </Modal>
 
       {/* Badge detail modal */}
-      <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => { showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
-        <Pressable style={s.modalOverlay} onPress={() => { showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
+      <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
+        <Pressable style={s.modalOverlay} onPress={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {selectedBadge && (() => {
               const earned = data.earnedBadges.includes(selectedBadge.type);
@@ -3064,8 +3064,11 @@ export default function HomeScreen() {
           cardRef={celebrationCardRef}
           onShare={handleCelebrationShare}
           onClose={async () => {
-            showInterstitialIfReady(isPremium, 0.33);
             const badgeType = celebrationBadge?.type;
+            // The "Started" badge is the very first thing a brand-new user
+            // sees, often seconds after finishing onboarding — showing an ad
+            // right after closing it is a discouraging first impression.
+            if (badgeType !== 'started') showInterstitialIfReady(isPremium, 0.33);
             setCelebrationBadge(null);
             if (badgeType === '1_week') maybeRequestReview('7_day');
             else if (badgeType === '1_month') maybeRequestReview('1_month');
