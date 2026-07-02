@@ -13,6 +13,7 @@ interface WebhookPayload {
     user_id: string;
     content: string;
     created_at: string;
+    is_anonymous: boolean;
   };
   old_record: null | Record<string, unknown>;
 }
@@ -54,7 +55,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, skipped: true }), { status: 200 });
     }
 
-    const { post_id, user_id: commenter_id } = payload.record;
+    const { post_id, user_id: commenter_id, is_anonymous } = payload.record;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -95,14 +96,18 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, skipped: 'notif_community_off' }), { status: 200 });
     }
 
-    // Fetch commenter's display name for the notification body
-    const { data: commenter } = await supabase
-      .from('users')
-      .select('display_name')
-      .eq('id', commenter_id)
-      .maybeSingle();
-
-    const commenterName = commenter?.display_name ?? 'Someone';
+    // Fetch commenter's display name for the notification body — unless the
+    // comment was posted anonymously, in which case the real name must never
+    // reach a push notification (renders on the lock screen).
+    let commenterName = 'Someone';
+    if (!is_anonymous) {
+      const { data: commenter } = await supabase
+        .from('users')
+        .select('display_name')
+        .eq('id', commenter_id)
+        .maybeSingle();
+      commenterName = commenter?.display_name ?? 'Someone';
+    }
     // Never put actual post/comment text in a push body — community stories
     // routinely include relapse details and money talk, and push notifications
     // render on the lock screen where a partner/family member could see it.

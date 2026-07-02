@@ -102,6 +102,17 @@ export default function SignupScreen() {
     authFlags.googleOAuthInProgress = true;
     setGoogleLoading(true);
     setError('');
+    // Every early-exit error path below must clear both flags — a bare
+    // `setError(...); return;` inside the try block skips the shared cleanup
+    // at the bottom of this function (that tail only runs on fall-through,
+    // not on an early `return`), which used to leave googleLoading stuck
+    // true forever and freeze the app behind the loading overlay on any
+    // transient failure (dropped connection, etc).
+    const failWith = (msg: string) => {
+      setError(msg);
+      authFlags.googleOAuthInProgress = false;
+      setGoogleLoading(false);
+    };
     try {
       const redirectTo = makeRedirectUri({ scheme: 'cornerday' });
 
@@ -114,7 +125,7 @@ export default function SignupScreen() {
       });
 
       if (error || !data.url) {
-        setError('Google sign-in failed. Please try again.');
+        failWith('Google sign-in failed. Please try again.');
         return;
       }
 
@@ -127,7 +138,7 @@ export default function SignupScreen() {
         const refreshToken = params.get('refresh_token');
 
         if (!accessToken || !refreshToken) {
-          setError('Google sign-in failed. Please try again.');
+          failWith('Google sign-in failed. Please try again.');
           return;
         }
 
@@ -137,13 +148,13 @@ export default function SignupScreen() {
         });
 
         if (sessionError) {
-          setError('Could not complete sign-in. Please try again.');
+          failWith('Could not complete sign-in. Please try again.');
           return;
         }
 
         const { data: { user: authUser }, error: getUserErr } = await supabase.auth.getUser();
         if (getUserErr || !authUser) {
-          setError('Sign-in succeeded but could not verify your account. Please try again.');
+          failWith('Sign-in succeeded but could not verify your account. Please try again.');
           return;
         }
         const { data: profile, error: profileErr } = await supabase
@@ -153,7 +164,7 @@ export default function SignupScreen() {
           .maybeSingle();
 
         if (profileErr) {
-          setError('Sign-in succeeded but we could not load your profile. Please try again.');
+          failWith('Sign-in succeeded but we could not load your profile. Please try again.');
           return;
         }
         if (profile?.quit_date) {

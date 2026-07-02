@@ -47,8 +47,18 @@ Deno.serve(async (req) => {
   const event = body?.event;
   const eventType: string = event?.type ?? '';
   const appUserId: string = event?.app_user_id ?? '';
+  const eventId: string = event?.id ?? '';
+  const environment: string = event?.environment ?? '';
 
   if (!appUserId) {
+    return new Response('OK', { status: 200 });
+  }
+
+  // Sandbox/test purchases must never affect a real user's premium status.
+  // RevenueCat always sets this field; treat anything but an explicit
+  // "PRODUCTION" as untrusted and acknowledge without applying it.
+  if (environment !== 'PRODUCTION') {
+    console.warn(`[revenuecat-webhook] ignoring non-production event (environment=${environment || 'missing'}, type=${eventType})`);
     return new Response('OK', { status: 200 });
   }
 
@@ -73,6 +83,21 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
+
+  // Replay/redelivery guard: claim this event.id exactly once. A conflict
+  // means we've already applied it (retry, or a captured/replayed request) — skip.
+  if (eventId) {
+    const { error: claimError } = await supabase
+      .from('revenuecat_webhook_events')
+      .insert({ event_id: eventId });
+    if (claimError) {
+      if (claimError.code === '23505') {
+        return new Response('OK', { status: 200 });
+      }
+      console.error('[revenuecat-webhook] event claim error:', claimError.message);
+      return new Response('Internal error', { status: 500 });
+    }
+  }
 
   const { data: updated, error } = await supabase
     .from('users')

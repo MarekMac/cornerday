@@ -30,16 +30,24 @@ interface MilestoneDef {
   message: string;
 }
 
+// badge values are prefixed with "email_" so they occupy a separate row in the
+// shared `badges` table from the client's own auto-awarded streak badges
+// (e.g. '1_week', '1_month' — see src/constants/badgeConstants.ts). Sharing
+// the unprefixed name meant this function's idempotency claim collided with
+// the client's badge row: after a Streak-Shield-preserved relapse, the old
+// surviving client badge would make this insert hit 23505 and skip sending
+// the email for a genuinely re-earned milestone. Same convention as
+// milestone-push's "push_" prefix.
 const MILESTONES: MilestoneDef[] = [
-  { days: 7,    badge: '1_week',   label: '1 week',   emoji: '', heading: 'One full week.',    message: 'A week without gambling. That\'s not a small thing — most people can\'t make it past the first few days.' },
-  { days: 14,   badge: '2_weeks',  label: '2 weeks',  emoji: '', heading: 'Two weeks.',        message: 'Two weeks clean. You\'ve made it through two full weekends, two full sets of triggers. That\'s momentum.' },
-  { days: 30,   badge: '1_month',  label: '1 month',  emoji: '', heading: 'One month clean.',  message: 'A month. You\'ve officially built a new pattern. Your brain is literally rewiring itself right now.' },
-  { days: 60,   badge: '60_days',  label: '60 days',  emoji: '', heading: '60 days.',          message: 'Two months. You\'re well past the hardest window. What started as willpower is becoming who you are.' },
-  { days: 90,   badge: '3_months', label: '3 months', emoji: '', heading: 'Three months.',     message: 'Research says 90 days is when new habits truly take root. Yours already have. You did that.' },
-  { days: 182,  badge: '6_months', label: '6 months', emoji: '', heading: 'Half a year.',      message: 'Six months clean. Half a year of choosing yourself, every single day. That\'s extraordinary.' },
-  { days: 365,  badge: '1_year',   label: '1 year',   emoji: '', heading: 'One year.',         message: 'A full year. Think about where you were 365 days ago. Look where you are now. You did this.' },
-  { days: 730,  badge: '2_years',  label: '2 years',  emoji: '', heading: 'Two years.',        message: 'Two years clean. You\'re living proof that it\'s possible. And you\'re just getting started.' },
-  { days: 1095, badge: '3_years',  label: '3 years',  emoji: '', heading: 'Three years.',      message: 'Three years. This is who you are now — and it\'s something to be genuinely proud of.' },
+  { days: 7,    badge: 'email_1_week',   label: '1 week',   emoji: '', heading: 'One full week.',    message: 'A week without gambling. That\'s not a small thing — most people can\'t make it past the first few days.' },
+  { days: 14,   badge: 'email_2_weeks',  label: '2 weeks',  emoji: '', heading: 'Two weeks.',        message: 'Two weeks clean. You\'ve made it through two full weekends, two full sets of triggers. That\'s momentum.' },
+  { days: 30,   badge: 'email_1_month',  label: '1 month',  emoji: '', heading: 'One month clean.',  message: 'A month. You\'ve officially built a new pattern. Your brain is literally rewiring itself right now.' },
+  { days: 60,   badge: 'email_60_days',  label: '60 days',  emoji: '', heading: '60 days.',          message: 'Two months. You\'re well past the hardest window. What started as willpower is becoming who you are.' },
+  { days: 90,   badge: 'email_3_months', label: '3 months', emoji: '', heading: 'Three months.',     message: 'Research says 90 days is when new habits truly take root. Yours already have. You did that.' },
+  { days: 182,  badge: 'email_6_months', label: '6 months', emoji: '', heading: 'Half a year.',      message: 'Six months clean. Half a year of choosing yourself, every single day. That\'s extraordinary.' },
+  { days: 365,  badge: 'email_1_year',   label: '1 year',   emoji: '', heading: 'One year.',         message: 'A full year. Think about where you were 365 days ago. Look where you are now. You did this.' },
+  { days: 730,  badge: 'email_2_years',  label: '2 years',  emoji: '', heading: 'Two years.',        message: 'Two years clean. You\'re living proof that it\'s possible. And you\'re just getting started.' },
+  { days: 1095, badge: 'email_3_years',  label: '3 years',  emoji: '', heading: 'Three years.',      message: 'Three years. This is who you are now — and it\'s something to be genuinely proud of.' },
 ];
 
 function parseQuitMs(ts: string | null, date: string | null): number {

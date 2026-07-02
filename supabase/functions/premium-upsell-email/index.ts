@@ -202,12 +202,14 @@ Deno.serve(async (req: Request) => {
       const firstName = esc(user.display_name?.split(' ')[0] || 'there');
       const html = buildHtml(firstName, streak?.current_streak ?? 0);
 
-      const { error: upsertError } = await supabase
+      const { error: insertError } = await supabase
         .from('badges')
-        .upsert({ user_id: user.id, badge_type: 'upsell_30d', earned_at: new Date().toISOString() },
-                 { onConflict: 'user_id,badge_type' });
+        .insert({ user_id: user.id, badge_type: 'upsell_30d', earned_at: new Date().toISOString() });
 
-      if (upsertError) throw new Error(`Badge upsert failed: ${upsertError.message}`);
+      if (insertError) {
+        if (insertError.code === '23505') { skipped++; continue; }
+        throw new Error(`Badge insert failed: ${insertError.message}`);
+      }
 
       const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',

@@ -203,9 +203,14 @@ Deno.serve(async (req: Request) => {
     if (profile.coach_context) {
       // Server-generated (by summarize-coach-session), so lower injection risk
       // than the direct profile fields above, but still strip the literal
-      // delimiter strings for defense in depth.
-      const safeSummary = sanitizeProfileField(profile.coach_context, 2000) ?? profile.coach_context;
-      contextLines.push(`[Previous session summary — use to provide continuity, don't quote verbatim]\n${safeSummary}\n[End previous session summary]`);
+      // delimiter strings for defense in depth. sanitizeProfileField returns
+      // null when the ENTIRE string was delimiter/control content — exactly
+      // the case an injection attempt would produce — so falling back to the
+      // raw value here would defeat the sanitizer. Drop it instead.
+      const safeSummary = sanitizeProfileField(profile.coach_context, 2000);
+      if (safeSummary) {
+        contextLines.push(`[Previous session summary — use to provide continuity, don't quote verbatim]\n${safeSummary}\n[End previous session summary]`);
+      }
     }
     contextLines.push(`[End context]`);
 

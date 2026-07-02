@@ -70,10 +70,18 @@ function InnerLayout() {
         disableDeviceFallback: false,
         requireConfirmation: false,
       });
+      // A cancel or failed match resolves with success: false — stay locked,
+      // the "Try again" button lets the user retry. Do NOT unlock here.
       if (result.success) setLocked(false);
     } catch {
-      // Biometric hardware unavailable or permission denied — don't trap the user
-      setLocked(false);
+      // authenticateAsync only throws for reasons that can never resolve via
+      // retry (no biometric hardware, or nothing enrolled) — a transient
+      // sensor error still resolves normally as success: false above. Only
+      // bypass the lock when a real prompt could genuinely never succeed;
+      // any other case must stay locked, not fail open.
+      const hasHardware = await LocalAuthentication.hasHardwareAsync().catch(() => false);
+      const isEnrolled = hasHardware ? await LocalAuthentication.isEnrolledAsync().catch(() => false) : false;
+      if (!hasHardware || !isEnrolled) setLocked(false);
     }
   }, []);
 
