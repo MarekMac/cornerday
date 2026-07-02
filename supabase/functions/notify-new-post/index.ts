@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, skipped: 'not_insert' }), { status: 200 });
     }
 
-    const { id: post_id, user_id: author_id, content, is_anonymous } = payload.record;
+    const { id: post_id, user_id: author_id, is_anonymous } = payload.record;
 
     // Never notify for anonymous posts — would reveal the poster's identity
     if (is_anonymous) {
@@ -99,13 +99,14 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, skipped: 'no_tokens' }), { status: 200 });
     }
 
-    const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
-
+    // Never put actual post text in a push body — community stories routinely
+    // include relapse details and money talk, and push notifications render
+    // on the lock screen where a partner/family member could see it.
     const messages: ExpoPushMessage[] = recipients.map(r => ({
       to: r.token,
       sound: 'default',
       title: `${authorName} posted a new story`,
-      body: preview,
+      body: 'Tap to read it.',
       data: { screen: `/(tabs)/community/${post_id}` },
     }));
 

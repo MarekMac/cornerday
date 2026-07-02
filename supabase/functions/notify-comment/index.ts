@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, skipped: true }), { status: 200 });
     }
 
-    const { post_id, user_id: commenter_id, content } = payload.record;
+    const { post_id, user_id: commenter_id } = payload.record;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -99,13 +99,16 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     const commenterName = commenter?.display_name ?? 'Someone';
-    const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
+    // Never put actual post/comment text in a push body — community stories
+    // routinely include relapse details and money talk, and push notifications
+    // render on the lock screen where a partner/family member could see it.
+    // Keep it to a generic, non-identifying line.
 
     const message: ExpoPushMessage = {
       to: owner.expo_push_token,
       sound: 'default',
       title: `${commenterName} commented on your story`,
-      body: preview,
+      body: 'Tap to read their reply.',
       data: { screen: `/(tabs)/community/${post_id}` },
     };
 
