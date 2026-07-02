@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Use — CornerDay</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal-dark:  #0F6E6E;
+      --teal-mid:   #1a9a9a;
+      --teal-light: #a8d8d0;
+      --accent:     #e6f7f7;
+      --text:       #1a2e2e;
+      --muted:      #5a7a7a;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text);
+      background: #f5fbfb;
+      line-height: 1.7;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: linear-gradient(150deg, #0a4f4f 0%, #0F6E6E 55%, #1a9a9a 100%);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-brand img {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+    }
+
+    .nav-brand span {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.2px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color .15s;
+    }
+
+    .nav-links a:hover { color: #fff; }
+    .nav-links a.active { color: #fff; font-weight: 700; }
+
+    /* ── Content ── */
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px 48px;
+      box-shadow: 0 4px 32px rgba(15,110,110,0.08);
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--teal-dark);
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+
+    .date {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--accent);
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 36px 0 10px;
+    }
+
+    p { font-size: 15px; color: #3a5a5a; margin-bottom: 12px; }
+
+    ul { padding-left: 22px; margin-bottom: 14px; }
+    li { font-size: 15px; color: #3a5a5a; margin-bottom: 6px; line-height: 1.65; }
+
+    a { color: var(--teal-dark); }
+    a:hover { text-decoration: underline; }
+
+    /* ── Footer ── */
+    footer {
+      background: #081e1e;
+      color: rgba(255,255,255,0.4);
+      padding: 28px 24px;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .footer-brand img {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      opacity: 0.85;
+    }
+
+    .footer-brand span {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .footer-links { margin-bottom: 10px; }
+    .footer-links a { color: var(--teal-light); text-decoration: none; margin: 0 10px; }
+    .footer-links a:hover { text-decoration: underline; }
+
+    @media (max-width: 700px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      .wrap { padding: 28px 16px 60px; }
+      .card { padding: 24px 20px; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-brand">
+      <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" alt="CornerDay">
+      <span>CornerDay</span>
+    </a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/partner">Supporter Portal</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms" class="active">Terms</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <div class="card">
+      <h1>Terms of Use</h1>
+      <p class="date">Last updated: 19 June 2026</p>
+
+      <p>Please read these Terms of Use carefully before using CornerDay. They govern your access to and use of the app and its services.</p>
+
+      <h2>1. Acceptance of terms</h2>
+      <p>By downloading or using CornerDay, you agree to be bound by these Terms of Use. If you do not agree, please do not use the app. These terms apply to all users, whether on the free or premium tier.</p>
+
+      <h2>2. Description of service</h2>
+      <p>CornerDay is a mobile application designed to support individuals recovering from gambling addiction. The app provides tools including:</p>
+      <ul>
+        <li>Streak and recovery tracking</li>
+        <li>Loss and payment tracking</li>
+        <li>Urge support and breathing exercises</li>
+        <li>Daily mood check-ins</li>
+        <li>Urge journal</li>
+        <li>Milestone badges and progress tracking</li>
+        <li>Push notifications and reminders</li>
+        <li>Someone in your corner (accountability partner feature)</li>
+        <li>AI Coach powered by Claude (premium users only)</li>
+      </ul>
+      <p>CornerDay is a self-help support tool and is not a substitute for professional medical, psychological, or financial advice.</p>
+
+      <h2>3. Eligibility</h2>
+      <p>You must be at least 18 years old to use CornerDay. By using the app, you confirm that you meet this requirement. If we discover that a user is under 18, we reserve the right to terminate their account.</p>
+
+      <h2>4. Account responsibility</h2>
+      <p>You are responsible for maintaining the confidentiality of your account credentials. You agree not to share your account with others or use another person's account.</p>
+      <p>You may sign in with an email and password or via Google Sign-In. CornerDay is not liable for any loss or damage arising from unauthorised use of your account.</p>
+
+      <h2>5. Subscriptions and payments</h2>
+      <p>CornerDay offers a free tier and a premium subscription (approximately $4.99–$7.99 per month, subject to change). Premium subscriptions are billed monthly or annually through the Google Play Store or Apple App Store and managed via RevenueCat.</p>
+      <p>Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can manage or cancel your subscription in your device's app store account settings.</p>
+      <p>All purchases are subject to the payment terms of your app store provider. CornerDay does not process payments directly.</p>
+
+      <h2>6. Free tier and advertising</h2>
+      <p>Free tier users may see non-personalised advertisements served by Google AdMob. Ads are never shown on the urge support screen, relapse screen, crisis resources, or journal — only in non-sensitive areas of the app.</p>
+      <p>Premium users have an ad-free experience.</p>
+
+      <h2>7. AI Coach</h2>
+      <p>Premium subscribers have access to an AI Coach powered by Anthropic's Claude AI. Conversations with the AI Coach are processed by Anthropic's API and are subject to Anthropic's usage policies.</p>
+      <p>The AI Coach provides supportive, motivational responses and is not a licensed therapist, counsellor, or medical professional. Do not rely on it for clinical advice or in a crisis — use the crisis resources provided in the app instead.</p>
+
+      <h2>8. Push notifications</h2>
+      <p>With your permission, CornerDay may send you push notifications for milestone achievements, daily check-in reminders, and motivational messages. You can manage notification preferences at any time in the app's Settings or your device's notification settings.</p>
+
+      <h2>9. Acceptable use</h2>
+      <p>You agree not to:</p>
+      <ul>
+        <li>Use CornerDay for any unlawful purpose</li>
+        <li>Attempt to reverse-engineer, decompile, or modify the app</li>
+        <li>Submit false or misleading information</li>
+        <li>Attempt to access another user's data</li>
+        <li>Use the app in a way that could damage, disable, or impair its operation</li>
+      </ul>
+      <p>We reserve the right to suspend or terminate accounts that violate these terms.</p>
+
+      <h2>10. Medical disclaimer</h2>
+      <p>CornerDay is not a medical or mental health service. The app provides self-help tools and supportive content only. If you are experiencing a mental health crisis, please contact a qualified professional or crisis helpline immediately.</p>
+      <p>National Problem Gambling Helpline: <a href="tel:18005224700">1-800-522-4700</a> (USA, 24/7, free).</p>
+
+      <h2>11. Intellectual property</h2>
+      <p>All content within CornerDay — including text, design, graphics, and code — is the property of CornerDay or its licensors. You may not reproduce, distribute, or create derivative works without our express written permission.</p>
+
+      <h2>12. Limitation of liability</h2>
+      <p>CornerDay is provided on an "as is" basis without warranties of any kind. To the fullest extent permitted by law, we are not liable for any indirect, incidental, or consequential damages arising from your use of the app, including but not limited to reliance on AI-generated content.</p>
+
+      <h2>13. Governing law</h2>
+      <p>These Terms of Use are governed by and construed in accordance with applicable law. Any disputes shall be resolved in the courts of the jurisdiction in which CornerDay operates.</p>
+
+      <h2>14. Changes to these terms</h2>
+      <p>We may update these Terms of Use from time to time. We will notify you of significant changes via the app. Continued use of CornerDay after changes constitutes acceptance of the updated terms.</p>
+
+      <h2>15. Contact</h2>
+      <p>If you have questions about these Terms of Use, please contact us at <a href="mailto:support@cornerday.app">support@cornerday.app</a>.</p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">
+      <img src="https://cdgsiotlocurwnqxebrh.supabase.co/storage/v1/object/public/pages/brand/icon.png" alt="CornerDay">
+      <span>CornerDay</span>
+    </div>
+    <div class="footer-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Use</a>
+      <a href="/partner">Supporter Portal</a>
+    </div>
+    <div>© 2026 CornerDay. Built for recovery.</div>
+  </footer>
+
+</body>
+</html>
