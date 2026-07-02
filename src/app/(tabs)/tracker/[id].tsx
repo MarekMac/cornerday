@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -76,6 +76,7 @@ export default function DebtDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isMounted = useRef(true);
   useEffect(() => () => { isMounted.current = false; }, []);
+  const initialFetchDone = useRef(false);
   // Guards addPayment against a double-tap firing a second insert before the
   // busy state has re-rendered the button as disabled.
   const submitInFlightRef = useRef(false);
@@ -131,7 +132,14 @@ export default function DebtDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => { fetchData().finally(() => { if (isMounted.current) setLoading(false); }); }, [fetchData]);
+  useEffect(() => { fetchData().finally(() => { if (isMounted.current) { setLoading(false); initialFetchDone.current = true; } }); }, [fetchData]);
+
+  // Unlike tracker/index.tsx (the list), this detail screen previously only
+  // fetched once on mount — backgrounding the app, paying down/editing this
+  // same debt elsewhere, then returning to this still-mounted screen left
+  // totalPaid/remaining/the payoff estimate stale until a manual navigation
+  // away and back.
+  useFocusEffect(useCallback(() => { if (initialFetchDone.current) fetchData(); }, [fetchData]));
 
   const deletePayment = (paymentId: string, amount: number) =>
     setDeletePayTarget({ id: paymentId, amount });

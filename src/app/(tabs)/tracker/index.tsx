@@ -403,6 +403,10 @@ export default function TrackerIndex() {
   };
 
   const closeDebtModal = () => {
+    // Called from saveDebt right after an await — a user who's already
+    // navigated away by the time that resolves would otherwise still take
+    // several setStates here on an unmounted component.
+    if (!isMountedRef.current) return;
     if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setDebtModalVisible(false);
@@ -419,7 +423,11 @@ export default function TrackerIndex() {
     }
     if (editingDebt) {
       const paid = paidByDebt[editingDebt.id] ?? 0;
-      if (amount < paid) {
+      // Compare in cents, not raw floats — paid is a running sum of payment
+      // amounts and can land on values like 0.30000000000000004, which would
+      // reject an edit to exactly $0.30 even though it equals what's paid.
+      // Matches the same fix already applied to the quick-pay check below.
+      if (Math.round(amount * 100) < Math.round(paid * 100)) {
         Alert.alert('Invalid amount', `You've already paid ${fmt(paid, currency)} towards this debt.`);
         return;
       }
@@ -523,6 +531,7 @@ export default function TrackerIndex() {
   };
 
   const closeSavingModal = () => {
+    if (!isMountedRef.current) return;
     if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setSavingModalVisible(false);
@@ -615,6 +624,7 @@ export default function TrackerIndex() {
   };
 
   const closeSessionModal = () => {
+    if (!isMountedRef.current) return;
     if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setSessionModalVisible(false);
@@ -753,6 +763,7 @@ export default function TrackerIndex() {
     setGoalModalVisible(true);
   };
   const closeGoalModal = () => {
+    if (!isMountedRef.current) return;
     if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setIconDropdownOpen(false);
@@ -885,6 +896,7 @@ export default function TrackerIndex() {
   };
 
   const closeQuickPay = () => {
+    if (!isMountedRef.current) return;
     if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setQuickPayDebt(null);
@@ -941,11 +953,24 @@ export default function TrackerIndex() {
               trigger: null,
             });
           }
-          const { error: journalErr } = await supabase.from('losses').insert({
+          const insertPaidOffJournalRow = () => supabase.from('losses').insert({
             user_id: user.id, type: 'debt_paid_off', amount: Number(quickPayDebt.total_amount),
             category: 'Debt', note: quickPayDebt.name,
           });
-          if (journalErr) console.warn('[saveQuickPay] journal insert failed:', journalErr.message);
+          let { error: journalErr } = await insertPaidOffJournalRow();
+          if (journalErr) {
+            // The payment itself already succeeded — this is just the
+            // celebratory "paid off" journal entry that journal.tsx renders
+            // as a distinct activity item. Retry once rather than silently
+            // dropping it (it was previously only console.warn'd, with no
+            // way for the user to know or fix a missing entry).
+            console.warn('[saveQuickPay] journal insert failed, retrying once:', journalErr.message);
+            ({ error: journalErr } = await insertPaidOffJournalRow());
+          }
+          if (journalErr) {
+            console.warn('[saveQuickPay] journal insert failed after retry:', journalErr.message);
+            Alert.alert('Debt paid off!', "Payment saved, but we couldn't save the celebration note in your journal.");
+          }
           maybeRequestReview('debt_paid');
         }
         hapticMedium();
@@ -1198,8 +1223,13 @@ export default function TrackerIndex() {
                   const pct = Number(debt.total_amount) > 0
                     ? Math.min(1, paid / Number(debt.total_amount)) : 0;
                   const isPaidOff = Math.round(remaining * 100) === 0 && paid > 0;
-                  const overdueTd = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
-                  const isOverdue = !isPaidOff && overdueTd !== null && Math.ceil((overdueTd.getTime() - Date.now()) / 86400000) <= 0;
+                  // End-of-day, not noon — this specific check decides whether
+                  // the card flips to "overdue" styling, and anchoring it to
+                  // noon (used elsewhere purely for DST-safe date display)
+                  // would flip it a few hours before the due date is actually
+                  // over.
+                  const overdueTd = debt.target_date ? new Date(debt.target_date + 'T23:59:59.999') : null;
+                  const isOverdue = !isPaidOff && overdueTd !== null && overdueTd.getTime() < Date.now();
 
                   return (
                     <Swipeable
@@ -1772,15 +1802,26 @@ export default function TrackerIndex() {
                   <Pressable
                     onPress={async () => {
                       try {
-                        await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
-                        await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
                         const { data: { user } } = await supabase.auth.getUser();
                         if (user) {
-                          await supabase.from('users').update({
+                          // supabase-js resolves (rather than throws) on a
+                          // query-level failure — the surrounding try/catch
+                          // alone can't detect this. An unchecked failure
+                          // here used to clear local state and close the
+                          // modal as if the removal succeeded, while
+                          // Home/Account (Supabase-sourced) would still show
+                          // the old goal.
+                          const { error } = await supabase.from('users').update({
                             savings_goal_amount: null, savings_goal_label: null,
                             savings_goal_icon: null, savings_target_date: null,
                           }).eq('id', user.id);
+                          if (error) {
+                            Alert.alert('Could not remove goal', 'Please try again.');
+                            return;
+                          }
                         }
+                        await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
+                        await logGoalEvent('goal_deleted', savingsGoal, savingsGoalFor || null);
                         setSavingsGoal(null);
                         setSavingsGoalFor('');
                         setSavingsGoalIcon('🎯');
@@ -1788,6 +1829,7 @@ export default function TrackerIndex() {
                         closeGoalModal();
                       } catch (e) {
                         console.warn('[tracker] remove goal error:', e);
+                        Alert.alert('Could not remove goal', 'Please try again.');
                       }
                     }}
                     style={{ alignSelf: 'center', marginTop: 12 }}>
