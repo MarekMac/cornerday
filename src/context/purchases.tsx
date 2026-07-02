@@ -173,7 +173,18 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
             if (!cancelled) setIsPremium(false);
           }
           // Anonymous user means this is a token-refresh SIGNED_OUT; SIGNED_IN follows — don't reset
-        } catch (e) { console.warn('[RevenueCat] logOut error:', e); }
+        } catch (e) {
+          console.warn('[RevenueCat] logOut error:', e);
+          // Couldn't tell whether this was a real sign-out or a token-refresh
+          // blip — reset local state as the safe default anyway. Otherwise a
+          // premium user signing out right as this call fails would leave
+          // isPremium stale-true, and on a shared device the next (possibly
+          // free) user to sign in briefly inherits premium until their own
+          // SIGNED_IN handler resolves. A legitimate token-refresh case just
+          // gets a brief false→true flash instead, which is the safer trade.
+          isAdminRef.current = false;
+          if (!cancelled) setIsPremium(false);
+        }
       }
     });
 

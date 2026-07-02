@@ -434,7 +434,11 @@ export default function AccountScreen() {
       const validMilestoneTypes = ['days', 'savings', 'urges', 'payments'] as const;
       if (contactData?.custom_milestone_type && validMilestoneTypes.includes(contactData.custom_milestone_type as any) && Number(contactData.custom_milestone_target) > 0) {
         const m = { type: contactData.custom_milestone_type as MilestoneType, target: Number(contactData.custom_milestone_target), icon: contactData.custom_milestone_icon ?? '📅' };
-        setCustomMilestone(prev => prev ?? m);
+        // Unconditional, matching the savingsGoal pattern below — Supabase is
+        // authoritative and must win regardless of whether the separate
+        // AsyncStorage-fallback effect (near-instant) resolved first and
+        // already set a stale/local value.
+        setCustomMilestone(m);
       }
       setNotifPrefs({
         notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
@@ -646,10 +650,15 @@ export default function AccountScreen() {
       if (rawMilestone) {
         try {
           const parsed = JSON.parse(rawMilestone) as CustomMilestone;
-          if (parsed.type && parsed.target > 0) setCustomMilestone({ ...parsed, icon: parsed.icon ?? DEFAULT_MILESTONE_ICON[parsed.type as MilestoneType] ?? '🎯' });
+          if (parsed.type && parsed.target > 0) {
+            const m = { ...parsed, icon: parsed.icon ?? DEFAULT_MILESTONE_ICON[parsed.type as MilestoneType] ?? '🎯' };
+            // AsyncStorage is the offline fallback; Supabase value (set in
+            // fetchProfile, possibly not yet resolved) wins if present.
+            setCustomMilestone(prev => prev ?? m);
+          }
         } catch {
           const n = Number(rawMilestone);
-          if (!isNaN(n) && n > 0) setCustomMilestone({ type: 'days', target: n, icon: '📅' });
+          if (!isNaN(n) && n > 0) setCustomMilestone(prev => prev ?? { type: 'days', target: n, icon: '📅' });
         }
       }
       try {

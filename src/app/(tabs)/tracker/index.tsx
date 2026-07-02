@@ -283,7 +283,7 @@ export default function TrackerIndex() {
         supabase.from('debt_payments').select('debt_id, amount').eq('user_id', user.id),
         supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
         supabase.from('losses').select('id, amount, category, note, created_at').eq('user_id', user.id).eq('type', 'session').order('created_at', { ascending: false }),
-        supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, debt_target_date, savings_target_date').eq('id', user.id).maybeSingle(),
+        supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, debt_target_date, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon').eq('id', user.id).maybeSingle(),
         AsyncStorage.getItem(SAVINGS_GOAL_KEY),
         AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
         AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
@@ -310,10 +310,18 @@ export default function TrackerIndex() {
         setDebtTargetDate(profileRes.data.debt_target_date ? new Date(profileRes.data.debt_target_date + 'T12:00:00') : null);
         setSavingsTargetDate(profileRes.data.savings_target_date ? new Date(profileRes.data.savings_target_date + 'T12:00:00') : null);
       }
+      // Supabase is authoritative (matches Home/Account) — AsyncStorage is
+      // only a fallback for legacy data that predates syncing the goal to
+      // the server. Reading AsyncStorage alone here (as this screen used to)
+      // could silently disagree with Home/Account on a second device or
+      // after a reinstall, since AsyncStorage resolves near-instantly and
+      // would otherwise mask a goal that was actually set/changed elsewhere.
+      const _sbGoal = profileRes.data?.savings_goal_amount != null ? Number(profileRes.data.savings_goal_amount) : null;
       const _rawGoalN = rawGoal ? Number(rawGoal) : null;
-      setSavingsGoal(_rawGoalN !== null && !isNaN(_rawGoalN) ? _rawGoalN : null);
-      setSavingsGoalFor(rawFor ?? '');
-      setSavingsGoalIcon(rawIcon ?? '🎯');
+      const _fallbackGoal = _rawGoalN !== null && !isNaN(_rawGoalN) ? _rawGoalN : null;
+      setSavingsGoal(_sbGoal ?? _fallbackGoal);
+      setSavingsGoalFor(profileRes.data?.savings_goal_label ?? rawFor ?? '');
+      setSavingsGoalIcon(profileRes.data?.savings_goal_icon ?? rawIcon ?? '🎯');
     } catch (e) {
       console.warn('fetchAll error:', e);
       if (isMountedRef.current) setLoadError(true);
