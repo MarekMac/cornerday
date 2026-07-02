@@ -253,8 +253,11 @@ function InnerLayout() {
           await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
           setPendingRoute('/(tabs)');
         } else if (userData) {
-          // Stub row exists but onboarding not done (e.g. new OAuth user)
-          setPendingRoute('/(onboarding)/q1');
+          // Stub row exists but onboarding not done (e.g. new OAuth user) —
+          // resume from where they left off instead of always restarting at
+          // q1 (savedStep was fetched above but never actually used here).
+          const resumeRoutes: Record<string, string> = { q2: '/(onboarding)/q2', q3: '/(onboarding)/q3', ready: '/(onboarding)/ready' };
+          setPendingRoute((savedStep && resumeRoutes[savedStep]) || '/(onboarding)/q1');
         } else {
           // Ghost session: auth JWT still cached but user row was deleted
           await AsyncStorage.multiRemove([ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_STEP_KEY, ONBOARDING_DATA_KEY]);
