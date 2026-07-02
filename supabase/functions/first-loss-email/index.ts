@@ -135,9 +135,20 @@ Deno.serve(async (req: Request) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  const { data: alreadySent } = await supabase
-    .from('badges').select('id').eq('user_id', user_id).eq('badge_type', 'first_loss_email_sent').maybeSingle();
-  if (alreadySent) return new Response(JSON.stringify({ skipped: 'already sent' }), { status: 200 });
+  // Claim the "sent" badge FIRST, via the unique constraint on
+  // (user_id, badge_type), instead of check-then-send-then-insert — a
+  // retried/duplicate webhook delivery arriving before the old
+  // check-then-send flow's insert had completed could pass the same
+  // "not yet sent" check and send the email twice.
+  const { error: claimErr } = await supabase
+    .from('badges').insert({ user_id: user_id, badge_type: 'first_loss_email_sent' });
+  if (claimErr) {
+    if (claimErr.code === '23505') {
+      return new Response(JSON.stringify({ skipped: 'already sent' }), { status: 200 });
+    }
+    console.error('Badge claim failed:', claimErr.message);
+    return new Response(JSON.stringify({ error: claimErr.message }), { status: 500 });
+  }
 
   const { data: user } = await supabase
     .from('users')
@@ -163,7 +174,6 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: err }), { status: 500 });
   }
 
-  await supabase.from('badges').insert({ user_id: user_id, badge_type: 'first_loss_email_sent' });
   console.log(`First-loss email sent to ${user_id}`);
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 });
