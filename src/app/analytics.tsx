@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { parseQuitDate } from '@/lib/parseQuitDate';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -601,7 +602,7 @@ export default function AnalyticsScreen() {
       <SafeAreaView edges={['top']}>
         <View style={s.headerRow}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.6 }]}>
-            <Text style={s.backArrow}>←</Text>
+            <Ionicons name="chevron-back" size={22} color={c.white} />
           </Pressable>
           <Text style={s.headerTitle}>Progress Analytics</Text>
           <View style={s.backBtn} />
@@ -1371,7 +1372,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   header:      { paddingBottom: 20 },
   headerRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 },
   backBtn:     { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  backArrow:   { fontSize: 22, color: c.white, fontWeight: '600' },
   headerTitle: { flex: 1, fontSize: 22, fontWeight: '700', color: c.white, textAlign: 'center' },
 
   lockScroll:    { flexGrow: 1 },
