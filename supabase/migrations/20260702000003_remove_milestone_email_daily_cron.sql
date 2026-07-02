@@ -1,0 +1,11 @@
+-- milestone-email already fires immediately via the on_streak_milestone_email
+-- trigger (see supabase/milestone-email-triggers.sql) whenever a user's
+-- streak crosses a milestone day. A separate daily 9am batch cron
+-- ("milestone-email-daily") also re-checked every user against the same
+-- milestone list — redundant with the trigger, and prone to sending emails
+-- for milestones the user had already passed days/weeks/months earlier
+-- (e.g. after a manual quit-date change jumps elapsed days forward, or any
+-- other case where "today" isn't the exact day a threshold was crossed).
+-- Milestone emails should only ever fire at the moment a milestone is
+-- actually reached — remove the batch cron, keep the trigger as the sole path.
+select cron.unschedule(jobid) from cron.job where jobname = 'milestone-email-daily';
