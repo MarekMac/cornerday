@@ -109,7 +109,13 @@ export default function ReadyScreen() {
       const today = `${y}-${mo}-${dy}`;
 
       const [updateResult, streakResult] = await Promise.all([
-        supabase.from('users').update({
+        // upsert, not update — this assumes a DB trigger auto-creates a stub
+        // `users` row on signup, but if that row creation lags or fails for
+        // any reason, .update() would silently affect 0 rows and strand the
+        // user on this screen with no way to complete onboarding.
+        supabase.from('users').upsert({
+          id: user.id,
+          email: user.email,
           display_name: username,
           motivation: data.motivation ?? '',
           trigger: data.trigger ?? '',
@@ -119,7 +125,7 @@ export default function ReadyScreen() {
           currency: data.currency ?? 'USD',
           quit_date: today,
           quit_timestamp: now,
-        }).eq('id', user.id).select('id'),
+        }, { onConflict: 'id' }).select('id'),
 
         supabase.from('streaks').upsert({
           user_id: user.id,

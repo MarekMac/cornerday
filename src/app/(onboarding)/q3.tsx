@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import {
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -102,8 +103,22 @@ export default function Q3Screen() {
 
   const handleContinue = async () => {
     const rawCustom = custom.trim();
-    if (rawCustom && !Number.isFinite(parseFloat(rawCustom))) return;
-    const value = rawCustom ? rawCustom : selected || null;
+    // weekly_bet is a numeric column, and Home/Tracker do arithmetic on it —
+    // this used to store the raw typed string, so a malformed value (a
+    // pasted negative sign, a locale comma like "50,00", trailing junk like
+    // "50kk") could pass a bare Number.isFinite(parseFloat(...)) check
+    // (parseFloat parses the numeric prefix and ignores the rest) and either
+    // break the save entirely or silently produce a negative "money saved"
+    // figure later.
+    let value: string | null = selected || null;
+    if (rawCustom) {
+      const parsed = parseFloat(rawCustom);
+      if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 999_999_999 || String(parsed) !== String(Number(rawCustom))) {
+        Alert.alert('Invalid amount', 'Please enter a valid amount between 0 and 999,999,999.');
+        return;
+      }
+      value = String(parsed);
+    }
     setField('weeklyBet', value);
     setField('currency', currency);
     setField('quitDate', userChangedDate ? quitDate.toISOString() : null);
