@@ -62,8 +62,12 @@ export default function SignupScreen() {
     if (Platform.OS !== 'android') return;
     const sub = Keyboard.addListener('keyboardDidShow', () => {
       if (!activeFieldRef.current || !scrollRef.current) return;
+      // fieldY was computed but never actually used — this always scrolled
+      // to a fixed offset regardless of which field was focused, so the
+      // password field (positioned below email) wasn't reliably scrolled
+      // clear of the keyboard.
       const fieldY = activeFieldRef.current === 'email' ? emailYRef.current : passwordYRef.current;
-      scrollRef.current.scrollTo({ y: 160, animated: true });
+      scrollRef.current.scrollTo({ y: Math.max(0, fieldY - 40), animated: true });
     });
     return () => sub.remove();
   }, []);
@@ -192,6 +196,14 @@ export default function SignupScreen() {
     setError('');
     if (!email.trim() || !password.trim()) {
       setError('Please enter your email and password.');
+      return;
+    }
+    // reset-password.tsx requires 8+ characters — enforce the same minimum
+    // at signup (not sign-in, so an existing account's shorter password
+    // still works there) so nobody signs up with a password they'd be
+    // unable to reuse the length of when resetting their password later.
+    if (!isSignIn && password.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
     setLoading(true);
@@ -361,7 +373,7 @@ export default function SignupScreen() {
                   style={[styles.input, { paddingRight: 46 }]}
                   value={password}
                   onChangeText={setPassword}
-                  placeholder={isSignIn ? 'Your password' : 'At least 6 characters'}
+                  placeholder={isSignIn ? 'Your password' : 'At least 8 characters'}
                   placeholderTextColor={c.textFaint}
                   secureTextEntry={!showPassword}
                   autoComplete={isSignIn ? 'current-password' : 'new-password'}

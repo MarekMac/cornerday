@@ -113,8 +113,7 @@ function buildHtml(firstName: string, streakDays: number): string {
       <a href="https://cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">cornerday.app</a>
       <a href="https://cornerday.app/privacy" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Privacy</a>
     </div>
-    <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:10px;line-height:1.6;">To stop these emails: Settings &#x2192; Notifications</div>
-    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:8px;">© 2026 CornerDay. Built for recovery.</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;">© 2026 CornerDay. Built for recovery.</div>
   </td></tr>
 
   <tr><td style="height:32px;"></td></tr>

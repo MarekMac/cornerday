@@ -195,7 +195,7 @@ export default function ReadyScreen() {
       <SafeAreaView edges={['top']} style={s.safe}>
         <Pressable
           style={s.backBtn}
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q5')}>
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(onboarding)/q3')}>
           <Ionicons name="chevron-back" size={26} color={c.white} />
         </Pressable>
 

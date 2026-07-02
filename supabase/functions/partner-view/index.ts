@@ -167,8 +167,28 @@ Deno.serve(async (req: Request) => {
       }
       parsedBody = JSON.parse(rawBody.length > 0 ? rawBody : '{}');
     } else {
+      // This endpoint is fully unauthenticated (any token holder, no
+      // login) — the JSON branch above caps its body at 64KB, but this
+      // branch called req.formData() directly with no size check at all,
+      // letting anyone POST an arbitrarily large multipart body.
+      const contentLength = Number(req.headers.get('content-length') ?? '0');
+      if (contentLength > 65536) {
+        return new Response(JSON.stringify({ error: 'payload_too_large' }), {
+          status: 413, headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
       const form = await req.formData().catch(() => new FormData());
-      parsedBody = { email: form.get('email') ?? '', message: form.get('message') ?? '' };
+      // FormDataEntryValue is `string | File` — a hand-crafted multipart
+      // body can submit either field as a file part, which `?? ''` doesn't
+      // catch (a File is truthy). Coerce explicitly so that produces a
+      // clean empty string (caught by the validation below) instead of a
+      // File object silently stringifying to "[object File]".
+      const emailField = form.get('email');
+      const messageField = form.get('message');
+      parsedBody = {
+        email: typeof emailField === 'string' ? emailField : '',
+        message: typeof messageField === 'string' ? messageField : '',
+      };
     }
 
     // Email subscription: body has `email` key → save supporter_email (only if not already set)

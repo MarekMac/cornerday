@@ -92,7 +92,15 @@ export default function Q3Screen() {
                 if (isNaN(time.getTime())) return;
                 const merged = new Date(date.getTime());
                 merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
-                if (!isNaN(merged.getTime())) { setQuitDate(merged); setUserChangedDate(true); }
+                if (isNaN(merged.getTime())) return;
+                // Android's native time picker has no min/max-time concept
+                // (unlike the date picker above, which does support
+                // maximumDate) — picking today's date then a time later than
+                // now would otherwise produce a future quit_date with no
+                // restriction at all. Clamp instead of rejecting outright.
+                const now = new Date();
+                setQuitDate(merged.getTime() > now.getTime() ? now : merged);
+                setUserChangedDate(true);
               },
             });
           }, 500);

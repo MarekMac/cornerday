@@ -135,6 +135,17 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // "Someone in your corner" is premium-only, enforced server-side at
+  // link-creation time — but that only checked premium status once, when
+  // the link was made. Without re-checking here, a supporter set up while
+  // premium keeps getting notified indefinitely after the subscription lapses.
+  const { data: premiumCheck } = await sb.from('users').select('is_premium').eq('id', userId).maybeSingle();
+  if (!premiumCheck?.is_premium) {
+    return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'not_premium' }), {
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
+
   const RATE_LIMIT_RPC: Record<string, string> = {
     urge: 'claim_urge_notify_slot',
     relapse: 'claim_relapse_notify_slot',
