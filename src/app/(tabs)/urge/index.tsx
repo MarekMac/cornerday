@@ -599,62 +599,82 @@ export default function UrgeScreen() {
     let success = false;
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const today = new Date().toISOString().split('T')[0];
-        const newQuitTimestamp = new Date().toISOString();
-        const { error: rpcError } = await supabase.rpc('reset_streak', {
-          p_user_id: user.id,
-          p_quit_date: today,
-          p_quit_timestamp: newQuitTimestamp,
-        });
-        if (rpcError) { console.warn('[doStreakReset] rpc error:', rpcError.message); return; }
-        // Streak Shield is premium-only — recheck live premium status, not just
-        // the AsyncStorage flag, so a lapsed subscription can't keep badges
-        // surviving a relapse indefinitely.
-        const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true' && isPremium;
-        const resetOps: PromiseLike<any>[] = [
-          supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null }),
-        ];
-        // Only delete day-based streak badges, not permanent achievement badges
-        // (payments, check-ins, urges overcome, etc.) — see doRelapse in
-        // (tabs)/index.tsx for the same fix and full rationale.
-        if (!shieldEnabled) {
-          const streakBadgeTypes = BADGE_DEFS.map(b => b.type);
-          resetOps.push(supabase.from('badges').delete().eq('user_id', user.id).in('badge_type', streakBadgeTypes));
-        }
-        await Promise.all(resetOps);
-        // When shield is on, badges are preserved — keep MILESTONE_NOTIFS_KEY so the scheduler
-        // knows which milestones are already earned and doesn't re-fire their notifications.
-        const keysToRemove = [CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
-        if (!shieldEnabled) keysToRemove.unshift(MILESTONE_NOTIFS_KEY);
-        await AsyncStorage.multiRemove(keysToRemove);
-        notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
-
-        let badgeTypesForNotif: string[] = [];
-        if (shieldEnabled) {
-          const { data: survivingBadges } = await supabase.from('badges').select('badge_type').eq('user_id', user.id);
-          badgeTypesForNotif = (survivingBadges ?? []).map(b => b.badge_type);
-        }
-
-        const { data: prefsRow } = await supabase
-          .from('users')
-          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
-          .eq('id', user.id).maybeSingle();
-        const prefs = {
-          notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
-          notif_daily_streak:          prefsRow?.notif_daily_streak          ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
-          notif_daily_checkin:         prefsRow?.notif_daily_checkin         ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
-          notif_weekly_summary:        prefsRow?.notif_weekly_summary        ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
-          notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
-          notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
-          notif_community:             prefsRow?.notif_community             ?? DEFAULT_NOTIF_PREFS.notif_community,
-        };
-        await scheduleAllNotifications(prefs, newQuitTimestamp, badgeTypesForNotif);
-        await scheduleOnboardingCheckin();
-        success = true;
+      if (!user) {
+        // Session momentarily unavailable (e.g. token refresh in flight) —
+        // this used to fall through silently with no feedback at all, right
+        // when the user most needs reassurance that something happened.
+        Alert.alert('Could not reset', 'Please check your connection and try again.');
+        return;
       }
+      const today = new Date().toISOString().split('T')[0];
+      const newQuitTimestamp = new Date().toISOString();
+      const { error: rpcError } = await supabase.rpc('reset_streak', {
+        p_user_id: user.id,
+        p_quit_date: today,
+        p_quit_timestamp: newQuitTimestamp,
+      });
+      if (rpcError) {
+        console.warn('[doStreakReset] rpc error:', rpcError.message);
+        Alert.alert('Could not reset', 'Please try again.');
+        return;
+      }
+      // Streak Shield is premium-only — recheck live premium status, not just
+      // the AsyncStorage flag, so a lapsed subscription can't keep badges
+      // surviving a relapse indefinitely.
+      const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true' && isPremium;
+      const resetOps: PromiseLike<{ error: { message: string } | null }>[] = [
+        supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null }),
+      ];
+      // Only delete day-based streak badges, not permanent achievement badges
+      // (payments, check-ins, urges overcome, etc.) — see doRelapse in
+      // (tabs)/index.tsx for the same fix and full rationale.
+      if (!shieldEnabled) {
+        const streakBadgeTypes = BADGE_DEFS.map(b => b.type);
+        resetOps.push(supabase.from('badges').delete().eq('user_id', user.id).in('badge_type', streakBadgeTypes));
+      }
+      // supabase-js resolves (rather than throws) on a query-level failure,
+      // so Promise.all alone can't tell success from failure — check .error
+      // on each result. Otherwise this would show "✓ Streak reset" even if
+      // the loss record was never written or the badges were never cleared.
+      const resetResults = await Promise.all(resetOps);
+      const resetError = resetResults.find(r => r.error)?.error;
+      if (resetError) {
+        console.warn('[doStreakReset] reset write error:', resetError.message);
+        Alert.alert('Could not reset', 'Please try again.');
+        return;
+      }
+      // When shield is on, badges are preserved — keep MILESTONE_NOTIFS_KEY so the scheduler
+      // knows which milestones are already earned and doesn't re-fire their notifications.
+      const keysToRemove = [CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
+      if (!shieldEnabled) keysToRemove.unshift(MILESTONE_NOTIFS_KEY);
+      await AsyncStorage.multiRemove(keysToRemove);
+      notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
+
+      let badgeTypesForNotif: string[] = [];
+      if (shieldEnabled) {
+        const { data: survivingBadges } = await supabase.from('badges').select('badge_type').eq('user_id', user.id);
+        badgeTypesForNotif = (survivingBadges ?? []).map(b => b.badge_type);
+      }
+
+      const { data: prefsRow } = await supabase
+        .from('users')
+        .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
+        .eq('id', user.id).maybeSingle();
+      const prefs = {
+        notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+        notif_daily_streak:          prefsRow?.notif_daily_streak          ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+        notif_daily_checkin:         prefsRow?.notif_daily_checkin         ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+        notif_weekly_summary:        prefsRow?.notif_weekly_summary        ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+        notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+        notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+        notif_community:             prefsRow?.notif_community             ?? DEFAULT_NOTIF_PREFS.notif_community,
+      };
+      await scheduleAllNotifications(prefs, newQuitTimestamp, badgeTypesForNotif);
+      await scheduleOnboardingCheckin();
+      success = true;
     } catch (e) {
       console.warn('[doStreakReset] error:', e);
+      Alert.alert('Could not reset', 'Please check your connection and try again.');
     } finally {
       if (!isMounted.current) return;
       setSlipResetting(false);

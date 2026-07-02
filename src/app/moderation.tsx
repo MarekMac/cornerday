@@ -98,17 +98,23 @@ export default function ModerationScreen() {
   // ── Reports ──────────────────────────────────────────────────────────────────
   const [reports, setReports] = useState<Report[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
+  const [reportsError, setReportsError] = useState(false);
   const [actioning, setActioning] = useState<string | null>(null);
 
   const loadReports = useCallback(async () => {
     setReportsLoading(true);
+    setReportsError(false);
     try {
       const { data, error } = await supabase
         .from('community_reports')
         .select('id, target_type, target_id, reason, created_at, status')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
-      if (error || !data) return;
+      // A failed query must not render as "no pending reports" — this exact
+      // failure mode (a query error silently rendering as genuinely empty)
+      // already caused a real incident here once, per the RLS-hardening
+      // migration's own comment.
+      if (error || !data) { setReportsError(true); return; }
       const enriched = await Promise.all(data.map(async (r) => {
         if (r.target_type === 'post') {
           const { data: post } = await supabase
@@ -121,6 +127,8 @@ export default function ModerationScreen() {
         }
       }));
       setReports(enriched as Report[]);
+    } catch {
+      setReportsError(true);
     } finally {
       setReportsLoading(false);
     }
@@ -173,6 +181,7 @@ export default function ModerationScreen() {
   // ── Users ────────────────────────────────────────────────────────────────────
   const [users, setUsers] = useState<UserRow[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState(false);
   const [userActioning, setUserActioning] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -199,15 +208,19 @@ export default function ModerationScreen() {
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
+    setUsersError(false);
     try {
-      const [{ data: { user } }, { data }] = await Promise.all([
+      const [{ data: { user } }, { data, error }] = await Promise.all([
         supabase.auth.getUser(),
         supabase.from('users')
           .select('id, display_name, email, created_at, is_premium, is_admin, is_banned, ban_reason, ban_expires_at, ban_appeal_note')
           .order('created_at', { ascending: false }),
       ]);
       if (user) setCurrentUserId(user.id);
+      if (error) { setUsersError(true); return; }
       setUsers((data ?? []) as UserRow[]);
+    } catch {
+      setUsersError(true);
     } finally {
       setUsersLoading(false);
     }
@@ -340,17 +353,22 @@ export default function ModerationScreen() {
   // ── Feedback ─────────────────────────────────────────────────────────────────
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [feedbackError, setFeedbackError] = useState(false);
   const [deletingFeedback, setDeletingFeedback] = useState<string | null>(null);
 
   const loadFeedback = useCallback(async () => {
     setFeedbackLoading(true);
+    setFeedbackError(false);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('feedback')
         .select('id, type, message, app_version, created_at, user_id')
         .order('created_at', { ascending: false })
         .limit(100);
+      if (error) { setFeedbackError(true); return; }
       setFeedbackItems((data ?? []) as FeedbackItem[]);
+    } catch {
+      setFeedbackError(true);
     } finally {
       setFeedbackLoading(false);
     }
@@ -442,6 +460,15 @@ export default function ModerationScreen() {
       {tab === 'reports' && (
         reportsLoading ? (
           <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>
+        ) : reportsError ? (
+          <View style={s.center}>
+            <Ionicons name="alert-circle-outline" size={52} color={c.textError} />
+            <Text style={s.emptyTitle}>Couldn't load reports</Text>
+            <Text style={s.emptyBody}>Something went wrong. Tap to retry.</Text>
+            <Pressable onPress={loadReports} style={({ pressed }) => [s.dismissBtn, { marginTop: 16 }, pressed && { opacity: 0.7 }]}>
+              <Text style={s.dismissBtnTxt}>Retry</Text>
+            </Pressable>
+          </View>
         ) : reports.length === 0 ? (
           <View style={s.center}>
             <Ionicons name="checkmark-circle-outline" size={52} color={c.primaryLight} />
@@ -491,6 +518,15 @@ export default function ModerationScreen() {
       {tab === 'users' && (
         usersLoading ? (
           <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>
+        ) : usersError ? (
+          <View style={s.center}>
+            <Ionicons name="alert-circle-outline" size={52} color={c.textError} />
+            <Text style={s.emptyTitle}>Couldn't load users</Text>
+            <Text style={s.emptyBody}>Something went wrong. Tap to retry.</Text>
+            <Pressable onPress={loadUsers} style={({ pressed }) => [s.dismissBtn, { marginTop: 16 }, pressed && { opacity: 0.7 }]}>
+              <Text style={s.dismissBtnTxt}>Retry</Text>
+            </Pressable>
+          </View>
         ) : users.length === 0 ? (
           <View style={s.center}>
             <Ionicons name="people-outline" size={52} color={c.primaryLight} />
@@ -612,6 +648,15 @@ export default function ModerationScreen() {
       {tab === 'feedback' && (
         feedbackLoading ? (
           <View style={s.center}><ActivityIndicator size="large" color={c.primary} /></View>
+        ) : feedbackError ? (
+          <View style={s.center}>
+            <Ionicons name="alert-circle-outline" size={52} color={c.textError} />
+            <Text style={s.emptyTitle}>Couldn't load feedback</Text>
+            <Text style={s.emptyBody}>Something went wrong. Tap to retry.</Text>
+            <Pressable onPress={loadFeedback} style={({ pressed }) => [s.dismissBtn, { marginTop: 16 }, pressed && { opacity: 0.7 }]}>
+              <Text style={s.dismissBtnTxt}>Retry</Text>
+            </Pressable>
+          </View>
         ) : feedbackItems.length === 0 ? (
           <View style={s.center}>
             <Ionicons name="chatbubble-ellipses-outline" size={52} color={c.primaryLight} />

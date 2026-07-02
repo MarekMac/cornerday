@@ -1635,13 +1635,23 @@ export default function HomeScreen() {
           return;
         }
         let relapseRowId: string | null = null;
-        const { data: journalRow, error: journalErr } = await supabase.from('losses').insert({
+        const insertJournalRow = () => supabase.from('losses').insert({
           user_id: user.id, type: 'streak_reset', amount: 0,
           category: 'Streak Reset',
           note: days > 0 ? `After ${days} day${days !== 1 ? 's' : ''}` : null,
         }).select('id').maybeSingle();
+        let { data: journalRow, error: journalErr } = await insertJournalRow();
         if (journalErr) {
-          console.warn('[doRelapse] journal insert failed:', journalErr.message);
+          // The reset_streak RPC above already committed — the streak itself
+          // is reset regardless of what happens here, so there's no clean
+          // "abort" path left. Retry once, since this row is what the
+          // Recovery Calendar reads to know a day was a slip; if it never
+          // saves, that day would silently render as clean instead.
+          console.warn('[doRelapse] journal insert failed, retrying once:', journalErr.message);
+          ({ data: journalRow, error: journalErr } = await insertJournalRow());
+        }
+        if (journalErr) {
+          console.warn('[doRelapse] journal insert failed after retry:', journalErr.message);
         } else if (journalRow?.id) {
           relapseRowId = journalRow.id;
         }
@@ -1705,6 +1715,14 @@ export default function HomeScreen() {
           );
           return { ...prev, quitDate: newQuitTimestamp, earnedBadges, badgeTimestamps };
         });
+        // Let the reset itself finish and the UI update first — this is a
+        // secondary, non-blocking heads-up, not an error that stops the flow.
+        if (journalErr) {
+          Alert.alert(
+            'Streak reset',
+            "Your streak was reset, but we couldn't save today's note — your Recovery Calendar may not show it. That's okay, your reset streak is what matters."
+          );
+        }
       }
     } finally {
       relapseInProgressRef.current = false;
