@@ -46,6 +46,7 @@ import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleOnboardingChecki
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
+import { BADGE_DEFS } from '@/constants/badgeConstants';
 
 const PLAN_DISTRACTION_OPTIONS = [
   { key: 'walk',     emoji: '🚶', label: 'Go for a walk' },
@@ -607,11 +608,20 @@ export default function UrgeScreen() {
           p_quit_timestamp: newQuitTimestamp,
         });
         if (rpcError) { console.warn('[doStreakReset] rpc error:', rpcError.message); return; }
-        const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true';
+        // Streak Shield is premium-only — recheck live premium status, not just
+        // the AsyncStorage flag, so a lapsed subscription can't keep badges
+        // surviving a relapse indefinitely.
+        const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true' && isPremium;
         const resetOps: Promise<any>[] = [
           supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null }),
         ];
-        if (!shieldEnabled) resetOps.push(supabase.from('badges').delete().eq('user_id', user.id));
+        // Only delete day-based streak badges, not permanent achievement badges
+        // (payments, check-ins, urges overcome, etc.) — see doRelapse in
+        // (tabs)/index.tsx for the same fix and full rationale.
+        if (!shieldEnabled) {
+          const streakBadgeTypes = BADGE_DEFS.map(b => b.type);
+          resetOps.push(supabase.from('badges').delete().eq('user_id', user.id).in('badge_type', streakBadgeTypes));
+        }
         await Promise.all(resetOps);
         // When shield is on, badges are preserved — keep MILESTONE_NOTIFS_KEY so the scheduler
         // knows which milestones are already earned and doesn't re-fire their notifications.

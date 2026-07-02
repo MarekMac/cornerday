@@ -801,7 +801,17 @@ export default function HomeScreen() {
       AsyncStorage.getItem(CUSTOM_MILESTONE_KEY),
     ]).then(([rawPhoto, rawShield, rawUndo, rawMilestone]) => {
       setMotivationPhoto(rawPhoto ? rawPhoto.split('?t=')[0] + '?t=' + Date.now() : null);
-      setShieldEnabled(rawShield === 'true');
+      // Streak Shield is premium-only, but the flag is a plain AsyncStorage
+      // value with no premium recheck at the point of use — if a subscription
+      // lapses, the flag would otherwise keep applying the 24h relapse-undo
+      // protection indefinitely. Recheck against live premium status here and
+      // clear the stale flag if it no longer applies.
+      if (rawShield === 'true' && !isPremium) {
+        setShieldEnabled(false);
+        AsyncStorage.removeItem(STREAK_SHIELD_KEY);
+      } else {
+        setShieldEnabled(rawShield === 'true' && isPremium);
+      }
       if (rawUndo) {
         try {
           const parsed = JSON.parse(rawUndo);
@@ -824,7 +834,7 @@ export default function HomeScreen() {
         setCustomMilestone(null);
       }
     });
-  }, []));
+  }, [isPremium]));
 
   const dismissProfileNudge = useCallback(() => {
     setShowProfileNudge(false);

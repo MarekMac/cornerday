@@ -1579,6 +1579,10 @@ export default function AccountScreen() {
   };
 
   const handleShieldToggle = async (value: boolean) => {
+    // Defense in depth — the Switch is already hidden behind a premium check
+    // in the UI, but don't let this handler enable the flag for a non-premium
+    // caller under any circumstance.
+    if (value && !isPremiumFromRC) return;
     setStreakShieldEnabled(value);
     if (value) await AsyncStorage.setItem(STREAK_SHIELD_KEY, 'true');
     else await AsyncStorage.removeItem(STREAK_SHIELD_KEY);
