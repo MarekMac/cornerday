@@ -38,6 +38,27 @@ function daysCleanLabel(quitTimestamp: string | null, quitDate: string | null): 
   return { days, label };
 }
 
+// These profile fields (display_name, motivation, trigger, goal) are
+// user-controlled free text — a user can set them directly via the same
+// own-row UPDATE the app uses (e.g. display_name via account settings, or
+// motivation/trigger/goal via the "write your own reason" onboarding
+// options) and they get interpolated straight into the system prompt below.
+// Strip newlines/control characters so a single-line "Name:" field can't
+// smuggle in fake multi-line structure, and strip the literal delimiter
+// strings the prompt uses to mark context boundaries so they can't be
+// spoofed to fake a context-block close. Cap length since these are meant
+// to be short profile fields, not essays.
+function sanitizeProfileField(s: string | null | undefined, maxLen = 200): string | null {
+  if (!s) return null;
+  let out = s.replace(/[\r\n\t\x00-\x1f\x7f]+/g, ' ').trim();
+  for (const marker of ['[End context]', '[User context', '[Previous session summary', '[End previous session summary]']) {
+    out = out.split(marker).join('');
+  }
+  out = out.trim();
+  if (out.length > maxLen) out = out.slice(0, maxLen) + '…';
+  return out || null;
+}
+
 function supportLabel(s: string | null): string {
   if (!s) return 'no one mentioned';
   const map: Record<string, string> = {
@@ -47,7 +68,7 @@ function supportLabel(s: string | null): string {
     therapist: 'therapist',
     keep_private: 'keeping it private for now',
   };
-  return map[s] ?? s;
+  return map[s] ?? sanitizeProfileField(s) ?? 'no one mentioned';
 }
 
 Deno.serve(async (req: Request) => {
@@ -165,11 +186,11 @@ Deno.serve(async (req: Request) => {
 
     const contextLines: string[] = [
       `[User context — use naturally in conversation, do not quote verbatim]`,
-      `Name: ${profile.display_name ?? 'there'}`,
+      `Name: ${sanitizeProfileField(profile.display_name) ?? 'there'}`,
       `Recovery: ${cleanLabel}${longestStreak > daysClean ? ` (longest streak: ${longestStreak} days)` : ''}`,
-      `Why they quit: ${profile.motivation ?? 'a better life'}`,
-      `Biggest trigger: ${profile.trigger ?? 'urges'}`,
-      `Main goal: ${profile.goal ?? 'stay free from gambling'}`,
+      `Why they quit: ${sanitizeProfileField(profile.motivation) ?? 'a better life'}`,
+      `Biggest trigger: ${sanitizeProfileField(profile.trigger) ?? 'urges'}`,
+      `Main goal: ${sanitizeProfileField(profile.goal) ?? 'stay free from gambling'}`,
       `Support: ${supportLabel(profile.support_type)}`,
     ];
     if (totalLost > 0) {
@@ -180,7 +201,11 @@ Deno.serve(async (req: Request) => {
     }
     contextLines.push(`Prevention checklist: ${checklistSummary}`);
     if (profile.coach_context) {
-      contextLines.push(`[Previous session summary — use to provide continuity, don't quote verbatim]\n${profile.coach_context}\n[End previous session summary]`);
+      // Server-generated (by summarize-coach-session), so lower injection risk
+      // than the direct profile fields above, but still strip the literal
+      // delimiter strings for defense in depth.
+      const safeSummary = sanitizeProfileField(profile.coach_context, 2000) ?? profile.coach_context;
+      contextLines.push(`[Previous session summary — use to provide continuity, don't quote verbatim]\n${safeSummary}\n[End previous session summary]`);
     }
     contextLines.push(`[End context]`);
 
