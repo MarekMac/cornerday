@@ -257,9 +257,15 @@ const AFFIRMATIONS = [
 function Affirmations() {
   const [idx, setIdx] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => { mounted.current = false; fadeAnim.stopAnimation(); };
+  }, [fadeAnim]);
 
   const next = () => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {
+      if (!finished || !mounted.current) return;
       setIdx(i => (i + 1) % AFFIRMATIONS.length);
       Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     });
@@ -382,11 +388,16 @@ function WorryDrop() {
   const [text, setText] = useState('');
   const [dropped, setDropped] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => { mounted.current = false; fadeAnim.stopAnimation(); };
+  }, [fadeAnim]);
 
   const drop = () => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 600, useNativeDriver: true }).start(() =>
-      setDropped(true)
-    );
+    Animated.timing(fadeAnim, { toValue: 0, duration: 600, useNativeDriver: true }).start(({ finished }) => {
+      if (finished && mounted.current) setDropped(true);
+    });
   };
 
   if (dropped) return <Wrap><Done message="You named it and let it go. It has no power here." /></Wrap>;

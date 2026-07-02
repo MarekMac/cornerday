@@ -126,7 +126,10 @@ function MemoryGame({ onScore }: { onScore?: (s: number) => void }) {
   const [matched, setMatched] = useState<Set<number>>(new Set());
   const [moves, setMoves]     = useState(0);
   const checking = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const won = matched.size === 16;
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const tap = (id: number) => {
     if (checking.current || matched.has(id) || flipped.includes(id) || flipped.length >= 2) return;
@@ -144,7 +147,7 @@ function MemoryGame({ onScore }: { onScore?: (s: number) => void }) {
         checking.current = false;
         if (newMatched.size === 16) onScore?.(Math.max(0, 150 - newMoves * 5));
       } else {
-        setTimeout(() => { setFlipped([]); checking.current = false; }, 900);
+        timer.current = setTimeout(() => { setFlipped([]); checking.current = false; }, 900);
       }
     }
   };
@@ -327,6 +330,7 @@ function SimonGame({ onScore }: { onScore?: (s: number) => void }) {
   useEffect(() => () => { mounted.current = false; if (timer.current) clearTimeout(timer.current); }, []);
 
   const showSeq = useCallback((s: number[]) => {
+    if (!mounted.current) return;
     setPhase('showing');
     setInput([]);
     let i = 0;
@@ -363,7 +367,11 @@ function SimonGame({ onScore }: { onScore?: (s: number) => void }) {
       const newSeq = [...seq, Math.floor(Math.random() * 4)];
       setSeq(newSeq);
       setInput([]);
-      setTimeout(() => showSeq(newSeq), 600);
+      // Track via the same timer ref as showSeq's own timeouts — this was a
+      // bare setTimeout before, never cleared on unmount, so closing the
+      // game mid-transition could still call showSeq() (and its now-guarded
+      // but previously unconditional setState calls) after unmount.
+      timer.current = setTimeout(() => showSeq(newSeq), 600);
     } else {
       setInput(next);
     }
@@ -430,8 +438,11 @@ function makeWordState(idx: number, score = 0): WordState {
 
 function WordScrambleGame({ onScore }: { onScore?: (s: number) => void }) {
   const [state, setState] = useState<WordState>(() => makeWordState(0));
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (state.done) onScore?.(state.score); }, [state.done]);
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const pick = (item: { ch: string; uid: number }) => {
     if (state.correct) return;
@@ -443,9 +454,9 @@ function WordScrambleGame({ onScore }: { onScore?: (s: number) => void }) {
     if (correct) {
       const next = state.wordIdx + 1;
       if (next >= TOTAL_WORDS) {
-        setTimeout(() => setState(prev => ({ ...prev, done: true })), 800);
+        timer.current = setTimeout(() => setState(prev => ({ ...prev, done: true })), 800);
       } else {
-        setTimeout(() => setState(prev => makeWordState(next, prev.score)), 800);
+        timer.current = setTimeout(() => setState(prev => makeWordState(next, prev.score)), 800);
       }
     }
   };
@@ -517,15 +528,18 @@ function StroopGame({ onScore }: { onScore?: (s: number) => void }) {
   const [done, setDone]   = useState(false);
   const [started, setStarted]   = useState(false);
   const [feedback, setFeedback] = useState<boolean | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (done) onScore?.(score); }, [done]);
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const answer = (hex: string) => {
     if (feedback !== null) return;
     const ok = hex === STROOP_Q[idx].ink;
     if (ok) setScore(s => s + 1);
     setFeedback(ok);
-    setTimeout(() => {
+    timer.current = setTimeout(() => {
       setFeedback(null);
       if (idx + 1 >= STROOP_Q.length) { setDone(true); return; }
       setIdx(i => i + 1);
@@ -601,16 +615,19 @@ function QuickMathGame({ onScore }: { onScore?: (s: number) => void }) {
   const [round, setRound] = useState(1);
   const [done, setDone]   = useState(false);
   const [feedback, setFeedback] = useState<boolean | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const TOTAL = 10;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (done) onScore?.(score); }, [done]);
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const answer = (val: number) => {
     if (feedback !== null) return;
     const ok = val === q.ans;
     if (ok) setScore(s => s + 1);
     setFeedback(ok);
-    setTimeout(() => {
+    timer.current = setTimeout(() => {
       setFeedback(null);
       if (round >= TOTAL) { setDone(true); return; }
       setRound(r => r + 1);
@@ -731,16 +748,19 @@ function ColorMatchGame({ onScore }: { onScore?: (s: number) => void }) {
   const [round, setRound] = useState(1);
   const [done, setDone]   = useState(false);
   const [feedback, setFeedback] = useState<boolean | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const TOTAL = 10;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (done) onScore?.(score); }, [done]);
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const answer = (name: string) => {
     if (feedback !== null) return;
     const ok = name === q.correct.name;
     if (ok) setScore(s => s + 1);
     setFeedback(ok);
-    setTimeout(() => {
+    timer.current = setTimeout(() => {
       setFeedback(null);
       if (round >= TOTAL) { setDone(true); return; }
       setRound(r => r + 1);
