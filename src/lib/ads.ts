@@ -3,6 +3,7 @@ import MobileAds, {
   InterstitialAd,
   AdEventType,
   TestIds,
+  MaxAdContentRating,
 } from 'react-native-google-mobile-ads';
 
 const INTERSTITIAL_ID = __DEV__
@@ -21,7 +22,18 @@ function loadNext() {
 export function initAds(): void {
   if (Platform.OS === 'web') return;
 
-  MobileAds().initialize().catch(() => {});
+  // This app supports people in gambling-addiction recovery — a
+  // scary/manipulative ad creative (e.g. fake "your device has a virus"
+  // scareware, a known low-quality genre on ad networks generally) is a
+  // much worse experience here than on a typical app. PG excludes content
+  // AdMob classifies as "scary imagery" (that tier starts at T) while still
+  // allowing normal general-audience ads to fill.
+  MobileAds()
+    .setRequestConfiguration({ maxAdContentRating: MaxAdContentRating.PG })
+    .catch(() => {})
+    .finally(() => {
+      MobileAds().initialize().catch(() => {});
+    });
 
   interstitial = InterstitialAd.createForAdRequest(INTERSTITIAL_ID, {
     requestNonPersonalizedAdsOnly: true,
