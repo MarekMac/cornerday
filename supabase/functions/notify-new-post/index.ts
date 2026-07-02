@@ -26,7 +26,7 @@ interface ExpoPushMessage {
   data?: Record<string, unknown>;
 }
 
-const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET')!;
+const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET') ?? '';
 
 function timingSafeEqual(a: string, b: string): boolean {
   const ea = new TextEncoder().encode(a);
@@ -38,6 +38,10 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 Deno.serve(async (req: Request) => {
+  if (!WEBHOOK_SECRET) {
+    console.error('WEBHOOK_SECRET env var not set');
+    return new Response(JSON.stringify({ error: 'server_misconfigured' }), { status: 500 });
+  }
   const auth = req.headers.get('Authorization') ?? '';
   if (!timingSafeEqual(auth, `Bearer ${WEBHOOK_SECRET}`)) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });

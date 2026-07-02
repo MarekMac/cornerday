@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const WEBHOOK_SECRET   = Deno.env.get('WEBHOOK_SECRET')!;
+const WEBHOOK_SECRET   = Deno.env.get('WEBHOOK_SECRET') ?? '';
 
 function timingSafeEqual(a: string, b: string): boolean {
   const ea = new TextEncoder().encode(a);
@@ -69,6 +69,10 @@ function parseQuitMs(ts: string | null, date: string | null): number {
 }
 
 Deno.serve(async (req: Request) => {
+  if (!WEBHOOK_SECRET) {
+    console.error('WEBHOOK_SECRET env var not set');
+    return new Response(JSON.stringify({ error: 'server_misconfigured' }), { status: 500 });
+  }
   const auth = req.headers.get('Authorization') ?? '';
   if (!timingSafeEqual(auth, `Bearer ${WEBHOOK_SECRET}`)) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
