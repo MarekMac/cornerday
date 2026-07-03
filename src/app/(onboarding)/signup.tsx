@@ -62,12 +62,13 @@ export default function SignupScreen() {
     if (Platform.OS !== 'android') return;
     const sub = Keyboard.addListener('keyboardDidShow', () => {
       if (!activeFieldRef.current || !scrollRef.current) return;
-      // fieldY was computed but never actually used — this always scrolled
-      // to a fixed offset regardless of which field was focused, so the
-      // password field (positioned below email) wasn't reliably scrolled
-      // clear of the keyboard.
+      // emailYRef/passwordYRef are relative to their parent `form` View, not
+      // the ScrollView content — formYRef.current (the form's own offset
+      // within the scroll, from everything above it: header, Google button,
+      // divider) must be added in, otherwise the password field (the second
+      // child of `form`) still lands hidden behind the keyboard.
       const fieldY = activeFieldRef.current === 'email' ? emailYRef.current : passwordYRef.current;
-      scrollRef.current.scrollTo({ y: Math.max(0, fieldY - 40), animated: true });
+      scrollRef.current.scrollTo({ y: Math.max(0, formYRef.current + fieldY - 40), animated: true });
     });
     return () => sub.remove();
   }, []);

@@ -99,8 +99,15 @@ export default function Q3Screen() {
                 // now would otherwise produce a future quit_date with no
                 // restriction at all. Clamp instead of rejecting outright.
                 const now = new Date();
-                setQuitDate(merged.getTime() > now.getTime() ? now : merged);
+                const wasClamped = merged.getTime() > now.getTime();
+                setQuitDate(wasClamped ? now : merged);
                 setUserChangedDate(true);
+                // Silently substituting the chosen time for "now" with no
+                // feedback reads as a bug (picker didn't register the tap) —
+                // a brief heads-up makes it clear the adjustment was intentional.
+                if (wasClamped) {
+                  Alert.alert('Time adjusted', "You picked a time later than right now, so we've set it to the current time instead.");
+                }
               },
             });
           }, 500);
