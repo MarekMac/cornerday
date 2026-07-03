@@ -21,7 +21,7 @@ DROP TRIGGER IF EXISTS on_streak_milestone_email ON public.streaks;
 CREATE TRIGGER on_streak_milestone_email
 AFTER UPDATE OF current_streak ON public.streaks
 FOR EACH ROW
-WHEN (NEW.current_streak > OLD.current_streak AND NEW.current_streak IN (7,30,60,90,182,365,730,1095))
+WHEN (NEW.current_streak > OLD.current_streak AND NEW.current_streak IN (7,14,30,60,90,182,365,730,1095))
 EXECUTE FUNCTION public.trigger_milestone_email();
 
 

@@ -107,6 +107,12 @@ Deno.serve(async (req) => {
 
   if (error) {
     console.error('[revenuecat-webhook] update error:', error.message);
+    // The event is claimed but the update didn't apply — release the claim
+    // so RevenueCat's retry of the same event.id can actually reprocess it,
+    // instead of being swallowed as "already handled" by the claim check above.
+    if (eventId) {
+      await supabase.from('revenuecat_webhook_events').delete().eq('event_id', eventId);
+    }
     return new Response('Internal error', { status: 500 });
   }
 
