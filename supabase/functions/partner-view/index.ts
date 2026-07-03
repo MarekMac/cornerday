@@ -100,13 +100,21 @@ Deno.serve(async (req: Request) => {
       fetches.push((async () => {
         const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
         const quitIso = new Date(quitMs).toISOString();
+        // The badges table doubles as an idempotency/claim store for several
+        // edge functions (email_*, push_*, upsell_30d, reengagement_7d,
+        // recovery_*pct, welcome_email_sent, etc.) — excluding only 'started'
+        // let any of those internal rows win "latest milestone" and leak a
+        // raw internal string (e.g. "email_1_week") to the unauthenticated
+        // partner view, and inflated milestonesEarned. Restrict to the
+        // actual client-facing milestone types.
+        const milestoneTypes = Object.keys(MILESTONE_LABELS);
         const [badgeCountRes, latestRes, urgeRes] = await Promise.all([
           sb.from('badges').select('id', { count: 'exact', head: true })
             .eq('user_id', link.user_id)
-            .neq('badge_type', 'started')
+            .in('badge_type', milestoneTypes)
             .gte('earned_at', quitIso),
           sb.from('badges').select('badge_type, earned_at').eq('user_id', link.user_id)
-            .neq('badge_type', 'started')
+            .in('badge_type', milestoneTypes)
             .gte('earned_at', quitIso)
             .order('earned_at', { ascending: false }).limit(1).maybeSingle(),
           sb.from('urge_journal').select('id', { count: 'exact', head: true })
@@ -168,16 +176,22 @@ Deno.serve(async (req: Request) => {
       parsedBody = JSON.parse(rawBody.length > 0 ? rawBody : '{}');
     } else {
       // This endpoint is fully unauthenticated (any token holder, no
-      // login) — the JSON branch above caps its body at 64KB, but this
-      // branch called req.formData() directly with no size check at all,
-      // letting anyone POST an arbitrarily large multipart body.
-      const contentLength = Number(req.headers.get('content-length') ?? '0');
-      if (contentLength > 65536) {
+      // login) — the JSON branch above caps its body at 64KB by measuring
+      // req.text().length (actual bytes transferred). A Content-Length
+      // header check here would be spoofable/omittable by a raw HTTP client
+      // (triggering chunked transfer-encoding), so measure actual bytes the
+      // same way: read the raw body first, THEN parse it as multipart.
+      const bodyBuf = await req.arrayBuffer();
+      if (bodyBuf.byteLength > 65536) {
         return new Response(JSON.stringify({ error: 'payload_too_large' }), {
           status: 413, headers: { ...CORS, 'Content-Type': 'application/json' },
         });
       }
-      const form = await req.formData().catch(() => new FormData());
+      const form = await new Request(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: bodyBuf,
+      }).formData().catch(() => new FormData());
       // FormDataEntryValue is `string | File` — a hand-crafted multipart
       // body can submit either field as a file part, which `?? ''` doesn't
       // catch (a File is truthy). Coerce explicitly so that produces a
