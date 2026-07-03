@@ -2047,7 +2047,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   spendingBtnSave: { backgroundColor: c.primary },
   spendingBtnSaveTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
   saveBtn: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.primary },
-  saveBtnDanger: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.error },
+  saveBtnDanger: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.error, marginBottom: 10 },
   saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   btnDisabled: { opacity: 0.6 },
 
