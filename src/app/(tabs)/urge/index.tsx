@@ -254,6 +254,7 @@ export default function UrgeScreen() {
   const isMounted = useRef(true);
   const closeLogTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyboardVisible = useRef(false);
+  const streakResetInProgressRef = useRef(false);
 
   useEffect(() => { return () => {
     isMounted.current = false;
@@ -597,6 +598,12 @@ export default function UrgeScreen() {
   };
 
   const doStreakReset = async () => {
+    // Ref check, not just slipResetting (state updates are async) — a fast
+    // double-tap could otherwise fire this twice and double-insert the
+    // streak_reset row / re-notify the supporter before the button re-renders
+    // as disabled.
+    if (streakResetInProgressRef.current) return;
+    streakResetInProgressRef.current = true;
     setSlipResetting(true);
     let success = false;
     try {
@@ -657,39 +664,52 @@ export default function UrgeScreen() {
         Alert.alert('Could not reset', 'Please try again.');
         return;
       }
-      // When shield is on, badges are preserved — keep MILESTONE_NOTIFS_KEY so the scheduler
-      // knows which milestones are already earned and doesn't re-fire their notifications.
-      const keysToRemove = [CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
-      if (!shieldEnabled) keysToRemove.unshift(MILESTONE_NOTIFS_KEY);
-      await AsyncStorage.multiRemove(keysToRemove);
-      notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
-
-      let badgeTypesForNotif: string[] = [];
-      if (shieldEnabled) {
-        const { data: survivingBadges } = await supabase.from('badges').select('badge_type').eq('user_id', user.id);
-        badgeTypesForNotif = (survivingBadges ?? []).map(b => b.badge_type);
-      }
-
-      const { data: prefsRow } = await supabase
-        .from('users')
-        .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
-        .eq('id', user.id).maybeSingle();
-      const prefs = {
-        notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
-        notif_daily_streak:          prefsRow?.notif_daily_streak          ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
-        notif_daily_checkin:         prefsRow?.notif_daily_checkin         ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
-        notif_weekly_summary:        prefsRow?.notif_weekly_summary        ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
-        notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
-        notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
-        notif_community:             prefsRow?.notif_community             ?? DEFAULT_NOTIF_PREFS.notif_community,
-      };
-      await scheduleAllNotifications(prefs, newQuitTimestamp, badgeTypesForNotif);
-      await scheduleOnboardingCheckin();
+      // Point of no return: the streak reset and badge changes above are
+      // already committed server-side. Everything below is best-effort
+      // cleanup (local cache, notification rescheduling) — if any of it
+      // throws, the user must NOT see "Could not reset," because the reset
+      // itself already succeeded. Showing that alert here previously invited
+      // a retry, which would double-insert the streak_reset row and send a
+      // second relapse notification to the user's trusted partner for the
+      // same event.
       success = true;
+      try {
+        // When shield is on, badges are preserved — keep MILESTONE_NOTIFS_KEY so the scheduler
+        // knows which milestones are already earned and doesn't re-fire their notifications.
+        const keysToRemove = [CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
+        if (!shieldEnabled) keysToRemove.unshift(MILESTONE_NOTIFS_KEY);
+        await AsyncStorage.multiRemove(keysToRemove);
+        notifySupporter('relapse').catch(e => console.warn('[relapse] notifySupporter error:', e));
+
+        let badgeTypesForNotif: string[] = [];
+        if (shieldEnabled) {
+          const { data: survivingBadges } = await supabase.from('badges').select('badge_type').eq('user_id', user.id);
+          badgeTypesForNotif = (survivingBadges ?? []).map(b => b.badge_type);
+        }
+
+        const { data: prefsRow } = await supabase
+          .from('users')
+          .select('notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
+          .eq('id', user.id).maybeSingle();
+        const prefs = {
+          notif_milestone:             prefsRow?.notif_milestone             ?? DEFAULT_NOTIF_PREFS.notif_milestone,
+          notif_daily_streak:          prefsRow?.notif_daily_streak          ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
+          notif_daily_checkin:         prefsRow?.notif_daily_checkin         ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
+          notif_weekly_summary:        prefsRow?.notif_weekly_summary        ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
+          notif_milestone_approaching: prefsRow?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
+          notif_urge_prediction:       prefsRow?.notif_urge_prediction       ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
+          notif_community:             prefsRow?.notif_community             ?? DEFAULT_NOTIF_PREFS.notif_community,
+        };
+        await scheduleAllNotifications(prefs, newQuitTimestamp, badgeTypesForNotif);
+        await scheduleOnboardingCheckin();
+      } catch (cleanupErr) {
+        console.warn('[doStreakReset] post-reset cleanup error (reset itself already succeeded):', cleanupErr);
+      }
     } catch (e) {
       console.warn('[doStreakReset] error:', e);
       Alert.alert('Could not reset', 'Please check your connection and try again.');
     } finally {
+      streakResetInProgressRef.current = false;
       if (!isMounted.current) return;
       setSlipResetting(false);
       if (success) setSlipReset(true);

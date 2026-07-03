@@ -859,11 +859,18 @@ export default function HomeScreen() {
   const [customMilestoneCelebVisible, setCustomMilestoneCelebVisible] = useState(false);
   const [calDayModal, setCalDayModal] = useState<{ iso: string; status: 'clean' | 'relapse' | 'inactive'; mood: number | null } | null>(null);
   const [celebrationBadge, setCelebrationBadge] = useState<{ type?: string; emoji: string; label: string; celebration: { icon: string; text: string }; msg: string; earnedAt?: string } | null>(null);
+  // fetchData is a useCallback with an empty deps array (see below), so it
+  // can't read fresh `celebrationBadge` state directly — it needs a ref kept
+  // in sync via this effect to know whether a celebration is currently on
+  // screen (or queued) before deciding whether it's safe to show a newly
+  // detected celebration immediately vs. queue it.
+  const celebrationBadgeRef = useRef<typeof celebrationBadge>(null);
   const shareCardRef = useRef<View>(null);
   const celebrationCardRef = useRef<View>(null);
   const [celebrationTagline, setCelebrationTagline] = useState(() => SHARE_TAGLINES[0]);
 
   useEffect(() => {
+    celebrationBadgeRef.current = celebrationBadge;
     if (celebrationBadge) {
       setCelebrationTagline(SHARE_TAGLINES[Math.floor(Math.random() * SHARE_TAGLINES.length)]);
     }
@@ -948,9 +955,18 @@ export default function HomeScreen() {
     // this ("next" is shifted off it when a celebration is closed, further
     // down) but nothing was ever pushed into it. Route every newly-earned
     // celebration through here instead of dropping it.
-    celebrationQueue.current = [];
+    //
+    // IMPORTANT: don't clear celebrationQueue.current here. fetchData reruns
+    // far more often than "once per badge-earning event" — on every Home-tab
+    // refocus, every 1s milestone-tick boundary crossed, and after logging a
+    // mood — and a badge only counts as "newly earned" the FIRST time it's
+    // detected (once inserted, it shows up in `earnedBadges` on every later
+    // call and is filtered out by the `!earnedBadges.includes(...)` guards
+    // below). Wiping the queue here doesn't just clear stale entries, it
+    // permanently drops any celebration still waiting from an earlier call
+    // that hasn't been shown yet, since it can never be re-detected.
     const addCelebration = (payload: NonNullable<typeof pendingCelebration>) => {
-      if (!pendingCelebration) pendingCelebration = payload;
+      if (!celebrationBadgeRef.current && !pendingCelebration && celebrationQueue.current.length === 0) pendingCelebration = payload;
       else celebrationQueue.current.push(payload);
     };
 
@@ -1196,7 +1212,14 @@ export default function HomeScreen() {
     }
 
     if (!isMountedRef.current) return;
-    if (pendingCelebration) setCelebrationBadge(pendingCelebration);
+    if (pendingCelebration) {
+      // Re-check: fetchData awaits several more requests between when
+      // pendingCelebration was set above and here, so a celebration the user
+      // was already looking at could have been dismissed-and-replaced by the
+      // queue-drain in onClose during that window. Don't clobber it.
+      if (celebrationBadgeRef.current) celebrationQueue.current.push(pendingCelebration);
+      else setCelebrationBadge(pendingCelebration);
+    }
 
     // Compute peak urge hour for home screen card
     const urgeEntries = urgeRes.data ?? [];
@@ -2618,7 +2641,7 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
               )}
-              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => setSelectedBadge(null)}>
+              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
                 <Text style={s.modalCloseTxt}>Close</Text>
               </Pressable>
             </View>
