@@ -1,6 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { maybeRequestReview } from '@/lib/review';
 import { parseQuitDate } from '@/lib/parseQuitDate';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
@@ -27,7 +26,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -192,17 +190,14 @@ export default function TrackerIndex() {
   }, []);
 
   // Context menus
-  const [menuDebt, setMenuDebt] = useState<Debt | null>(null);
   const [menuSaving, setMenuSaving] = useState<SavingEntry | null>(null);
 
   // Delete confirmations
-  const [deleteDebtTarget, setDeleteDebtTarget] = useState<Debt | null>(null);
   const [deleteSavingTarget, setDeleteSavingTarget] = useState<SavingEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Debt modal (add + edit)
+  // Debt modal (add only — editing a debt now happens on its detail screen)
   const [debtModalVisible, setDebtModalVisible] = useState(false);
-  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [debtName, setDebtName] = useState('');
   const [debtAmount, setDebtAmount] = useState('');
   const [debtCategory, setDebtCategory] = useState('other');
@@ -216,12 +211,6 @@ export default function TrackerIndex() {
   const [submitting, setSubmitting] = useState(false);
 
   const { isPremium } = usePurchases();
-
-  // Quick pay modal
-  const [quickPayDebt, setQuickPayDebt] = useState<Debt | null>(null);
-  const [quickPayAmount, setQuickPayAmount] = useState('');
-  const [quickPayNote, setQuickPayNote] = useState('');
-  const [submittingQuickPay, setSubmittingQuickPay] = useState(false);
 
   // Session log
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
@@ -261,8 +250,6 @@ export default function TrackerIndex() {
   const [debtSort, setDebtSort] = useState<DebtSort>('default');
   const [savingGoalBusy, setSavingGoalBusy] = useState(false);
 
-  // Swipe refs — one per debt card
-  const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
   // Prevent useFocusEffect from duplicating the initial useEffect fetch
   const initialFetchDone = useRef(false);
   const fetchingRef = useRef(false);
@@ -384,21 +371,9 @@ export default function TrackerIndex() {
   // ── Debt actions ──────────────────────────────────────────────
 
   const openAddDebt = () => {
-    setEditingDebt(null);
     setDebtName(''); setDebtAmount(''); setDebtCategory('other');
     debtTargetDateBeforeEdit.current = debtTargetDate;
     setDebtTargetDate(null);
-    setDebtModalVisible(true);
-  };
-
-  const openEditDebt = (debt: Debt) => {
-    setEditingDebt(debt);
-    setDebtName(debt.name);
-    setDebtAmount(String(debt.total_amount));
-    setDebtCategory(debt.category);
-    const perDebtDate = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
-    debtTargetDateBeforeEdit.current = perDebtDate;
-    setDebtTargetDate(perDebtDate);
     setDebtModalVisible(true);
   };
 
@@ -410,7 +385,6 @@ export default function TrackerIndex() {
     if (Platform.OS === 'android') setAndroidKbOffset(0);
     Keyboard.dismiss();
     setDebtModalVisible(false);
-    setEditingDebt(null);
     setDebtName(''); setDebtAmount(''); setDebtCategory('other');
     setDebtTargetDate(debtTargetDateBeforeEdit.current);
   };
@@ -420,17 +394,6 @@ export default function TrackerIndex() {
     if (!debtName.trim() || isNaN(amount) || !isFinite(amount) || amount <= 0 || amount > 999_999_999) {
       Alert.alert('Missing info', 'Please enter a name and a valid amount.');
       return;
-    }
-    if (editingDebt) {
-      const paid = paidByDebt[editingDebt.id] ?? 0;
-      // Compare in cents, not raw floats — paid is a running sum of payment
-      // amounts and can land on values like 0.30000000000000004, which would
-      // reject an edit to exactly $0.30 even though it equals what's paid.
-      // Matches the same fix already applied to the quick-pay check below.
-      if (Math.round(amount * 100) < Math.round(paid * 100)) {
-        Alert.alert('Invalid amount', `You've already paid ${fmt(paid, currency)} towards this debt.`);
-        return;
-      }
     }
     if (submitInFlightRef.current) return;
     submitInFlightRef.current = true;
@@ -442,29 +405,18 @@ export default function TrackerIndex() {
         // which shifts the date by a day for anyone east of UTC (picker dates are
         // local midnight, so a positive UTC offset rolls it back to the prior day).
         const targetDateStr = debtTargetDate ? debtTargetDate.toLocaleDateString('en-CA') : null;
-        if (editingDebt) {
-          const { error: updateErr } = await supabase.from('debts').update({
-            name: debtName.trim(), total_amount: amount, category: debtCategory,
-            target_date: targetDateStr,
-          }).eq('id', editingDebt.id).eq('user_id', user.id);
-          if (updateErr) { Alert.alert('Could not save', friendlyError(updateErr)); return; }
-          await supabase.from('losses').insert({
-            user_id: user.id, type: 'debt_edited', amount, category: 'Debt', note: debtName.trim(),
-          });
-        } else {
-          const isFirstDebt = debts.length === 0;
-          const { error: insertErr } = await supabase.from('debts').insert({
-            user_id: user.id, name: debtName.trim(),
-            total_amount: amount, category: debtCategory, target_date: targetDateStr,
-          });
-          if (insertErr) { Alert.alert('Could not save', friendlyError(insertErr)); return; }
-          if (isFirstDebt) {
-            const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
-            if (!badgeErr) {
-              triggerCelebration({ type: 'loss_first_log', emoji: '🧭', label: 'Honest Start', celebration: randCelebration(), msg: randMsg() });
-            }
-            requestHomeRefresh();
+        const isFirstDebt = debts.length === 0;
+        const { error: insertErr } = await supabase.from('debts').insert({
+          user_id: user.id, name: debtName.trim(),
+          total_amount: amount, category: debtCategory, target_date: targetDateStr,
+        });
+        if (insertErr) { Alert.alert('Could not save', friendlyError(insertErr)); return; }
+        if (isFirstDebt) {
+          const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
+          if (!badgeErr) {
+            triggerCelebration({ type: 'loss_first_log', emoji: '🧭', label: 'Honest Start', celebration: randCelebration(), msg: randMsg() });
           }
+          requestHomeRefresh();
         }
         hapticMedium();
         // closeDebtModal() restores debtTargetDate from this snapshot (for the
@@ -481,39 +433,6 @@ export default function TrackerIndex() {
     }
   };
 
-  const handleDebtMenu = (debt: Debt) => setMenuDebt(debt);
-
-  const confirmDeleteDebt = (debt: Debt) => setDeleteDebtTarget(debt);
-
-  const executeDeleteDebt = async () => {
-    if (!deleteDebtTarget) return;
-    setDeleting(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Delete payments first — FK constraint on debt_payments.debt_id → debts.id is RESTRICT.
-        const { error: paymentsDelErr } = await supabase.from('debt_payments').delete().eq('debt_id', deleteDebtTarget.id).eq('user_id', user.id);
-        if (paymentsDelErr) {
-          Alert.alert('Could not delete debt', friendlyError(paymentsDelErr));
-          return;
-        }
-        const { error: debtDelErr } = await supabase.from('debts').delete().eq('id', deleteDebtTarget.id).eq('user_id', user.id);
-        if (debtDelErr) {
-          Alert.alert('Could not delete debt', friendlyError(debtDelErr));
-          return;
-        }
-        await supabase.from('losses').insert({
-          user_id: user.id, type: 'debt_deleted', amount: deleteDebtTarget.total_amount,
-          category: 'Debt', note: deleteDebtTarget.name,
-        });
-      }
-      haptic();
-      setDeleteDebtTarget(null);
-      await fetchAll();
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   // ── Saving actions ────────────────────────────────────────────
 
@@ -887,101 +806,6 @@ export default function TrackerIndex() {
     }
   };
 
-  // Quick pay actions
-  const openQuickPay = (debt: Debt) => {
-    swipeRefs.current.forEach(ref => ref?.close());
-    setQuickPayDebt(debt);
-    setQuickPayAmount('');
-    setQuickPayNote('');
-  };
-
-  const closeQuickPay = () => {
-    if (!isMountedRef.current) return;
-    if (Platform.OS === 'android') setAndroidKbOffset(0);
-    Keyboard.dismiss();
-    setQuickPayDebt(null);
-    setQuickPayAmount('');
-    setQuickPayNote('');
-  };
-
-  const saveQuickPay = async () => {
-    if (!quickPayDebt) return;
-    const val = parseFloat(quickPayAmount);
-    if (!quickPayAmount || isNaN(val) || !isFinite(val) || val <= 0 || val > 999_999_999) {
-      Alert.alert('Invalid amount', 'Please enter a valid amount.');
-      return;
-    }
-    const paid = paidByDebt[quickPayDebt.id] ?? 0;
-    const remaining = Math.max(0, Number(quickPayDebt.total_amount) - paid);
-    if (Math.round(val * 100) > Math.round(remaining * 100)) {
-      Alert.alert('Too much', `You only owe ${fmt(remaining, currency)} on this debt.`);
-      return;
-    }
-    const isPayingOff = Math.round(val * 100) === Math.round(remaining * 100);
-    if (submitInFlightRef.current) return;
-    submitInFlightRef.current = true;
-    setSubmittingQuickPay(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const isFirstPayment = payments.length === 0;
-        const { error: payError } = await supabase.from('debt_payments').insert({
-          user_id: user.id, debt_id: quickPayDebt.id,
-          amount: val, note: quickPayNote.trim() || null,
-        });
-        if (payError) {
-          Alert.alert('Could not save payment', friendlyError(payError));
-          return;
-        }
-        if (isFirstPayment) {
-          const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'first_payment' });
-          if (!badgeErr) {
-            triggerCelebration({ type: 'first_payment', emoji: '💰', label: 'First Payment', celebration: randCelebration(), msg: randMsg() });
-          }
-          requestHomeRefresh();
-        }
-        showInterstitialIfReady(isPremium);
-        if (isPayingOff) {
-          const { status: notifStatus } = await Notifications.getPermissionsAsync();
-          if (notifStatus === 'granted') {
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: '🎉 Debt paid off!',
-                body: `You've fully paid off "${quickPayDebt.name}". That's a huge step — well done.`,
-                data: { screen: '/(tabs)/tracker' },
-              },
-              trigger: null,
-            });
-          }
-          const insertPaidOffJournalRow = () => supabase.from('losses').insert({
-            user_id: user.id, type: 'debt_paid_off', amount: Number(quickPayDebt.total_amount),
-            category: 'Debt', note: quickPayDebt.name,
-          });
-          let { error: journalErr } = await insertPaidOffJournalRow();
-          if (journalErr) {
-            // The payment itself already succeeded — this is just the
-            // celebratory "paid off" journal entry that journal.tsx renders
-            // as a distinct activity item. Retry once rather than silently
-            // dropping it (it was previously only console.warn'd, with no
-            // way for the user to know or fix a missing entry).
-            console.warn('[saveQuickPay] journal insert failed, retrying once:', journalErr.message);
-            ({ error: journalErr } = await insertPaidOffJournalRow());
-          }
-          if (journalErr) {
-            console.warn('[saveQuickPay] journal insert failed after retry:', journalErr.message);
-            Alert.alert('Debt paid off!', "Payment saved, but we couldn't save the celebration note in your journal.");
-          }
-          maybeRequestReview('debt_paid');
-        }
-        hapticMedium();
-        closeQuickPay();
-        await fetchAll();
-      }
-    } finally {
-      submitInFlightRef.current = false;
-      setSubmittingQuickPay(false);
-    }
-  };
 
   const sortedDebts = useMemo(() => [...debts].sort((a, b) => {
     const paidA = paidByDebt[a.id] ?? 0;
@@ -1232,106 +1056,80 @@ export default function TrackerIndex() {
                   const isOverdue = !isPaidOff && overdueTd !== null && overdueTd.getTime() < Date.now();
 
                   return (
-                    <Swipeable
+                    <Pressable
                       key={debt.id}
-                      ref={(ref) => { swipeRefs.current.set(debt.id, ref); }}
-                      friction={2}
-                      leftThreshold={60}
-                      rightThreshold={60}
-                      onSwipeableOpen={(direction) => {
-                        swipeRefs.current.get(debt.id)?.close();
-                        if (direction === 'left') confirmDeleteDebt(debt);
-                        else if (!isPaidOff) openQuickPay(debt);
-                      }}
-                      renderLeftActions={() => (
-                        <View style={s.swipeDeleteAction}>
-                          <Ionicons name="trash-outline" size={22} color={c.white} />
-                          <Text style={s.swipeDeleteTxt}>Delete</Text>
+                      style={({ pressed }) => [s.debtCard, isPaidOff && s.debtCardPaidOff, isOverdue && s.debtCardOverdue, pressed && { opacity: 0.85 }]}
+                      onPress={() => router.push(`/tracker/${debt.id}`)}>
+                      <View style={s.debtTop}>
+                        <Text style={s.debtEmoji}>{categoryEmoji(debt.category)}</Text>
+                        <View style={s.debtInfo}>
+                          <Text style={s.debtName}>{debt.name}</Text>
+                          <Text style={s.debtMeta}>
+                            {isPaidOff
+                              ? `${fmt(paid, currency)} fully paid`
+                              : `${fmt(paid, currency)} paid · ${fmt(remaining, currency)} remaining`}
+                          </Text>
+                        </View>
+                        <View style={s.debtRight}>
+                          {isPaidOff ? (
+                            <View style={s.paidOffBadge}>
+                              <Text style={s.paidOffBadgeTxt}>✓ Paid off</Text>
+                            </View>
+                          ) : (
+                            <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
+                          )}
+                          <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
+                        </View>
+                      </View>
+                      <View style={s.debtProgressTrack}>
+                        <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct, c) }]} />
+                      </View>
+                      {!isPaidOff && (() => {
+                        const td = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
+                        const daysRemaining = td ? Math.ceil((td.getTime() - Date.now()) / 86400000) : null;
+                        const firstPaymentMs = firstPaymentMsByDebt[debt.id];
+                        const rawDaysElapsed = firstPaymentMs !== undefined ? (Date.now() - firstPaymentMs) / 86400000 : null;
+                        const daysElapsed = rawDaysElapsed !== null && rawDaysElapsed >= MIN_RELIABLE_PACE_DAYS
+                          ? Math.max(1, rawDaysElapsed)
+                          : null;
+                        const requiredPerDay = td && daysRemaining && daysRemaining > 0 ? remaining / daysRemaining : null;
+                        const actualPerDay = paid > 0 && daysElapsed !== null ? paid / daysElapsed : null;
+                        const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
+                        return (
+                          <View style={s.debtTargetRow}>
+                            {td ? (
+                              <>
+                                <Text style={s.debtTargetDate}>
+                                  📅 {td.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  {daysRemaining !== null && (
+                                    <Text style={{ color: daysRemaining <= 0 ? c.error : c.textFaint }}>
+                                      {daysRemaining > 0 ? `  ·  ${daysRemaining}d left` : '  ·  Past target'}
+                                    </Text>
+                                  )}
+                                </Text>
+                                <View style={s.debtTargetRight}>
+                                  {requiredPerDay !== null && (
+                                    <Text style={s.debtTargetStat}>Need {fmt(requiredPerDay, currency)}/day</Text>
+                                  )}
+                                  {isAhead !== null && (
+                                    <View style={[s.paceBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
+                                      <Text style={s.paceBadgeTxt}>{isAhead ? '▲' : '▼'}</Text>
+                                    </View>
+                                  )}
+                                </View>
+                              </>
+                            ) : (
+                              <Text style={s.debtTargetUnset}>📅 Set payoff target →</Text>
+                            )}
+                          </View>
+                        );
+                      })()}
+                      {!isPaidOff && debt.id === firstUnpaidDebtId && (
+                        <View style={s.tapHint}>
+                          <Text style={s.tapHintTxt}>Tap for details, payments & more</Text>
                         </View>
                       )}
-                      renderRightActions={isPaidOff ? undefined : () => (
-                        <View style={s.swipePayAction}>
-                          <Ionicons name="card-outline" size={22} color={c.white} />
-                          <Text style={s.swipePayTxt}>Pay</Text>
-                        </View>
-                      )}>
-                      <Pressable
-                        style={({ pressed }) => [s.debtCard, isPaidOff && s.debtCardPaidOff, isOverdue && s.debtCardOverdue, pressed && { opacity: 0.85 }]}
-                        onPress={() => router.push(`/tracker/${debt.id}`)}>
-                        <View style={s.debtTop}>
-                          <Text style={s.debtEmoji}>{categoryEmoji(debt.category)}</Text>
-                          <View style={s.debtInfo}>
-                            <Text style={s.debtName}>{debt.name}</Text>
-                            <Text style={s.debtMeta}>
-                              {isPaidOff
-                                ? `${fmt(paid, currency)} fully paid`
-                                : `${fmt(paid, currency)} paid · ${fmt(remaining, currency)} remaining`}
-                            </Text>
-                          </View>
-                          <View style={s.debtRight}>
-                            {isPaidOff ? (
-                              <View style={s.paidOffBadge}>
-                                <Text style={s.paidOffBadgeTxt}>✓ Paid off</Text>
-                              </View>
-                            ) : (
-                              <Text style={s.debtPct}>{Math.round(pct * 100)}%</Text>
-                            )}
-                            <Pressable onPress={() => handleDebtMenu(debt)} hitSlop={10} style={s.menuBtn} accessibilityLabel="Debt options" accessibilityRole="button">
-                              <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
-                            </Pressable>
-                          </View>
-                        </View>
-                        <View style={s.debtProgressTrack}>
-                          <View style={[s.debtProgressFill, { width: `${pct * 100}%` as any, backgroundColor: debtProgressColor(pct, c) }]} />
-                        </View>
-                        {!isPaidOff && (() => {
-                          const td = debt.target_date ? new Date(debt.target_date + 'T12:00:00') : null;
-                          const daysRemaining = td ? Math.ceil((td.getTime() - Date.now()) / 86400000) : null;
-                          const firstPaymentMs = firstPaymentMsByDebt[debt.id];
-                          const rawDaysElapsed = firstPaymentMs !== undefined ? (Date.now() - firstPaymentMs) / 86400000 : null;
-                          const daysElapsed = rawDaysElapsed !== null && rawDaysElapsed >= MIN_RELIABLE_PACE_DAYS
-                            ? Math.max(1, rawDaysElapsed)
-                            : null;
-                          const requiredPerDay = td && daysRemaining && daysRemaining > 0 ? remaining / daysRemaining : null;
-                          const actualPerDay = paid > 0 && daysElapsed !== null ? paid / daysElapsed : null;
-                          const isAhead = requiredPerDay !== null && actualPerDay !== null ? actualPerDay >= requiredPerDay : null;
-                          return (
-                            <View style={s.debtTargetRow}>
-                              {td ? (
-                                <>
-                                  <Text style={s.debtTargetDate}>
-                                    📅 {td.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
-                                    {daysRemaining !== null && (
-                                      <Text style={{ color: daysRemaining <= 0 ? c.error : c.textFaint }}>
-                                        {daysRemaining > 0 ? `  ·  ${daysRemaining}d left` : '  ·  Past target'}
-                                      </Text>
-                                    )}
-                                  </Text>
-                                  <View style={s.debtTargetRight}>
-                                    {requiredPerDay !== null && (
-                                      <Text style={s.debtTargetStat}>Need {fmt(requiredPerDay, currency)}/day</Text>
-                                    )}
-                                    {isAhead !== null && (
-                                      <View style={[s.paceBadge, { backgroundColor: isAhead ? c.success : c.error }]}>
-                                        <Text style={s.paceBadgeTxt}>{isAhead ? '▲' : '▼'}</Text>
-                                      </View>
-                                    )}
-                                  </View>
-                                </>
-                              ) : (
-                                <Text style={s.debtTargetUnset}>📅 Set payoff target →</Text>
-                              )}
-                            </View>
-                          );
-                        })()}
-                        {!isPaidOff && debt.id === firstUnpaidDebtId && (
-                          <View style={s.swipeHint}>
-                            <Text style={s.swipeHintDelete}>← Delete</Text>
-                            <Text style={s.swipeHintPay}>Pay →</Text>
-                          </View>
-                        )}
-                      </Pressable>
-                    </Swipeable>
+                    </Pressable>
                   );
                 })
               )}
@@ -1380,9 +1178,7 @@ export default function TrackerIndex() {
                         </View>
                         <View style={s.savingCardRight}>
                           <Text style={s.savingCardAmt}>+{fmt(Number(entry.amount), currency)}</Text>
-                          <Pressable onPress={() => handleSavingMenu(entry)} hitSlop={10} style={s.menuBtn} accessibilityLabel="Saving entry options" accessibilityRole="button">
-                            <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
-                          </Pressable>
+                          <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
                         </View>
                       </View>
                     </Pressable>
@@ -1458,9 +1254,7 @@ export default function TrackerIndex() {
                       </View>
                       <View style={s.sessionCardRight}>
                         <Text style={s.sessionCardAmt}>-{fmt(Number(entry.amount), currency)}</Text>
-                        <Pressable onPress={() => setMenuSession(entry)} hitSlop={10} style={s.menuBtn} accessibilityLabel="Session options" accessibilityRole="button">
-                          <Ionicons name="ellipsis-horizontal" size={18} color={c.textFaint} />
-                        </Pressable>
+                        <Ionicons name="chevron-forward" size={16} color={c.textDisabled} />
                       </View>
                     </View>
                   </Pressable>
@@ -1479,7 +1273,7 @@ export default function TrackerIndex() {
           <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeDebtModal}>
             <Pressable style={s.sheet} onPress={() => {}}>
               <View style={[s.sheetIconCircle, { backgroundColor: c.bgError }]}><Text style={s.sheetIconEmoji}>💳</Text></View>
-              <Text style={s.sheetTitle}>{editingDebt ? 'Edit debt' : 'Log a debt'}</Text>
+              <Text style={s.sheetTitle}>Log a debt</Text>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>
                 <Text style={s.fieldLbl}>Name</Text>
                 <TextInput
@@ -1530,12 +1324,12 @@ export default function TrackerIndex() {
                 </Pressable>
               </ScrollView>
               <View style={s.sheetActions}>
-                <Pressable style={[s.saveBtn, savingDebt && s.btnDisabled]} onPress={saveDebt} disabled={savingDebt}>
+                <View style={s.sheetDivider} />
+                <Pressable style={[s.saveBtnDanger, savingDebt && s.btnDisabled]} onPress={saveDebt} disabled={savingDebt}>
                   {savingDebt
                     ? <ActivityIndicator color={c.white} size="small" />
-                    : <Text style={s.saveBtnTxt}>{editingDebt ? 'Save changes' : 'Log debt'}</Text>}
+                    : <Text style={s.saveBtnTxt}>Log debt</Text>}
                 </Pressable>
-                <View style={s.sheetDivider} />
                 <Pressable style={s.cancelBtn} onPress={closeDebtModal}>
                   <Text style={s.cancelBtnTxt}>Cancel</Text>
                 </Pressable>
@@ -1585,89 +1379,6 @@ export default function TrackerIndex() {
             </Pressable>
           </Pressable>
         </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Debt context menu */}
-      <Modal visible={!!menuDebt} transparent animationType="fade" onRequestClose={() => setMenuDebt(null)}>
-        <Pressable style={s.menuOverlay} onPress={() => setMenuDebt(null)}>
-          <Pressable style={s.menuSheet} onPress={() => {}}>
-            
-            {menuDebt && (() => {
-              const paid = paidByDebt[menuDebt.id] ?? 0;
-              const remaining = Math.max(0, Number(menuDebt.total_amount) - paid);
-              const pct = Number(menuDebt.total_amount) > 0 ? Math.min(1, paid / Number(menuDebt.total_amount)) : 0;
-              return (
-                <>
-                  <View style={s.menuHeader}>
-                    <Text style={s.menuEmoji}>{categoryEmoji(menuDebt.category)}</Text>
-                    <View style={s.menuHeaderText}>
-                      <Text style={s.menuTitle}>{menuDebt.name}</Text>
-                      <Text style={s.menuSub}>{Math.round(pct * 100)}% paid back</Text>
-                    </View>
-                  </View>
-                  <View style={s.menuStats}>
-                    <View style={s.menuStat}>
-                      <Text style={[s.menuStatVal, { color: c.error }]}>{fmt(Number(menuDebt.total_amount), currency)}</Text>
-                      <Text style={s.menuStatLbl}>Total</Text>
-                    </View>
-                    <View style={s.menuStat}>
-                      <Text style={[s.menuStatVal, { color: c.primary }]}>{fmt(paid, currency)}</Text>
-                      <Text style={s.menuStatLbl}>Paid</Text>
-                    </View>
-                    <View style={s.menuStat}>
-                      <Text style={[s.menuStatVal, { color: c.textBody }]}>{fmt(remaining, currency)}</Text>
-                      <Text style={s.menuStatLbl}>Remaining</Text>
-                    </View>
-                  </View>
-                  <View style={s.menuProgressTrack}>
-                    <View style={[s.menuProgressFill, { width: `${pct * 100}%` as any }]} />
-                  </View>
-                  <View style={s.menuActions}>
-                    <Pressable style={({ pressed }) => [s.menuActionBtn, pressed && { opacity: 0.75 }]}
-                      onPress={() => { setMenuDebt(null); openEditDebt(menuDebt); }}>
-                      <Ionicons name="pencil-outline" size={18} color={c.primary} />
-                      <Text style={s.menuActionTxt}>Edit</Text>
-                    </Pressable>
-                    <Pressable style={({ pressed }) => [s.menuActionBtn, s.menuActionDanger, pressed && { opacity: 0.75 }]}
-                      onPress={() => { setMenuDebt(null); confirmDeleteDebt(menuDebt); }}>
-                      <Ionicons name="trash-outline" size={18} color={c.error} />
-                      <Text style={[s.menuActionTxt, { color: c.error }]}>Delete</Text>
-                    </Pressable>
-                  </View>
-                </>
-              );
-            })()}
-            <View style={{ height: Math.max(16, insets.bottom) }} />
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Delete debt confirmation */}
-      <Modal visible={!!deleteDebtTarget} transparent animationType="fade" onRequestClose={() => setDeleteDebtTarget(null)}>
-        <Pressable style={s.modalOverlay} onPress={() => setDeleteDebtTarget(null)}>
-          <Pressable style={[s.sheet, { alignItems: 'center' }]} onPress={() => {}}>
-            <View style={s.deleteIconRow}>
-              <View style={s.deleteIconCircle}>
-                <Ionicons name="trash-outline" size={32} color={c.error} />
-              </View>
-            </View>
-            <Text style={s.deleteTitle}>Delete debt?</Text>
-            {deleteDebtTarget && (
-              <Text style={s.deleteBody}>
-                This will permanently delete <Text style={s.deleteBold}>{deleteDebtTarget.name}</Text> and all payments made towards it.
-              </Text>
-            )}
-            <Pressable style={[s.deleteBtn, deleting && s.btnDisabled]} onPress={executeDeleteDebt} disabled={deleting}>
-              {deleting
-                ? <ActivityIndicator color={c.white} size="small" />
-                : <Text style={s.deleteBtnTxt}>Delete</Text>}
-            </Pressable>
-            <View style={s.deleteDivider} />
-            <Pressable style={s.deleteCancelBtn} onPress={() => setDeleteDebtTarget(null)}>
-              <Text style={s.cancelBtnTxt}>Cancel</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
       </Modal>
 
       {/* Delete saving confirmation */}
@@ -1844,56 +1555,6 @@ export default function TrackerIndex() {
                 <View style={s.sheetDivider} />
                 <Pressable style={s.cancelBtn} onPress={closeGoalModal}>
                   <Text style={s.cancelBtnTxt}>Cancel</Text>
-                </Pressable>
-              </View>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Quick pay modal */}
-      <Modal visible={!!quickPayDebt} transparent animationType="fade" onRequestClose={closeQuickPay}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={[s.modalOverlay, Platform.OS === 'android' && androidKbOffset > 0 && { paddingBottom: androidKbOffset }]} onPress={closeQuickPay}>
-            <Pressable style={s.sheet} onPress={() => {}}>
-              <Text style={s.sheetTitle}>Log a payment</Text>
-              {quickPayDebt && (
-                <Text style={[s.fieldLbl, { marginTop: 4 }]}>{quickPayDebt.name}</Text>
-              )}
-              <Text style={s.fieldLbl}>Amount</Text>
-              <TextInput
-                style={s.input}
-                placeholder={quickPayDebt ? `Up to ${fmt(Math.max(0, Number(quickPayDebt.total_amount) - (paidByDebt[quickPayDebt.id] ?? 0)), currency)}` : ''}
-                placeholderTextColor={c.textFaint}
-                keyboardType="decimal-pad"
-                value={quickPayAmount}
-                onChangeText={setQuickPayAmount}
-                autoFocus
-              />
-              {quickPayDebt && (() => {
-                const remaining = Math.max(0, Number(quickPayDebt.total_amount) - (paidByDebt[quickPayDebt.id] ?? 0));
-                return remaining > 0 ? (
-                  <Pressable style={s.payInFullBtn} onPress={() => setQuickPayAmount(String(Math.round(remaining * 100) / 100))}>
-                    <Text style={s.payInFullTxt}>Pay in full · {fmt(remaining, currency)}</Text>
-                  </Pressable>
-                ) : null;
-              })()}
-              <Text style={s.fieldLbl}>Note <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text></Text>
-              <TextInput
-                style={s.input}
-                placeholder="e.g. Monthly instalment"
-                placeholderTextColor={c.textFaint}
-                value={quickPayNote}
-                onChangeText={setQuickPayNote}
-              />
-              <View style={s.sheetActions}>
-                <Pressable style={s.cancelBtn} onPress={closeQuickPay}>
-                  <Text style={s.cancelBtnTxt}>Cancel</Text>
-                </Pressable>
-                <Pressable style={[s.saveBtn, submittingQuickPay && s.btnDisabled]} onPress={saveQuickPay} disabled={submittingQuickPay}>
-                  {submittingQuickPay
-                    ? <ActivityIndicator color={c.white} size="small" />
-                    : <Text style={s.saveBtnTxt}>Save payment</Text>}
                 </Pressable>
               </View>
             </Pressable>
@@ -2275,24 +1936,14 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   paidOffBadge: { backgroundColor: c.bgSuccess, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   paidOffBadgeTxt: { fontSize: 11, fontWeight: '700', color: c.success },
 
-  quickPayBtn: {
-    backgroundColor: c.bgTeal, borderRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: c.primary,
-  },
-  quickPayTxt: { fontSize: 12, fontWeight: '700', color: c.primary },
-
   debtTargetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
   debtTargetDate: { fontSize: 11, color: c.textMuted, fontWeight: '500', flex: 1 },
   debtTargetRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   debtTargetStat: { fontSize: 11, color: c.textMuted },
   debtTargetUnset: { fontSize: 11, color: c.primary, fontWeight: '500' },
 
-  swipeHint: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  swipeHintDelete: { fontSize: 10, color: c.textError, fontWeight: '500', opacity: 0.6 },
-  swipeHintPay: { fontSize: 10, color: c.primaryLight, fontWeight: '500' },
-
-  menuBtn: { padding: 4 },
+  tapHint: { marginTop: 6 },
+  tapHintTxt: { fontSize: 10, color: c.textFaint, fontWeight: '500' },
 
   savingCard: { backgroundColor: c.bgCard, borderRadius: 14, padding: 16 },
   savingCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -2324,17 +1975,6 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   iconDropdownItemEmoji: { fontSize: 18 },
   iconDropdownItemLabel: { flex: 1, fontSize: 14, color: c.textBody },
 
-  swipeDeleteAction: {
-    backgroundColor: c.error, borderRadius: 14, marginRight: 8,
-    width: 72, alignItems: 'center', justifyContent: 'center', gap: 4,
-  },
-  swipeDeleteTxt: { fontSize: 12, fontWeight: '700', color: c.white },
-  swipePayAction: {
-    backgroundColor: c.primary, borderRadius: 14, marginLeft: 8,
-    width: 72, alignItems: 'center', justifyContent: 'center', gap: 4,
-  },
-  swipePayTxt: { fontSize: 12, fontWeight: '700', color: c.white },
-
   input: {
     borderWidth: 1, borderColor: c.borderLight, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
@@ -2360,12 +2000,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   menuHeaderText: { flex: 1 },
   menuTitle: { fontSize: 17, fontWeight: '700', color: c.textPrimary },
   menuSub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
-  menuStats: { flexDirection: 'row', backgroundColor: c.bgElement, borderRadius: 12, padding: 12, marginBottom: 10 },
-  menuStat: { flex: 1, alignItems: 'center' },
   menuStatVal: { fontSize: 15, fontWeight: '700' },
-  menuStatLbl: { fontSize: 11, color: c.textFaint, marginTop: 2 },
-  menuProgressTrack: { height: 5, backgroundColor: c.bgTeal, borderRadius: 3, overflow: 'hidden', marginBottom: 20 },
-  menuProgressFill: { height: '100%', backgroundColor: c.primary, borderRadius: 3 },
   menuActions: { flexDirection: 'row', gap: 10 },
   menuActionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -2412,6 +2047,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   spendingBtnSave: { backgroundColor: c.primary },
   spendingBtnSaveTxt: { fontSize: 15, color: c.white, fontWeight: '700' },
   saveBtn: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.primary },
+  saveBtnDanger: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.error },
   saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
   btnDisabled: { opacity: 0.6 },
 
@@ -2504,11 +2140,4 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   sessionCatScroll: { alignSelf: 'stretch', marginBottom: 4 },
   sessionCatContent: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
   sessionSaveBtn: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: SESSION_COLOR },
-
-  payInFullBtn: {
-    alignSelf: 'flex-start', marginTop: 6,
-    paddingHorizontal: 10, paddingVertical: 5,
-    backgroundColor: c.bgTeal, borderRadius: 8,
-  },
-  payInFullTxt: { fontSize: 13, fontWeight: '600', color: c.primary },
 });

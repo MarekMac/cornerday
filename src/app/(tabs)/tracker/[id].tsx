@@ -25,6 +25,15 @@ import { supabase } from '@/lib/supabase';
 import { friendlyError } from '@/lib/networkError';
 import { useAppTheme } from '@/context/theme';
 import { AppColors } from '@/constants/theme';
+import { usePurchases } from '@/context/purchases';
+import { showInterstitialIfReady } from '@/lib/ads';
+import { maybeRequestReview } from '@/lib/review';
+import { requestHomeRefresh } from '@/lib/homeBus';
+import { triggerCelebration } from '@/lib/celebrationBus';
+import { BADGE_CELEBRATIONS, BADGE_EARNED_MSGS } from '@/constants/badgeConstants';
+
+const randCelebration = () => BADGE_CELEBRATIONS[Math.floor(Math.random() * BADGE_CELEBRATIONS.length)];
+const randMsg = () => BADGE_EARNED_MSGS[Math.floor(Math.random() * BADGE_EARNED_MSGS.length)];
 
 interface Debt {
   id: string;
@@ -70,10 +79,19 @@ function fmtPayoffDate(d: Date): string {
   return `~${d.toLocaleDateString([], { month: 'short', year: 'numeric' })}`;
 }
 
+const DEBT_CATEGORIES = [
+  { key: 'bank',   label: 'Bank',        emoji: '🏦' },
+  { key: 'credit', label: 'Credit card', emoji: '💳' },
+  { key: 'friend', label: 'Friend',      emoji: '👤' },
+  { key: 'family', label: 'Family',      emoji: '👨‍👩‍👧' },
+  { key: 'other',  label: 'Other',       emoji: '💰' },
+];
+
 export default function DebtDetailScreen() {
   const { colors: c } = useAppTheme();
   const s = useMemo(() => makeStyles(c), [c]);
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isPremium } = usePurchases();
   const isMounted = useRef(true);
   useEffect(() => () => { isMounted.current = false; }, []);
   const initialFetchDone = useRef(false);
@@ -97,6 +115,18 @@ export default function DebtDetailScreen() {
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [editTargetDate, setEditTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
   const [savingTarget, setSavingTarget] = useState(false);
+
+  // Debt options — edit / delete (moved here from the tracker list so the
+  // list card can be a single unambiguous tap target instead of overloading
+  // it with a swipe gesture or an options menu; edit/delete are direct
+  // header buttons here rather than a menu, to skip an extra tap).
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('other');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteDebtConfirmVisible, setDeleteDebtConfirmVisible] = useState(false);
+  const [deletingDebt, setDeletingDebt] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -182,11 +212,20 @@ export default function DebtDetailScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { Alert.alert('Session expired', 'Please sign in again.'); return; }
+      const isFirstPayment = payments.length === 0;
       const { error: insertError } = await supabase.from('debt_payments').insert({
         user_id: user.id, debt_id: debt.id,
         amount: val, note: note.trim() || null,
       });
       if (insertError) { Alert.alert('Could not save payment', friendlyError(insertError)); return; }
+      if (isFirstPayment) {
+        const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'first_payment' });
+        if (!badgeErr) {
+          triggerCelebration({ type: 'first_payment', emoji: '💰', label: 'First Payment', celebration: randCelebration(), msg: randMsg() });
+        }
+        requestHomeRefresh();
+      }
+      showInterstitialIfReady(isPremium);
       if (isPayingOff) {
         const { status: notifStatus } = await Notifications.getPermissionsAsync();
         if (notifStatus === 'granted') {
@@ -201,10 +240,24 @@ export default function DebtDetailScreen() {
               : null,
           });
         }
-        await supabase.from('losses').insert({
+        const insertPaidOffJournalRow = () => supabase.from('losses').insert({
           user_id: user.id, type: 'debt_paid_off', amount: Number(debt.total_amount),
           category: 'Debt', note: debt.name,
         });
+        let { error: journalErr } = await insertPaidOffJournalRow();
+        if (journalErr) {
+          // The payment itself already succeeded — this is just the
+          // celebratory "paid off" journal entry that journal.tsx renders
+          // as a distinct activity item. Retry once rather than silently
+          // dropping it.
+          console.warn('[addPayment] journal insert failed, retrying once:', journalErr.message);
+          ({ error: journalErr } = await insertPaidOffJournalRow());
+        }
+        if (journalErr) {
+          console.warn('[addPayment] journal insert failed after retry:', journalErr.message);
+          Alert.alert('Debt paid off!', "Payment saved, but we couldn't save the celebration note in your journal.");
+        }
+        maybeRequestReview('debt_paid');
       }
       if (isMounted.current) { setAmount(''); setNote(''); }
       await fetchData();
@@ -252,6 +305,74 @@ export default function DebtDetailScreen() {
       });
     } else {
       setShowTargetModal(true);
+    }
+  };
+
+  // ── Debt options: edit / delete ─────────────────────────────────
+
+  const openEditModal = () => {
+    if (!debt) return;
+    setEditName(debt.name);
+    setEditAmount(String(debt.total_amount));
+    setEditCategory(debt.category);
+    setEditModalVisible(true);
+  };
+
+  const closeEditModal = () => {
+    if (!isMounted.current) return;
+    setEditModalVisible(false);
+  };
+
+  const saveEdit = async () => {
+    const val = parseFloat(editAmount.trim());
+    if (!editName.trim() || isNaN(val) || !isFinite(val) || val <= 0 || val > 999_999_999) {
+      Alert.alert('Missing info', 'Please enter a name and a valid amount.');
+      return;
+    }
+    // Cents comparison, not raw floats — totalPaid can land on values like
+    // 0.30000000000000004, which would reject an edit to exactly $0.30 even
+    // though it equals what's already paid.
+    if (Math.round(val * 100) < Math.round(totalPaid * 100)) {
+      Alert.alert('Invalid amount', `You've already paid ${fmt(totalPaid, currency)} towards this debt.`);
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !debt) return;
+      const { error } = await supabase.from('debts').update({
+        name: editName.trim(), total_amount: val, category: editCategory,
+      }).eq('id', debt.id).eq('user_id', user.id);
+      if (error) { Alert.alert('Could not save', friendlyError(error)); return; }
+      await supabase.from('losses').insert({
+        user_id: user.id, type: 'debt_edited', amount: val, category: 'Debt', note: editName.trim(),
+      });
+      closeEditModal();
+      await fetchData();
+    } finally {
+      if (isMounted.current) setSavingEdit(false);
+    }
+  };
+
+  const executeDeleteDebt = async () => {
+    if (!debt) return;
+    setDeletingDebt(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Delete payments first — FK constraint on debt_payments.debt_id → debts.id is RESTRICT.
+        const { error: paymentsDelErr } = await supabase.from('debt_payments').delete().eq('debt_id', debt.id).eq('user_id', user.id);
+        if (paymentsDelErr) { Alert.alert('Could not delete debt', friendlyError(paymentsDelErr)); return; }
+        const { error: debtDelErr } = await supabase.from('debts').delete().eq('id', debt.id).eq('user_id', user.id);
+        if (debtDelErr) { Alert.alert('Could not delete debt', friendlyError(debtDelErr)); return; }
+        await supabase.from('losses').insert({
+          user_id: user.id, type: 'debt_deleted', amount: debt.total_amount, category: 'Debt', note: debt.name,
+        });
+      }
+      // The debt no longer exists — nothing left for this screen to show.
+      router.back();
+    } finally {
+      if (isMounted.current) setDeletingDebt(false);
     }
   };
 
@@ -314,7 +435,14 @@ export default function DebtDetailScreen() {
             <View style={s.headerCenter}>
               <Text style={s.headerTitle} numberOfLines={1}>{debt.name}</Text>
             </View>
-            <View style={{ width: 36 }} />
+            <View style={s.headerActions}>
+              <Pressable style={s.headerActionBtn} onPress={openEditModal} hitSlop={10} accessibilityLabel="Edit debt" accessibilityRole="button">
+                <Ionicons name="pencil-outline" size={20} color={c.white} />
+              </Pressable>
+              <Pressable style={s.headerActionBtn} onPress={() => setDeleteDebtConfirmVisible(true)} hitSlop={10} accessibilityLabel="Delete debt" accessibilityRole="button">
+                <Ionicons name="trash-outline" size={20} color={c.white} />
+              </Pressable>
+            </View>
           </View>
         </SafeAreaView>
       </View>
@@ -530,6 +658,89 @@ export default function DebtDetailScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Edit debt */}
+      <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={closeEditModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={s.modalOverlay} onPress={closeEditModal}>
+            <Pressable style={s.sheet} onPress={() => {}}>
+              <View style={[s.sheetIconCircle, { backgroundColor: c.bgError }]}><Text style={s.sheetIconEmoji}>💳</Text></View>
+              <Text style={s.sheetTitle}>Edit debt</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ alignSelf: 'stretch' }}>
+                <Text style={s.fieldLbl}>Name</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. Bank loan, Friend — John"
+                  placeholderTextColor={c.textFaint}
+                  value={editName}
+                  onChangeText={setEditName}
+                  maxLength={60}
+                />
+                <Text style={s.fieldLbl}>Total amount owed</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="e.g. 2000"
+                  placeholderTextColor={c.textFaint}
+                  keyboardType="decimal-pad"
+                  value={editAmount}
+                  onChangeText={setEditAmount}
+                />
+                <Text style={s.fieldLbl}>Category</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingVertical: 2 }}>
+                  {DEBT_CATEGORIES.map(cat => (
+                    <Pressable
+                      key={cat.key}
+                      style={[s.chip, editCategory === cat.key && s.chipActive]}
+                      onPress={() => setEditCategory(cat.key)}>
+                      <Text style={[s.chipTxt, editCategory === cat.key && s.chipTxtActive]}>
+                        {cat.emoji} {cat.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </ScrollView>
+              <View style={s.sheetActions}>
+                <View style={s.sheetDivider} />
+                <Pressable style={[s.saveBtnDanger, savingEdit && s.btnDisabled]} onPress={saveEdit} disabled={savingEdit}>
+                  {savingEdit
+                    ? <ActivityIndicator color={c.white} size="small" />
+                    : <Text style={s.saveBtnTxt}>Save changes</Text>}
+                </Pressable>
+                <Pressable style={s.cancelBtn} onPress={closeEditModal}>
+                  <Text style={s.cancelBtnTxt}>Cancel</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete debt confirmation */}
+      <Modal visible={deleteDebtConfirmVisible} transparent animationType="fade" onRequestClose={() => setDeleteDebtConfirmVisible(false)}>
+        <Pressable style={s.confirmOverlay} onPress={() => setDeleteDebtConfirmVisible(false)}>
+          <Pressable style={s.confirmSheet} onPress={() => {}}>
+            <View style={s.confirmIconRow}>
+              <View style={s.confirmIconCircle}>
+                <Ionicons name="trash-outline" size={26} color={c.error} />
+              </View>
+            </View>
+            <Text style={s.confirmTitle}>Delete debt?</Text>
+            <Text style={s.confirmBody}>
+              This will permanently delete <Text style={s.confirmBold}>{debt.name}</Text> and all payments made towards it.
+            </Text>
+            <View style={s.confirmActions}>
+              <Pressable style={s.confirmCancel} onPress={() => setDeleteDebtConfirmVisible(false)}>
+                <Text style={s.confirmCancelTxt}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[s.confirmDelete, deletingDebt && { opacity: 0.6 }]} onPress={executeDeleteDebt} disabled={deletingDebt}>
+                {deletingDebt
+                  ? <ActivityIndicator color={c.white} size="small" />
+                  : <Text style={s.confirmDeleteTxt}>Delete</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -543,6 +754,8 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   backBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: c.white },
+  headerActions: { flexDirection: 'row', gap: 4 },
+  headerActionBtn: { width: 32, alignItems: 'center', justifyContent: 'center' },
 
   body: { flex: 1 },
   bodyContent: { padding: 16, gap: 12 },
@@ -628,4 +841,32 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   confirmCancelTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
   confirmDelete: { flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: c.error },
   confirmDeleteTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
+
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 24 },
+  sheet: {
+    backgroundColor: c.bgCard, borderRadius: 26, padding: 28, width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 32,
+  },
+  sheetIconCircle: {
+    width: 76, height: 76, borderRadius: 38,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  sheetIconEmoji: { fontSize: 32 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 16 },
+  fieldLbl: { fontSize: 13, color: c.textBody, fontWeight: '600', marginTop: 14, marginBottom: 8 },
+  chip: {
+    paddingVertical: 6, paddingHorizontal: 12,
+    borderRadius: 20, borderWidth: 1, borderColor: c.borderMid, backgroundColor: c.bgInput,
+  },
+  chipActive: { borderColor: c.primary, backgroundColor: c.bgTeal },
+  chipTxt: { fontSize: 13, color: c.textBody },
+  chipTxtActive: { color: c.primary, fontWeight: '600' },
+
+  sheetActions: { width: '100%', marginTop: 20 },
+  sheetDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginBottom: 14 },
+  saveBtnDanger: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.error, marginBottom: 10 },
+  saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
+  cancelBtn: { width: '100%', borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: c.bgElement },
+  cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },
 });
