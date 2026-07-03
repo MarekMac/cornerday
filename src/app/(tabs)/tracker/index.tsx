@@ -1366,12 +1366,12 @@ export default function TrackerIndex() {
                 />
               </ScrollView>
               <View style={s.sheetActions}>
-                <Pressable style={[s.saveBtn, submitting && s.btnDisabled]} onPress={saveSaving} disabled={submitting}>
+                <View style={s.sheetDivider} />
+                <Pressable style={[s.saveBtn, { marginBottom: 10 }, submitting && s.btnDisabled]} onPress={saveSaving} disabled={submitting}>
                   {submitting
                     ? <ActivityIndicator color={c.white} size="small" />
                     : <Text style={s.saveBtnTxt}>{editingSaving ? 'Save changes' : 'Log saving'}</Text>}
                 </Pressable>
-                <View style={s.sheetDivider} />
                 <Pressable style={s.cancelBtn} onPress={closeSavingModal}>
                   <Text style={s.cancelBtnTxt}>Cancel</Text>
                 </Pressable>
@@ -1632,12 +1632,12 @@ export default function TrackerIndex() {
                 </Pressable>
               </ScrollView>
               <View style={s.sheetActions}>
-                <Pressable style={[s.sessionSaveBtn, submittingSession && s.btnDisabled]} onPress={saveSession} disabled={submittingSession}>
+                <View style={s.sheetDivider} />
+                <Pressable style={[s.sessionSaveBtn, { marginBottom: 10 }, submittingSession && s.btnDisabled]} onPress={saveSession} disabled={submittingSession}>
                   {submittingSession
                     ? <ActivityIndicator color={c.white} size="small" />
                     : <Text style={s.saveBtnTxt}>{editingSession ? 'Save changes' : 'Log session'}</Text>}
                 </Pressable>
-                <View style={s.sheetDivider} />
                 <Pressable style={s.cancelBtn} onPress={closeSessionModal}>
                   <Text style={s.cancelBtnTxt}>Cancel</Text>
                 </Pressable>
