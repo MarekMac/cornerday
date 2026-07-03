@@ -44,6 +44,7 @@ import { useUser } from '@/context/user';
 import { generateUsername } from '@/lib/usernameGenerator';
 import * as Notifications from 'expo-notifications';
 import {
+  cancelAllNotifications,
   DEFAULT_NOTIF_PREFS,
   NotifPrefs,
   requestNotificationPermissions,
@@ -245,6 +246,11 @@ export default function AccountScreen() {
   const [savingField, setSavingField] = useState(false);
 
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
+  // Kept in sync with notifPrefs, but updated synchronously (not via a
+  // useEffect) so handleNotifToggle can read the latest value even when
+  // called twice in a row before React re-renders — the notifPrefs closure
+  // itself would still be stale in that case.
+  const notifPrefsRef = useRef<NotifPrefs>(DEFAULT_NOTIF_PREFS);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState('Fingerprint or face unlock on reopen');
@@ -439,8 +445,15 @@ export default function AccountScreen() {
         // AsyncStorage-fallback effect (near-instant) resolved first and
         // already set a stale/local value.
         setCustomMilestone(m);
+      } else {
+        // Supabase genuinely has no custom milestone (e.g. removed on another
+        // device) — must still win over a stale AsyncStorage value. Without
+        // this branch, the AsyncStorage-fallback effect's `prev ?? m` would
+        // see `prev` still null (this function never touched it) and
+        // resurrect the deleted milestone from local storage.
+        setCustomMilestone(null);
       }
-      setNotifPrefs({
+      const fetchedNotifPrefs: NotifPrefs = {
         notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
         notif_daily_streak: data?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
         notif_daily_checkin: data?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
@@ -448,7 +461,9 @@ export default function AccountScreen() {
         notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
         notif_urge_prediction: data?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
         notif_community: data?.notif_community ?? DEFAULT_NOTIF_PREFS.notif_community,
-      });
+      };
+      notifPrefsRef.current = fetchedNotifPrefs;
+      setNotifPrefs(fetchedNotifPrefs);
       setGlobalAvatarUrl(resolvedAvatar);
     } catch (e) {
       console.warn('[CornerDay] fetchProfile error:', e);
@@ -1387,7 +1402,11 @@ export default function AccountScreen() {
       // milestone/streak/check-in/weekly-summary/re-engagement push would
       // otherwise keep firing after the account is gone, which matters more
       // than usual on a shared/handed-down device for an app like this.
-      try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {}
+      // Routed through the same scheduleQueue as scheduleAllNotifications —
+      // a direct cancelAllScheduledNotificationsAsync() call here could be
+      // raced by an already-in-flight scheduling call (e.g. a notification
+      // toggle's await chain) completing afterward and re-adding notifications.
+      await cancelAllNotifications();
       try { await supabase.auth.signOut(); } catch (_e) {}
     } catch {
       authFlags.signingOut = false;
@@ -1425,8 +1444,9 @@ export default function AccountScreen() {
       // See the matching comment in executeDeleteAccount — clearing the
       // AsyncStorage notification-ID keys doesn't cancel the OS-level
       // schedules, so every scheduled push would otherwise keep firing for
-      // whoever signs in next on this device.
-      try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {}
+      // whoever signs in next on this device. Routed through cancelAllNotifications
+      // (the shared scheduleQueue) so an in-flight scheduling call can't race it.
+      await cancelAllNotifications();
       try { await supabase.auth.signOut(); } catch (_e) {}
     } catch {
       Alert.alert('Could not sign out', 'Please try again.');
@@ -1696,18 +1716,26 @@ export default function AccountScreen() {
   };
 
   const handleNotifToggle = async (key: keyof NotifPrefs, value: boolean) => {
-    // Functional updates (not the notifPrefs closure captured at call time) —
-    // otherwise toggling a second preference while the first toggle's
-    // Supabase write is still in flight, then having that first write fail,
-    // would revert to the pre-either-toggle snapshot and silently discard
-    // the second toggle's already-applied change (matching the pattern
-    // already used correctly by updateShareSetting/updateNotifySetting above).
-    setNotifPrefs(prev => ({ ...prev, [key]: value }));
-    const updated = { ...notifPrefs, [key]: value };
+    // Read/write notifPrefsRef synchronously (not the notifPrefs closure
+    // captured at call time, and not just a state functional-updater) —
+    // otherwise toggling a second preference immediately after a first,
+    // before React re-renders, would build `updated` from the first
+    // toggle's now-stale value and could schedule notifications based on a
+    // preference snapshot that doesn't match what was just written to
+    // Supabase (matching the pattern already used correctly by
+    // updateShareSetting/updateNotifySetting above).
+    const updated = { ...notifPrefsRef.current, [key]: value };
+    notifPrefsRef.current = updated;
+    setNotifPrefs(updated);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { error: updateErr } = await supabase.from('users').update({ [key]: value }).eq('id', user.id);
-      if (updateErr) { setNotifPrefs(prev => ({ ...prev, [key]: !value })); return; }
+      if (updateErr) {
+        const reverted = { ...notifPrefsRef.current, [key]: !value };
+        notifPrefsRef.current = reverted;
+        setNotifPrefs(reverted);
+        return;
+      }
       const granted = await requestNotificationPermissions();
       if (granted) {
         await scheduleAllNotifications(updated, quitTimestamp, earnedBadgeTypesRef.current, { streakHour: notifStreakHour, checkinHour: notifCheckinHour });

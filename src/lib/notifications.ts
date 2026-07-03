@@ -199,6 +199,19 @@ export function scheduleAllNotifications(
   return scheduleQueue;
 }
 
+// Account deletion/sign-out need to cancel every scheduled notification as
+// the definitive last word — but a direct cancelAllScheduledNotificationsAsync()
+// call bypasses scheduleQueue entirely, so a scheduling call already in
+// flight (e.g. a notification-preference toggle's await chain) can complete
+// AFTER it and re-add notifications for an account that's already gone.
+// Routing the cancel through the same queue guarantees it runs after
+// anything already queued, and nothing queued afterward can undo it.
+export function cancelAllNotifications(): Promise<void> {
+  const run = async () => { try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {} };
+  scheduleQueue = scheduleQueue.then(run, run);
+  return scheduleQueue;
+}
+
 async function scheduleAllNotificationsImpl(
   prefs: NotifPrefs,
   quitTimestamp: string | null,
