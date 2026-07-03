@@ -126,10 +126,14 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Premium required' }, 403);
     }
 
-    // Fetch supporting data in parallel
-    const [streakRes, lossesRes, moodRes] = await Promise.all([
+    // Fetch supporting data in parallel. Debt/payment totals live in the
+    // debts/debt_payments tables (not losses — that table's 'session' rows
+    // are individual gambling-session logs, unrelated to the debt tracker),
+    // matching the pattern already used correctly in partner-view/index.ts.
+    const [streakRes, debtsRes, paymentsRes, moodRes] = await Promise.all([
       admin.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
-      admin.from('losses').select('type, amount').eq('user_id', user.id).in('type', ['loss', 'payment']).limit(500),
+      admin.from('debts').select('total_amount').eq('user_id', user.id),
+      admin.from('debt_payments').select('amount').eq('user_id', user.id),
       admin.from('mood_checkins').select('mood').eq('user_id', user.id).order('created_at', { ascending: false }).limit(7),
     ]);
 
@@ -143,11 +147,8 @@ Deno.serve(async (req: Request) => {
       daysClean,
     );
 
-    let totalLost = 0, totalPaid = 0;
-    for (const row of lossesRes.data ?? []) {
-      if (row.type === 'loss') totalLost += Number(row.amount);
-      else if (row.type === 'payment') totalPaid += Number(row.amount);
-    }
+    const totalLost = (debtsRes.data ?? []).reduce((s, r) => s + Number(r.total_amount), 0);
+    const totalPaid = (paymentsRes.data ?? []).reduce((s, r) => s + Number(r.amount), 0);
     const stillOwed = Math.max(0, totalLost - totalPaid);
 
     const moods = moodRes.data ?? [];
