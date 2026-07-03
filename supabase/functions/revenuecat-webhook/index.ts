@@ -111,7 +111,15 @@ Deno.serve(async (req) => {
     // so RevenueCat's retry of the same event.id can actually reprocess it,
     // instead of being swallowed as "already handled" by the claim check above.
     if (eventId) {
-      await supabase.from('revenuecat_webhook_events').delete().eq('event_id', eventId);
+      const { error: releaseError } = await supabase.from('revenuecat_webhook_events').delete().eq('event_id', eventId);
+      if (releaseError) {
+        // If the release itself fails, the claim row is now stuck: every
+        // retry of this event.id will hit the claim-insert conflict above
+        // and be silently skipped as "already processed," even though
+        // is_premium was never actually set. Log loudly so this is visible
+        // — there's no further fallback available inside the webhook itself.
+        console.error(`[revenuecat-webhook] FAILED to release claim for event ${eventId} — this event can no longer be reprocessed by retry:`, releaseError.message);
+      }
     }
     return new Response('Internal error', { status: 500 });
   }

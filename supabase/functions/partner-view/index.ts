@@ -102,20 +102,32 @@ Deno.serve(async (req: Request) => {
         const quitIso = new Date(quitMs).toISOString();
         // The badges table doubles as an idempotency/claim store for several
         // edge functions (email_*, push_*, upsell_30d, reengagement_7d,
-        // recovery_*pct, welcome_email_sent, etc.) — excluding only 'started'
-        // let any of those internal rows win "latest milestone" and leak a
-        // raw internal string (e.g. "email_1_week") to the unauthenticated
-        // partner view, and inflated milestonesEarned. Restrict to the
-        // actual client-facing milestone types.
-        const milestoneTypes = Object.keys(MILESTONE_LABELS);
+        // recovery_*pct, welcome_email_sent, first_loss_email_sent) —
+        // excluding only 'started' let any of those internal rows win
+        // "latest milestone" and leak a raw internal string (e.g.
+        // "email_1_week") to the unauthenticated partner view, and inflate
+        // milestonesEarned.
+        //
+        // A previous fix here restricted to Object.keys(MILESTONE_LABELS),
+        // but that list is a curated display-label subset (24 entries) that
+        // doesn't cover all ~58 real time-based badge types in the client's
+        // BADGE_DEFS (e.g. '100_days', '1000_days', '9_years' are missing
+        // from MILESTONE_LABELS but ARE real badges a user can earn) — so
+        // that allowlist silently hid genuine high-value milestones instead
+        // of just filtering internal ones. Exclude the known internal
+        // namespaces by pattern instead, so it stays correct as new
+        // real badge types are added without needing to update this list.
+        const applyMilestoneFilter = (q: any) => q
+          .eq('user_id', link.user_id)
+          .neq('badge_type', 'started')
+          .not('badge_type', 'like', 'email_%')
+          .not('badge_type', 'like', 'push_%')
+          .not('badge_type', 'like', 'recovery_%pct')
+          .not('badge_type', 'in', '(upsell_30d,reengagement_7d,welcome_email_sent,first_loss_email_sent)')
+          .gte('earned_at', quitIso);
         const [badgeCountRes, latestRes, urgeRes] = await Promise.all([
-          sb.from('badges').select('id', { count: 'exact', head: true })
-            .eq('user_id', link.user_id)
-            .in('badge_type', milestoneTypes)
-            .gte('earned_at', quitIso),
-          sb.from('badges').select('badge_type, earned_at').eq('user_id', link.user_id)
-            .in('badge_type', milestoneTypes)
-            .gte('earned_at', quitIso)
+          applyMilestoneFilter(sb.from('badges').select('id', { count: 'exact', head: true })),
+          applyMilestoneFilter(sb.from('badges').select('badge_type, earned_at'))
             .order('earned_at', { ascending: false }).limit(1).maybeSingle(),
           sb.from('urge_journal').select('id', { count: 'exact', head: true })
             .eq('user_id', link.user_id).eq('outcome', 'overcame').gte('created_at', weekAgo),

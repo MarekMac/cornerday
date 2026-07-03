@@ -418,7 +418,7 @@ export default function AccountScreen() {
       }
 
       // Trusted contact and recovery plan in a separate query so schema-cache misses never break the profile fetch
-      const { data: contactData } = await supabase
+      const { data: contactData, error: contactError } = await supabase
         .from('users')
         .select('trusted_contact_name, trusted_contact_phone, trusted_contact_email, recovery_distractions, recovery_mantra, distraction_choices, custom_milestone_type, custom_milestone_target, custom_milestone_icon')
         .eq('id', user.id)
@@ -445,12 +445,21 @@ export default function AccountScreen() {
         // AsyncStorage-fallback effect (near-instant) resolved first and
         // already set a stale/local value.
         setCustomMilestone(m);
-      } else {
+      } else if (!contactError) {
         // Supabase genuinely has no custom milestone (e.g. removed on another
         // device) — must still win over a stale AsyncStorage value. Without
         // this branch, the AsyncStorage-fallback effect's `prev ?? m` would
         // see `prev` still null (this function never touched it) and
         // resurrect the deleted milestone from local storage.
+        //
+        // Gated on !contactError: this query is deliberately split out
+        // above so a transient failure (e.g. schema-cache miss) here never
+        // breaks the rest of the profile fetch — but that means a failure
+        // must NOT be treated the same as "confirmed no milestone," or a
+        // real milestone gets actively erased on a blip, and could then be
+        // permanently overwritten if the user opens the editor while in
+        // this false state and saves. Leave whatever's already showing
+        // (from AsyncStorage or a previous successful fetch) alone instead.
         setCustomMilestone(null);
       }
       const fetchedNotifPrefs: NotifPrefs = {
@@ -1191,7 +1200,7 @@ export default function AccountScreen() {
         setQuitTimestamp(iso);
         const granted = await requestNotificationPermissions();
         if (granted) {
-          await scheduleAllNotifications(notifPrefs, iso, []);
+          await scheduleAllNotifications(notifPrefsRef.current, iso, []);
           await scheduleOnboardingCheckin();
         }
       }
@@ -1253,7 +1262,7 @@ export default function AccountScreen() {
       setCustomMilestone(null);
       setChecklistCount(0);
       if (quitTimestamp) {
-        await scheduleAllNotifications(notifPrefs, quitTimestamp, []);
+        await scheduleAllNotifications(notifPrefsRef.current, quitTimestamp, []);
         await scheduleOnboardingCheckin();
       }
     } catch (e: any) {
@@ -1337,7 +1346,7 @@ export default function AccountScreen() {
         setChecklistCount(0);
         const granted = await requestNotificationPermissions();
         if (granted) {
-          await scheduleAllNotifications(notifPrefs, nowIso, []);
+          await scheduleAllNotifications(notifPrefsRef.current, nowIso, []);
           await scheduleOnboardingCheckin();
           // Fire a confirmation notification in 5 seconds so the user knows scheduling works
           await Notifications.scheduleNotificationAsync({
@@ -1684,7 +1693,7 @@ export default function AccountScreen() {
         if (existingId) await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {});
         try {
           const { status } = await Notifications.getPermissionsAsync();
-          if (status === 'granted' && notifPrefs.notif_milestone) {
+          if (status === 'granted' && notifPrefsRef.current.notif_milestone) {
             const id = await Notifications.scheduleNotificationAsync({
               content: {
                 title: `🎯 ${target} Days Clean!`,
@@ -1766,7 +1775,7 @@ export default function AccountScreen() {
         ? { streakHour: hour, checkinHour: notifCheckinHour }
         : { streakHour: notifStreakHour, checkinHour: hour };
       if (granted) {
-        await scheduleAllNotifications(notifPrefs, quitTimestamp, earnedBadgeTypesRef.current, hours);
+        await scheduleAllNotifications(notifPrefsRef.current, quitTimestamp, earnedBadgeTypesRef.current, hours);
         await scheduleOnboardingCheckin();
       }
     }

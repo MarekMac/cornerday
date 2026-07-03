@@ -627,53 +627,56 @@ export default function UrgeScreen() {
         Alert.alert('Could not reset', 'Please try again.');
         return;
       }
-      // Streak Shield is premium-only — recheck live premium status, not just
-      // the AsyncStorage flag, so a lapsed subscription can't keep badges
-      // surviving a relapse indefinitely. Query RevenueCat directly here
-      // rather than trusting the usePurchases() context's isPremium: that
-      // value can be stale/still-false during the SDK's async init window
-      // right after a cold start, which would wrongly delete shield-protected
-      // badges on a relapse tapped before it resolves — or the inverse,
-      // stale-true after a lapse, which would wrongly preserve them.
-      let liveIsPremium = isAdmin;
-      try {
-        const info = await Purchases.getCustomerInfo();
-        liveIsPremium = liveIsPremium || typeof info.entitlements.active[ENTITLEMENT_ID] !== 'undefined';
-      } catch (e) {
-        console.warn('[doStreakReset] live premium check failed, falling back to admin status only:', e);
-      }
-      const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true' && liveIsPremium;
-      const resetOps: PromiseLike<{ error: { message: string } | null }>[] = [
-        supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null }),
-      ];
-      // Only delete day-based streak badges, not permanent achievement badges
-      // (payments, check-ins, urges overcome, etc.) — see doRelapse in
-      // (tabs)/index.tsx for the same fix and full rationale.
-      if (!shieldEnabled) {
-        const streakBadgeTypes = BADGE_DEFS.map(b => b.type);
-        resetOps.push(supabase.from('badges').delete().eq('user_id', user.id).in('badge_type', streakBadgeTypes));
-      }
-      // supabase-js resolves (rather than throws) on a query-level failure,
-      // so Promise.all alone can't tell success from failure — check .error
-      // on each result. Otherwise this would show "✓ Streak reset" even if
-      // the loss record was never written or the badges were never cleared.
-      const resetResults = await Promise.all(resetOps);
-      const resetError = resetResults.find(r => r.error)?.error;
-      if (resetError) {
-        console.warn('[doStreakReset] reset write error:', resetError.message);
-        Alert.alert('Could not reset', 'Please try again.');
-        return;
-      }
-      // Point of no return: the streak reset and badge changes above are
-      // already committed server-side. Everything below is best-effort
-      // cleanup (local cache, notification rescheduling) — if any of it
-      // throws, the user must NOT see "Could not reset," because the reset
-      // itself already succeeded. Showing that alert here previously invited
-      // a retry, which would double-insert the streak_reset row and send a
-      // second relapse notification to the user's trusted partner for the
-      // same event.
+      // Point of no return: reset_streak already committed the streak reset
+      // itself. Everything below — the streak_reset journal row, badge
+      // cleanup, local cache, notification rescheduling — is best-effort
+      // and must NOT show "Could not reset" on failure. An earlier version
+      // of this fix drew the line one step too late (after the journal/badge
+      // writes below), which meant a failure in EITHER of those two writes
+      // still triggered the alert and allowed a retry — re-running a write
+      // that may have already succeeded and inserting a second streak_reset
+      // row for the same event.
       success = true;
       try {
+        // Streak Shield is premium-only — recheck live premium status, not just
+        // the AsyncStorage flag, so a lapsed subscription can't keep badges
+        // surviving a relapse indefinitely. Query RevenueCat directly here
+        // rather than trusting the usePurchases() context's isPremium: that
+        // value can be stale/still-false during the SDK's async init window
+        // right after a cold start, which would wrongly delete shield-protected
+        // badges on a relapse tapped before it resolves — or the inverse,
+        // stale-true after a lapse, which would wrongly preserve them.
+        let liveIsPremium = isAdmin;
+        try {
+          const info = await Purchases.getCustomerInfo();
+          liveIsPremium = liveIsPremium || typeof info.entitlements.active[ENTITLEMENT_ID] !== 'undefined';
+        } catch (e) {
+          console.warn('[doStreakReset] live premium check failed, falling back to admin status only:', e);
+        }
+        const shieldEnabled = (await AsyncStorage.getItem(STREAK_SHIELD_KEY)) === 'true' && liveIsPremium;
+
+        // This is what the Recovery Calendar reads to know today was a slip —
+        // retry once (matching doRelapse's pattern in (tabs)/index.tsx) since
+        // there's no clean "abort" left once the RPC above has committed.
+        const insertJournalRow = () => supabase.from('losses').insert({ user_id: user.id, type: 'streak_reset', amount: 0, category: 'Relapse', note: null });
+        let { error: journalErr } = await insertJournalRow();
+        if (journalErr) {
+          console.warn('[doStreakReset] journal insert failed, retrying once:', journalErr.message);
+          ({ error: journalErr } = await insertJournalRow());
+          if (journalErr) console.warn('[doStreakReset] journal insert failed after retry:', journalErr.message);
+        }
+
+        // Only delete day-based streak badges, not permanent achievement badges
+        // (payments, check-ins, urges overcome, etc.) — see doRelapse in
+        // (tabs)/index.tsx for the same fix and full rationale. Best-effort:
+        // logged, not alerted — badges surviving one extra cycle on a
+        // transient failure is far less disruptive than blocking the reset.
+        if (!shieldEnabled) {
+          const streakBadgeTypes = BADGE_DEFS.map(b => b.type);
+          const { error: badgeDeleteErr } = await supabase.from('badges').delete().eq('user_id', user.id).in('badge_type', streakBadgeTypes);
+          if (badgeDeleteErr) console.warn('[doStreakReset] badge cleanup failed:', badgeDeleteErr.message);
+        }
+
         // When shield is on, badges are preserved — keep MILESTONE_NOTIFS_KEY so the scheduler
         // knows which milestones are already earned and doesn't re-fire their notifications.
         const keysToRemove = [CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY];
