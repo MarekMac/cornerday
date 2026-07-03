@@ -2023,7 +2023,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   sheetIconEmoji: { fontSize: 32 },
   sheetTitle: { fontSize: 20, fontWeight: '800', color: c.textPrimary, textAlign: 'center', marginBottom: 16 },
   sheetSubtitle: { fontSize: 13, color: c.textMuted, textAlign: 'center', lineHeight: 19, marginBottom: 4 },
-  sheetActions: { width: '100%', marginTop: 20 },
+  sheetActions: { width: '100%', marginTop: 8 },
   sheetDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginVertical: 10 },
   cancelBtn: { width: '100%', borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: c.bgElement },
   cancelBtnTxt: { fontSize: 15, fontWeight: '600', color: c.textBody },

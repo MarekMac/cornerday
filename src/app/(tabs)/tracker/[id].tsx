@@ -863,7 +863,7 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   chipTxt: { fontSize: 13, color: c.textBody },
   chipTxtActive: { color: c.primary, fontWeight: '600' },
 
-  sheetActions: { width: '100%', marginTop: 20 },
+  sheetActions: { width: '100%', marginTop: 8 },
   sheetDivider: { height: 1, backgroundColor: c.borderSubtle, width: '100%', marginBottom: 14 },
   saveBtnDanger: { width: '100%', borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: c.error, marginBottom: 10 },
   saveBtnTxt: { color: c.white, fontWeight: '700', fontSize: 15 },
