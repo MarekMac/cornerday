@@ -483,6 +483,7 @@ export default function CommunityFeed() {
       }
     } catch {
       setUserBookmarks(prev => ({ ...prev, [postId]: isBookmarked }));
+      Alert.alert('Could not update bookmark', 'Please try again.');
     } finally {
       bookmarkingRef.current[postId] = false;
     }
@@ -509,6 +510,7 @@ export default function CommunityFeed() {
       }
     } catch {
       setFollowedUsers(prev => ({ ...prev, [userId]: isFollowing }));
+      Alert.alert('Could not update follow status', 'Please try again.');
     } finally {
       followingInFlightRef.current[userId] = false;
     }

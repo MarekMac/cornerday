@@ -89,6 +89,11 @@ export default function PostDetail() {
   const followInFlightRef = useRef(false);
   const reactingRef = useRef(false);
   const commentReactingRef = useRef<Record<string, boolean>>({});
+  // Separate from the `submitting` state below — state updates aren't
+  // guaranteed to be applied before a second synchronous call to this
+  // closure (Enter-to-submit and a near-simultaneous send-button tap), so
+  // the actual re-entrancy guard needs a ref.
+  const submittingRef = useRef(false);
 
   const loadAll = async () => {
     setLoading(true);
@@ -285,12 +290,15 @@ export default function PostDetail() {
   };
 
   const submitComment = async () => {
-    // Synchronous re-entrancy guard — this is wired to both the send
-    // button's onPress and the TextInput's onSubmitEditing, so a fast
-    // double-trigger (e.g. Enter then tap) before React re-renders the
-    // disabled state could otherwise insert two identical comments.
-    if (submitting) return;
+    // Synchronous re-entrancy guard via ref (not just the `submitting`
+    // state, which isn't guaranteed to be applied before a second call to
+    // this closure) — this is wired to both the send button's onPress and
+    // the TextInput's onSubmitEditing, so a fast double-trigger (e.g. Enter
+    // then tap) before React re-renders the disabled state could otherwise
+    // insert two identical comments.
+    if (submittingRef.current) return;
     if (!commentText.trim() || !currentUserId || !post) return;
+    submittingRef.current = true;
     setSubmitting(true);
     const text = commentText.trim();
 
@@ -324,6 +332,7 @@ export default function PostDetail() {
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

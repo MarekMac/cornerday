@@ -280,11 +280,18 @@ export default function DebtDetailScreen() {
   const remaining = Math.max(0, Number(debt.total_amount) - totalPaid);
   const pct = Number(debt.total_amount) > 0 ? Math.min(1, totalPaid / Number(debt.total_amount)) : 0;
   const isPaidOff = Math.round(remaining * 100) === 0 && totalPaid > 0;
+  // Explicit min over timestamps, not payments[payments.length - 1] — that
+  // relied on the query's .order('created_at', {ascending:false}) as an
+  // implicit invariant (correct today, but fragile to a future query change
+  // or a same-millisecond tie), unlike the equivalent computation in
+  // tracker/index.tsx and analytics.tsx which both already use Math.min.
+  const firstPaymentMs = payments.length > 0
+    ? Math.min(...payments.map(p => new Date(p.created_at).getTime()))
+    : null;
 
   let payoffEstimate: string | null = null;
-  if (!isPaidOff && payments.length > 0) {
-    const firstPayment = new Date(payments[payments.length - 1].created_at);
-    const rawDaysSinceFirst = (Date.now() - firstPayment.getTime()) / 86400000;
+  if (!isPaidOff && firstPaymentMs !== null) {
+    const rawDaysSinceFirst = (Date.now() - firstPaymentMs) / 86400000;
     // Require a few days of real history before projecting a payoff date —
     // a single payment logged minutes ago would otherwise floor to 1 day and
     // wildly overstate the daily rate (see the pace calc below for the same guard).
@@ -340,8 +347,7 @@ export default function DebtDetailScreen() {
               {isPaidOff ? '🎉 Fully paid off!' : `${Math.round(pct * 100)}% paid back`}
             </Text>
             {!isPaidOff && (() => {
-              const firstPayment = payments.length > 0 ? new Date(payments[payments.length - 1].created_at) : null;
-              const rawDaysElapsed = firstPayment ? (Date.now() - firstPayment.getTime()) / 86400000 : null;
+              const rawDaysElapsed = firstPaymentMs !== null ? (Date.now() - firstPaymentMs) / 86400000 : null;
               // Require a few days of real payment history before trusting a
               // pace extrapolation — a single payment logged minutes ago would
               // otherwise floor to 1 day and wildly overstate "pace"/"Ahead".

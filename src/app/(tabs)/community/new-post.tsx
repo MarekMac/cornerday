@@ -2,7 +2,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { hapticMedium } from '@/lib/haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   BackHandler,
@@ -36,6 +36,12 @@ export default function NewPost() {
   const [tag, setTag] = useState<CommunityTag | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Separate from the `submitting` state below — state updates aren't
+  // guaranteed to be applied before a second synchronous call to this
+  // closure (e.g. Enter-to-submit and a near-simultaneous button tap), so
+  // the actual re-entrancy guard needs a ref, matching the pattern used by
+  // bookmarkingRef/followingInFlightRef elsewhere in Community.
+  const submittingRef = useRef(false);
 
   // Pre-fill from params (milestone auto-post)
   useEffect(() => {
@@ -70,15 +76,18 @@ export default function NewPost() {
   }, [content]);
 
   const submit = async () => {
-    // Synchronous re-entrancy guard — the `disabled` prop on the submit
-    // button alone doesn't block a second tap that lands before React
-    // re-renders it as disabled, which could insert a duplicate post and
-    // also let a fast double-tap slip a 4th post past the hourly rate
+    // Synchronous re-entrancy guard via ref (not just the `submitting`
+    // state, which isn't guaranteed to be applied before a second
+    // near-simultaneous call to this closure) — the `disabled` prop on the
+    // submit button alone doesn't block a second tap that lands before
+    // React re-renders it as disabled, which could insert a duplicate post
+    // and also let a fast double-tap slip a 4th post past the hourly rate
     // limit (both reads of recentCount below would see the same pre-insert
     // count).
-    if (submitting) return;
+    if (submittingRef.current) return;
     if (!tag) { Alert.alert('Pick a tag', 'Select a tag that fits your story.'); return; }
     if (!content.trim()) { Alert.alert('Empty story', "Your story can't be empty."); return; }
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -115,6 +124,7 @@ export default function NewPost() {
       showInterstitialIfReady(isPremium);
       router.back();
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
