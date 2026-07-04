@@ -27,8 +27,6 @@
       "googleServicesFile": "./google-services.json",
       "package": "com.cornerday.app",
       "permissions": [
-        "SCHEDULE_EXACT_ALARM",
-        "USE_EXACT_ALARM",
         "RECEIVE_BOOT_COMPLETED",
         "android.permission.READ_CONTACTS",
         "USE_BIOMETRIC",
