@@ -3,15 +3,15 @@
 Fill these in on the Play Console "Content rating" page.
 
 ## App category
-Select: **Utility** (or Health & Fitness if available in the questionnaire)
+Select: **Health & Fitness** (matches the Store Listing category)
 
 ---
 
 ## IARC Questionnaire
 
 **Does your app contain or reference gambling, simulated gambling, or betting?**
-→ Select: "No simulated gambling"
-The app helps users *recover from* gambling addiction. It does not simulate gambling, facilitate real-money bets, or link to gambling sites. Loss tracking is financial journaling only.
+→ If the questionnaire separates "simulated gambling" from "references to gambling," answer **No** to simulated/real-money gambling but **Yes** to references to gambling — do not select "no references," since the app's entire premise is built around gambling recovery language (bets, losses, urges, betting triggers). If only one combined option is offered, select whichever lets you attach the explanation below.
+The app helps users *recover from* gambling addiction. It does not simulate gambling, facilitate real-money bets, or link to gambling sites. Loss tracking is financial journaling only. Gambling is referenced throughout in an educational/recovery context (tracking losses, urges, triggers), which is why "no references" would be inaccurate.
 
 **Does your app contain violence?**
 → No

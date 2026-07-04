@@ -3,8 +3,8 @@
 ## App Name
 CornerDay
 
-## Short Description (80 chars max — currently 60)
-Gambling recovery tracker — streaks, urge support & AI coach
+## Short Description (80 chars max — currently 73)
+Track your streak, log losses, beat urges. Quit sports betting for good.
 
 ## Full Description (4000 chars max)
 The day you turn it around starts today.
@@ -73,10 +73,29 @@ PEGI 12 / Teen (expected)
 - No simulated gambling, no real money transactions within app (subscriptions only)
 
 ## Contact Email
-support@cornerday.app  (or your actual support email)
-
-## Privacy Policy URL
-https://cornerday.app/privacy  (needs to be hosted — see privacy-policy.md)
+support@cornerday.app
 
 ## Website URL
-https://cornerday.app  (optional but recommended)
+https://cornerday.app
+
+## Privacy Policy URL
+https://cornerday.app/privacy ✅ live
+
+## Terms of Use URL
+https://cornerday.app/terms ✅ live
+
+## Target Audience
+18+, not child-directed
+
+## Ads
+Yes — Google AdMob, free tier only. Never shown on the urge screen, relapse screen, crisis resources, or journal.
+
+## App Icon
+store-assets/icon-512.png — 512×512, RGB, no alpha ✅ ready to upload
+
+## Feature Graphic
+store-assets/feature-graphic.png — 1024×500 ✅ ready to upload
+
+## Phone Screenshots
+6 screens ready in assets/images/screenshots/ (1080×2340 each) — Home, tracker, support (urge), community, ai, analytics.
+Checked: none show the Account tab (no real email/Admin Panel exposure), Home screenshot uses a test account ("Mindful") with no personal avatar photo. Clears the minimum of 4 required for promotion eligibility.
