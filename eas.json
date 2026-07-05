@@ -24,6 +24,12 @@
         "serviceAccountKeyPath": "./credentials/play-service-account.json",
         "track": "internal"
       }
+    },
+    "closedTesting": {
+      "android": {
+        "serviceAccountKeyPath": "./credentials/play-service-account.json",
+        "track": "alpha"
+      }
     }
   }
 }

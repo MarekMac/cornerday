@@ -5,6 +5,7 @@ import MobileAds, {
   TestIds,
   MaxAdContentRating,
 } from 'react-native-google-mobile-ads';
+import { Sentry } from './sentry';
 
 const INTERSTITIAL_ID = __DEV__
   ? TestIds.INTERSTITIAL
@@ -47,7 +48,9 @@ export function initAds(): void {
     loadNext();
   });
 
-  interstitial.addAdEventListener(AdEventType.ERROR, () => {
+  interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
+    // error.message already includes the native error code, e.g. "[googleMobileAds/no-fill] ..."
+    Sentry.captureMessage(`Interstitial load error: ${error.message}`, 'warning');
     // Back off 60s before retrying so we don't hammer the network
     setTimeout(loadNext, 60_000);
   });
@@ -55,9 +58,11 @@ export function initAds(): void {
   interstitial.load();
 }
 
-export function showInterstitialIfReady(isPremium: boolean, probability = 0.33): void {
+export function showInterstitialIfReady(isPremium: boolean, probability = 0.33, source = 'unknown'): void {
   if (isPremium || !adLoaded || !interstitial) return;
   if (Math.random() > probability) return;
   adLoaded = false;
-  interstitial.show().catch(() => { adLoaded = true; }); // restore flag if show fails
+  interstitial.show()
+    .then(() => Sentry.captureMessage(`Interstitial shown (source=${source})`, 'info'))
+    .catch(() => { adLoaded = true; }); // restore flag if show fails
 }

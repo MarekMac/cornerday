@@ -586,7 +586,7 @@ export default function TrackerIndex() {
             created_at: sessionDateIso,
           });
           if (insertErr) { Alert.alert('Could not save session', friendlyError(insertErr)); return; }
-          showInterstitialIfReady(isPremium, 0.1);
+          showInterstitialIfReady(isPremium, 0.1, 'loss_session');
           if (isFirstSession) {
             const { error: badgeErr } = await supabase.from('badges').insert({ user_id: user.id, badge_type: 'loss_first_log' });
             if (!badgeErr) {

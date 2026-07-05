@@ -225,7 +225,7 @@ export default function DebtDetailScreen() {
         }
         requestHomeRefresh();
       }
-      showInterstitialIfReady(isPremium);
+      showInterstitialIfReady(isPremium, 0.33, 'debt_payment');
       if (isPayingOff) {
         const { status: notifStatus } = await Notifications.getPermissionsAsync();
         if (notifStatus === 'granted') {

@@ -2,8 +2,12 @@
 
 Fill these in on the Play Console "Content rating" page.
 
-## App category
-Select: **Health & Fitness** (matches the Store Listing category)
+## Category (IARC questionnaire — separate from the Store Listing category)
+Current Play Console options are just three: Game / Social or Communication / All Other App Types.
+Select **All Other App Types** — Google's own example list for this bucket explicitly includes "fitness apps" and "tools," which is exactly what CornerDay is. Not a game, not primarily social/communication (the community tab is a secondary feature, not the app's purpose).
+
+## Email address
+Use **support@cornerday.app** — this is what IARC/rating authorities use to contact you about the rating, separate from the public listing contact email (which is also support@cornerday.app, so no conflict).
 
 ---
 

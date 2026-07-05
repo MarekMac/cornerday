@@ -916,7 +916,7 @@ export default function HomeScreen() {
     const today = todayStr();
 
     const [profileRes, streakRes, badgesRes, moodRes, weekMoodRes, lossesRes, debtsRes, debtPaymentsRes, urgeRes, urgesOvercomeCountRes, moodCountRes, paymentCountRes, checkinDatesRes, calRelapseRes, lossCountRes, communityPostCountRes] = await Promise.all([
-      supabase.from('users').select('display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium, savings_goal_amount, savings_goal_label, savings_goal_icon, custom_milestone_type, custom_milestone_target, custom_milestone_icon, shield_undo_prev_quit, shield_undo_prev_streak_days, shield_undo_expires_at, shield_undo_relapse_row_id').eq('id', user.id).maybeSingle(),
+      supabase.from('users').select('created_at, display_name, motivation, quit_date, quit_timestamp, weekly_bet, currency, notif_milestone, notif_urge_prediction, is_premium, savings_goal_amount, savings_goal_label, savings_goal_icon, custom_milestone_type, custom_milestone_target, custom_milestone_icon, shield_undo_prev_quit, shield_undo_prev_streak_days, shield_undo_expires_at, shield_undo_relapse_row_id').eq('id', user.id).maybeSingle(),
       supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('badges').select('badge_type, earned_at').eq('user_id', user.id),
       supabase.from('mood_checkins').select('id, mood, note').eq('user_id', user.id).eq('local_date', today).maybeSingle(),
@@ -1260,14 +1260,16 @@ export default function HomeScreen() {
         const relapseSet = new Set((calRelapseRes.data ?? []).map((r: { created_at: string }) => new Date(r.created_at).toLocaleDateString('en-CA')));
         const moodMap: Record<string, number> = {};
         (checkinDatesRes.data ?? []).forEach((r: { created_at: string; mood: number }) => { moodMap[new Date(r.created_at).toLocaleDateString('en-CA')] = r.mood; });
-        const rawQ = profile?.quit_timestamp ?? profile?.quit_date ?? null;
-        let qLocal: Date | null = null;
-        if (rawQ) { const ms = Date.parse(rawQ.includes('T') ? rawQ : rawQ + 'T00:00:00'); if (!isNaN(ms)) { const qd = new Date(ms); qLocal = new Date(qd.getFullYear(), qd.getMonth(), qd.getDate()); } }
+        // Use account creation, not the current quit_timestamp, as the "no data yet"
+        // cutoff — quit_timestamp moves to "now" on every reset, which previously
+        // wiped the calendar's clean-day history each time someone reset their streak.
+        let joinedLocal: Date | null = null;
+        if (profile?.created_at) { const ms = Date.parse(profile.created_at); if (!isNaN(ms)) { const jd = new Date(ms); joinedLocal = new Date(jd.getFullYear(), jd.getMonth(), jd.getDate()); } }
         const nd = new Date();
         return Array.from({ length: 30 }, (_, i) => {
           const d = new Date(nd.getFullYear(), nd.getMonth(), nd.getDate() - (29 - i));
           const iso = d.toLocaleDateString('en-CA');
-          return { iso, status: (!qLocal || d < qLocal) ? 'inactive' as const : relapseSet.has(iso) ? 'relapse' as const : 'clean' as const, mood: moodMap[iso] ?? null };
+          return { iso, status: (!joinedLocal || d < joinedLocal) ? 'inactive' as const : relapseSet.has(iso) ? 'relapse' as const : 'clean' as const, mood: moodMap[iso] ?? null };
         });
       })(),
       todayMood: moodRes.data?.mood ?? null,
@@ -1592,7 +1594,7 @@ export default function HomeScreen() {
           if (inserted?.id) {
             setData(prev => prev ? { ...prev, todayMoodId: inserted.id } : prev);
           }
-          showInterstitialIfReady(isPremium);
+          showInterstitialIfReady(isPremium, 0.33, 'mood_checkin');
         }
         if (!isMountedRef.current) return;
         const todayKey = todayStr();
@@ -2530,8 +2532,8 @@ export default function HomeScreen() {
       </Modal>
 
       {/* Badge detail modal */}
-      <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
-        <Pressable style={s.modalOverlay} onPress={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
+      <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium, 0.33, 'badge_detail'); setSelectedBadge(null); }}>
+        <Pressable style={s.modalOverlay} onPress={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium, 0.33, 'badge_detail'); setSelectedBadge(null); }}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             {selectedBadge && (() => {
               const earned = data.earnedBadges.includes(selectedBadge.type);
@@ -2641,7 +2643,7 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
               )}
-              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium); setSelectedBadge(null); }}>
+              <Pressable style={({ pressed }) => [s.modalClose, pressed && { opacity: 0.7 }]} onPress={() => { if (selectedBadge?.type !== 'started') showInterstitialIfReady(isPremium, 0.33, 'badge_detail'); setSelectedBadge(null); }}>
                 <Text style={s.modalCloseTxt}>Close</Text>
               </Pressable>
             </View>
@@ -3091,7 +3093,7 @@ export default function HomeScreen() {
             // The "Started" badge is the very first thing a brand-new user
             // sees, often seconds after finishing onboarding — showing an ad
             // right after closing it is a discouraging first impression.
-            if (badgeType !== 'started') showInterstitialIfReady(isPremium, 0.33);
+            if (badgeType !== 'started') showInterstitialIfReady(isPremium, 0.33, 'milestone_celebration');
             setCelebrationBadge(null);
             if (badgeType === '1_week') maybeRequestReview('7_day');
             else if (badgeType === '1_month') maybeRequestReview('1_month');

@@ -121,7 +121,7 @@ export default function NewPost() {
       });
       if (error) { Alert.alert('Error', 'Could not post. Please try again.'); return; }
       hapticMedium();
-      showInterstitialIfReady(isPremium);
+      showInterstitialIfReady(isPremium, 0.33, 'community_post');
       router.back();
     } finally {
       submittingRef.current = false;
