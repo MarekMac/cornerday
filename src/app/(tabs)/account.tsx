@@ -254,9 +254,7 @@ export default function AccountScreen() {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState('Fingerprint or face unlock on reopen');
-  const [debtTargetDate, setDebtTargetDate] = useState<Date | null>(null);
   const [savingsTargetDate, setSavingsTargetDate] = useState<Date | null>(null);
-  const [showDebtTargetModal, setShowDebtTargetModal] = useState(false);
   const [showSavingsTargetModal, setShowSavingsTargetModal] = useState(false);
   const [editGoalTargetDate, setEditGoalTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
   const [savingGoalTarget, setSavingGoalTarget] = useState(false);
@@ -356,7 +354,7 @@ export default function AccountScreen() {
       const [{ data, error: profileErr }, { data: streakData }, { data: savingsRows }, { data: badgesData }] = await Promise.all([
         supabase
           .from('users')
-          .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, debt_target_date, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon')
+          .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon')
           .eq('id', user.id)
           .maybeSingle(),
         supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
@@ -407,7 +405,6 @@ export default function AccountScreen() {
         milestonesEarned: badgeCount ?? 0,
       });
       setQuitTimestamp(data?.quit_timestamp ?? data?.quit_date ?? null);
-      if (data?.debt_target_date) setDebtTargetDate(new Date(data.debt_target_date + 'T12:00:00'));
       if (data?.savings_target_date) setSavingsTargetDate(new Date(data.savings_target_date + 'T12:00:00'));
 
       // Savings goal — prefer Supabase value if present
@@ -769,19 +766,18 @@ export default function AccountScreen() {
     }
   };
 
-  const saveGoalTargetDate = async (kind: 'debt' | 'savings', date: Date) => {
+  const saveGoalTargetDate = async (date: Date) => {
     setSavingGoalTarget(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const col = kind === 'debt' ? 'debt_target_date' : 'savings_target_date';
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, '0');
         const d = String(date.getDate()).padStart(2, '0');
-        const { error } = await supabase.from('users').update({ [col]: `${y}-${m}-${d}` }).eq('id', user.id);
+        const { error } = await supabase.from('users').update({ savings_target_date: `${y}-${m}-${d}` }).eq('id', user.id);
         if (error) { Alert.alert('Could not save date', error.message); return; }
-        if (kind === 'debt') { setDebtTargetDate(date); setShowDebtTargetModal(false); }
-        else { setSavingsTargetDate(date); setShowSavingsTargetModal(false); }
+        setSavingsTargetDate(date);
+        setShowSavingsTargetModal(false);
       }
     } catch {
       Alert.alert('Could not save date', 'Please try again.');
@@ -790,24 +786,22 @@ export default function AccountScreen() {
     }
   };
 
-  const openGoalTargetPicker = (kind: 'debt' | 'savings') => {
-    const current = kind === 'debt' ? debtTargetDate : savingsTargetDate;
-    const initial = current ?? new Date(Date.now() + 90 * 86400000);
+  const openGoalTargetPicker = () => {
+    const initial = savingsTargetDate ?? new Date(Date.now() + 90 * 86400000);
     setEditGoalTargetDate(initial);
     if (Platform.OS === 'android') {
       DateTimePickerAndroid.open({
         value: initial,
         mode: 'date',
         minimumDate: new Date(),
-        onChange: (_, date) => { if (date) saveGoalTargetDate(kind, date); },
+        onChange: (_, date) => { if (date) saveGoalTargetDate(date); },
       });
     } else {
-      if (kind === 'debt') setShowDebtTargetModal(true);
-      else setShowSavingsTargetModal(true);
+      setShowSavingsTargetModal(true);
     }
   };
 
-  const clearSavingsTargetDate = async () => {
+  const clearGoalTargetDate = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { error } = await supabase.from('users').update({ savings_target_date: null }).eq('id', user.id);
@@ -995,6 +989,23 @@ export default function AccountScreen() {
       setShowSpendingModal(false);
     } catch {
       Alert.alert('Could not save', 'Please try again.');
+    } finally {
+      if (isMounted.current) setSavingSpending(false);
+    }
+  };
+
+  const clearSpending = async () => {
+    setSavingSpending(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('users').update({ weekly_bet: null }).eq('id', user.id);
+        if (error) { Alert.alert('Could not clear', error.message); return; }
+        setProfile(prev => prev ? { ...prev, weeklyBet: null } : prev);
+      }
+      setShowSpendingModal(false);
+    } catch {
+      Alert.alert('Could not clear', 'Please try again.');
     } finally {
       if (isMounted.current) setSavingSpending(false);
     }
@@ -2056,34 +2067,6 @@ export default function AccountScreen() {
           </Pressable>
           <View style={s.infoDivider} />
           <Pressable
-            onPress={() => openGoalTargetPicker('savings')}
-            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-            <View style={s.infoItemMain}>
-              <Text style={s.infoItemLabel}>Savings target date</Text>
-              <Text style={[s.infoItemValue, !savingsTargetDate && s.infoValueEmpty]}>
-                {savingsTargetDate
-                  ? savingsTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
-                  : 'Not set'}
-              </Text>
-            </View>
-            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
-          </Pressable>
-          <View style={s.infoDivider} />
-          <Pressable
-            onPress={() => openGoalTargetPicker('debt')}
-            style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
-            <View style={s.infoItemMain}>
-              <Text style={s.infoItemLabel}>Debt payoff target date</Text>
-              <Text style={[s.infoItemValue, !debtTargetDate && s.infoValueEmpty]}>
-                {debtTargetDate
-                  ? debtTargetDate.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
-                  : 'Not set'}
-              </Text>
-            </View>
-            <Ionicons name="pencil-outline" size={15} color={c.textFaint} />
-          </Pressable>
-          <View style={s.infoDivider} />
-          <Pressable
             onPress={openCustomMilestoneModal}
             style={({ pressed }) => [s.infoItem, pressed && { opacity: 0.7 }]}>
             <View style={s.infoItemMain}>
@@ -2497,7 +2480,7 @@ export default function AccountScreen() {
               <Text style={s.fieldLbl}>
                 Target date <Text style={{ fontWeight: '400', color: c.textFaint }}>(optional)</Text>
               </Text>
-              <Pressable style={s.dateRow} onPress={() => openGoalTargetPicker('savings')}>
+              <Pressable style={s.dateRow} onPress={openGoalTargetPicker}>
                 <Ionicons name="calendar-outline" size={16} color={c.textMuted} />
                 <Text style={[s.dateRowTxt, !savingsTargetDate && { color: c.textFaint }]}>
                   {savingsTargetDate
@@ -2505,13 +2488,20 @@ export default function AccountScreen() {
                     : 'Set a target date'}
                 </Text>
                 {savingsTargetDate && (
-                  <Pressable onPress={clearSavingsTargetDate} hitSlop={8}>
+                  <Pressable onPress={() => clearGoalTargetDate()} hitSlop={8}>
                     <Ionicons name="close-circle" size={16} color={c.textFaint} />
                   </Pressable>
                 )}
               </Pressable>
+            </ScrollView>
+            <View style={s.sheetActions}>
+              <View style={s.sheetDivider} />
+              <Pressable style={s.saveBtn} onPress={saveGoal}>
+                <Text style={s.saveBtnTxt}>Save goal</Text>
+              </Pressable>
               {savingsGoal && (
                 <Pressable
+                  style={[s.cancelBtn, { marginTop: 10, backgroundColor: c.error }]}
                   onPress={async () => {
                     try {
                       await AsyncStorage.multiRemove([SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY]);
@@ -2529,18 +2519,11 @@ export default function AccountScreen() {
                     } catch (e) {
                       console.warn('[account] remove goal error:', e);
                     }
-                  }}
-                  style={{ alignSelf: 'center', marginTop: 12 }}>
-                  <Text style={{ color: c.error, fontSize: 13 }}>Remove goal</Text>
+                  }}>
+                  <Text style={[s.cancelBtnTxt, { color: c.white }]}>Remove</Text>
                 </Pressable>
               )}
-            </ScrollView>
-            <View style={s.sheetActions}>
-              <Pressable style={s.saveBtn} onPress={saveGoal}>
-                <Text style={s.saveBtnTxt}>Save goal</Text>
-              </Pressable>
-              <View style={s.sheetDivider} />
-              <Pressable style={s.cancelBtn} onPress={closeGoalModal}>
+              <Pressable style={[s.cancelBtn, { marginTop: 10 }]} onPress={closeGoalModal}>
                 <Text style={s.cancelBtnTxt}>Cancel</Text>
               </Pressable>
             </View>
@@ -2663,6 +2646,7 @@ export default function AccountScreen() {
             </View>
 
             <View style={s.sheetActions}>
+              <View style={s.sheetDivider} />
               <Pressable
                 style={[s.saveBtn, savingSpending && { opacity: 0.6 }]}
                 onPress={saveSpending}
@@ -2671,8 +2655,15 @@ export default function AccountScreen() {
                   ? <ActivityIndicator color={c.white} size="small" />
                   : <Text style={s.saveBtnTxt}>Save</Text>}
               </Pressable>
-              <View style={s.sheetDivider} />
-              <Pressable style={s.cancelBtn} onPress={() => setShowSpendingModal(false)}>
+              {!!profile?.weeklyBet && (
+                <Pressable
+                  style={[s.cancelBtn, { marginTop: 10, backgroundColor: c.error }, savingSpending && { opacity: 0.6 }]}
+                  onPress={clearSpending}
+                  disabled={savingSpending}>
+                  <Text style={[s.cancelBtnTxt, { color: c.white }]}>Remove</Text>
+                </Pressable>
+              )}
+              <Pressable style={[s.cancelBtn, { marginTop: 10 }]} onPress={() => setShowSpendingModal(false)}>
                 <Text style={s.cancelBtnTxt}>Cancel</Text>
               </Pressable>
             </View>
@@ -3205,8 +3196,10 @@ export default function AccountScreen() {
               <Text style={s.saveBtnTxt}>Save</Text>
             </Pressable>
             {customMilestone && (
-              <Pressable onPress={removeCustomMilestone} style={{ alignSelf: 'center', marginTop: 14 }}>
-                <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>Remove milestone</Text>
+              <Pressable
+                style={[s.cancelBtn, { marginTop: 10, backgroundColor: c.error }]}
+                onPress={removeCustomMilestone}>
+                <Text style={[s.cancelBtnTxt, { color: c.white }]}>Remove</Text>
               </Pressable>
             )}
             <Pressable style={[s.cancelBtn, { marginTop: 10 }]} onPress={() => setShowCustomMilestoneModal(false)}>
@@ -3594,40 +3587,6 @@ export default function AccountScreen() {
         </Pressable>
       </Modal>
 
-      {/* iOS debt target date picker */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={showDebtTargetModal} transparent animationType="slide">
-          <View style={s.modalOverlay}>
-            <View style={s.modalSheet}>
-              <Text style={s.modalTitle}>Debt payoff target date</Text>
-              <DateTimePicker
-                value={editGoalTargetDate}
-                mode="date"
-                display="spinner"
-                minimumDate={new Date()}
-                onChange={(_e, d) => d && setEditGoalTargetDate(d)}
-                style={{ height: 200 }}
-              />
-              <View style={s.modalActions}>
-                <Pressable
-                  style={({ pressed }) => [s.modalBtn, pressed && { opacity: 0.7 }]}
-                  onPress={() => setShowDebtTargetModal(false)}>
-                  <Text style={s.modalBtnCancel}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [s.modalBtn, s.modalBtnSave, pressed && { opacity: 0.85 }]}
-                  onPress={() => saveGoalTargetDate('debt', editGoalTargetDate)}
-                  disabled={savingGoalTarget}>
-                  {savingGoalTarget
-                    ? <ActivityIndicator size="small" color={c.white} />
-                    : <Text style={s.modalBtnSaveTxt}>Save</Text>}
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
       {/* iOS savings target date picker */}
       {Platform.OS === 'ios' && (
         <Modal visible={showSavingsTargetModal} transparent animationType="slide">
@@ -3650,7 +3609,7 @@ export default function AccountScreen() {
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [s.modalBtn, s.modalBtnSave, pressed && { opacity: 0.85 }]}
-                  onPress={() => saveGoalTargetDate('savings', editGoalTargetDate)}
+                  onPress={() => saveGoalTargetDate(editGoalTargetDate)}
                   disabled={savingGoalTarget}>
                   {savingGoalTarget
                     ? <ActivityIndicator size="small" color={c.white} />

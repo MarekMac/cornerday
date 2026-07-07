@@ -245,7 +245,6 @@ export default function TrackerIndex() {
   const [showDebtTargetModal, setShowDebtTargetModal] = useState(false);
   const [showSavingsTargetModal, setShowSavingsTargetModal] = useState(false);
   const [editTargetDate, setEditTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
-  const [savingTargetDate, setSavingTargetDate] = useState(false);
   type DebtSort = 'default' | 'progress' | 'due';
   const [debtSort, setDebtSort] = useState<DebtSort>('default');
   const [savingGoalBusy, setSavingGoalBusy] = useState(false);
@@ -260,8 +259,6 @@ export default function TrackerIndex() {
   const submitInFlightRef = useRef(false);
   // Prevent Modal's onRequestClose firing while a native Android picker is open
   const nativePickerOpen = useRef(false);
-  // Snapshot of debt target date when modal opens — restored on Cancel
-  const debtTargetDateBeforeEdit = useRef<Date | null>(null);
 
   useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
 
@@ -277,7 +274,7 @@ export default function TrackerIndex() {
         supabase.from('debt_payments').select('debt_id, amount, created_at').eq('user_id', user.id),
         supabase.from('losses').select('id, amount, note, created_at').eq('user_id', user.id).eq('type', 'saving').order('created_at', { ascending: false }),
         supabase.from('losses').select('id, amount, category, note, created_at').eq('user_id', user.id).eq('type', 'session').order('created_at', { ascending: false }),
-        supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, debt_target_date, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon').eq('id', user.id).maybeSingle(),
+        supabase.from('users').select('currency, weekly_bet, quit_timestamp, quit_date, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon').eq('id', user.id).maybeSingle(),
         AsyncStorage.getItem(SAVINGS_GOAL_KEY),
         AsyncStorage.getItem(SAVINGS_GOAL_FOR_KEY),
         AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
@@ -301,7 +298,6 @@ export default function TrackerIndex() {
         setCurrency(profileRes.data.currency ?? 'USD');
         setWeeklyBet(profileRes.data.weekly_bet ?? null);
         setQuitTs(profileRes.data.quit_timestamp ?? profileRes.data.quit_date ?? null);
-        setDebtTargetDate(profileRes.data.debt_target_date ? new Date(profileRes.data.debt_target_date + 'T12:00:00') : null);
         setSavingsTargetDate(profileRes.data.savings_target_date ? new Date(profileRes.data.savings_target_date + 'T12:00:00') : null);
       }
       // Supabase is authoritative (matches Home/Account) — AsyncStorage is
@@ -372,7 +368,6 @@ export default function TrackerIndex() {
 
   const openAddDebt = () => {
     setDebtName(''); setDebtAmount(''); setDebtCategory('other');
-    debtTargetDateBeforeEdit.current = debtTargetDate;
     setDebtTargetDate(null);
     setDebtModalVisible(true);
   };
@@ -386,7 +381,7 @@ export default function TrackerIndex() {
     Keyboard.dismiss();
     setDebtModalVisible(false);
     setDebtName(''); setDebtAmount(''); setDebtCategory('other');
-    setDebtTargetDate(debtTargetDateBeforeEdit.current);
+    setDebtTargetDate(null);
   };
 
   const saveDebt = async () => {
@@ -419,11 +414,6 @@ export default function TrackerIndex() {
           requestHomeRefresh();
         }
         hapticMedium();
-        // closeDebtModal() restores debtTargetDate from this snapshot (for the
-        // Cancel path) — update it to the just-saved value first, otherwise a
-        // successful save would flicker back to the pre-edit date until fetchAll()
-        // below overwrites it with fresh server data.
-        debtTargetDateBeforeEdit.current = debtTargetDate;
         closeDebtModal();
         await fetchAll();
       }
@@ -759,21 +749,6 @@ export default function TrackerIndex() {
     }
   };
 
-  const saveDebtTargetDate = async (date: Date) => {
-    setSavingTargetDate(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error } = await supabase.from('users').update({ debt_target_date: date.toLocaleDateString('en-CA') }).eq('id', user.id);
-        if (error) { Alert.alert('Could not save target date', friendlyError(error)); return; }
-        setDebtTargetDate(date);
-      }
-      setShowDebtTargetModal(false);
-    } finally {
-      setSavingTargetDate(false);
-    }
-  };
-
   const openDebtTargetPicker = () => {
     const seed = debtTargetDate ?? new Date(Date.now() + 90 * 86400000);
     setEditTargetDate(seed);
@@ -785,7 +760,7 @@ export default function TrackerIndex() {
         value: seed,
         mode: 'date',
         minimumDate: new Date(),
-        onChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) saveDebtTargetDate(d); },
+        onChange: (_evt: any, d?: Date) => { nativePickerOpen.current = false; if (d) setDebtTargetDate(d); },
       });
     }
   };
@@ -1728,10 +1703,9 @@ export default function TrackerIndex() {
                   <Text style={s.iosModalCancel}>Cancel</Text>
                 </Pressable>
                 <Pressable
-                  style={[s.iosModalBtn, s.iosModalSave, savingTargetDate && { opacity: 0.5 }]}
-                  disabled={savingTargetDate}
-                  onPress={() => saveDebtTargetDate(editTargetDate)}>
-                  <Text style={s.iosModalSaveTxt}>{savingTargetDate ? 'Saving…' : 'Save'}</Text>
+                  style={[s.iosModalBtn, s.iosModalSave]}
+                  onPress={() => { setDebtTargetDate(new Date(editTargetDate.getTime())); setShowDebtTargetModal(false); }}>
+                  <Text style={s.iosModalSaveTxt}>Save</Text>
                 </Pressable>
               </View>
             </View>
