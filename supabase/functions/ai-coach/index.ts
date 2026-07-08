@@ -123,7 +123,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (!profile?.is_premium && !profile?.is_admin) {
-      return json({ error: 'Premium required' }, 403);
+      return json({ error: 'premium_required' }, 403);
     }
 
     // Fetch supporting data in parallel. Debt/payment totals live in the
