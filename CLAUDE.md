@@ -18,7 +18,7 @@ A mobile app (iOS + Android) that helps people stop sports betting, track money 
 - Navigation: Expo Router
 - Backend/Auth/Database: Supabase (PostgreSQL)
 - Payments/Subscriptions: RevenueCat
-- Ads: Google AdMob (never shown in urge/crisis screens)
+- Ads: Google AdMob (never shown in urge/crisis screens, except a 33%-chance interstitial when leaving a distraction game or exercise — see Key UX Principles)
 - AI Coach (Phase 2): Claude API
 
 ## Monetization
@@ -131,7 +131,7 @@ A mobile app (iOS + Android) that helps people stop sports betting, track money 
 - Never shame the user — especially around relapses and losses
 - Relapse = restart, not failure. Language must always be encouraging
 - Loss amounts are private — only the user can see them
-- No ads on urge screen, relapse screen, crisis resources or journal
+- No ads on urge screen, relapse screen, crisis resources or journal — with one deliberate exception: closing/finishing a distraction game or exercise (from the Urge Support tab) has a 33% chance of showing an interstitial for free-tier users, same as other light-ad moments elsewhere in the app
 - Motivation from onboarding appears throughout the app as a personal anchor
 - The "Your why" always visible on home and urge screens
 

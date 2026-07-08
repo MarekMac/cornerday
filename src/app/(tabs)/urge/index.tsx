@@ -28,6 +28,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { setImagePickerActive } from '@/lib/image-picker-active';
 import { useUser } from '@/context/user';
+import { usePurchases } from '@/context/purchases';
+import { showInterstitialIfReady } from '@/lib/ads';
 import Purchases from 'react-native-purchases';
 import { ENTITLEMENT_ID } from '@/constants/revenuecat';
 import { type GameKey, GAMES, renderGame } from '@/lib/games';
@@ -236,6 +238,7 @@ export default function UrgeScreen() {
 
   const [therapyModalVisible, setTherapyModalVisible] = useState(false);
   const { isAdmin } = useUser();
+  const { isPremium } = usePurchases();
   const [activeGame, setActiveGame] = useState<GameKey | null>(null);
   const { personalBests, globalBests, handleScore } = useGameBests();
   const [trustedContact, setTrustedContact] = useState<{ name: string; phone: string } | null>(null);
@@ -263,13 +266,23 @@ export default function UrgeScreen() {
     if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
   }; }, []);
 
+  // Deliberate exception to the app's usual "no ads on the urge screen" rule
+  // (games/exercises are a distraction tool, not the crisis moment itself) —
+  // fires once per exit, however the overlay is left: the ✕ button, hardware
+  // back, or the game/exercise finishing on its own.
+  const closeGameOrExercise = () => {
+    showInterstitialIfReady(isPremium, 0.33, 'urge_game_exercise_close');
+    setActiveGame(null);
+    setActiveExercise(null);
+  };
+
   // Game/exercise overlays are plain absolute-fill Views, not a Modal, so
   // Android's hardware back button falls through to tab navigation (landing
   // on Home) instead of closing them. Intercept and close the overlay first.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (activeGame !== null) { setActiveGame(null); return true; }
-      if (activeExercise !== null) { setActiveExercise(null); return true; }
+      if (activeGame !== null) { closeGameOrExercise(); return true; }
+      if (activeExercise !== null) { closeGameOrExercise(); return true; }
       return false;
     });
     return () => sub.remove();
@@ -1389,7 +1402,7 @@ export default function UrgeScreen() {
                   )}
                 </View>
               </View>
-              <Pressable style={s.gameCloseBtn} onPress={() => { setActiveGame(null); }}>
+              <Pressable style={s.gameCloseBtn} onPress={closeGameOrExercise}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
               </Pressable>
             </View>
@@ -1412,7 +1425,7 @@ export default function UrgeScreen() {
                 <Text style={{ fontSize: 20 }}>{EXERCISES.find(e => e.key === activeExercise)?.emoji}</Text>
                 <Text style={s.gameOverlayTitle}>{EXERCISES.find(e => e.key === activeExercise)?.title}</Text>
               </View>
-              <Pressable style={s.gameCloseBtn} onPress={() => { setActiveExercise(null); }}>
+              <Pressable style={s.gameCloseBtn} onPress={closeGameOrExercise}>
                 <Text style={s.gameCloseBtnTxt}>✕</Text>
               </Pressable>
             </View>
