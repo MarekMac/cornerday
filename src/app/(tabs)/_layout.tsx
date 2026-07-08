@@ -212,7 +212,7 @@ export default function TabsLayout() {
       const [{ data }, { data: badgeData }] = await Promise.all([
         supabase
           .from('users')
-          .select('quit_timestamp, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
+          .select('quit_timestamp, notif_milestone, notif_daily_streak, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community')
           .eq('id', user.id)
           .maybeSingle(),
         supabase.from('badges').select('badge_type').eq('user_id', user.id),
@@ -221,7 +221,6 @@ export default function TabsLayout() {
       const prefs: NotifPrefs = {
         notif_milestone: data.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
         notif_daily_streak: data.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
-        notif_daily_checkin: data.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
         notif_weekly_summary: data.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
         notif_milestone_approaching: data.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
         notif_urge_prediction: data.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,

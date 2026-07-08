@@ -153,7 +153,7 @@ Phase 1 and Phase 2 are feature-complete and running on a development build (not
 - AI Coach: streaming chat, personalised system prompt from user profile, premium-gated (claude-opus-4-8)
 - Account: avatar, display name, recovery profile, trusted contact, someone in your corner (premium), supporter email notifications, biometric lock, haptics, dark/light/auto theme, notification preferences, data export, granular reset, feedback modal
 - Analytics: streak overview, mood charts, savings trajectory, debt recovery chart — premium-gated
-- Push notifications: 5 types, pre-scheduled at milestone times, FCM wired for Android
+- Push notifications: 6 types, pre-scheduled at milestone times, FCM wired for Android
 - Dark mode: Auto / Light / Dark with 33 semantic tokens, consistent across all screens
 - RevenueCat: Android live; iOS deferred until Android release
 - Moderation screen for admin users

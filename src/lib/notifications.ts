@@ -3,51 +3,90 @@ import * as Notifications from 'expo-notifications';
 import { AppState, Platform } from 'react-native';
 import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '../constants/storage-keys';
 
-const STREAK_NOTIF_MESSAGES: { title: string; body: string }[] = [
-  { title: '💪 Keep the streak alive',        body: 'Every day counts. You\'re stronger than the urge.' },
-  { title: '🌅 Another day, another win',      body: 'You made it through today. That matters.' },
-  { title: '🔥 Your streak is growing',        body: 'Each day you choose differently changes everything.' },
-  { title: '🌱 Small steps, big change',       body: 'One more evening without gambling. You\'re doing it.' },
-  { title: '💙 Check in with yourself',        body: 'How are you feeling tonight? Your streak is still going.' },
-  { title: '⭐ You showed up today',           body: 'That\'s the whole game — just keep showing up.' },
-  { title: '🛡️ Hold the line',                body: 'The urge passes. Your streak stays. Stay with it.' },
-  { title: '🌙 End the day clean',             body: 'Almost there. Finish tonight strong.' },
-  { title: '💎 You\'re building something real', body: 'Day by day. It adds up faster than you think.' },
-  { title: '🏃 Keep moving forward',           body: 'You didn\'t come this far to only come this far.' },
-  { title: '🌟 Tonight, choose you',           body: 'Not the bet. Not the rush. You.' },
-  { title: '🤝 You\'re not alone',             body: 'Thousands of people are holding their streak tonight too.' },
-  { title: '🧠 Your brain is healing',         body: 'Every clean day rewires the path. Keep going.' },
-  { title: '💰 Think about what you\'re saving', body: 'Not just money — your time, your peace, yourself.' },
-  { title: '🌊 Ride it out',                   body: 'If there\'s an urge tonight, it\'ll pass. It always does.' },
-  { title: '🏆 Future you is grateful',        body: 'The you of tomorrow thanks the you of tonight.' },
-  { title: '❤️ Someone\'s proud of you',       body: 'Even if you don\'t hear it enough — you\'re doing great.' },
-  { title: '🎯 Stay on target',                body: 'One more day. That\'s all it is.' },
-  { title: '✨ You made the right call today', body: 'Let tonight be proof that you can do this.' },
-  { title: '🌙 Rest easy tonight',             body: 'You chose your future over your habit. Sleep well.' },
+const DAILY_REMINDER_MESSAGES: { title: string; body: string }[] = [
+  { title: '🌙 Evening check-in',              body: 'How are you feeling tonight? Log your mood and keep the streak going.' },
+  { title: '💪 Keep the streak alive',         body: 'Take a second to check in with yourself before the day ends.' },
+  { title: '🌅 You made it through today',     body: 'How are you feeling? Log it and lock in the win.' },
+  { title: '💙 Check in with yourself',        body: 'How\'s your head tonight? Your streak is still going strong.' },
+  { title: '⭐ You showed up today',           body: 'That\'s the whole game. Log your mood and keep going.' },
+  { title: '🧘 A moment before bed',           body: 'How are you feeling? A quick check-in keeps you honest.' },
+  { title: '🌊 Ride it out',                   body: 'If there\'s an urge tonight, check in and let it pass.' },
+  { title: '🔥 Your streak is growing',        body: 'Log tonight\'s mood and watch the momentum build.' },
+  { title: '🌱 Small steps, big change',       body: 'One more evening without gambling. How are you feeling?' },
+  { title: '🎯 Stay on target',                body: 'Quick mood check-in, then rest easy tonight.' },
+  { title: '🌟 Tonight, choose you',           body: 'Not the bet. Not the rush. Check in and see how far you\'ve come.' },
+  { title: '🧠 Your brain is healing',         body: 'Log your mood tonight and watch the pattern change.' },
+  { title: '💎 You\'re building something real', body: 'Check in and see today added to the streak.' },
+  { title: '🏆 Future you is grateful',        body: 'Log tonight\'s mood before you rest.' },
+  { title: '❤️ Someone\'s proud of you',       body: 'Check in with yourself — how are you really doing tonight?' },
+  { title: '🌙 End the day clean',             body: 'Log your mood, then finish tonight strong.' },
+  { title: '✅ Daily check-in',                body: 'A few seconds now, a streak that keeps growing.' },
+  { title: '🤝 You\'re not alone',             body: 'Thousands of people are checking in tonight too.' },
+  { title: '🌻 How was today?',                body: 'Log your mood and keep the streak alive.' },
+  { title: '💰 Think about what you\'re saving', body: 'Check in tonight, and remember why you started.' },
+  { title: '🕯️ Wind down tonight',             body: 'Log your mood and let today\'s win settle in.' },
+  { title: '🌆 Evening arrives, so does the choice', body: 'Check in and mark another day down.' },
+  { title: '🫂 You\'re doing better than you think', body: 'A quick check-in proves it, one day at a time.' },
+  { title: '🪞 Look back at today',            body: 'How\'d it go? Log it before you rest.' },
+  { title: '☕ One more thing before bed',      body: 'A 10-second check-in keeps the streak alive.' },
+  { title: '🧭 Staying the course',            body: 'Log tonight\'s mood and keep pointed the right way.' },
+  { title: '🍃 Let today go',                  body: 'Check in, breathe out, and carry the streak into tomorrow.' },
+  { title: '🕊️ Peace over the pull',           body: 'Log how you\'re feeling and rest easy.' },
+  { title: '🌌 Another night, another win',    body: 'Quick check-in before you close the day.' },
+  { title: '🧗 You\'re climbing, not falling', body: 'Log your mood and keep the streak intact.' },
+  { title: '🚦 Green light to rest',           body: 'Check in first, then let tonight be easy.' },
+  { title: '🔑 You held the line today',       body: 'Log it. That\'s how the streak stays yours.' },
+  { title: '🪁 Let the day settle',            body: 'A moment to check in before you switch off.' },
+  { title: '🎗️ Proof you\'re still trying',    body: 'And that\'s everything. Log tonight\'s mood.' },
+  { title: '🌺 Bloom where you\'re planted',   body: 'Check in, keep growing, keep the streak.' },
+  { title: '🦋 Change is quiet like this',     body: 'One evening check-in at a time.' },
+  { title: '🎐 Let today\'s noise go',         body: 'Check in, then rest with a clear head.' },
+  { title: '🧊 Cool down, check in',           body: 'The urge loses power the calmer you get tonight.' },
+  { title: '🌉 You crossed another day',       body: 'Log your mood and take the win.' },
+  { title: '🕰️ Same time, same you',           body: 'Showing up again tonight. Check in.' },
+  { title: '🌰 Small daily deposits',          body: 'Tonight\'s check-in adds to something bigger.' },
+  { title: '🧣 Wrap up the day right',         body: 'A mood log and a streak that holds.' },
+  { title: '🪴 Tending to yourself',           body: 'Check in tonight, the way you\'d tend anything worth keeping.' },
+  { title: '🌦 Whatever today looked like',    body: 'Log it honestly and keep moving.' },
+  { title: '🎇 Another quiet win',             body: 'Nobody has to see it but you. Check in.' },
+  { title: '🧶 Threads add up to something',   body: 'Tonight\'s check-in is one more thread.' },
+  { title: '🛶 Steady hands tonight',          body: 'Log your mood and keep paddling forward.' },
+  { title: '🌵 Even on the hard days',         body: 'Check in. Especially on the hard days.' },
+  { title: '🪔 Light one more evening',        body: 'You made it through. Log how it felt.' },
+  { title: '🍂 Let the day fall away',         body: 'Check in, then let tonight be still.' },
+  { title: '🌒 Hold steady',                   body: 'Log your mood and protect what you\'ve built today.' },
+  { title: '🧺 Set today down',                body: 'A quick check-in, then rest.' },
+  { title: '🪟 A clear view tonight',          body: 'How do things look from here? Log it.' },
+  { title: '🌀 Slow the spin',                 body: 'Check in and let the day settle before sleep.' },
+  { title: '🪨 Solid ground tonight',          body: 'Log your mood, the streak\'s still standing.' },
+  { title: '🎈 Light after a heavy day',       body: 'Or a good one. Either way, check in.' },
+  { title: '🌾 Harvest today\'s effort',       body: 'Log it before it\'s gone.' },
+  { title: '🪄 A little ritual',               body: 'Check in, then let tonight be yours.' },
+  { title: '🌗 Half the work is showing up',   body: 'You did. Log it.' },
+  { title: '🧿 Protect the streak',            body: 'One honest check-in at a time.' },
 ];
 
-const CHECKIN_NOTIF_MESSAGES: { title: string; body: string }[] = [
-  { title: '🌤 How are you feeling today?',       body: 'Take a moment to log your mood and check in with yourself.' },
-  { title: '☀️ Good morning — how\'s today?',     body: 'A quick mood check-in keeps you honest with yourself.' },
-  { title: '🌿 Start the day grounded',            body: 'How are you feeling right now? Log it and move forward.' },
-  { title: '💭 A moment for you',                  body: 'Before the day gets busy — how are you really doing?' },
-  { title: '🧘 Check in with yourself',            body: 'One tap. That\'s all it takes to track how you\'re going.' },
-  { title: '🌅 New day, fresh start',              body: 'How\'s your mood this morning? Let CornerDay know.' },
-  { title: '💙 How\'s your head today?',           body: 'Your recovery matters. Take 10 seconds to check in.' },
-  { title: '🎯 Stay aware, stay ahead',            body: 'Noticing how you feel is the first step to staying in control.' },
-  { title: '🌱 How are you growing today?',        body: 'Log your mood — it\'s part of building a stronger you.' },
-  { title: '👋 Morning check-in time',             body: 'How are you feeling? Honest answers only.' },
-  { title: '🔍 Quick self-check',                  body: 'Stressed? Calm? Somewhere in between? Log it.' },
-  { title: '💪 You\'re still here',                body: 'That counts for a lot. How are you feeling today?' },
-  { title: '🌻 How\'s your morning going?',        body: 'A mood check-in takes seconds and tells you a lot.' },
-  { title: '🧠 Know your patterns',                body: 'Tracking your mood helps you spot triggers before they hit.' },
-  { title: '❤️ Be honest with yourself',           body: 'Good day or tough one — log it. Both matter.' },
-  { title: '🌊 Ride the waves',                    body: 'How\'s the sea this morning? Calm, choppy, or stormy?' },
-  { title: '✅ Daily check-in',                    body: 'A few seconds now can save you a harder hour later.' },
-  { title: '🏃 How are you showing up today?',     body: 'Check in and set the tone for the rest of the day.' },
-  { title: '🌙 Good morning from CornerDay',       body: 'We\'re here. How are you doing today?' },
-  { title: '⭐ You made it to another day',        body: 'How does it feel? Log your mood and keep the momentum.' },
-];
+// How many days of individually-dated reminders to keep queued at once.
+// Not a single repeating DAILY trigger — expo-notifications repeats the same
+// fixed content forever on a DAILY trigger, which would show the same
+// message every day between reschedules. Scheduling a rolling window of
+// one-off DATE notifications (like SCHEDULED_MILESTONES below) instead lets
+// each day pull a different, non-repeating message from the pool. Kept
+// short (not all 60 days at once) to stay well under iOS's 64-pending-local-
+// notification cap alongside milestones/weekly/urge-prediction/etc. The
+// window is refreshed on every reschedule — app launch, a settings toggle,
+// hour change, or relapse reset — so it doesn't run dry for anyone using the
+// app at least every couple of weeks.
+const DAILY_REMINDER_WINDOW_DAYS = 14;
+
+function shuffled<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 const WEEKLY_NOTIF_MESSAGES: { title: string; body: string }[] = [
   { title: '📊 Your weekly summary',              body: 'See how you did this week and keep building momentum.' },
@@ -98,7 +137,6 @@ const URGE_PREDICTION_MESSAGES: { title: string; body: string }[] = [
 export interface NotifPrefs {
   notif_milestone: boolean;
   notif_daily_streak: boolean;
-  notif_daily_checkin: boolean;
   notif_weekly_summary: boolean;
   notif_milestone_approaching: boolean;
   notif_urge_prediction: boolean;
@@ -108,7 +146,6 @@ export interface NotifPrefs {
 export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
   notif_milestone: true,
   notif_daily_streak: true,
-  notif_daily_checkin: false,
   notif_weekly_summary: false,
   notif_milestone_approaching: false,
   notif_urge_prediction: false,
@@ -192,7 +229,7 @@ export function scheduleAllNotifications(
   prefs: NotifPrefs,
   quitTimestamp: string | null,
   earnedBadgeTypes: string[] = [],
-  timeOverrides: { streakHour?: number; checkinHour?: number } = {},
+  timeOverrides: { streakHour?: number } = {},
 ): Promise<void> {
   const run = () => scheduleAllNotificationsImpl(prefs, quitTimestamp, earnedBadgeTypes, timeOverrides);
   scheduleQueue = scheduleQueue.then(run, run);
@@ -216,7 +253,7 @@ async function scheduleAllNotificationsImpl(
   prefs: NotifPrefs,
   quitTimestamp: string | null,
   earnedBadgeTypes: string[] = [],
-  timeOverrides: { streakHour?: number; checkinHour?: number } = {},
+  timeOverrides: { streakHour?: number } = {},
 ) {
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') return;
@@ -281,39 +318,33 @@ async function scheduleAllNotificationsImpl(
     }
   }
 
-  // 3. Daily streak reminder — user-chosen hour (default 8 pm)
+  // 3. Daily reminder (streak encouragement + mood check-in prompt) — rolling
+  // window of individually-dated notifications, user-chosen hour (default 8 pm).
+  // See DAILY_REMINDER_WINDOW_DAYS above for why this isn't a single DAILY trigger.
   if (prefs.notif_daily_streak) {
-    const streakMsg = STREAK_NOTIF_MESSAGES[Math.floor(Math.random() * STREAK_NOTIF_MESSAGES.length)];
-    const content = {
-      title: streakMsg.title,
-      body: streakMsg.body,
-      data: { screen: '/(tabs)/' },
-    };
-    const trigger = androidTrigger({
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: timeOverrides.streakHour ?? 20,
-      minute: 0,
-    }) as any;
-    scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
+    const hour = timeOverrides.streakHour ?? 20;
+    const startDate = new Date();
+    startDate.setHours(hour, 0, 0, 0);
+    if (startDate.getTime() <= now) startDate.setDate(startDate.getDate() + 1);
+    const pool = shuffled(DAILY_REMINDER_MESSAGES).slice(0, DAILY_REMINDER_WINDOW_DAYS);
+    for (let i = 0; i < pool.length; i++) {
+      const fireDate = new Date(startDate);
+      fireDate.setDate(fireDate.getDate() + i);
+      const msg = pool[i];
+      const content = {
+        title: msg.title,
+        body: msg.body,
+        data: { screen: '/(tabs)?checkin=true' },
+      };
+      const trigger = androidTrigger({
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: fireDate,
+      }) as any;
+      scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
+    }
   }
 
-  // 4. Daily check-in — user-chosen hour (default 9 am)
-  if (prefs.notif_daily_checkin) {
-    const checkinMsg = CHECKIN_NOTIF_MESSAGES[Math.floor(Math.random() * CHECKIN_NOTIF_MESSAGES.length)];
-    const content = {
-      title: checkinMsg.title,
-      body: checkinMsg.body,
-      data: { screen: '/(tabs)/' },
-    };
-    const trigger = androidTrigger({
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: timeOverrides.checkinHour ?? 9,
-      minute: 0,
-    }) as any;
-    scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
-  }
-
-  // 5. Weekly summary — Monday 9 am
+  // 4. Weekly summary — Monday 9 am
   if (prefs.notif_weekly_summary) {
     const weeklyMsg = WEEKLY_NOTIF_MESSAGES[Math.floor(Math.random() * WEEKLY_NOTIF_MESSAGES.length)];
     const content = {
@@ -330,7 +361,7 @@ async function scheduleAllNotificationsImpl(
     scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
   }
 
-  // 6. Custom milestone — restore if set and in the future
+  // 5. Custom milestone — restore if set and in the future
   if (prefs.notif_milestone && milestoneRaw) {
     try {
       const milestone = JSON.parse(milestoneRaw);
@@ -358,7 +389,7 @@ async function scheduleAllNotificationsImpl(
     } catch { /* corrupt entry — leave as is */ }
   }
 
-  // 7. Urge prediction — restore saved schedule (computed from urge journal patterns)
+  // 6. Urge prediction — restore saved schedule (computed from urge journal patterns)
   if (prefs.notif_urge_prediction && urgeSavedRaw) {
     let parsed: { hour: number; minute: number } | null = null;
     try { parsed = JSON.parse(urgeSavedRaw); } catch {}

@@ -14,7 +14,6 @@ export const MOTIVATION_PHOTO_KEY = 'cornerday_motivation_photo';
 export const MOTIVATION_CACHE_KEY = 'cornerday_motivation_cache';
 export const COMMUNITY_GUIDELINES_SEEN_KEY = 'cornerday_community_guidelines_seen';
 export const NOTIF_STREAK_HOUR_KEY = 'cornerday_notif_streak_hour';
-export const NOTIF_CHECKIN_HOUR_KEY = 'cornerday_notif_checkin_hour';
 export const THEME_PREF_KEY = 'cornerday_theme_pref';
 export const URGE_PREDICTION_SCHEDULE_KEY = 'cornerday_urge_prediction_schedule';
 export const URGE_PREDICTION_NOTIF_ID_KEY = 'cornerday_urge_prediction_notif_id';

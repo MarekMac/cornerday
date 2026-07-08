@@ -36,7 +36,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, MOTIVATION_PHOTO_KEY, COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY } from '@/constants/storage-keys';
+import { ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY, MILESTONE_NOTIFS_KEY, CHECKLIST_KEY, CHECKLIST_TOTAL, SAVINGS_GOAL_KEY, SAVINGS_GOAL_FOR_KEY, SAVINGS_GOAL_ICON_KEY, GOAL_ICONS, TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, MOTIVATION_PHOTO_KEY, COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, BIOMETRIC_LOCK_KEY, HAPTICS_KEY, STREAK_SHIELD_KEY, SHIELD_UNDO_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY, URGE_PREDICTION_SCHEDULE_KEY, URGE_PREDICTION_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY } from '@/constants/storage-keys';
 import { GAME_BESTS_STORAGE_KEY } from '@/lib/useGameBests';
 import { setImagePickerActive } from '@/lib/image-picker-active';
 import { supabase } from '@/lib/supabase';
@@ -259,7 +259,6 @@ export default function AccountScreen() {
   const [editGoalTargetDate, setEditGoalTargetDate] = useState(() => new Date(Date.now() + 90 * 86400000));
   const [savingGoalTarget, setSavingGoalTarget] = useState(false);
   const [notifStreakHour, setNotifStreakHour] = useState(20);
-  const [notifCheckinHour, setNotifCheckinHour] = useState(9);
   const [quitTimestamp, setQuitTimestamp] = useState<string | null>(null);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
 
@@ -354,7 +353,7 @@ export default function AccountScreen() {
       const [{ data, error: profileErr }, { data: streakData }, { data: savingsRows }, { data: badgesData }] = await Promise.all([
         supabase
           .from('users')
-          .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_daily_checkin, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon')
+          .select('display_name, quit_timestamp, quit_date, motivation, trigger, goal, support_type, weekly_bet, currency, is_premium, avatar_url, notif_milestone, notif_daily_streak, notif_weekly_summary, notif_milestone_approaching, notif_urge_prediction, notif_community, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon')
           .eq('id', user.id)
           .maybeSingle(),
         supabase.from('streaks').select('longest_streak, longest_streak_ms').eq('user_id', user.id).maybeSingle(),
@@ -462,7 +461,6 @@ export default function AccountScreen() {
       const fetchedNotifPrefs: NotifPrefs = {
         notif_milestone: data?.notif_milestone ?? DEFAULT_NOTIF_PREFS.notif_milestone,
         notif_daily_streak: data?.notif_daily_streak ?? DEFAULT_NOTIF_PREFS.notif_daily_streak,
-        notif_daily_checkin: data?.notif_daily_checkin ?? DEFAULT_NOTIF_PREFS.notif_daily_checkin,
         notif_weekly_summary: data?.notif_weekly_summary ?? DEFAULT_NOTIF_PREFS.notif_weekly_summary,
         notif_milestone_approaching: data?.notif_milestone_approaching ?? DEFAULT_NOTIF_PREFS.notif_milestone_approaching,
         notif_urge_prediction: data?.notif_urge_prediction ?? DEFAULT_NOTIF_PREFS.notif_urge_prediction,
@@ -641,12 +639,11 @@ export default function AccountScreen() {
       AsyncStorage.getItem(SAVINGS_GOAL_ICON_KEY),
       AsyncStorage.getItem(TRUSTED_CONTACT_KEY),
       AsyncStorage.getItem(NOTIF_STREAK_HOUR_KEY),
-      AsyncStorage.getItem(NOTIF_CHECKIN_HOUR_KEY),
       AsyncStorage.getItem(HAPTICS_KEY),
       AsyncStorage.getItem(STREAK_SHIELD_KEY),
       AsyncStorage.getItem(CUSTOM_MILESTONE_KEY),
       AsyncStorage.getItem(CHECKLIST_KEY),
-    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawCheckinHour, rawHaptics, rawShield, rawMilestone, rawChecklist]) => {
+    ]).then(([rawGoal, rawFor, rawIcon, rawContact, rawStreakHour, rawHaptics, rawShield, rawMilestone, rawChecklist]) => {
       // U-06: savings goal — AsyncStorage is the offline fallback; Supabase value (set in fetchProfile) wins if present
       setSavingsGoal(prev => {
         if (prev !== null) return prev; // Supabase already set a value — keep it
@@ -665,7 +662,6 @@ export default function AccountScreen() {
         } catch { /* corrupted storage — ignore */ }
       }
       if (rawStreakHour) { const n = Number(rawStreakHour); if (!isNaN(n)) setNotifStreakHour(n); }
-      if (rawCheckinHour) { const n = Number(rawCheckinHour); if (!isNaN(n)) setNotifCheckinHour(n); }
       if (rawHaptics !== null) { const v = rawHaptics !== 'false'; setHapticsEnabled(v); setGlobalHaptics(v); }
       setStreakShieldEnabled(rawShield === 'true');
       if (rawMilestone) {
@@ -1407,7 +1403,7 @@ export default function AccountScreen() {
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
         MILESTONE_NOTIFS_KEY,
         TRUSTED_CONTACT_KEY, MOTIVATION_CACHE_KEY, MOTIVATION_PHOTO_KEY,
-        COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY,
+        COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY,
         STORE_REVIEW_ASKED_KEY, PROFILE_NUDGE_SHOWN_KEY,
         STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
         CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
@@ -1452,7 +1448,7 @@ export default function AccountScreen() {
         ONBOARDED_KEY, SEEN_WELCOME_KEY, ONBOARDING_DATA_KEY, ONBOARDING_STEP_KEY,
         MILESTONE_NOTIFS_KEY,
         MOTIVATION_CACHE_KEY,
-        COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY, NOTIF_CHECKIN_HOUR_KEY,
+        COMMUNITY_GUIDELINES_SEEN_KEY, NOTIF_STREAK_HOUR_KEY,
         STORE_REVIEW_ASKED_KEY,
         STREAK_SHIELD_KEY, SHIELD_UNDO_KEY,
         CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, CUSTOM_MILESTONE_CELEBRATED_KEY,
@@ -1758,7 +1754,7 @@ export default function AccountScreen() {
       }
       const granted = await requestNotificationPermissions();
       if (granted) {
-        await scheduleAllNotifications(updated, quitTimestamp, earnedBadgeTypesRef.current, { streakHour: notifStreakHour, checkinHour: notifCheckinHour });
+        await scheduleAllNotifications(updated, quitTimestamp, earnedBadgeTypesRef.current, { streakHour: notifStreakHour });
         await scheduleOnboardingCheckin();
       }
       if (key === 'notif_milestone' && !value) {
@@ -1771,22 +1767,14 @@ export default function AccountScreen() {
     }
   };
 
-  const handleNotifHour = async (type: 'streak' | 'checkin', hour: number) => {
-    if (type === 'streak') {
-      setNotifStreakHour(hour);
-      await AsyncStorage.setItem(NOTIF_STREAK_HOUR_KEY, String(hour));
-    } else {
-      setNotifCheckinHour(hour);
-      await AsyncStorage.setItem(NOTIF_CHECKIN_HOUR_KEY, String(hour));
-    }
+  const handleNotifHour = async (hour: number) => {
+    setNotifStreakHour(hour);
+    await AsyncStorage.setItem(NOTIF_STREAK_HOUR_KEY, String(hour));
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const granted = await requestNotificationPermissions();
-      const hours = type === 'streak'
-        ? { streakHour: hour, checkinHour: notifCheckinHour }
-        : { streakHour: notifStreakHour, checkinHour: hour };
       if (granted) {
-        await scheduleAllNotifications(notifPrefsRef.current, quitTimestamp, earnedBadgeTypesRef.current, hours);
+        await scheduleAllNotifications(notifPrefsRef.current, quitTimestamp, earnedBadgeTypesRef.current, { streakHour: hour });
         await scheduleOnboardingCheckin();
       }
     }
@@ -2871,8 +2859,7 @@ export default function AccountScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
             {([
               { key: 'notif_milestone',             label: 'Milestone reached',     desc: 'Alert when you hit a streak milestone' },
-              { key: 'notif_daily_streak',          label: 'Daily streak reminder', desc: 'Evening nudge to keep your streak going' },
-              { key: 'notif_daily_checkin',         label: 'Daily check-in',        desc: 'Morning prompt to log your mood' },
+              { key: 'notif_daily_streak',          label: 'Daily reminder',        desc: 'Evening check-in — how you\'re feeling and your streak' },
               { key: 'notif_weekly_summary',        label: 'Weekly summary',        desc: 'Monday morning overview of your progress' },
               { key: 'notif_milestone_approaching', label: 'Milestone approaching', desc: '24 hours before your next milestone' },
               { key: 'notif_community',             label: 'Community activity',    desc: 'Comments on your posts and new posts from people you follow' },
@@ -2896,20 +2883,8 @@ export default function AccountScreen() {
                       <Pressable
                         key={opt.h}
                         style={[s.notifTimeChip, notifStreakHour === opt.h && s.notifTimeChipActive]}
-                        onPress={() => handleNotifHour('streak', opt.h)}>
+                        onPress={() => handleNotifHour(opt.h)}>
                         <Text style={[s.notifTimeChipTxt, notifStreakHour === opt.h && s.notifTimeChipTxtActive]}>{opt.label}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-                {key === 'notif_daily_checkin' && notifPrefs.notif_daily_checkin && (
-                  <View style={s.notifTimeRow}>
-                    {[{ h: 7, label: '7am' }, { h: 8, label: '8am' }, { h: 9, label: '9am' }, { h: 10, label: '10am' }].map(opt => (
-                      <Pressable
-                        key={opt.h}
-                        style={[s.notifTimeChip, notifCheckinHour === opt.h && s.notifTimeChipActive]}
-                        onPress={() => handleNotifHour('checkin', opt.h)}>
-                        <Text style={[s.notifTimeChipTxt, notifCheckinHour === opt.h && s.notifTimeChipTxtActive]}>{opt.label}</Text>
                       </Pressable>
                     ))}
                   </View>
