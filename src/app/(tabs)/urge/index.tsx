@@ -9,6 +9,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Dimensions,
   Image,
   Keyboard,
@@ -35,7 +36,8 @@ import { type ExerciseKey, EXERCISES, renderExercise } from '@/lib/exercises';
 import { useTimer } from '@/lib/TimerContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const PICKER_TILE_W = Math.floor((SCREEN_W - 88 - 10) / 2);
+// pickerOverlay padding (24*2) + pickerSheet padding (24*2) + one inter-column gap (10)
+const PICKER_TILE_W = Math.floor((SCREEN_W - 96 - 10) / 2);
 
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -260,6 +262,18 @@ export default function UrgeScreen() {
     isMounted.current = false;
     if (closeLogTimeoutRef.current) clearTimeout(closeLogTimeoutRef.current);
   }; }, []);
+
+  // Game/exercise overlays are plain absolute-fill Views, not a Modal, so
+  // Android's hardware back button falls through to tab navigation (landing
+  // on Home) instead of closing them. Intercept and close the overlay first.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activeGame !== null) { setActiveGame(null); return true; }
+      if (activeExercise !== null) { setActiveExercise(null); return true; }
+      return false;
+    });
+    return () => sub.remove();
+  }, [activeGame, activeExercise]);
 
   const [androidKbOffset, setAndroidKbOffset] = useState(0);
 
