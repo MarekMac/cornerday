@@ -176,7 +176,7 @@ function computeCheckinStreak(rows: { created_at: string }[]): number {
 function topTrigger(entries: { trigger: string }[]): string | null {
   if (!entries.length) return null;
   const counts: Record<string, number> = {};
-  for (const e of entries) { if (e.trigger) counts[e.trigger] = (counts[e.trigger] ?? 0) + 1; }
+  for (const e of entries) { if (e.trigger && e.trigger !== 'urge_button') counts[e.trigger] = (counts[e.trigger] ?? 0) + 1; }
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   return top ? triggerLabel(top[0]) : null;
 }
