@@ -483,19 +483,20 @@ export default function CoachScreen() {
   return (
     <View style={s.root}>
       {header}
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={m => m.id}
-        renderItem={renderMessage}
-        contentContainerStyle={s.chatList}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-        showsVerticalScrollIndicator={false}
-        style={{ flex: 1 }}
-      />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={m => m.id}
+          renderItem={renderMessage}
+          contentContainerStyle={s.chatList}
+          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+        />
         {showStarters && (
           <ScrollView
             horizontal
