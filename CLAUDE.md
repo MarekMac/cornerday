@@ -23,7 +23,7 @@ A mobile app (iOS + Android) that helps people stop sports betting, track money 
 
 ## Monetization
 - Free tier: streak tracker, loss/payment tracker, urge support, journal, basic check-ins
-- Premium tier (~$4.99–7.99/month): AI coach, detailed analytics, someone in your corner, ad-free
+- Premium tier ($6.99/month or $49.99/year): AI coach, detailed analytics, someone in your corner, ad-free
 - Ads: light ads in free tier only — NEVER on urge screen, relapse screen or crisis resources
 
 ## App Structure & Screens

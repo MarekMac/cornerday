@@ -27,7 +27,7 @@ const SECTIONS = [
   },
   {
     title: '5. Subscriptions and payments',
-    body: 'CornerDay offers a free tier and a premium subscription (approximately $4.99–$7.99 per month, subject to change). Premium subscriptions are billed monthly or annually through the Google Play Store or Apple App Store and managed via RevenueCat.\n\nSubscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can manage or cancel your subscription in your device\'s app store account settings.\n\nAll purchases are subject to the payment terms of your app store provider. CornerDay does not process payments directly.',
+    body: 'CornerDay offers a free tier and a premium subscription, billed either monthly ($6.99/month) or annually ($49.99/year), subject to change. Premium subscriptions are billed through the Google Play Store or Apple App Store and managed via RevenueCat.\n\nSubscriptions automatically renew unless cancelled at least 24 hours before the end of the current billing period. You can manage or cancel your subscription in your device\'s app store account settings.\n\nAll purchases are subject to the payment terms of your app store provider. CornerDay does not process payments directly.',
   },
   {
     title: '6. Free tier and advertising',
