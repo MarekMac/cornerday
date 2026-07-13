@@ -363,6 +363,7 @@ export default function AnalyticsScreen() {
     const urgesOvercome = urgeRows.filter(u => u.outcome === 'overcame').length;
     const triggerMap: Record<string, { count: number; overcame: number }> = {};
     urgeRows.forEach(u => {
+      if (u.trigger === 'urge_button') return;
       const t = (u.trigger as string | null)?.trim() || 'Other';
       if (!triggerMap[t]) triggerMap[t] = { count: 0, overcame: 0 };
       triggerMap[t].count++;

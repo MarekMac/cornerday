@@ -66,7 +66,7 @@ type FeedEntry =
   | { kind: 'journey_started'; id: string; note: string | null; created_at: string };
 
 function triggerLabel(key: string | null | undefined) {
-  if (!key) return 'Unknown trigger';
+  if (!key || key === 'urge_button') return 'Unknown trigger';
   return TRIGGERS.find(t => t.key === key)?.label ?? key;
 }
 
