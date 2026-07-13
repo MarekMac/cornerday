@@ -87,7 +87,7 @@ function buildHtml(firstName: string, streakDays: number): string {
 
     <tr><td style="background:linear-gradient(150deg,#0a4f4f 0%,#0F6E6E 55%,#1a9a9a 100%);border-radius:14px;padding:22px;text-align:center;">
       <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">CornerDay Premium</div>
-      <div style="font-size:30px;font-weight:900;color:#fff;line-height:1;">from $4.99<span style="font-size:15px;font-weight:400;">/month</span></div>
+      <div style="font-size:22px;font-weight:900;color:#fff;line-height:1.3;">Simple monthly &amp; annual plans</div>
       <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:8px;">Cancel any time. No commitment.</div>
     </td></tr>
 
@@ -112,6 +112,7 @@ function buildHtml(firstName: string, streakDays: number): string {
     <div style="margin-top:10px;">
       <a href="https://cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">cornerday.app</a>
       <a href="https://cornerday.app/privacy" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Privacy</a>
+      <a href="mailto:unsubscribe@cornerday.app" style="color:#a8d8d0;font-size:12px;text-decoration:none;margin:0 8px;">Unsubscribe</a>
     </div>
     <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;">© 2026 CornerDay. Built for recovery.</div>
   </td></tr>
@@ -157,7 +158,10 @@ Deno.serve(async (req: Request) => {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `${nameRaw}, a month in — here's what Premium unlocks`, html }),
+      body: JSON.stringify({
+        from: FROM_EMAIL, to: [user.email], subject: `${nameRaw}, a month in — here's what Premium unlocks`, html,
+        headers: { 'List-Unsubscribe': '<mailto:unsubscribe@cornerday.app>' },
+      }),
     });
     if (!res.ok) return new Response(JSON.stringify({ error: await res.text() }), { status: 500 });
     return new Response(JSON.stringify({ ok: true, mode: 'direct' }), { status: 200 });
@@ -213,7 +217,10 @@ Deno.serve(async (req: Request) => {
       const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: FROM_EMAIL, to: [user.email], subject: `${firstName}, a month in — here's what Premium unlocks`, html }),
+        body: JSON.stringify({
+          from: FROM_EMAIL, to: [user.email], subject: `${firstName}, a month in — here's what Premium unlocks`, html,
+          headers: { 'List-Unsubscribe': '<mailto:unsubscribe@cornerday.app>' },
+        }),
       });
 
       if (!emailRes.ok) throw new Error(`Resend ${emailRes.status}: ${await emailRes.text()}`);

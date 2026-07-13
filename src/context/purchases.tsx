@@ -86,7 +86,10 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           isAdminRef.current = await fetchIsAdmin(user.id);
-          if (!cancelled && isAdminRef.current) setIsPremium(true);
+          if (isAdminRef.current) {
+            if (!cancelled) setIsPremium(true);
+            await syncToSupabase(true);
+          }
         }
       } catch (e) {
         console.warn('[Admin check] init error:', e);
@@ -152,7 +155,10 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
 
         // Admin check first, independently
         isAdminRef.current = await fetchIsAdmin(session.user.id);
-        if (!cancelled && isAdminRef.current) setIsPremium(true);
+        if (isAdminRef.current) {
+          if (!cancelled) setIsPremium(true);
+          await syncToSupabase(true);
+        }
 
         try {
           await Purchases.logIn(session.user.id);
