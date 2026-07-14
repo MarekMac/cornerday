@@ -180,7 +180,9 @@ interface AnalyticsData {
   urgeCount: number;
   urgesOvercome: number;
   urgesByDay: number[];
+  urgesByDayOvercome: number[];
   urgesByTimeOfDay: number[];
+  urgesByTimeOfDayOvercome: number[];
   topTriggers: { trigger: string; count: number; overcame: number }[];
   moodLast30: { date: string; mood: number }[];
   moodSparkline: (number | null)[];
@@ -373,16 +375,21 @@ export default function AnalyticsScreen() {
       .map(([trigger, v]) => ({ trigger, ...v }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-    const urgesByDay   = [0, 0, 0, 0, 0, 0, 0];
-    urgeRows.forEach(u => { urgesByDay[new Date(u.created_at).getDay()]++; });
+    const urgesByDay        = [0, 0, 0, 0, 0, 0, 0];
+    const urgesByDayOvercome = [0, 0, 0, 0, 0, 0, 0];
+    urgeRows.forEach(u => {
+      const day = new Date(u.created_at).getDay();
+      urgesByDay[day]++;
+      if (u.outcome === 'overcame') urgesByDayOvercome[day]++;
+    });
 
-    const urgesByTimeOfDay = [0, 0, 0, 0];
+    const urgesByTimeOfDay         = [0, 0, 0, 0];
+    const urgesByTimeOfDayOvercome = [0, 0, 0, 0];
     urgeRows.forEach(u => {
       const h = new Date(u.created_at).getHours();
-      if (h >= 5 && h < 12)       urgesByTimeOfDay[0]++;
-      else if (h >= 12 && h < 18) urgesByTimeOfDay[1]++;
-      else if (h >= 18 && h < 23) urgesByTimeOfDay[2]++;
-      else                         urgesByTimeOfDay[3]++;
+      const slot = h >= 5 && h < 12 ? 0 : h >= 12 && h < 18 ? 1 : h >= 18 && h < 23 ? 2 : 3;
+      urgesByTimeOfDay[slot]++;
+      if (u.outcome === 'overcame') urgesByTimeOfDayOvercome[slot]++;
     });
 
     const moodRows   = moodRes.data ?? [];
@@ -463,10 +470,10 @@ export default function AnalyticsScreen() {
         }).length
       : relapseRows.length;
 
-    // Week summary
-    const startOfThisWeek = new Date(today);
-    startOfThisWeek.setDate(today.getDate() - today.getDay());
-    startOfThisWeek.setHours(0, 0, 0, 0);
+    // Week summary — rolling last-7-days vs the 7 days before that, so both
+    // sides always compare equal spans (a calendar-week reset would compare a
+    // partial "this week" against a full "last week" right after Monday).
+    const startOfThisWeek = new Date(today.getTime() - 7 * 86400000);
     const startOfLastWeek = new Date(startOfThisWeek.getTime() - 7 * 86400000);
     const ciKey = (r: { created_at: string }) => new Date(r.created_at).toLocaleDateString('en-CA');
     const thisWkMoods = moodRows.filter(r => new Date(r.created_at) >= startOfThisWeek).map(r => r.mood);
@@ -500,7 +507,7 @@ export default function AnalyticsScreen() {
       savingsGoalFor: profile?.savings_goal_label ?? goalForRaw ?? '',
       savingsGoalIcon: profile?.savings_goal_icon ?? goalIconRaw ?? '🎯',
       totalDebts, totalDebtPaid, debtsWithPacing,
-      urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByTimeOfDay, topTriggers,
+      urgeCount: urgeRows.length, urgesOvercome, urgesByDay, urgesByDayOvercome, urgesByTimeOfDay, urgesByTimeOfDayOvercome, topTriggers,
       moodLast30, moodSparkline, checkInDays,
       checkinStreak: computeCheckinStreak(checkinDatesRes.data ?? []),
       monthlySavings, weekMoods,
@@ -552,7 +559,9 @@ export default function AnalyticsScreen() {
                   ...prev,
                   urgeCount: 0, urgesOvercome: 0,
                   urgesByDay: [0, 0, 0, 0, 0, 0, 0],
+                  urgesByDayOvercome: [0, 0, 0, 0, 0, 0, 0],
                   urgesByTimeOfDay: [0, 0, 0, 0],
+                  urgesByTimeOfDayOvercome: [0, 0, 0, 0],
                   topTriggers: [],
                 } : prev);
               } finally {
@@ -634,7 +643,7 @@ export default function AnalyticsScreen() {
     const teaserItems = [
       { emoji: '⏱️', title: 'Live streak hero', desc: 'Precise time without gambling — hours, days, months at a glance' },
       { emoji: '✨', title: 'Personalised insights', desc: 'Auto-generated callouts from your real data — patterns you won\'t see yourself' },
-      { emoji: '📊', title: 'Weekly summary', desc: 'Urges, mood, check-ins and savings — this week vs last' },
+      { emoji: '📊', title: 'Weekly summary', desc: 'Urges, mood, check-ins and savings — last 7 days vs the 7 before' },
       { emoji: '😊', title: '30-day mood tracking', desc: 'Daily bars and check-in streak to spot your emotional trends' },
       { emoji: '🧠', title: 'Urge patterns', desc: 'When you\'re most challenged — by day of week and time of day' },
       { emoji: '💰', title: 'Savings + projections', desc: 'Money not spent, plus what you\'ll save this week, month and year' },
@@ -852,7 +861,7 @@ export default function AnalyticsScreen() {
 
         {/* ── Weekly summary ── */}
         <View style={s.card}>
-          <SectionHeader title="📊 This week vs last week" />
+          <SectionHeader title="📊 Last 7 days vs previous 7 days" />
           <View style={s.wkGrid}>
             <View style={s.wkBlock}>
               <Text style={s.wkBlockLabel}>Urges</Text>
@@ -965,11 +974,13 @@ export default function AnalyticsScreen() {
                 {data.urgesByDay.map((count, i) => {
                   const barH = count > 0 ? Math.max(4, (count / maxUrgeCount) * 44) : 4;
                   const isHardest = count === maxUrgeCount && count > 0;
+                  const overcome = data.urgesByDayOvercome[i];
+                  const mostlyResisted = count > 0 && overcome * 2 >= count;
                   return (
                     <View key={i} style={s.urgeDayItem}>
                       <Text style={s.urgeDayCount}>{count > 0 ? count : ''}</Text>
                       <View style={s.urgeDayBarBg}>
-                        <View style={[s.urgeDayBarFill, { height: barH }, isHardest && s.urgeDayBarHardest]} />
+                        <View style={[s.urgeDayBarFill, { height: barH }, count > 0 && (mostlyResisted ? s.urgeDayBarGreen : s.urgeDayBarRed)]} />
                       </View>
                       <Text style={[s.urgeDayLabel, isHardest && s.urgeDayLabelHardest]}>{DAY_SHORT[i]}</Text>
                     </View>
@@ -985,11 +996,13 @@ export default function AnalyticsScreen() {
               {data.urgesByTimeOfDay.map((count, i) => {
                 const barW = count > 0 ? Math.max(4, (count / maxTodCount) * 100) : 4;
                 const isHardest = i === hardestTod && count > 0;
+                const overcome = data.urgesByTimeOfDayOvercome[i];
+                const mostlyResisted = count > 0 && overcome * 2 >= count;
                 return (
                   <View key={i} style={s.urgeTodRow}>
                     <Text style={[s.urgeTodLabel, isHardest && s.urgeTodLabelHardest]}>{TOD_LABELS[i]}</Text>
                     <View style={s.urgeTodBarBg}>
-                      <View style={[s.urgeTodBarFill, { width: `${barW}%` as any }, isHardest && s.urgeTodBarHardest]} />
+                      <View style={[s.urgeTodBarFill, { width: `${barW}%` as any }, count > 0 && (mostlyResisted ? s.urgeTodBarGreen : s.urgeTodBarRed)]} />
                     </View>
                     <Text style={[s.urgeTodCount, isHardest && s.urgeTodCountHardest]}>{count}</Text>
                   </View>
@@ -1500,20 +1513,22 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   urgeDayCount:       { fontSize: 10, color: c.textMuted, height: 14 },
   urgeDayBarBg:       { width: '100%', height: 44, justifyContent: 'flex-end', backgroundColor: c.bgElement, borderRadius: 4, overflow: 'hidden' },
   urgeDayBarFill:     { width: '100%', backgroundColor: c.primaryLight, borderRadius: 4 },
-  urgeDayBarHardest:  { backgroundColor: c.error },
+  urgeDayBarGreen:    { backgroundColor: c.success },
+  urgeDayBarRed:      { backgroundColor: c.error },
   urgeDayLabel:       { fontSize: 10, color: c.textFaint },
-  urgeDayLabelHardest:{ color: c.error, fontWeight: '700' },
+  urgeDayLabelHardest:{ fontWeight: '700', color: c.textPrimary },
   urgeDayInsight:     { fontSize: 12, color: c.textMuted, textAlign: 'center', marginTop: 2 },
 
   urgeTodWrap:         { gap: 10 },
   urgeTodRow:          { flexDirection: 'row', alignItems: 'center', gap: 8 },
   urgeTodLabel:        { fontSize: 12, color: c.textMuted, width: 74, fontWeight: '500' },
-  urgeTodLabelHardest: { color: c.error, fontWeight: '700' },
+  urgeTodLabelHardest: { fontWeight: '700', color: c.textPrimary },
   urgeTodBarBg:        { flex: 1, height: 10, backgroundColor: c.bgElement, borderRadius: 5, overflow: 'hidden' },
   urgeTodBarFill:      { height: '100%', backgroundColor: c.primaryLight, borderRadius: 5 },
-  urgeTodBarHardest:   { backgroundColor: c.error },
+  urgeTodBarGreen:     { backgroundColor: c.success },
+  urgeTodBarRed:       { backgroundColor: c.error },
   urgeTodCount:        { fontSize: 12, color: c.textMuted, width: 20, textAlign: 'right', fontWeight: '600' },
-  urgeTodCountHardest: { color: c.error },
+  urgeTodCountHardest: { fontWeight: '700', color: c.textPrimary },
 
   progressBarWrap: { gap: 6 },
   progressBarBg:   { height: 10, backgroundColor: c.bgElement, borderRadius: 5, overflow: 'hidden' },
