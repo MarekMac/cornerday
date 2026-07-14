@@ -268,7 +268,7 @@ export default function AnalyticsScreen() {
 
     const [profileRes, streakRes, lossesRes, debtsRes, paymentsRes, urgeRes, moodRes, checkinDatesRes] = await Promise.all([
       supabase.from('users').select('currency, quit_date, quit_timestamp, savings_target_date, savings_goal_amount, savings_goal_label, savings_goal_icon').eq('id', user.id).maybeSingle(),
-      supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', user.id).maybeSingle(),
+      supabase.from('streaks').select('longest_streak').eq('user_id', user.id).maybeSingle(),
       supabase.from('losses').select('type, amount, created_at').eq('user_id', user.id).neq('type', 'milestone_earned'),
       supabase.from('debts').select('id, name, total_amount, target_date, created_at').eq('user_id', user.id).order('created_at', { ascending: true }),
       supabase.from('debt_payments').select('debt_id, amount, created_at').eq('user_id', user.id),
@@ -291,7 +291,12 @@ export default function AnalyticsScreen() {
     const profile  = profileRes.data;
     const currency = profile?.currency ?? 'USD';
     const quitDate = profile?.quit_timestamp ?? profile?.quit_date ?? null;
-    const currentStreakDays = streakRes.data?.current_streak ?? 0;
+    // streaks.current_streak is only ever written by the relapse-undo flow, so it
+    // goes stale the moment time passes — derive the live value from quitDate
+    // the same way the Home tab's LiveCounter does instead of trusting the column.
+    const currentStreakDays = quitDate
+      ? Math.floor((Date.now() - parseQuitDate(quitDate).getTime()) / 86400000)
+      : 0;
 
     const lossRows    = lossesRes.data ?? [];
     const savingRows  = lossRows.filter(r => r.type === 'saving');
