@@ -262,12 +262,13 @@ function formatStreakFull(ms: number): string {
 function getMilestone(ms: number) {
   const days = ms / 86400000;
   const next = MILESTONES.find(m => m > days) ?? 3650;
+  const prev = [...MILESTONES].reverse().find(m => m <= days) ?? 0;
   const remainingMs = Math.max(0, next * 86400000 - ms);
-  // Measured from the quit date (day 0) to the next milestone, not from the
-  // previous milestone — the ring shows "how close to [next milestone]", and
-  // a 6-day streak with "1 Week" as the label should read as ~86% (6/7), not
-  // 50% (as it would if measured from the prior 5-day badge instead).
-  const progress = Math.min(1, days / next);
+  // Measured from the previous milestone to the next one, so the ring
+  // resets to 0% right after each milestone is earned instead of carrying
+  // over progress accumulated toward earlier milestones.
+  const span = next - prev;
+  const progress = span > 0 ? Math.min(1, (days - prev) / span) : 1;
   return { next, remainingMs, progress };
 }
 
