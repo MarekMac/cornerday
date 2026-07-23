@@ -6,10 +6,6 @@
 // drift whenever a non-milestone achievement badge is also in the table.
 export const BADGE_DEFS = [
   { type: 'started',    emoji: '🚀', label: 'Started',    days: 0 },
-  { type: '1_hour',     emoji: '⏰', label: '1 Hour',     days: 1/24 },
-  { type: '3_hours',    emoji: '🌤️', label: '3 Hours',    days: 3/24 },
-  { type: '6_hours',    emoji: '☀️', label: '6 Hours',    days: 6/24 },
-  { type: '12_hours',   emoji: '🌗', label: '12 Hours',   days: 12/24 },
   { type: '1_day',      emoji: '🌱', label: '1 Day',      days: 1 },
   { type: '3_days',     emoji: '🌿', label: '3 Days',     days: 3 },
   { type: '5_days',     emoji: '🕊️', label: '5 Days',     days: 5 },

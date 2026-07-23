@@ -117,10 +117,6 @@ const TOD_LABELS = ['Morning', 'Afternoon', 'Evening', 'Night'];
 const TOD_TIMES  = ['5am–12pm', '12pm–6pm', '6pm–11pm', '11pm–5am'];
 
 const MILESTONES = [
-  { days: 1/24,  label: '1 Hour',    emoji: '⏰' },
-  { days: 3/24,  label: '3 Hours',   emoji: '🌤️' },
-  { days: 6/24,  label: '6 Hours',   emoji: '🌞' },
-  { days: 12/24, label: '12 Hours',  emoji: '🌛' },
   { days: 1,     label: '1 Day',     emoji: '🌱' },
   { days: 3,     label: '3 Days',    emoji: '💧' },
   { days: 7,     label: '1 Week',    emoji: '⭐' },

@@ -153,10 +153,6 @@ export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
 };
 
 const SCHEDULED_MILESTONES = [
-  { type: '1_hour',    days: 1/24,  emoji: '⏰', label: '1 Hour',     body: 'The first hour is the hardest. You did it — keep building.',                                              approachBody: 'Your first hour milestone is almost here. Hold tight.' },
-  { type: '3_hours',   days: 3/24,  emoji: '🌤️', label: '3 Hours',    body: 'Three hours clean. Every hour you hold on rewires something.',                                           approachBody: '3 Hours is nearly here. You\'re doing it.' },
-  { type: '6_hours',   days: 6/24,  emoji: '☀️', label: '6 Hours',    body: 'Six hours clean. Most people don\'t make it this far on day one. You did.',                              approachBody: 'Almost at 6 hours. Keep going — you\'re nearly there.' },
-  { type: '12_hours',  days: 12/24, emoji: '🌗', label: '12 Hours',   body: 'Half a day clean. You\'re proving to yourself this is possible.',                                        approachBody: '12 hours is one sleep away. Protect the rest of tonight.' },
   { type: '1_day',     days: 1,     emoji: '🌱', label: '1 Day',      body: 'One full day without gambling. That\'s not small — that\'s everything right now.',                       approachBody: 'In 24 hours you\'ll have your first full day clean. Protect tonight.' },
   { type: '3_days',    days: 3,     emoji: '🌿', label: '3 Days',     body: 'Three days. The hardest part is behind you. Your brain is already starting to reset.',                   approachBody: 'Three days is 24 hours away. Don\'t stop now — you\'re almost there.' },
   { type: '1_week',    days: 7,     emoji: '⭐', label: '1 Week',     body: 'One week clean. Seven days of choosing yourself over the habit. That matters.',                          approachBody: 'Your 1 Week badge is 24 hours away. One more day — you\'ve got this.' },

@@ -24,10 +24,6 @@ interface MilestoneDef {
 // Badge types use push_ prefix so they are independent of the client-side milestone badges.
 // Cron runs hourly; window is 65 min so every milestone is caught within ~1 hour of occurring.
 const MILESTONES: MilestoneDef[] = [
-  { days: 1/24,  badge: 'push_1_hour',   label: '1 hour',    emoji: '⏰', body: 'The first hour is the hardest. You did it — keep building.' },
-  { days: 3/24,  badge: 'push_3_hours',  label: '3 hours',   emoji: '🌤️', body: 'Three hours clean. Every hour you hold on rewires something.' },
-  { days: 6/24,  badge: 'push_6_hours',  label: '6 hours',   emoji: '☀️', body: 'Six hours clean. Most people don\'t make it this far on day one. You did.' },
-  { days: 12/24, badge: 'push_12_hours', label: '12 hours',  emoji: '🌗', body: 'Half a day clean. You\'re proving to yourself this is possible.' },
   { days: 1,    badge: 'push_1_day',     label: '1 day',     emoji: '🌱', body: 'One full day. A lot of people don\'t make it this far. You did.' },
   { days: 3,    badge: 'push_3_days',    label: '3 days',    emoji: '🌿', body: 'Three days clean. The hardest window. You\'re through it.' },
   { days: 5,    badge: 'push_5_days',    label: '5 days',    emoji: '🕊️', body: 'Five days. You\'ve made it through a full working week without gambling.' },
