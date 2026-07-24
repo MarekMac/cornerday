@@ -262,13 +262,10 @@ function formatStreakFull(ms: number): string {
 function getMilestone(ms: number) {
   const days = ms / 86400000;
   const next = MILESTONES.find(m => m > days) ?? 3650;
-  const prev = [...MILESTONES].reverse().find(m => m <= days) ?? 0;
   const remainingMs = Math.max(0, next * 86400000 - ms);
-  // Measured from the previous milestone to the next one, so the ring
-  // resets to 0% right after each milestone is earned instead of carrying
-  // over progress accumulated toward earlier milestones.
-  const span = next - prev;
-  const progress = span > 0 ? Math.min(1, (days - prev) / span) : 1;
+  // Measured from the quit date (day 0) to the next milestone, so the ring
+  // always reads as "how far into the [next milestone] target am I".
+  const progress = Math.min(1, days / next);
   return { next, remainingMs, progress };
 }
 
@@ -441,7 +438,7 @@ function CircularProgress({ progress, next }: { progress: number; next: number }
         />
       </Svg>
       <Text style={s.circPct}>{pct}%</Text>
-      <Text style={s.circTime}>{label}</Text>
+      <Text style={s.circTime}>of {label}</Text>
     </View>
   );
 }
