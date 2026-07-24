@@ -1206,28 +1206,6 @@ export default function AnalyticsScreen() {
                     )}
                   </View>
                 )}
-                {/* Payoff timeline chart */}
-                {!debt.isPaidOff && debt.projDays !== null && (() => {
-                  const startMs = debt.createdAt.getTime();
-                  const projMs = Date.now() + debt.projDays * 86400000;
-                  const spanMs = projMs - startMs;
-                  if (spanMs <= 0) return null;
-                  const elapsedPct = Math.min(97, Math.max(3, Math.round(((Date.now() - startMs) / spanMs) * 100)));
-                  return (
-                    <View style={s.debtTimeline}>
-                      <Text style={s.debtTimelineTitle}>Payoff timeline</Text>
-                      <View style={s.debtTimelineTrack}>
-                        <View style={{ flex: elapsedPct, backgroundColor: c.primaryMid, borderRadius: 3 }} />
-                        <View style={{ flex: 100 - elapsedPct, backgroundColor: c.bgElement, borderRadius: 3 }} />
-                      </View>
-                      <View style={s.debtTimelineDates}>
-                        <Text style={s.debtTimelineDateL}>{debt.createdAt.toLocaleDateString([], { month: 'short', year: '2-digit' })}</Text>
-                        <Text style={s.debtTimelineDateC}>Today</Text>
-                        <Text style={s.debtTimelineDateR}>{new Date(projMs).toLocaleDateString([], { month: 'short', year: '2-digit' })}</Text>
-                      </View>
-                    </View>
-                  );
-                })()}
               </View>
             ))}
             <Text style={s.debtTargetHint}>Set target dates per debt in the Loss Tracker</Text>
@@ -1626,13 +1604,4 @@ const makeStyles = (c: AppColors) => StyleSheet.create({
   streakHistStar:       { fontSize: 11, color: c.primary },
   streakImproveChip:    { backgroundColor: c.bgTeal, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, marginTop: 4, alignItems: 'center' },
   streakImproveText:    { fontSize: 13, color: c.primary, fontWeight: '600', textAlign: 'center' },
-
-  // Per-debt payoff timeline chart
-  debtTimeline:      { gap: 5, paddingTop: 2 },
-  debtTimelineTitle: { fontSize: 11, fontWeight: '600', color: c.textMuted },
-  debtTimelineTrack: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', gap: 1 },
-  debtTimelineDates: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  debtTimelineDateL: { fontSize: 10, color: c.textFaint },
-  debtTimelineDateC: { fontSize: 10, color: c.primary, fontWeight: '700' },
-  debtTimelineDateR: { fontSize: 10, color: c.textFaint },
 });
