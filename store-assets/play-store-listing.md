@@ -1,15 +1,15 @@
 # CornerDay — Google Play Store Listing
 
-## App Name
-CornerDay
+## App Name (30 chars max — currently 24)
+CornerDay: Quit Gambling
 
-## Short Description (80 chars max — currently 73)
-Track your streak, log losses, beat urges. Quit sports betting for good.
+## Short Description (80 chars max — currently 66)
+Track your streak, log losses, beat urges. Quit gambling for good.
 
 ## Full Description (4000 chars max)
 The day you turn it around starts today.
 
-CornerDay is a private, shame-free app built for people who want to stop gambling. Whether you're on day one or celebrating a year clean, CornerDay keeps you grounded in your why, tracks your progress honestly, and gives you tools to push through urges — without judgment.
+CornerDay is a private, shame-free app built for people who want help with gambling addiction — sports betting, casino, poker, slots, all of it. Whether you're on day one or celebrating a year sober, CornerDay keeps you grounded in your why, tracks your progress honestly, and gives you tools to push through urges — without judgment.
 
 **Track your recovery**
 - Streak counter that updates every hour, not just every day
@@ -52,6 +52,8 @@ CornerDay is a private, shame-free app built for people who want to stop gamblin
 ---
 
 Recovery isn't linear. CornerDay is built around that truth — no shame spirals, no punishment for relapses. A slip resets your streak, not your worth.
+
+Looking for gambling help at 3am or on a random Tuesday? CornerDay is built for both.
 
 Free tier includes streak tracking, urge support, loss tracker, daily check-ins, and community.
 Premium unlocks the AI coach, detailed analytics, and ad-free experience.
