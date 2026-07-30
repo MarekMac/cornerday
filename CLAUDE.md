@@ -140,8 +140,8 @@ A mobile app (iOS + Android) that helps people stop sports betting, track money 
 - Phase 2: Premium features, AI coach, someone in your corner, push notifications, detailed analytics ✅ MOSTLY COMPLETE
 - Phase 3: Wider release, potential expansion to other addiction types
 
-## Current Status (as of 2026-06-24)
-Phase 1 and Phase 2 are feature-complete and running on a development build (not Expo Go). The app is in pre-launch polish and bug-fix mode, targeting an Android release first.
+## Current Status (as of 2026-07-30)
+Phase 1 and Phase 2 are feature-complete. The app is live on Google Play production (since 2026-07-27), targeting Android first.
 
 ### What is built and working
 - Auth: email/password + Google OAuth, forgot password, confirm email, sign out, delete account
@@ -164,7 +164,8 @@ Phase 1 and Phase 2 are feature-complete and running on a development build (not
 - `npx expo run:android` to rebuild; `npx expo start --clear` for daily dev
 - JAVA_HOME and ANDROID_HOME set, Gradle pinned to 8.13
 
-### Pre-launch blockers (user action required)
-- EAS project ID finalisation
-- iOS RevenueCat key (deferred until Android ships)
-- Sentry DSN for crash reporting
+### Pre-launch blockers
+- EAS project ID: resolved — set in `app.json`
+- Sentry DSN: resolved — set in EAS production env, wired into `_layout.tsx`, live in production builds
+- RevenueCat Android: resolved — key set in EAS production env, service account connected, purchase validation live
+- iOS RevenueCat key: still a placeholder — intentionally deferred, iOS paused until Android gets traction
