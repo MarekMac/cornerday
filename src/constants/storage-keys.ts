@@ -28,3 +28,4 @@ export const CUSTOM_MILESTONE_NOTIF_ID_KEY = 'cornerday_custom_milestone_notif_i
 export const CUSTOM_MILESTONE_CELEBRATED_KEY = 'cornerday_custom_milestone_celebrated';
 export const STORE_REVIEW_ASKED_KEY = 'cornerday_store_review_asked';
 export const PROFILE_NUDGE_SHOWN_KEY = 'cornerday_profile_nudge_shown';
+export const DAILY_REMINDER_NEXT_KEY = 'cornerday_daily_reminder_next';

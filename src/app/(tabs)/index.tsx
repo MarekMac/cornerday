@@ -29,7 +29,7 @@ import * as Notifications from 'expo-notifications';
 import { maybeRequestReview } from '@/lib/review';
 import { supabase } from '@/lib/supabase';
 import { parseQuitDate } from '@/lib/parseQuitDate';
-import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleOnboardingCheckin, scheduleUrgePredictionNotification } from '@/lib/notifications';
+import { DEFAULT_NOTIF_PREFS, scheduleAllNotifications, scheduleOnboardingCheckin, scheduleUrgePredictionNotification, cancelTodaysDailyReminder } from '@/lib/notifications';
 import { notifySupporter } from '@/lib/notifySupporter';
 import { haptic, hapticMedium } from '@/lib/haptics';
 import { showInterstitialIfReady } from '@/lib/ads';
@@ -1609,7 +1609,10 @@ export default function HomeScreen() {
         setEditingMood(false);
         setMoodNote('');
         setEditMoodValue(null);
-        if (isNewInsert) fetchData();
+        if (isNewInsert) {
+          cancelTodaysDailyReminder();
+          fetchData();
+        }
       }
     } finally {
       if (isMountedRef.current) setMoodSubmitting(false);

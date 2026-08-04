@@ -1,7 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { AppState, Platform } from 'react-native';
-import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY } from '../constants/storage-keys';
+import { supabase } from './supabase';
+import { URGE_PREDICTION_NOTIF_ID_KEY, URGE_PREDICTION_SCHEDULE_KEY, AI_CHECKIN_NOTIF_ID_KEY, AI_CHECKIN_NOTIF_IDS_KEY, CUSTOM_MILESTONE_KEY, CUSTOM_MILESTONE_NOTIF_ID_KEY, DAILY_REMINDER_NEXT_KEY } from '../constants/storage-keys';
+
+// Matches mood_checkins.local_date, which the client sets at insert time
+// (see todayStr() in the home screen) — local calendar day, not a UTC slice.
+function localDateStr(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 const DAILY_REMINDER_MESSAGES: { title: string; body: string }[] = [
   { title: '🌙 Evening check-in',              body: 'How are you feeling tonight? Log your mood and keep the streak going.' },
@@ -256,7 +266,7 @@ async function scheduleAllNotificationsImpl(
 
   if (!quitTimestamp) {
     try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch (_e) {}
-    await AsyncStorage.removeItem(URGE_PREDICTION_NOTIF_ID_KEY);
+    await AsyncStorage.multiRemove([URGE_PREDICTION_NOTIF_ID_KEY, DAILY_REMINDER_NEXT_KEY]);
     return;
   }
 
@@ -269,6 +279,26 @@ async function scheduleAllNotificationsImpl(
     prefs.notif_milestone ? AsyncStorage.getItem(CUSTOM_MILESTONE_KEY) : Promise.resolve(null),
     prefs.notif_urge_prediction ? AsyncStorage.getItem(URGE_PREDICTION_SCHEDULE_KEY) : Promise.resolve(null),
   ]);
+
+  // Has the user already logged today's mood? If so, the daily reminder's
+  // window below shouldn't include today — otherwise every app relaunch
+  // (which re-runs this whole function) would re-add tonight's reminder
+  // even after it's already been checked in.
+  let checkedInToday = false;
+  if (prefs.notif_daily_streak) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: moodRow } = await supabase
+          .from('mood_checkins')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('local_date', localDateStr())
+          .maybeSingle();
+        checkedInToday = !!moodRow;
+      }
+    } catch (_e) { /* best effort — fall back to scheduling today's reminder */ }
+  }
 
   // Build all schedule jobs as thunks so we can cancel first, then fire them all
   const scheduleJobs: Array<() => Promise<void>> = [];
@@ -322,6 +352,11 @@ async function scheduleAllNotificationsImpl(
     const startDate = new Date();
     startDate.setHours(hour, 0, 0, 0);
     if (startDate.getTime() <= now) startDate.setDate(startDate.getDate() + 1);
+    // Already checked in today and today's reminder hour hasn't passed yet —
+    // skip today and start the window tomorrow instead.
+    if (checkedInToday && startDate.toDateString() === new Date().toDateString()) {
+      startDate.setDate(startDate.getDate() + 1);
+    }
     const pool = shuffled(DAILY_REMINDER_MESSAGES).slice(0, DAILY_REMINDER_WINDOW_DAYS);
     for (let i = 0; i < pool.length; i++) {
       const fireDate = new Date(startDate);
@@ -336,8 +371,19 @@ async function scheduleAllNotificationsImpl(
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: fireDate,
       }) as any;
-      scheduleJobs.push(() => Notifications.scheduleNotificationAsync({ content, trigger }).then(() => {}));
+      // Track the soonest-firing reminder's id/date so a same-session mood
+      // check-in (see cancelTodaysDailyReminder) can cancel it without
+      // touching the rest of the window.
+      const isNext = i === 0;
+      const fireDateStr = localDateStr(fireDate);
+      scheduleJobs.push(() =>
+        Notifications.scheduleNotificationAsync({ content, trigger }).then(id => {
+          if (isNext) return AsyncStorage.setItem(DAILY_REMINDER_NEXT_KEY, JSON.stringify({ id, date: fireDateStr }));
+        }),
+      );
     }
+  } else {
+    await AsyncStorage.removeItem(DAILY_REMINDER_NEXT_KEY);
   }
 
   // 4. Weekly summary — Monday 9 am
@@ -500,6 +546,29 @@ async function scheduleOnboardingCheckinImpl(): Promise<void> {
     await AsyncStorage.setItem(AI_CHECKIN_NOTIF_IDS_KEY, JSON.stringify(ids));
     await AsyncStorage.removeItem(AI_CHECKIN_NOTIF_ID_KEY);
   } catch { /* permissions may not be granted — best effort */ }
+}
+
+// Cancels tonight's already-scheduled daily reminder the moment the user
+// checks in, so it doesn't fire later even though the whole rolling window
+// only gets rebuilt (with today correctly excluded) on the next app launch.
+// Routed through scheduleQueue for the same reason as the other cancel/
+// schedule helpers above — must not race a concurrent
+// cancelAllScheduledNotificationsAsync() from scheduleAllNotificationsImpl.
+export function cancelTodaysDailyReminder(): Promise<void> {
+  const run = () => cancelTodaysDailyReminderImpl();
+  scheduleQueue = scheduleQueue.then(run, run);
+  return scheduleQueue;
+}
+
+async function cancelTodaysDailyReminderImpl(): Promise<void> {
+  const raw = await AsyncStorage.getItem(DAILY_REMINDER_NEXT_KEY);
+  if (!raw) return;
+  try {
+    const { id, date } = JSON.parse(raw);
+    if (date !== localDateStr()) return; // tracked reminder isn't tonight's
+    if (id) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+    await AsyncStorage.removeItem(DAILY_REMINDER_NEXT_KEY);
+  } catch { /* corrupt entry — nothing to do */ }
 }
 
 async function cancelExistingUrgePredictionNotif() {
